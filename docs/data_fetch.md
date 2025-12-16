@@ -1,159 +1,143 @@
-# Technical Report: Data Acquisition & Validation Protocol for WikidataRepairEval 1.0
+# WikidataRepairEval 1.0 – Data Acquisition & Validation Protocol
 
-**Project:** Dynamics of Neuro-Symbolic Alignment (Phase 1)
-**Date:** December 10, 2025
-**Status:** Protocol Definition & Indexing Phase
-**Context:** Construction of a specialized Knowledge Graph repair benchmark distinguishing between reasoning failures and information voids.
+**Project:** Dynamics of Neuro-Symbolic Alignment (Phase 1)  
+**Date:** December 10, 2025  
+**Status:** Protocol Definition & Indexing Phase  
+**Goal:** Build a gold-standard benchmark of historical Wikidata repairs that isolates logical consistency, topological reasoning, and external retrieval gaps.
 
 ---
 
-## 1. Objective
+## Overview
 
-To construct **WikidataRepairEval 1.0**, a "Gold Standard" benchmark of historical KG repairs. Unlike existing resources that aggregate static dumps, this dataset reconstructs the *dynamic state* of the graph at the moment of repair. It is designed to enable the "Guardian" hypothesis testing by isolating three variables: Logical Consistency, Topological Reasoning, and External Retrieval.
+We construct WikidataRepairEval 1.0 by replaying real repair events rather than scraping static dumps. The workflow rejects full-history parsing (multi-terabyte XML) and instead follows a hybrid index–fetch pipeline that leverages community-maintained constraint reports as high-signal pointers to repairs. Each stage produces a verifiable artifact that becomes the input for the next stage.
 
-## 2. Methodology: The Hybrid Index-Fetch Strategy
+### Pipeline at a Glance
 
-We reject the naive approach of parsing the full Wikidata Revision History (multi-terabyte XML dumps) due to low signal-to-noise ratio. Instead, we implement a **Hybrid Index-Fetch Strategy** that leverages existing community maintenance bots as "pointers" to high-quality repair events.
+| Stage              | Description                                                                                                  | Inputs                                                        | Outputs                                            |
+| :----------------- | :----------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------ | :------------------------------------------------- |
+| 1. Indexer         | Mine constraint-violation report histories to find entities that were fixed between two snapshots.           | `Wikidata:Database reports/Constraint violations/*` histories | `data\01_repair_candidates.json`                           |
+| 2. Fetcher         | Query revision histories to isolate the exact edit that resolved each violation and capture pre/post states. | `data\01_repair_candidates.json`, Wikibase REST API                   | `data\02_wikidata_repairs.json`                    |
+| 3. Context Builder | Freeze the 2025 neighborhood, labels, and constraint metadata for every repaired entity.                     | `data\02_wikidata_repairs.json`, `latest-all.json.gz` dump    | `world_state.json` attached to each benchmark case |
 
-### 2.1. The Pipeline Architecture
+---
 
-1. **The Indexer (Signal Detection):**
-   * **Source:** `Wikidata:Database reports/Constraint violations/*`.
-   * **Mechanism:** Wikidata generates static pages listing current violations. We parse the *history* of these report pages. If Entity $E$ is listed in the violation report at time $T_{report}$ and removed at time $T_{next}$, a candidate repair occurred in the interval $(T_{report}, T_{next})$.
-   * **Benefit:** This pre-filters the search space to entities known to have violated specific constraints (e.g., `P569` Date of Birth, `P570` Date of Death), ensuring high relevance.
-   * **Output** repair_candidates.json
-  
-2. **The Fetcher (Forensics):**
-   * **Source:** Wikibase REST API (`GET /w/rest.php/v1/page/{id}/history`).
-   * **Mechanism:** For every candidate $(E, T_{interval})$, we query the API to isolate the exact revision $R$ where the violating statement was modified.
-   * **Diff Extraction:** We capture the *Before* state (Constraint Violated) and the *After* state (Constraint Satisfied).
-   * **Output** wikidata_repair_eval_raw.json
+## Stage 1 – Indexer (Signal Detection)
 
-3. **The Context Builder (World State):**
-    We need the full graph neighborhood to test "Type B" (Local) reasoning.
-   * **Source:** `latest-all.json.gz` (2025 Dump).
-   * **Mechanism:** To ensure the benchmark evaluates *current* reasoning capabilities, we cross-reference the historical repair against the live graph.
+- **Purpose:** Detect candidate repairs by monitoring entries that leave constraint-violation pages.
+- **Input:** Revision histories from `Wikidata:Database reports/Constraint violations/*`.
+- **Process:** Parse each report's history. If entity `E` appears at timestamp `T_report` and disappears at `T_next`, flag the interval `(T_report, T_next)` as a repair window for `(E, constraint_id)`.
+- **Output:** `data\01_repair_candidates.json`, containing tuples `{qid, constraint_id, violation_type, t_report, t_next}` for downstream fetching.
+- **Benefits:** Limits the search space to high-quality violations and encodes the relevant constraint class (e.g., `P569` Date of Birth).
 
-### **2.2. Expanded Pipeline: The Context Builder (World State)**
+---
 
-The **Context Builder** acts as the "Freezing Mechanism." Its job is to capture the local topology of the entity *as it exists in the 2025 standard dump* and attach it to the repair event. This creates a static, reproducible test case.
+## Stage 2 – Fetcher (Forensics)
 
-#### **A. The Extraction Strategy: Stream-and-Filter**
+- **Purpose:** Pinpoint the exact revision that fixed each violation and capture before/after graphs.
+- **Inputs:** `data\01_repair_candidates.json`, Wikibase REST API endpoint `GET /w/rest.php/v1/page/{qid}/history`.
+- **Process:** For every candidate, pull the revision list within `(t_report, t_next)`, diff adjacent revisions, and select the edit where the violating triple changed. Record both the violating state and the repaired state.
+- **Outputs:** `data\02_wikidata_repairs.json`, where each entry stores:
+  - `qid`, `revision_id_before`, `revision_id_after`
+  - Serialized statements for the specific property before and after
+  - Metadata for taxonomy classification (timestamps, editor ids, constraint ids)
+- **Note:** This artifact drives both the taxonomy labels and the context builder.
 
-We cannot load the 1TB+ JSON dump into memory. Instead, we perform a **single-pass stream** over `latest-all.json.gz`.
+---
 
-  * **Input:** The `wikidata_repair_eval_raw.json` (from Step 2), creating a `Set<QID>` of target entities.
-  * **Process:** Stream the dump. If `entry['id']` is in our `Set<QID>`, we do not just save the line; we extract specific "Context Layers."
-  * **Output:** A `world_state.json` map linked to each test case.
+## Stage 3 – Context Builder (World State Snapshot)
 
-#### **B. The Data Manifest: What Must Be Extracted?**
+### Role
 
-[cite_start]To enable the "Ablation Study" (RQ2)[cite: 89], we need to extract four distinct layers of data from the dump for every target entity.
+Freeze the 2025 local topology so evaluators can test reasoning with the same view of the graph. Acts as the “freezing mechanism” referenced in the Guardian hypothesis.
 
-| Layer | Data Element | Why is it needed? |
-| :--- | :--- | :--- |
-| **L1** | **The Ego Node (Direct Properties)** | [cite_start]**Persistence Filtering[cite: 44].** We must verify that the *current* state of the entity still matches the "Pre-Repair" or "Post-Repair" logic. If the entity has been deleted or merged in the dump, the case is discarded. |
-| **L2** | **The Labels & Descriptions** | **LLM Readability.** An LLM cannot reason about `Q42` having `P569`. It needs "Douglas Adams" and "Date of Birth." We must resolve the IDs to English labels. |
-| **L3** | **The 1-Hop Neighborhood (Type B)** | [cite_start]**Taxonomy Classification[cite: 34].** To classify a case as **Type B (Local)**, we must check if the solution exists in the immediate neighbors. (e.g., *Is the 'Start Date' present on the spouse entity?*). |
-| **L4** | **The Constraint Definition (P2302)** | [cite_start]**The "Guardian" Logic[cite: 5].** We need the *current* SHACL definition of the constraint (e.g., "P569 domain: Human") to verify if the violation is real or if the rule itself changed. |
+### Inputs
 
-#### **C. The JSON Schema for "World State"**
+- `data\02_wikidata_repairs.json` (provides the `Set<QID>` to preserve).
+- `latest-all.json.gz` (2025 dump).
 
-The final "Context Object" attached to every benchmark case must look like this to support the experiments defined in your proposal:
+### Process
 
-```json
-"world_state": {
-  "focus_node": {
-    "qid": "Q42",
-    "label": "Douglas Adams",
-    "description": "English author and humorist", 
-    "properties": {
-      "P31": ["Q5"], // Instance of Human
-      "P569": ["1952-03-11"] // Date of Birth
-    }
-  },
-  "neighborhood_snapshot": { 
-    [cite_start]// This supports "Graph RAG" (Type B) evaluation [cite: 34, 131]
-    "outgoing_edges": [
-      {
-        "property_id": "P26", // Spouse
-        "target_qid": "Q12345",
-        "target_label": "Jane Belson",
-        "target_description": "Wife of Douglas Adams" 
-        // Note: We do NOT recurse deeper than 1 hop.
+1. **Stream-and-Filter:** Perform a single pass over `latest-all.json.gz`. When an entry’s `id` is in the target set, extract required “context layers”; never load the dump entirely into memory.
+2. **Layer Extraction:** Capture four distinct data layers per entity to support downstream ablations:
+   - **L1 – Ego Node Properties:** Full statement set to verify persistence and detect merges/deletions.
+   - **L2 – Labels & Descriptions:** Resolve IDs into human-readable strings for LLM consumption.
+   - **L3 – 1-Hop Neighborhood:** Outgoing 1-hop edges (no recursion) for Type B reasoning checks.
+   - **L4 – Constraint Metadata:** Current SHACL (P2302) definitions to confirm the violation logic itself.
+
+### Outputs
+
+- `world_state.json`, keyed by benchmark entry id:
+  ```json
+  {
+    "world_state": {
+      "focus_node": {
+        "qid": "Q42",
+        "label": "Douglas Adams",
+        "description": "English author and humorist",
+        "properties": {
+          "P31": ["Q5"],
+          "P569": ["1952-03-11"]
+        }
+      },
+      "neighborhood_snapshot": {
+        "outgoing_edges": [
+          {
+            "property_id": "P26",
+            "target_qid": "Q12345",
+            "target_label": "Jane Belson",
+            "target_description": "Wife of Douglas Adams"
+          }
+        ]
+      },
+      "constraint_metadata": {
+        "property_id": "P569",
+        "constraint_type": "Q21503250",
+        "rule_summary": "P569 must be greater than P570 if P570 exists."
       }
-    ]
-  },
-  "constraint_metadata": {
-    [cite_start]// This supports the "Guardian" logic verification [cite: 5, 19]
-    "property_id": "P569",
-    "constraint_type": "Q21503250", // "Constraint: contemporary"
-    "rule_summary": "P569 must be greater than P570 (Date of Death) if P570 exists."
+    }
   }
-}
-```
+  ```
 
+---
 
-## 3. Taxonomy Standards (The Classifiers)
+## Taxonomy Standards
 
-To satisfy the requirements of **RQ2 (The Information Gap)**, every fetched repair is algorithmically classified into one of three complexity tiers. These definitions are now finalized based on the project's specific constraints.
+Each repair is classified to enable RQ2 (Information Gap) analysis.
 
-### Type A: Logical (Internal Consistency)
+- **Type A – Logical (Internal Consistency):**  
+  Detected and fixed purely via literal checks (e.g., End Date < Start Date). No graph traversal or retrieval.
 
-* **Definition:** The violation is detectable and resolvable purely by analyzing the internal consistency of the statement's literals.
-* **Example:** "End Date (1900) < Start Date (1950)".
-* **Requirement:** No graph traversal; no external search.
+- **Type B – Local (Topological Reasoning):**  
+  Requires inspecting statements on the subject or directly connected nodes (≤1 hop). Includes textual descriptions on the node, e.g., verifying that a human has the correct role type.
 
-### Type B: Local (Topological Reasoning)
+- **Type C – External (Information Void):**  
+  Needs information absent from the graph (beyond 2 hops). Relies on frozen Tavily search results packaged with the case.
 
-* **Definition:** The violation requires checking the properties of the *Subject* or *Object* entities involved in the triple.
-* **Decision:** Textual descriptions (e.g., `schema:description`) stored within the node are classified as **Local Topology**.
-* **Hop Limit:** Strictly $< 2$ hops.
-* **Example:** "Subject is an instance of 'Human', but Property 'Founded By' expects 'Organization'."
+---
 
-### Type C: External (Information Void)
+## Quality Control Protocols
 
-* **Definition:** The violation can only be resolved by retrieving information not present in the graph (or present only in $> 2$ hop neighborhoods).
-* **Requirement:** Access to the **Tavily Search API**.
-* **Example:** "Paris is the capital of [Missing Value]."
+### Persistence Filter
 
-## 4. Quality Control & Validity Protocols
+- **Risk Addressed:** Time-travel paradox—repairs that no longer make sense in 2025.
+- **Rule:** Discard `(E, P, V)` if it no longer exists in the 2025 dump. Sacrifices ~60% of cases to ensure reproducibility.
 
-To ensure the benchmark measures *reasoning* rather than *gaming* or *hallucination*, we implement the following strict filters.
+### Frozen Retrieval Snapshots
 
-### 4.1. The Persistence Filter (Time-Travel Paradox)
+- **Scope:** Type C cases only.
+- **Action:** Query Tavily once, store the JSON as `retrieval_context`, and forbid live web calls during evaluation to decouple search-engine variance from model reasoning.
 
-We address the risk of "stale knowledge" (evaluating 2019 repairs that are no longer valid in 2025).
+### Anti-Gaming Penalty
 
-* **Protocol:** Strict Persistence.
-* **Logic:** A historical repair candidate $(E, P, V)$ is **discarded** if the tuple does not exist in the current 2025 Wikidata dump.
-* **Implication:** We accept a significant reduction in dataset size (estimated ~60% drop) in exchange for absolute ecological validity. The benchmark will only contain errors that are theoretically reproducible on the live graph today.
-
-### 4.2. Frozen Retrieval Snapshots
-
-To decouple the variance of the search engine from the variance of the model.
-
-* **Protocol:** For all **Type C** cases, the search results are pre-fetched and frozen.
-* **Tool:** **Tavily API**.
-* **Artifact:** The benchmark dataset will include a `retrieval_context` field containing the static JSON response from Tavily. Future evaluations must use this field, not live web search.
-
-### 4.3. The Anti-Gaming Penalty
-
-To penalize "Lazy Repairs" (e.g., deleting a node to silence a constraint error).
-
-* **Metric:** `Information Preservation Score` ($S_{info}$).
-* **Formula:**
+- **Metric:** Information Preservation Score `S_info`:
   $$
-  _{info} = \begin{cases} 
+  S_{info} =
+  \begin{cases}
   1.0 & \text{if } Action_{Model} = Action_{Human} \\
   -0.5 & \text{if } Action_{Model} = \text{DELETE} \land Action_{Human} = \text{UPDATE} \\
   0.0 & \text{otherwise}
   \end{cases}
   $$
-* **Rationale:** A penalty of `-0.5` ensures that a model which systematically deletes data to pass validation will score lower than a model that simply fails to repair.
+- **Goal:** Penalize deletions that “silence” constraints instead of repairing them.
 
-## 5. Next Steps
-
-1. **Execution of `indexer.py`:** Mine the `repair_candidates.json` list using the `mwclient` library.
-2. **Implementation of `fetcher.py`:** Build the REST API client to extract the precise diffs.
-3. **JSON Schema Validation:** Define the strict output schema for `WikidataRepairEval_Entry` to ensure compatibility with the training loop in Phase 2.
+---

@@ -1,0 +1,1026 @@
+import gzip
+import json
+import re
+import time
+from datetime import UTC, datetime, timedelta, timezone
+from pathlib import Path
+
+import ijson
+import mwclient
+import requests
+from tqdm import tqdm
+
+# User agent for polite API usage
+HEADERS = {"User-Agent": "WikidataRepairEval/1.0 (PhD Research; mailto:miguel.vazquez@wu.ac.at)"}
+# Base endpoints for Action API, REST history, and snapshot fetches
+API_ENDPOINT = "https://www.wikidata.org/w/api.php"
+REST_HISTORY_URL = "https://www.wikidata.org/w/rest.php/v1/page/{qid}/history"
+ENTITY_DATA_URL = "https://www.wikidata.org/wiki/Special:EntityData/{qid}.json"
+
+# Fetch tuning knobs and data volume limits
+STRICT_PERSISTENCE = True  # Drop candidates when current value missing
+API_TIMEOUT = 30  # Seconds per HTTP request
+REVISION_LOOKBACK_DAYS = 7  # Historical window size
+MAX_HISTORY_PAGES = 8  # REST paging limit
+MAX_PROPERTY_VALUES = 12  # Max values recorded per property
+MAX_NEIGHBOR_EDGES = 50  # Max neighborhood edges captured
+LATEST_DUMP_PATH = Path("data/latest-all.json.gz")  # 2025 dump location
+WORLD_STATE_FILE = Path("data/03_world_state.json")  # Output for built contexts
+# Limit processing to specific properties for debugging; leave empty to process all
+TARGET_PROPERTIES = [
+    # "P569",  # Date of Birth
+    "P570",  # Date of Death
+    # "P21",  # Sex or Gender
+]
+REPORT_HISTORY_DEPTH = 20  # Revision pairs scanned per report page
+QID_PATTERN = re.compile(r"\[\[(Q\d+)\]\]")
+SITE = None
+
+DATA_DIR = Path("data")
+DATA_DIR.mkdir(exist_ok=True)
+REPAIR_CANDIDATES_FILE = DATA_DIR / "01_repair_candidates.json"
+WIKIDATA_REPAIRS = DATA_DIR / "02_wikidata_repairs.json"
+
+RUN_ID = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
+LOG_DIR = Path("logs")
+LOG_DIR.mkdir(exist_ok=True)
+STATS_FILE = LOG_DIR / f"fetcher_stats_{RUN_ID}.jsonl"
+SUMMARY_FILE = LOG_DIR / f"run_summary_{RUN_ID}.json"
+
+
+def get_wikidata_site():
+    """Lazy initializer for the MediaWiki client used during candidate mining."""
+    if mwclient is None:
+        raise RuntimeError(
+            "mwclient is required to build 01_repair_candidates.json. Install it via 'pip install mwclient'."
+        )
+    global SITE
+    if SITE is None:
+        SITE = mwclient.Site("www.wikidata.org", clients_useragent=HEADERS["User-Agent"])
+    return SITE
+
+
+def get_report_page_title(property_id):
+    """Return the standard constraint report page title for a property."""
+    return f"Wikidata:Database reports/Constraint violations/{property_id}"
+
+
+def fetch_all_active_properties():
+    """Return all properties listed on the Constraint violations summary page."""
+    try:
+        site = get_wikidata_site()
+    except RuntimeError as exc:
+        print(f"[!] Cannot auto-discover properties: {exc}")
+        return []
+    summary_page = site.pages["Wikidata:Database reports/Constraint violations/Summary"]
+    if not summary_page.exists:
+        print("[!] Summary page not found. Defaulting to empty property list.")
+        return []
+    try:
+        text = summary_page.text()
+    except Exception as exc:
+        print(f"[!] Failed to read summary page: {exc}")
+        return []
+    found_props = sorted(set(re.findall(r"P\d+", text)))
+    print(f"[*] Auto-discovered {len(found_props)} properties with active reports.")
+    return found_props
+
+
+def extract_qids(text):
+    """Extract Q-IDs (e.g., Q123) from MediaWiki markup text."""
+    if not text:
+        return set()
+    return set(QID_PATTERN.findall(text))
+
+
+def mine_repairs(property_id, max_items=50):
+    """Inspect report page history and return candidate repairs for the property."""
+    site = get_wikidata_site()
+    print(f"[*] Mining history for {property_id}...")
+    try:
+        page = site.pages[get_report_page_title(property_id)]
+        revisions = list(page.revisions(max_items=max_items, prop="content|timestamp|ids"))
+    except Exception as exc:
+        print(f"    [!] Failed to fetch report page for {property_id}: {exc}")
+        return []
+
+    print(f"    Found {len(revisions)} revisions to analyze.")
+    candidates = []
+    revision_pairs = range(len(revisions) - 1)
+    for i in tqdm(revision_pairs, desc=f"Diffing {property_id}", unit="pair"):
+        newer_rev = revisions[i]
+        older_rev = revisions[i + 1]
+        qids_old = extract_qids(older_rev.get("*", ""))
+        qids_new = extract_qids(newer_rev.get("*", ""))
+        fixed_qids = qids_old - qids_new
+        if not fixed_qids:
+            continue
+        timestamp_tuple = newer_rev.get("timestamp") or ()
+        timestamp = None
+        if len(timestamp_tuple) >= 6:
+            timestamp = datetime(*timestamp_tuple[:6]).isoformat()
+        else:
+            timestamp = datetime.utcnow().isoformat()
+        tqdm.write(
+            f"    [{timestamp}] Found {len(fixed_qids)} fixes (Rev {older_rev['revid']} -> {newer_rev['revid']})"
+        )
+        for qid in fixed_qids:
+            candidates.append(
+                {
+                    "qid": qid,
+                    "property_id": property_id,
+                    "fix_date": timestamp,
+                    "report_revision_old": older_rev["revid"],
+                    "report_revision_new": newer_rev["revid"],
+                }
+            )
+    return candidates
+
+
+def ensure_repair_candidates_file(filename, history_limit=REPORT_HISTORY_DEPTH):
+    """Load cached repair candidates or rebuild the file."""
+
+    # Load from disk if available
+    path = Path(filename)
+    if path.exists():
+        with open(path, "r", encoding="utf-8") as fh:
+            cached = json.load(fh)
+        if isinstance(cached, list) and cached:
+            print(f"[+] {filename} exists. Loaded {len(cached)} candidates from disk.")
+            return cached
+        print(f"[!] {filename} is empty or malformed. Rebuilding...")
+
+    global TARGET_PROPERTIES
+    if not TARGET_PROPERTIES:
+        print("[*] No TARGET_PROPERTIES defined. Auto-discovering from summary page...")
+        TARGET_PROPERTIES = fetch_all_active_properties()
+    if not TARGET_PROPERTIES:
+        print("[!] Failed to identify any properties to mine.")
+        return []
+
+    # Rebuild candidate list
+    print(f"[!] {filename} missing. Mining fresh candidate list...")
+    fresh_candidates = []
+    for prop in TARGET_PROPERTIES:
+        fresh_candidates.extend(mine_repairs(prop, max_items=history_limit))
+
+    # Save to disk
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(fresh_candidates, fh, indent=2)
+    print(f"[+] Done. Found {len(fresh_candidates)} candidates. Saved to {filename}.")
+    return fresh_candidates
+
+
+def load_cached_repairs(path):
+    """Return previously generated repair dataset if available."""
+    file_path = Path(path)
+    if not file_path.exists():
+        return None
+    try:
+        with open(file_path, "r", encoding="utf-8") as fh:
+            cached = json.load(fh)
+    except Exception as exc:
+        print(f"[!] Failed to read existing repairs file ({file_path}): {exc}")
+        return None
+    if isinstance(cached, list) and cached:
+        print(f"[+] {file_path} exists. Loaded {len(cached)} repairs from disk. Skipping rebuild.")
+        return cached
+    print(f"[!] {file_path} is empty or malformed. Recomputing repairs...")
+    return None
+
+
+class StatsLogger:
+    """Append-only JSONL logger for per-candidate fetch diagnostics."""
+
+    def __init__(self, stats_path):
+        """Initialize logger with target file and shared run_id."""
+        self.stats_path = stats_path
+        self.run_id = RUN_ID
+
+    def log(self, record):
+        """Write a single JSON object line enriched with the run identifier."""
+        enriched = {"run_id": self.run_id}
+        enriched.update(record)
+        with open(self.stats_path, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(enriched, ensure_ascii=True))
+            fh.write("\n")
+
+
+def pick_label(entity, lang="en"):
+    """Return preferred label for an entity, falling back to any language."""
+    if not entity:
+        return None
+    labels = entity.get("labels", {})
+    if lang in labels:
+        return labels[lang].get("value")
+    if labels:
+        first = next(iter(labels.values()))
+        return first.get("value")
+    return None
+
+
+def pick_description(entity, lang="en"):
+    """Return preferred description for an entity, falling back to any language."""
+    if not entity:
+        return None
+    descriptions = entity.get("descriptions", {})
+    if lang in descriptions:
+        return descriptions[lang].get("value")
+    if descriptions:
+        first = next(iter(descriptions.values()))
+        return first.get("value")
+    return None
+
+
+MISSING_LABEL_PLACEHOLDER = "Label unavailable"
+
+
+def chunked(iterable, size):
+    """Yield iterable slices of fixed size (used for batched API lookups)."""
+    batch = []
+    for item in iterable:
+        batch.append(item)
+        if len(batch) == size:
+            yield batch
+            batch = []
+    if batch:
+        yield batch
+
+
+class WorldStateBuilder:
+    """Streams the 2025 dump to attach ego/neighbor context to each repair."""
+
+    def __init__(self, dump_path):
+        """Record dump location and flag whether it is available."""
+        self.dump_path = Path(dump_path)
+        self.has_dump = self.dump_path.exists()
+
+    def build(self, entries):
+        """Yield world_state payloads for the provided repair entries."""
+        if not entries:
+            return
+        if not self.has_dump:
+            print(f"[!] Context Builder skipped: dump not found at {self.dump_path}")
+            return
+
+        # 1. Identify Initial Targets (Focus + Property)
+        focus_ids = {entry["qid"] for entry in entries}
+        property_ids = {entry["property"] for entry in entries}
+        target_ids = focus_ids | property_ids
+
+        print(f"[*] Context Builder: Single-pass stream for {len(target_ids)} primary entities...")
+
+        # 2. Single Pass Scan
+        # We only load the Focus and Property entities from the dump.
+        retrieved_entities = self._load_entities_from_dump(target_ids)
+
+        focus_entities = {eid: retrieved_entities[eid] for eid in focus_ids if eid in retrieved_entities}
+        property_entities = {pid: retrieved_entities[pid] for pid in property_ids if pid in retrieved_entities}
+
+        missing_focus = focus_ids - set(focus_entities)
+        if missing_focus:
+            print(f"    [!] Warning: {len(missing_focus)} focus entities not found in dump.")
+
+        # 3. Identify Neighbors from the loaded data
+        neighbor_ids = self._collect_neighbor_targets(focus_entities.values())
+        constraint_target_ids = self._collect_constraint_targets(property_entities)
+
+        # Filter out neighbors we already happened to load (if they were focus nodes too)
+        preloaded_ids = set(retrieved_entities.keys())
+        api_label_targets = (neighbor_ids | constraint_target_ids) - preloaded_ids
+
+        print(
+            f"[*] Context Builder: Fetching {len(api_label_targets)} neighbor/constraint labels via API (avoiding 2nd dump scan)..."
+        )
+
+        # 4. API Fallback for Neighbors + constraint references (Much faster than 2nd scan)
+        # We fetch these just for labels/descriptions
+        neighbor_entities_api = self._fetch_labels_via_api(api_label_targets)
+
+        # Merge all available entity data for lookup
+        # (Prioritize Dump data, fall back to API data)
+        full_entity_map = {**neighbor_entities_api, **retrieved_entities}
+
+        for entry in tqdm(entries, desc="Building world states", unit="entry"):
+            focus_entity = focus_entities.get(entry["qid"])
+            if not focus_entity:
+                continue
+
+            property_entity = property_entities.get(entry["property"])
+
+            context = self._assemble_world_state(
+                focus_entity,
+                full_entity_map,  # Pass the full map so we can find neighbors
+                entry["property"],
+                property_entity,
+            )
+            yield entry["id"], context
+
+    def _load_entities_from_dump(self, target_ids):
+        """Single-pass stream over the dump extracting matching entity blobs."""
+        found = {}
+        if not target_ids or not self.has_dump:
+            return found
+        target_ids = set(target_ids)
+
+        try:
+            with gzip.open(self.dump_path, "rb") as fh:
+                stream = ijson.items(fh, "item")
+                for entity in tqdm(
+                    stream,
+                    desc="Scanning dump for context",
+                    unit=" entity",
+                    miniters=10000,
+                    total=118319831,
+                    bar_format="{desc}: {percentage:3.0f}%|{bar}| {n:,}/{total:,}{unit} [{elapsed}<{remaining}, {rate_fmt}]",
+                ):
+                    eid = entity.get("id")
+                    if eid in target_ids:
+                        found[eid] = entity
+                        # Stop early if we found everything
+                        if len(found) == len(target_ids):
+                            tqdm.write("    [+] Found all targets. Stopping stream early.")
+                            break
+        except Exception as exc:
+            print(f"    [!] Dump stream error: {exc}")
+        return found
+
+    def _collect_neighbor_targets(self, entities):
+        """Gather unique QIDs reachable via outbound statements."""
+        neighbors = set()
+        for entity in tqdm(entities, desc="Collecting neighbors", unit="focus"):
+            edges = 0
+            claims = entity.get("claims", {})
+            for pid, statements in claims.items():
+                for claim in statements:
+                    if edges >= MAX_NEIGHBOR_EDGES:
+                        break
+                    datavalue = claim.get("mainsnak", {}).get("datavalue")
+                    if not datavalue:
+                        continue
+                    value = datavalue.get("value")
+                    if isinstance(value, dict) and value.get("entity-type") in {"item", "property"}:
+                        target_id = value.get("id")
+                        if target_id:
+                            neighbors.add(target_id)
+                            edges += 1
+                if edges >= MAX_NEIGHBOR_EDGES:
+                    break
+        return neighbors
+
+    def _collect_constraint_targets(self, property_entities):
+        """Gather constraint-related entity/property IDs for downstream label lookups."""
+        targets = set()
+        if not property_entities:
+            return targets
+        for entity in property_entities.values():
+            constraint_claims = entity.get("claims", {}).get("P2302", [])
+            for claim in constraint_claims:
+                snak = claim.get("mainsnak", {})
+                datavalue = snak.get("datavalue")
+                if datavalue:
+                    value = datavalue.get("value")
+                    if isinstance(value, dict):
+                        constraint_qid = value.get("id")
+                        if constraint_qid:
+                            targets.add(constraint_qid)
+                qualifiers = claim.get("qualifiers", {})
+                for qualifier_pid, qualifier_values in qualifiers.items():
+                    if qualifier_pid:
+                        targets.add(qualifier_pid)
+                    for qualifier in qualifier_values:
+                        qualifier_value = qualifier.get("datavalue", {}).get("value")
+                        if isinstance(qualifier_value, dict):
+                            entity_type = qualifier_value.get("entity-type")
+                            qualifier_qid = qualifier_value.get("id")
+                            if entity_type in {"item", "property"} and qualifier_qid:
+                                targets.add(qualifier_qid)
+        return targets
+
+    def _fetch_labels_via_api(self, ids):
+        """Resolve missing neighbor labels/descriptions via Action API."""
+        resolved = {}
+        id_list = list(ids)
+        if not id_list:
+            return resolved
+        for start in tqdm(
+            range(0, len(id_list), 50),
+            desc="Fetching neighbor labels",
+            unit="batch",
+        ):
+            batch = id_list[start : start + 50]
+            params = {
+                "action": "wbgetentities",
+                "ids": "|".join(batch),
+                "props": "labels|descriptions",
+            }
+            data = get_json(params)
+            if not data or "entities" not in data:
+                continue
+            for entity_id, entity in data["entities"].items():
+                if not entity or "missing" in entity:
+                    continue
+                resolved[entity_id] = {
+                    "id": entity_id,
+                    "labels": entity.get("labels", {}),
+                    "descriptions": entity.get("descriptions", {}),
+                }
+        return resolved
+
+    def _assemble_world_state(self, focus_entity, full_entity_map, property_id, property_entity):
+        """Return the world_state JSON object for one repair entry."""
+        focus_node = {
+            "qid": focus_entity.get("id"),
+            "label": pick_label(focus_entity),
+            "description": pick_description(focus_entity),
+            "properties": self._extract_properties(focus_entity),
+        }
+        neighborhood_snapshot = self._build_neighborhood_snapshot(focus_entity, full_entity_map)
+        constraint_metadata = self._extract_constraints(property_id, property_entity, full_entity_map)
+        return {
+            "focus_node": focus_node,
+            "neighborhood_snapshot": neighborhood_snapshot,
+            "constraint_metadata": constraint_metadata,
+        }
+
+    def _extract_properties(self, entity):
+        """Collect up to MAX_PROPERTY_VALUES per property for the ego node."""
+        properties = {}
+        claims = entity.get("claims", {})
+        for pid, statements in claims.items():
+            values = []
+            for claim in statements:
+                snak = claim.get("mainsnak", {})
+                if snak.get("snaktype") != "value":
+                    continue
+                datavalue = snak.get("datavalue")
+                if not datavalue:
+                    continue
+                values.append(format_datavalue(datavalue.get("value")))
+                if len(values) >= MAX_PROPERTY_VALUES:
+                    break
+            if values:
+                properties[pid] = values
+        return properties
+
+    def _build_neighborhood_snapshot(self, entity, neighbor_entities):
+        """Capture labeled 1-hop outgoing edges for Type B reasoning tests."""
+        edges = []
+        edge_count = 0
+        claims = entity.get("claims", {})
+        for pid, statements in claims.items():
+            for claim in statements:
+                if edge_count >= MAX_NEIGHBOR_EDGES:
+                    break
+                snak = claim.get("mainsnak", {})
+                datavalue = snak.get("datavalue")
+                if not datavalue:
+                    continue
+                value = datavalue.get("value")
+                if isinstance(value, dict) and value.get("entity-type") in {"item", "property"}:
+                    target_id = value.get("id")
+                    neighbor = neighbor_entities.get(target_id)
+                    edges.append(
+                        {
+                            "property_id": pid,
+                            "target_qid": target_id,
+                            "target_label": pick_label(neighbor),
+                            "target_description": pick_description(neighbor),
+                        }
+                    )
+                    edge_count += 1
+            if edge_count >= MAX_NEIGHBOR_EDGES:
+                break
+        return {"outgoing_edges": edges}
+
+    def _lookup_label(self, entity_id, entity_map):
+        """Return the preferred label for entity_id or a placeholder if missing."""
+        if not entity_id:
+            return None
+        entity = entity_map.get(entity_id)
+        label = pick_label(entity)
+        return label or MISSING_LABEL_PLACEHOLDER
+
+    def _extract_constraints(self, property_id, property_entity, full_entity_map):
+        """Summarize the on-wiki constraint definition (P2302 statements) with labels."""
+        if not property_entity:
+            return {"property_id": property_id, "constraints": []}
+        constraints = []
+        constraint_claims = property_entity.get("claims", {}).get("P2302", [])
+        for claim in constraint_claims:
+            snak = claim.get("mainsnak", {})
+            datavalue = snak.get("datavalue")
+            constraint_qid = None
+            if datavalue:
+                value = datavalue.get("value")
+                if isinstance(value, dict):
+                    constraint_qid = value.get("id")
+            qualifiers = claim.get("qualifiers", {})
+            qualifier_parts = []
+            qualifier_details = []
+            for qualifier_pid, qualifier_values in qualifiers.items():
+                property_label = self._lookup_label(qualifier_pid, full_entity_map) or MISSING_LABEL_PLACEHOLDER
+                rendered_values = []
+                qualifier_summary_values = []
+                for qualifier in qualifier_values:
+                    dv = qualifier.get("datavalue")
+                    if not dv:
+                        continue
+                    raw_value = format_datavalue(dv.get("value"))
+                    rendered_entry = {"raw": raw_value}
+                    qualifier_value = dv.get("value")
+                    qualifier_qid = None
+                    if isinstance(qualifier_value, dict):
+                        entity_type = qualifier_value.get("entity-type")
+                        if entity_type in {"item", "property"}:
+                            qualifier_qid = qualifier_value.get("id")
+                    if qualifier_qid:
+                        rendered_entry["qid"] = qualifier_qid
+                        rendered_entry["label"] = self._lookup_label(qualifier_qid, full_entity_map)
+                        qualifier_summary_values.append(f"{rendered_entry['label']} ({qualifier_qid})")
+                    else:
+                        qualifier_summary_values.append(raw_value)
+                    rendered_values.append(rendered_entry)
+                qualifier_details.append(
+                    {
+                        "property_id": qualifier_pid,
+                        "property_label": property_label,
+                        "values": rendered_values,
+                    }
+                )
+                if rendered_values:
+                    qualifier_parts.append(
+                        f"{property_label} ({qualifier_pid}): {', '.join(qualifier_summary_values)}"
+                    )
+            summary = "; ".join(qualifier_parts) if qualifier_parts else "No qualifiers recorded."
+            constraint_label = self._lookup_label(constraint_qid, full_entity_map) if constraint_qid else None
+            constraints.append(
+                {
+                    "constraint_type": {
+                        "qid": constraint_qid,
+                        "label": constraint_label or (MISSING_LABEL_PLACEHOLDER if constraint_qid else None),
+                    },
+                    "qualifiers": qualifier_details,
+                    "rule_summary": summary,
+                }
+            )
+        return {
+            "property_id": property_id,
+            "constraints": constraints,
+        }
+
+
+def parse_iso8601(raw_ts):
+    """Parse API timestamps while stripping milliseconds and enforcing UTC."""
+    if not raw_ts:
+        return None
+    normalized = raw_ts[:-1] + "+00:00" if raw_ts.endswith("Z") else raw_ts
+    try:
+        dt = datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.replace(microsecond=0)
+
+
+def format_timestamp(dt):
+    """Return a MediaWiki-compatible string (UTC, second precision)."""
+    return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def compute_revision_window(report_date):
+    """Derive the [start, end] revision window relative to the report fix date."""
+    end_dt = parse_iso8601(report_date)
+    if not end_dt:
+        return None, None
+    start_dt = end_dt - timedelta(days=REVISION_LOOKBACK_DAYS)
+    return format_timestamp(start_dt), format_timestamp(end_dt)
+
+
+def format_datavalue(value):
+    """Human readable rendering of Wikibase datavalue payloads."""
+    if isinstance(value, dict):
+        if "time" in value:
+            return str(value["time"])
+        if "id" in value:
+            return str(value["id"])
+        if "text" in value:
+            lang = value.get("language")
+            return f"{value['text']}@{lang}" if lang else value["text"]
+        if "amount" in value:
+            unit = value.get("unit", "")
+            return f"{value['amount']} {unit}".strip()
+        if "latitude" in value and "longitude" in value:
+            lat = str(value["latitude"])
+            lon = str(value["longitude"])
+            return f"{lat},{lon}"
+    return str(value)
+
+
+def summarize_claims(claims):
+    """Convert a list of statements into a hashable signature and display values."""
+    if not claims:
+        return ("MISSING",), ["MISSING"]
+    signature_parts = []
+    display_values = []
+    for claim in claims:
+        snak = claim.get("mainsnak", {})
+        snak_type = snak.get("snaktype", "").upper() or "UNKNOWN"
+        if snak_type == "VALUE":
+            value_str = format_datavalue(snak.get("datavalue", {}).get("value"))
+        else:
+            value_str = snak_type
+        signature_parts.append(f"{snak_type}:{value_str}")
+        display_values.append(value_str)
+    if not signature_parts:
+        return ("MISSING",), ["MISSING"]
+    return tuple(sorted(signature_parts)), display_values
+
+
+def classify_action(previous_signature, current_signature):
+    """Infer CRUD action type between two claim signatures."""
+    if current_signature == ("MISSING",):
+        return "DELETE"
+    if previous_signature == ("MISSING",):
+        return "CREATE"
+    return "UPDATE"
+
+
+def get_json(params=None, *, endpoint=API_ENDPOINT, with_format=True):
+    """Wrapper around requests.get with retries and default MediaWiki params."""
+    query = dict(params or {})
+    if with_format:
+        query.setdefault("format", "json")
+        query.setdefault("formatversion", 2)
+    for attempt in range(4):
+        try:
+            response = requests.get(
+                endpoint,
+                headers=HEADERS,
+                params=query if query else None,
+                timeout=API_TIMEOUT,
+            )
+            if response.status_code == 200:
+                return response.json()
+            if response.status_code == 429:
+                sleep_for = 2**attempt
+                print(f"    [!] Rate limited. Sleeping {sleep_for}s...")
+                time.sleep(sleep_for)
+            else:
+                print(f"    [!] HTTP {response.status_code} for {endpoint}")
+        except Exception as exc:
+            print(f"    [!] Exception: {exc}")
+        time.sleep(0.2)
+    return None
+
+
+def get_current_state(qid, property_id):
+    """Fetch today's claim values for persistence checking."""
+    params = {
+        "action": "wbgetentities",
+        "ids": qid,
+        "props": "claims",
+    }
+    data = get_json(params)
+    if not data or "entities" not in data:
+        return None
+    entity = data["entities"].get(qid)
+    if not entity or "missing" in entity:
+        return None
+    claims = entity.get("claims", {}).get(property_id, [])
+    signature, values = summarize_claims(claims)
+    if signature == ("MISSING",):
+        return None
+    return values
+
+
+def fetch_revision_history(qid, start_time, end_time):
+    """Collect revision metadata within [start_time, end_time] from REST history."""
+    start_dt = parse_iso8601(start_time) if start_time else None
+    end_dt = parse_iso8601(end_time) if end_time else None
+    revisions = []
+    carry_revision = None
+    endpoint = REST_HISTORY_URL.format(qid=qid)
+    next_endpoint = endpoint
+    params = {"limit": 200}
+    batches = 0
+    truncated_by_window = False
+    reached_page_limit = False
+    api_calls = 0
+
+    while next_endpoint and batches < MAX_HISTORY_PAGES:
+        data = get_json(
+            params=params if next_endpoint == endpoint else None,
+            endpoint=next_endpoint,
+            with_format=False,
+        )
+        if not data or "revisions" not in data:
+            break
+        api_calls += 1
+        for rev in data.get("revisions", []):
+            rev_ts = rev.get("timestamp")
+            rev_dt = parse_iso8601(rev_ts)
+            if not rev_dt:
+                continue
+            if end_dt and rev_dt > end_dt:
+                continue
+            if start_dt and rev_dt < start_dt:
+                truncated_by_window = True
+                if not carry_revision:
+                    carry_revision = rev
+                next_endpoint = None
+                break
+            revisions.append(rev)
+        if next_endpoint is None:
+            break
+        older_url = data.get("older")
+        if not older_url:
+            break
+        next_endpoint = older_url
+        batches += 1
+        params = None
+        if start_dt and revisions:
+            oldest_dt = parse_iso8601(revisions[-1]["timestamp"])
+            if oldest_dt and oldest_dt < start_dt:
+                truncated_by_window = True
+                break
+    if carry_revision:
+        revisions.append(carry_revision)
+    revisions.sort(key=lambda rev: rev["timestamp"])
+    if next_endpoint and batches >= MAX_HISTORY_PAGES:
+        reached_page_limit = True
+
+    history_meta = {
+        "qid": qid,
+        "start_time": start_time,
+        "end_time": end_time,
+        "lookback_days": REVISION_LOOKBACK_DAYS,
+        "max_history_pages": MAX_HISTORY_PAGES,
+        "api_calls": api_calls,
+        "batches_used": batches,
+        "revisions_scanned": len(revisions),
+        "earliest_revision": revisions[0]["timestamp"] if revisions else None,
+        "latest_revision": revisions[-1]["timestamp"] if revisions else None,
+        "truncated_by_window": truncated_by_window,
+        "reached_page_limit": reached_page_limit,
+        "carry_revision_used": carry_revision is not None,
+        "truncated": truncated_by_window or reached_page_limit,
+    }
+
+    return revisions, history_meta
+
+
+def get_claims_for_revision(qid, property_id, revision_id):
+    """Fetch claims for a specific revision via Special:EntityData snapshot."""
+    endpoint = ENTITY_DATA_URL.format(qid=qid)
+    data = get_json(
+        params={"revision": revision_id},
+        endpoint=endpoint,
+        with_format=False,
+    )
+    if not data or "entities" not in data:
+        return []
+    entity = data["entities"].get(qid)
+    if not entity or "missing" in entity:
+        return []
+    return entity.get("claims", {}).get(property_id, [])
+
+
+def extract_user(revision):
+    """Normalize revision user data regardless of REST/Action response shape."""
+    user = revision.get("user")
+    if isinstance(user, dict):
+        return user.get("name", "unknown")
+    return user or "unknown"
+
+
+def find_repair_revision(qid, property_id, start_time, end_time):
+    """Walk revision history to locate the first diff that changes the property."""
+    revisions, history_meta = fetch_revision_history(qid, start_time, end_time)
+    if not revisions:
+        return None, history_meta
+
+    previous_signature = None
+    previous_snapshot = None
+
+    for rev in revisions:
+        revision_id = rev.get("id") or rev.get("revid")
+        if not revision_id:
+            continue
+        current_claims = get_claims_for_revision(qid, property_id, revision_id)
+        current_signature, current_snapshot = summarize_claims(current_claims)
+        if previous_signature is not None and current_signature != previous_signature:
+            return {
+                "repair_revision_id": revision_id,
+                "timestamp": rev.get("timestamp"),
+                "action": classify_action(previous_signature, current_signature),
+                "old_value": previous_snapshot,
+                "new_value": current_snapshot,
+                "author": extract_user(rev),
+            }, history_meta
+        previous_signature = current_signature
+        previous_snapshot = current_snapshot
+
+    return None, history_meta
+
+
+def process_pipeline(max_candidates=None):
+    """Main entry point: reads candidates, finds repairs, and builds context."""
+    input_file = REPAIR_CANDIDATES_FILE
+    candidates = ensure_repair_candidates_file(input_file)
+    if not candidates:
+        print(f"[!] Unable to proceed without {input_file}.")
+        return
+
+    dataset = load_cached_repairs(WIKIDATA_REPAIRS)
+
+    summary = None
+    if dataset is not None:
+        print("[*] Using cached repairs file. Delete data/02_wikidata_repairs.json to force recompute.")
+    else:
+        stats_logger = StatsLogger(STATS_FILE)
+        summary = {
+            "run_id": stats_logger.run_id,
+            "lookback_days": REVISION_LOOKBACK_DAYS,
+            "max_history_pages": MAX_HISTORY_PAGES,
+            "total_candidates": len(candidates),
+            "processed": 0,
+            "persistence_failed": 0,
+            "bad_fix_date": 0,
+            "repairs_found": 0,
+            "no_diff": 0,
+            "no_history": 0,
+            "truncated_by_window": 0,
+            "reached_page_limit": 0,
+        }
+
+        print(f"[*] Loaded {len(candidates)} candidates. Using REST history.")
+
+        dataset = []
+        total_to_process = len(candidates)
+        if max_candidates is not None:
+            total_to_process = min(total_to_process, max_candidates)
+        progress = tqdm(total=total_to_process, desc="Processing candidates", unit="candidate")
+        for i, item in enumerate(candidates):
+            if i >= total_to_process:
+                break
+            qid = item["qid"]
+            pid = item["property_id"]
+
+            if not qid.startswith("Q"):
+                progress.update(1)
+                continue
+
+            if TARGET_PROPERTIES and pid not in TARGET_PROPERTIES:
+                progress.update(1)
+                continue
+
+            progress.write(f"[{i + 1}/{total_to_process}] Analyzing {qid} ({pid})...")
+            summary["processed"] += 1
+
+            record_base = {
+                "qid": qid,
+                "property": pid,
+            }
+            curr_val = None
+            if STRICT_PERSISTENCE:
+                curr_val = get_current_state(qid, pid)
+                if not curr_val:
+                    progress.write("    [x] Dropped: Persistence check failed (Entity/Prop missing).")
+                    summary["persistence_failed"] += 1
+                    stats_logger.log(
+                        {
+                            **record_base,
+                            "result": "persistence_failed",
+                            "reason": "missing_current_value",
+                        }
+                    )
+                    progress.update(1)
+                    continue
+
+            report_date = item["fix_date"]
+            start_time, end_time = compute_revision_window(report_date)
+            if not end_time:
+                progress.write("    [x] Dropped: Could not parse fix_date.")
+                summary["bad_fix_date"] += 1
+                stats_logger.log(
+                    {
+                        **record_base,
+                        "result": "bad_fix_date",
+                        "report_date": report_date,
+                    }
+                )
+                progress.update(1)
+                continue
+
+            fix_event, history_meta = find_repair_revision(
+                qid,
+                pid,
+                start_time=start_time,
+                end_time=end_time,
+            )
+
+            if fix_event:
+                progress.write(f"    [+] FOUND REPAIR! {fix_event['old_value']} -> {fix_event['new_value']}")
+                summary["repairs_found"] += 1
+                entry = {
+                    "id": f"repair_{qid}_{fix_event['repair_revision_id']}",
+                    "qid": qid,
+                    "property": pid,
+                    "type": "TBD",
+                    "violation_context": {
+                        "value": fix_event["old_value"],
+                    },
+                    "repair_target": {
+                        "action": fix_event["action"],
+                        "value": fix_event["new_value"],
+                        "revision_id": fix_event["repair_revision_id"],
+                    },
+                    "persistence_check": {
+                        "status": "passed",
+                        "current_value_2025": curr_val,
+                    },
+                }
+                dataset.append(entry)
+                stats_logger.log(
+                    {
+                        **record_base,
+                        "result": "repair_found",
+                        "history": history_meta,
+                        "repair_revision_id": fix_event["repair_revision_id"],
+                        "action": fix_event["action"],
+                    }
+                )
+            else:
+                progress.write("    [-] No clean diff found.")
+                if history_meta:
+                    summary["no_diff"] += 1
+                else:
+                    summary["no_history"] += 1
+                stats_logger.log(
+                    {
+                        **record_base,
+                        "result": "no_diff" if history_meta else "no_history",
+                        "history": history_meta,
+                    }
+                )
+
+            if history_meta:
+                if history_meta.get("truncated_by_window"):
+                    summary["truncated_by_window"] += 1
+                if history_meta.get("reached_page_limit"):
+                    summary["reached_page_limit"] += 1
+
+            if i % 10 == 0:
+                with open(WIKIDATA_REPAIRS, "w") as out:
+                    json.dump(dataset, out, indent=2)
+            progress.update(1)
+        progress.close()
+
+    if dataset:
+        builder = WorldStateBuilder(LATEST_DUMP_PATH)
+        entry_lookup = {entry["id"]: entry for entry in dataset}
+        produced_any = False
+        with open(WORLD_STATE_FILE, "w", encoding="utf-8") as world_file:
+            world_file.write("{")
+            first = True
+            buffer_entries = []
+
+            def flush_world_state_buffer():
+                nonlocal first, produced_any, buffer_entries
+                if not buffer_entries:
+                    return
+                for buffered_id, buffered_context in buffer_entries:
+                    produced_any = True
+                    json_context = json.dumps(buffered_context, indent=2).replace("\n", "\n  ")
+                    if first:
+                        world_file.write("\n")
+                        first = False
+                    else:
+                        world_file.write(",\n")
+                    world_file.write(f'  "{buffered_id}": {json_context}')
+                buffer_entries = []
+
+            for entry_id, context in builder.build(dataset):
+                entry = entry_lookup.get(entry_id)
+                if entry is not None:
+                    entry["world_state"] = context
+                buffer_entries.append((entry_id, context))
+                if len(buffer_entries) >= 10:
+                    flush_world_state_buffer()
+            flush_world_state_buffer()
+            world_file.write("\n}\n" if produced_any else "}\n")
+
+    with open(WIKIDATA_REPAIRS, "w") as out:
+        json.dump(dataset, out, indent=2)
+
+    if summary:
+        with open(SUMMARY_FILE, "w", encoding="utf-8") as summary_file:
+            json.dump(summary, summary_file, indent=2)
+
+    print(f"\n[+] Extraction Complete. Saved {len(dataset)} verified repairs.")
+
+
+if __name__ == "__main__":
+    process_pipeline()
