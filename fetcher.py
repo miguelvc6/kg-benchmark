@@ -93,7 +93,7 @@ def extract_qids(text):
     return set(QID_PATTERN.findall(text))
 
 
-def mine_repairs(property_id, max_items=50):
+def mine_repairs(property_id, max_items=100):
     """Inspect report page history and return candidate repairs for the property."""
     site = get_wikidata_site()
     print(f"[*] Mining history for {property_id}...")
@@ -437,10 +437,19 @@ class WorldStateBuilder:
         }
         neighborhood_snapshot = self._build_neighborhood_snapshot(focus_entity, full_entity_map)
         constraint_metadata = self._extract_constraints(property_id, property_entity, full_entity_map)
+        label_layer = self._build_label_layer(
+            focus_entity,
+            property_id,
+            property_entity,
+            neighborhood_snapshot,
+            constraint_metadata,
+            full_entity_map,
+        )
         return {
-            "focus_node": focus_node,
-            "neighborhood_snapshot": neighborhood_snapshot,
-            "constraint_metadata": constraint_metadata,
+            "L1_ego_node": focus_node,
+            "L2_labels": label_layer,
+            "L3_neighborhood": neighborhood_snapshot,
+            "L4_constraints": constraint_metadata,
         }
 
     def _extract_properties(self, entity):
@@ -492,6 +501,49 @@ class WorldStateBuilder:
             if edge_count >= MAX_NEIGHBOR_EDGES:
                 break
         return {"outgoing_edges": edges}
+
+    def _build_label_layer(
+        self,
+        focus_entity,
+        property_id,
+        property_entity,
+        neighborhood_snapshot,
+        constraint_metadata,
+        entity_map,
+    ):
+        """Construct the explicit L2 label."""
+        label_index = {}
+
+        def track(entity_id):
+            if not entity_id or entity_id in label_index:
+                return
+            entity = entity_map.get(entity_id)
+            label = pick_label(entity) if entity else None
+            description = pick_description(entity) if entity else None
+            label_index[entity_id] = {
+                "label": label or MISSING_LABEL_PLACEHOLDER,
+                "description": description,
+            }
+
+        if focus_entity:
+            track(focus_entity.get("id"))
+        track(property_id)
+        if property_entity:
+            track(property_entity.get("id"))
+        for edge in neighborhood_snapshot.get("outgoing_edges", []):
+            track(edge.get("property_id"))
+            track(edge.get("target_qid"))
+        constraint_layer = constraint_metadata or {}
+        track(constraint_layer.get("property_id"))
+        for constraint in constraint_layer.get("constraints", []):
+            constraint_type = constraint.get("constraint_type", {})
+            track(constraint_type.get("qid"))
+            for qualifier in constraint.get("qualifiers", []):
+                track(qualifier.get("property_id"))
+                for value in qualifier.get("values", []):
+                    track(value.get("qid"))
+
+        return {"entities": label_index}
 
     def _lookup_label(self, entity_id, entity_map):
         """Return the preferred label for entity_id or a placeholder if missing."""
@@ -837,7 +889,7 @@ def process_pipeline(max_candidates=None):
 
     summary = None
     if dataset is not None:
-        print("[*] Using cached repairs file. Delete data/02_wikidata_repairs.json to force recompute.")
+        print("[*] Using cached repairs file for Stage 3. Delete data/02_wikidata_repairs.json to force recompute Stage 2.")
     else:
         stats_logger = StatsLogger(STATS_FILE)
         summary = {
@@ -977,10 +1029,12 @@ def process_pipeline(max_candidates=None):
                     json.dump(dataset, out, indent=2)
             progress.update(1)
         progress.close()
+        if summary:
+            with open(WIKIDATA_REPAIRS, "w", encoding="utf-8") as out:
+                json.dump(dataset, out, indent=2)
 
     if dataset:
         builder = WorldStateBuilder(LATEST_DUMP_PATH)
-        entry_lookup = {entry["id"]: entry for entry in dataset}
         produced_any = False
         with open(WORLD_STATE_FILE, "w", encoding="utf-8") as world_file:
             world_file.write("{")
@@ -1003,17 +1057,11 @@ def process_pipeline(max_candidates=None):
                 buffer_entries = []
 
             for entry_id, context in builder.build(dataset):
-                entry = entry_lookup.get(entry_id)
-                if entry is not None:
-                    entry["world_state"] = context
                 buffer_entries.append((entry_id, context))
                 if len(buffer_entries) >= 10:
                     flush_world_state_buffer()
             flush_world_state_buffer()
             world_file.write("\n}\n" if produced_any else "}\n")
-
-    with open(WIKIDATA_REPAIRS, "w") as out:
-        json.dump(dataset, out, indent=2)
 
     if summary:
         with open(SUMMARY_FILE, "w", encoding="utf-8") as summary_file:
