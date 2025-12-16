@@ -29,7 +29,7 @@ WORLD_STATE_FILE = Path("data/03_world_state.json")  # Output for built contexts
 # Limit processing to specific properties for debugging; leave empty to process all
 TARGET_PROPERTIES = [
     # "P569",  # Date of Birth
-    "P570",  # Date of Death
+    # "P570",  # Date of Death
     # "P21",  # Sex or Gender
 ]
 REPORT_HISTORY_DEPTH = 20  # Revision pairs scanned per report page
@@ -86,15 +86,43 @@ def fetch_all_active_properties():
     return found_props
 
 
-def extract_qids(text):
-    """Extract Q-IDs (e.g., Q123) from MediaWiki markup text."""
+def extract_qids_with_context(text):
+    """
+    Parses report page text to associate QIDs with their constraint section.
+    Returns: dict {qid: set(constraint_types)}
+    """
     if not text:
-        return set()
-    return set(QID_PATTERN.findall(text))
+        return {}
+
+    qid_map = {}
+    current_section = "Unknown"
+
+    # Matches headers like "== Format ==" or "=== Single value ==="
+    header_pattern = re.compile(r"^={2,}\s*([^=]+?)\s*={2,}\s*$")
+
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+
+        # Detect section header
+        header_match = header_pattern.match(line)
+        if header_match:
+            current_section = header_match.group(1).strip()
+            continue
+
+        # Extract QIDs in this line
+        qids = QID_PATTERN.findall(line)
+        for qid in qids:
+            if qid not in qid_map:
+                qid_map[qid] = set()
+            qid_map[qid].add(current_section)
+
+    return qid_map
 
 
 def mine_repairs(property_id, max_items=100):
-    """Inspect report page history and return candidate repairs for the property."""
+    """Inspect report page history and return candidates with violation type context."""
     site = get_wikidata_site()
     print(f"[*] Mining history for {property_id}...")
     try:
@@ -107,33 +135,38 @@ def mine_repairs(property_id, max_items=100):
     print(f"    Found {len(revisions)} revisions to analyze.")
     candidates = []
     revision_pairs = range(len(revisions) - 1)
+
     for i in tqdm(revision_pairs, desc=f"Diffing {property_id}", unit="pair"):
         newer_rev = revisions[i]
         older_rev = revisions[i + 1]
-        qids_old = extract_qids(older_rev.get("*", ""))
-        qids_new = extract_qids(newer_rev.get("*", ""))
-        fixed_qids = qids_old - qids_new
-        if not fixed_qids:
-            continue
-        timestamp_tuple = newer_rev.get("timestamp") or ()
-        timestamp = None
-        if len(timestamp_tuple) >= 6:
-            timestamp = datetime(*timestamp_tuple[:6]).isoformat()
-        else:
-            timestamp = datetime.utcnow().isoformat()
-        tqdm.write(
-            f"    [{timestamp}] Found {len(fixed_qids)} fixes (Rev {older_rev['revid']} -> {newer_rev['revid']})"
-        )
-        for qid in fixed_qids:
-            candidates.append(
-                {
-                    "qid": qid,
-                    "property_id": property_id,
-                    "fix_date": timestamp,
-                    "report_revision_old": older_rev["revid"],
-                    "report_revision_new": newer_rev["revid"],
-                }
-            )
+
+        # Parse both revisions to get {QID: {Violations}}
+        qids_old_map = extract_qids_with_context(older_rev.get("*", ""))
+        qids_new_map = extract_qids_with_context(newer_rev.get("*", ""))
+
+        # Find QIDs that disappeared from a specific section
+        for qid, old_constraints in qids_old_map.items():
+            new_constraints = qids_new_map.get(qid, set())
+            fixed_constraints = old_constraints - new_constraints
+
+            if fixed_constraints:
+                timestamp_tuple = newer_rev.get("timestamp") or ()
+                if len(timestamp_tuple) >= 6:
+                    timestamp = datetime(*timestamp_tuple[:6]).isoformat()
+                else:
+                    timestamp = datetime.now(timezone.utc).isoformat()
+
+                for c_type in fixed_constraints:
+                    candidates.append(
+                        {
+                            "qid": qid,
+                            "property_id": property_id,
+                            "violation_type": c_type,  # <--- CAPTURED HERE
+                            "fix_date": timestamp,
+                            "report_revision_old": older_rev["revid"],
+                            "report_revision_new": newer_rev["revid"],
+                        }
+                    )
     return candidates
 
 
@@ -433,6 +466,7 @@ class WorldStateBuilder:
             "qid": focus_entity.get("id"),
             "label": pick_label(focus_entity),
             "description": pick_description(focus_entity),
+            "sitelinks_count": len(focus_entity.get("sitelinks", {})),
             "properties": self._extract_properties(focus_entity),
         }
         neighborhood_snapshot = self._build_neighborhood_snapshot(focus_entity, full_entity_map)
@@ -856,6 +890,7 @@ def find_repair_revision(qid, property_id, start_time, end_time):
     previous_signature = None
     previous_snapshot = None
 
+    last_valid_repair = None
     for rev in revisions:
         revision_id = rev.get("id") or rev.get("revid")
         if not revision_id:
@@ -863,18 +898,20 @@ def find_repair_revision(qid, property_id, start_time, end_time):
         current_claims = get_claims_for_revision(qid, property_id, revision_id)
         current_signature, current_snapshot = summarize_claims(current_claims)
         if previous_signature is not None and current_signature != previous_signature:
-            return {
+            # Found a change. Update our candidate, but keep looking.
+            last_valid_repair = {
                 "repair_revision_id": revision_id,
                 "timestamp": rev.get("timestamp"),
                 "action": classify_action(previous_signature, current_signature),
                 "old_value": previous_snapshot,
                 "new_value": current_snapshot,
                 "author": extract_user(rev),
-            }, history_meta
+            }
+            
         previous_signature = current_signature
         previous_snapshot = current_snapshot
 
-    return None, history_meta
+    return last_valid_repair, history_meta
 
 
 def process_pipeline(max_candidates=None):
@@ -889,7 +926,9 @@ def process_pipeline(max_candidates=None):
 
     summary = None
     if dataset is not None:
-        print("[*] Using cached repairs file for Stage 3. Delete data/02_wikidata_repairs.json to force recompute Stage 2.")
+        print(
+            "[*] Using cached repairs file for Stage 3. Delete data/02_wikidata_repairs.json to force recompute Stage 2."
+        )
     else:
         stats_logger = StatsLogger(STATS_FILE)
         summary = {
@@ -919,6 +958,7 @@ def process_pipeline(max_candidates=None):
                 break
             qid = item["qid"]
             pid = item["property_id"]
+            violation_type = item.get("violation_type")
 
             if not qid.startswith("Q"):
                 progress.update(1)
@@ -934,6 +974,7 @@ def process_pipeline(max_candidates=None):
             record_base = {
                 "qid": qid,
                 "property": pid,
+                "violation_type": violation_type,
             }
             curr_val = None
             if STRICT_PERSISTENCE:
@@ -980,8 +1021,9 @@ def process_pipeline(max_candidates=None):
                     "id": f"repair_{qid}_{fix_event['repair_revision_id']}",
                     "qid": qid,
                     "property": pid,
-                    "type": "TBD",
+                    "type": violation_type or "TBD",
                     "violation_context": {
+                        "report_violation_type": violation_type,
                         "value": fix_event["old_value"],
                     },
                     "repair_target": {
