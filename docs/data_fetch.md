@@ -15,9 +15,9 @@ We construct WikidataRepairEval 1.0 by replaying real repair events rather than 
 
 | Stage              | Description                                                                                                  | Inputs                                                        | Outputs                                            |
 | :----------------- | :----------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------ | :------------------------------------------------- |
-| 1. Indexer         | Mine constraint-violation report histories to find entities that were fixed between two snapshots.           | `Wikidata:Database reports/Constraint violations/*` histories | `data\01_repair_candidates.json`                           |
-| 2. Fetcher         | Query revision histories to isolate the exact edit that resolved each violation and capture pre/post states. | `data\01_repair_candidates.json`, Wikibase REST API                   | `data\02_wikidata_repairs.json`                    |
-| 3. Context Builder | Freeze the 2025 neighborhood, labels, and constraint metadata for every repaired entity.                     | `data\02_wikidata_repairs.json`, `latest-all.json.gz` dump    | `world_state.json` attached to each benchmark case |
+| 1. Indexer         | Mine constraint-violation report histories to find entities that truly disappeared between two snapshots.    | `Wikidata:Database reports/Constraint violations/*` histories | `data\01_repair_candidates.json`                   |
+| 2. Fetcher         | Query revision histories to isolate the exact edit, label it as A-box/T-box, and capture provenance.         | `data\01_repair_candidates.json`, Wikibase REST API           | `data\02_wikidata_repairs.json`                    |
+| 3. Context Builder | Freeze the 2025 neighborhood, labels, constraint metadata, and (for T-box) constraint deltas.                | `data\02_wikidata_repairs.json`, `latest-all.json.gz` dump    | `world_state.json` keyed by each benchmark case    |
 
 ---
 
@@ -25,21 +25,25 @@ We construct WikidataRepairEval 1.0 by replaying real repair events rather than 
 
 - **Purpose:** Detect candidate repairs by monitoring entries that leave constraint-violation pages.
 - **Input:** Revision histories from `Wikidata:Database reports/Constraint violations/*`.
-- **Process:** Parse each report's history. If entity `E` appears at timestamp `T_report` and disappears at `T_next`, flag the interval `(T_report, T_next)` as a repair window for `(E, constraint_id)`.
-- **Output:** `data\01_repair_candidates.json`, containing tuples `{qid, constraint_id, violation_type, t_report, t_next}` for downstream fetching.
-- **Benefits:** Limits the search space to high-quality violations and encodes the relevant constraint class (e.g., `P569` Date of Birth).
+- **Process:** Parse each report's history. A candidate is only emitted if entity `E` disappears from the entire page between `T_report` and `T_next`; if it merely moves to another section, it is ignored as a reclassification.
+- **Output:** `data\01_repair_candidates.json`, containing tuples `{qid, property_id, violation_type, fix_date, report_revision_old, report_revision_new}` for downstream fetching.
+- **Benefits:** Limits the search space to high-quality violations, encodes the relevant constraint class, and preserves report provenance for debugging.
 
 ---
 
 ## Stage 2 – Fetcher (Forensics)
 
-- **Purpose:** Pinpoint the exact revision that fixed each violation and capture before/after graphs.
-- **Inputs:** `data\01_repair_candidates.json`, Wikibase REST API endpoint `GET /w/rest.php/v1/page/{qid}/history`.
-- **Process:** For every candidate, pull the revision list within `(t_report, t_next)`, diff adjacent revisions, and select the edit where the violating triple changed. Record both the violating state and the repaired state.
+- **Purpose:** Pinpoint the exact revision that fixed each violation, classify the fix as A-box (entity edit) or T-box (constraint edit), and capture the relevant before/after evidence.
+- **Inputs:** `data\01_repair_candidates.json`, Wikibase REST API endpoint `GET /w/rest.php/v1/page/{qid}/history`, plus `Special:EntityData` snapshots.
+- **Process:**
+  - Scan entity histories within the 7-day lookback window and store the *latest* property change (action + old/new signatures). Each record now includes `track`, `repair_target.kind`, and a fully explicit before/after payload.
+  - If no entity edit exists, scan the property (`Property:{pid}`) for the most recent `P2302` signature change, capturing deterministic SHA1 hashes and optional serialized constraint statements in `constraint_delta`.
+  - When an A-box fix is found, run a cheap reverse scan (≤25 revisions) over the property history to detect coincident T-box edits and mark `ambiguous` entries.
+- **Persistence Filter:** Live 2025 data is fetched *after* the repair type is known. DELETE actions may legitimately return `None`; all other repairs must still exist in the live graph or the candidate is dropped.
 - **Outputs:** `data\02_wikidata_repairs.json`, where each entry stores:
-  - `qid`, `revision_id_before`, `revision_id_after`
-  - Serialized statements for the specific property before and after
-  - Metadata for taxonomy classification (timestamps, editor ids, constraint ids)
+  - Unique IDs (`repair_{qid}_{rev}` or `reform_{qid}_{pid}_{rev}`), track labels, and report provenance.
+  - `violation_context` (offending value or `null`, Stage‑1 timestamps, report revisions).
+  - `repair_target` discriminated unions for A-box vs. T-box, plus persistence metadata and optional `ambiguous_reasons`.
 - **Note:** This artifact drives both the taxonomy labels and the context builder.
 
 ---
@@ -57,20 +61,21 @@ Freeze the 2025 local topology so evaluators can test reasoning with the same vi
 
 ### Process
 
-1. **Stream-and-Filter:** Perform a single pass over `latest-all.json.gz`. When an entry’s `id` is in the target set, extract required “context layers”; never load the dump entirely into memory.
+1. **Stream-and-Filter:** Perform a single pass over `latest-all.json.gz`. When an entry’s `id` is in the target set, extract required “context layers”; never load the dump entirely into memory. Duplicate IDs are rejected with a warning to prevent silent overwrites.
 2. **Layer Extraction:** Capture four distinct data layers per entity to support downstream ablations:
    - **L1 – Ego Node Properties:** Full statement set to verify persistence and detect merges/deletions.
    - **L2 – Labels & Descriptions:** Resolve IDs into human-readable strings for LLM consumption.
    - **L3 – 1-Hop Neighborhood:** Outgoing 1-hop edges (no recursion) for Type B reasoning checks.
    - **L4 – Constraint Metadata:** Current SHACL (P2302) definitions to confirm the violation logic itself.
+   - **Constraint Change Context (T-box only):** Hashes and optional serialized statements before/after the property edit.
 
 ### Outputs
 
 - `world_state.json`, keyed by benchmark entry id:
   ```json
   {
-    "world_state": {
-      "focus_node": {
+    "repair_Q42_123456789": {
+      "L1_ego_node": {
         "qid": "Q42",
         "label": "Douglas Adams",
         "description": "English author and humorist",
@@ -79,7 +84,7 @@ Freeze the 2025 local topology so evaluators can test reasoning with the same vi
           "P569": ["1952-03-11"]
         }
       },
-      "neighborhood_snapshot": {
+      "L3_neighborhood": {
         "outgoing_edges": [
           {
             "property_id": "P26",
@@ -89,10 +94,24 @@ Freeze the 2025 local topology so evaluators can test reasoning with the same vi
           }
         ]
       },
-      "constraint_metadata": {
+      "L4_constraints": {
         "property_id": "P569",
-        "constraint_type": "Q21503250",
-        "rule_summary": "P569 must be greater than P570 if P570 exists."
+        "constraints": [
+          {
+            "constraint_type": {
+              "qid": "Q21503250",
+              "label": "contemporary constraint"
+            },
+            "rule_summary": "P569 must be greater than P570 if P570 exists."
+          }
+        ]
+      },
+      "constraint_change_context": {
+        "property_revision_id": 213456789,
+        "signatures": {
+          "before": {"hash": "a0c9…"},
+          "after": {"hash": "ff09…"}
+        }
       }
     }
   }

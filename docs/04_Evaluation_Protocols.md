@@ -25,10 +25,10 @@ Before calculating performance metrics, every model output must pass a series of
 
 ### 1.3 Sub-graph Regression Testing (The Ripple Effect)
 
-**Risk:** A repair fixes the target constraint but creates new violations elsewhere in the subgraph (e.g., changing a date fixes *Range* but breaks *Ordering*).
+**Risk:** A repair fixes the target constraint but creates a new violation *on the focus node itself* (e.g., changing a date fixes *Range* but breaks *Ordering* with another property on the same node).
 
-* **Protocol:** The verification harness re-validates the entire 2-hop neighborhood after the patch.
-* **Rule:** A repair is only "Accepted" if $TotalViolations_{after} \le TotalViolations_{before}$.
+* **Protocol:** The verification harness re-validates the **Focus Node** after the patch using the full L1 property set.
+* **Rule:** A repair is only "Accepted" if **$Violations(FocusNode)_{after} \le Violations(FocusNode)_{before}$**.
 
 ---
 
