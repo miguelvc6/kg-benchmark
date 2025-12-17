@@ -1,4 +1,5 @@
 import gzip
+import hashlib
 import json
 import re
 import time
@@ -28,9 +29,9 @@ LATEST_DUMP_PATH = Path("data/latest-all.json.gz")  # 2025 dump location
 WORLD_STATE_FILE = Path("data/03_world_state.json")  # Output for built contexts
 # Limit processing to specific properties for debugging; leave empty to process all
 TARGET_PROPERTIES = [
-    # "P569",  # Date of Birth
-    # "P570",  # Date of Death
-    # "P21",  # Sex or Gender
+    "P569",  # Date of Birth
+    "P570",  # Date of Death
+    "P21",  # Sex or Gender
 ]
 REPORT_HISTORY_DEPTH = 20  # Revision pairs scanned per report page
 QID_PATTERN = re.compile(r"\[\[(Q\d+)\]\]")
@@ -150,6 +151,9 @@ def mine_repairs(property_id, max_items=100):
             fixed_constraints = old_constraints - new_constraints
 
             if fixed_constraints:
+                if qid in qids_new_map:
+                    # QID still present elsewhere (moved sections), so not a resolved violation.
+                    continue
                 timestamp_tuple = newer_rev.get("timestamp") or ()
                 if len(timestamp_tuple) >= 6:
                     timestamp = datetime(*timestamp_tuple[:6]).isoformat()
@@ -344,7 +348,7 @@ class WorldStateBuilder:
             context = self._assemble_world_state(
                 focus_entity,
                 full_entity_map,  # Pass the full map so we can find neighbors
-                entry["property"],
+                entry,
                 property_entity,
             )
             yield entry["id"], context
@@ -460,8 +464,9 @@ class WorldStateBuilder:
                 }
         return resolved
 
-    def _assemble_world_state(self, focus_entity, full_entity_map, property_id, property_entity):
+    def _assemble_world_state(self, focus_entity, full_entity_map, entry, property_entity):
         """Return the world_state JSON object for one repair entry."""
+        property_id = entry["property"]
         focus_node = {
             "qid": focus_entity.get("id"),
             "label": pick_label(focus_entity),
@@ -479,12 +484,17 @@ class WorldStateBuilder:
             constraint_metadata,
             full_entity_map,
         )
-        return {
+        world_state = {
             "L1_ego_node": focus_node,
             "L2_labels": label_layer,
             "L3_neighborhood": neighborhood_snapshot,
             "L4_constraints": constraint_metadata,
         }
+        if entry.get("track") == "T_BOX":
+            constraint_context = self._build_constraint_change_context(entry)
+            if constraint_context:
+                world_state["constraint_change_context"] = constraint_context
+        return world_state
 
     def _extract_properties(self, entity):
         """Collect up to MAX_PROPERTY_VALUES per property for the ego node."""
@@ -655,6 +665,34 @@ class WorldStateBuilder:
             "constraints": constraints,
         }
 
+    def _build_constraint_change_context(self, entry):
+        """Return constraint before/after metadata for T-box records."""
+        repair_target = entry.get("repair_target") or {}
+        if repair_target.get("kind") != "T_BOX":
+            return None
+        delta = repair_target.get("constraint_delta") or {}
+        context = {
+            "property_revision_id": repair_target.get("property_revision_id"),
+            "property_revision_prev": repair_target.get("property_revision_prev"),
+            "signatures": {
+                "before": {
+                    "hash": delta.get("hash_before"),
+                    "signature": delta.get("signature_before"),
+                },
+                "after": {
+                    "hash": delta.get("hash_after"),
+                    "signature": delta.get("signature_after"),
+                },
+            },
+        }
+        if delta.get("changed_constraint_types") is not None:
+            context["changed_constraint_types"] = delta.get("changed_constraint_types")
+        if delta.get("old_constraints") is not None:
+            context["constraints_before"] = delta["old_constraints"]
+        if delta.get("new_constraints") is not None:
+            context["constraints_after"] = delta["new_constraints"]
+        return context
+
 
 def parse_iso8601(raw_ts):
     """Parse API timestamps while stripping milliseconds and enforcing UTC."""
@@ -682,6 +720,21 @@ def compute_revision_window(report_date):
         return None, None
     start_dt = end_dt - timedelta(days=REVISION_LOOKBACK_DAYS)
     return format_timestamp(start_dt), format_timestamp(end_dt)
+
+
+def build_report_provenance(candidate, property_id):
+    """Return report metadata fields captured during Stage 1 mining."""
+    provenance = {
+        "report_fix_date": candidate.get("fix_date"),
+        "report_revision_old": candidate.get("report_revision_old"),
+        "report_revision_new": candidate.get("report_revision_new"),
+    }
+    page_title = candidate.get("report_page_title")
+    if not page_title and property_id:
+        page_title = get_report_page_title(property_id)
+    if page_title:
+        provenance["report_page_title"] = page_title
+    return provenance
 
 
 def format_datavalue(value):
@@ -722,6 +775,85 @@ def summarize_claims(claims):
     if not signature_parts:
         return ("MISSING",), ["MISSING"]
     return tuple(sorted(signature_parts)), display_values
+
+
+def _normalize_constraint_claim(claim):
+    """Canonicalize a P2302 statement for deterministic hashing."""
+    mainsnak = claim.get("mainsnak", {})
+    snak_type = mainsnak.get("snaktype", "").upper()
+    datavalue = mainsnak.get("datavalue", {})
+    raw_value = datavalue.get("value")
+    constraint_qid = None
+    if isinstance(raw_value, dict):
+        constraint_qid = raw_value.get("id") or raw_value.get("text")
+    elif raw_value is not None:
+        constraint_qid = format_datavalue(raw_value)
+    qualifiers = []
+    qualifier_map = claim.get("qualifiers", {})
+    for qualifier_pid in sorted(qualifier_map.keys()):
+        rendered_values = []
+        for qualifier in qualifier_map.get(qualifier_pid, []):
+            q_datavalue = qualifier.get("datavalue")
+            if not q_datavalue:
+                continue
+            q_raw = q_datavalue.get("value")
+            rendered_values.append(format_datavalue(q_raw))
+        rendered_values.sort()
+        qualifiers.append(
+            {
+                "property_id": qualifier_pid,
+                "values": rendered_values,
+            }
+        )
+    return {
+        "constraint_qid": constraint_qid,
+        "snaktype": snak_type,
+        "rank": claim.get("rank"),
+        "qualifiers": qualifiers,
+    }
+
+
+def signature_p2302(claims):
+    """
+    Return a deterministic signature for constraint statements.
+    The signature ignores ordering by sorting constraint types and qualifier payloads before hashing.
+    """
+    normalized = [_normalize_constraint_claim(claim) for claim in claims or []]
+    normalized.sort(
+        key=lambda entry: (
+            entry.get("constraint_qid") or "",
+            entry.get("snaktype") or "",
+            entry.get("rank") or "",
+            json.dumps(entry.get("qualifiers", []), sort_keys=True, ensure_ascii=True),
+        )
+    )
+    serialized = json.dumps(normalized, ensure_ascii=True, sort_keys=True)
+    digest = hashlib.sha1(serialized.encode("utf-8")).hexdigest()
+    constraint_types = sorted({entry.get("constraint_qid") for entry in normalized if entry.get("constraint_qid")})
+    return {
+        "normalized": normalized,
+        "signature": serialized,
+        "hash": digest,
+        "constraint_types": constraint_types,
+    }
+
+
+def _build_constraint_delta(previous_signature, current_signature, include_snapshots):
+    """Assemble before/after hashes (optionally include raw constraints)."""
+    delta = {
+        "signature_before": previous_signature["signature"],
+        "signature_after": current_signature["signature"],
+        "hash_before": previous_signature["hash"],
+        "hash_after": current_signature["hash"],
+        "changed_constraint_types": sorted(
+            set(previous_signature.get("constraint_types") or [])
+            ^ set(current_signature.get("constraint_types") or [])
+        ),
+    }
+    if include_snapshots:
+        delta["old_constraints"] = previous_signature["normalized"]
+        delta["new_constraints"] = current_signature["normalized"]
+    return delta
 
 
 def classify_action(previous_signature, current_signature):
@@ -907,11 +1039,95 @@ def find_repair_revision(qid, property_id, start_time, end_time):
                 "new_value": current_snapshot,
                 "author": extract_user(rev),
             }
-            
+
         previous_signature = current_signature
         previous_snapshot = current_snapshot
 
     return last_valid_repair, history_meta
+
+
+def find_tbox_reform_revision(
+    property_id,
+    start_time,
+    end_time,
+    *,
+    include_snapshots=True,
+    scan_from_end=False,
+    max_revisions=None,
+):
+    """
+    Inspect the property entity history to locate constraint (P2302) changes.
+    This captures T-box edits where the schema itself was modified instead of the instance data.
+    When scan_from_end=True we iterate from newest revisions backwards and stop on the first change detected,
+    which is useful for ambiguity probes that only need a boolean answer.
+    """
+    property_title = f"Property:{property_id}"
+    revisions, history_meta = fetch_revision_history(property_title, start_time, end_time)
+    if not revisions:
+        return None, history_meta
+
+    ordered_revisions = list(revisions)
+
+    if scan_from_end:
+        # Cheap ambiguity path: walk newest->oldest, stop after first detected change or max_revisions.
+        next_signature = None
+        next_revision = None
+        scanned = 0
+        for rev in reversed(ordered_revisions):
+            if max_revisions is not None and scanned >= max_revisions:
+                break
+            revision_id = rev.get("id") or rev.get("revid")
+            if not revision_id:
+                continue
+            constraint_claims = get_claims_for_revision(property_id, "P2302", revision_id)
+            current_signature = signature_p2302(constraint_claims)
+            if next_signature and current_signature["hash"] != next_signature["hash"]:
+                delta = _build_constraint_delta(current_signature, next_signature, include_snapshots)
+                tbox_event = {
+                    "property_revision_id": (next_revision.get("id") or next_revision.get("revid"))
+                    if next_revision
+                    else None,
+                    "property_revision_prev": revision_id,
+                    "timestamp": next_revision.get("timestamp") if next_revision else rev.get("timestamp"),
+                    "author": extract_user(next_revision or rev),
+                    "constraint_delta": delta,
+                }
+                return tbox_event, history_meta
+            next_signature = current_signature
+            next_revision = rev
+            scanned += 1
+        return None, history_meta
+
+    previous_signature = None
+    previous_revision_id = None
+    last_change = None
+    scanned = 0
+
+    for rev in ordered_revisions:
+        if max_revisions is not None and scanned >= max_revisions:
+            break
+        revision_id = rev.get("id") or rev.get("revid")
+        if not revision_id:
+            continue
+        constraint_claims = get_claims_for_revision(property_id, "P2302", revision_id)
+        current_signature = signature_p2302(constraint_claims)
+
+        if previous_signature and current_signature["hash"] != previous_signature["hash"]:
+            # Track the most recent constraint change so we align with the report disappearance.
+            delta = _build_constraint_delta(previous_signature, current_signature, include_snapshots)
+            last_change = {
+                "property_revision_id": revision_id,
+                "property_revision_prev": previous_revision_id,
+                "timestamp": rev.get("timestamp"),
+                "author": extract_user(rev),
+                "constraint_delta": delta,
+            }
+
+        previous_signature = current_signature
+        previous_revision_id = revision_id
+        scanned += 1
+
+    return last_change, history_meta
 
 
 def process_pipeline(max_candidates=None):
@@ -940,11 +1156,27 @@ def process_pipeline(max_candidates=None):
             "persistence_failed": 0,
             "bad_fix_date": 0,
             "repairs_found": 0,
+            "repairs_found_a_box": 0,
+            "repairs_found_t_box": 0,
+            "ambiguous_both_changed": 0,
             "no_diff": 0,
             "no_history": 0,
             "truncated_by_window": 0,
             "reached_page_limit": 0,
         }
+
+        def record_history_stats(meta):
+            """Increment window/page limit counters for any history call."""
+            if not meta:
+                return
+            if meta.get("truncated_by_window"):
+                summary["truncated_by_window"] += 1
+            if meta.get("reached_page_limit"):
+                summary["reached_page_limit"] += 1
+
+        def history_scanned(meta):
+            """Return True if the REST history call yielded any revisions."""
+            return bool(meta and meta.get("revisions_scanned", 0) > 0)
 
         print(f"[*] Loaded {len(candidates)} candidates. Using REST history.")
 
@@ -976,21 +1208,7 @@ def process_pipeline(max_candidates=None):
                 "property": pid,
                 "violation_type": violation_type,
             }
-            curr_val = None
-            if STRICT_PERSISTENCE:
-                curr_val = get_current_state(qid, pid)
-                if not curr_val:
-                    progress.write("    [x] Dropped: Persistence check failed (Entity/Prop missing).")
-                    summary["persistence_failed"] += 1
-                    stats_logger.log(
-                        {
-                            **record_base,
-                            "result": "persistence_failed",
-                            "reason": "missing_current_value",
-                        }
-                    )
-                    progress.update(1)
-                    continue
+            report_metadata = build_report_provenance(item, pid)
 
             report_date = item["fix_date"]
             start_time, end_time = compute_revision_window(report_date)
@@ -1013,58 +1231,184 @@ def process_pipeline(max_candidates=None):
                 start_time=start_time,
                 end_time=end_time,
             )
+            tbox_event = None
+            tbox_history_meta = None
+            ambiguous_history_meta = None
 
+            # Cleaner (A-box) path: prefer instance-level repairs when they exist.
             if fix_event:
-                progress.write(f"    [+] FOUND REPAIR! {fix_event['old_value']} -> {fix_event['new_value']}")
+                progress.write(f"    [+] FOUND A-BOX REPAIR! {fix_event['old_value']} -> {fix_event['new_value']}")
                 summary["repairs_found"] += 1
+                summary["repairs_found_a_box"] += 1
+                current_values_live = get_current_state(qid, pid)
+                if current_values_live is None and STRICT_PERSISTENCE and fix_event["action"] != "DELETE":
+                    progress.write("    [x] Dropped: Persistence check failed (Entity/Prop missing).")
+                    summary["persistence_failed"] += 1
+                    stats_logger.log(
+                        {
+                            **record_base,
+                            "result": "persistence_failed",
+                            "reason": "missing_current_value",
+                            "track": "A_BOX",
+                            "repair_revision_id": fix_event["repair_revision_id"],
+                            "action": fix_event["action"],
+                        }
+                    )
+                    progress.update(1)
+                    continue
+                normalized_current_values = current_values_live if current_values_live is not None else []
                 entry = {
                     "id": f"repair_{qid}_{fix_event['repair_revision_id']}",
                     "qid": qid,
                     "property": pid,
+                    "track": "A_BOX",
                     "type": violation_type or "TBD",
                     "violation_context": {
                         "report_violation_type": violation_type,
                         "value": fix_event["old_value"],
                     },
                     "repair_target": {
+                        "kind": "A_BOX",
                         "action": fix_event["action"],
+                        "old_value": fix_event["old_value"],
+                        "new_value": fix_event["new_value"],
                         "value": fix_event["new_value"],
                         "revision_id": fix_event["repair_revision_id"],
+                        "author": fix_event["author"],
                     },
                     "persistence_check": {
                         "status": "passed",
-                        "current_value_2025": curr_val,
+                        "current_value_2025": normalized_current_values,
                     },
                 }
+                entry["violation_context"].update(report_metadata)
+                # Re-run constraint diffing without heavy payloads to flag ambiguous cases.
+                cheap_tbox_event, ambiguous_history_meta = find_tbox_reform_revision(
+                    pid,
+                    start_time=start_time,
+                    end_time=end_time,
+                    include_snapshots=False,
+                    scan_from_end=True,
+                    max_revisions=25,
+                )
+                if cheap_tbox_event:
+                    entry["ambiguous"] = True
+                    entry["ambiguous_reasons"] = ["A_BOX_CHANGED", "T_BOX_CHANGED"]
+                    summary["ambiguous_both_changed"] += 1
                 dataset.append(entry)
-                stats_logger.log(
-                    {
-                        **record_base,
-                        "result": "repair_found",
-                        "history": history_meta,
-                        "repair_revision_id": fix_event["repair_revision_id"],
-                        "action": fix_event["action"],
-                    }
-                )
+                entity_history_scanned = history_scanned(history_meta)
+                property_history_scanned = history_scanned(tbox_history_meta)
+                stats_payload = {
+                    **record_base,
+                    "result": "repair_found",
+                    "track": "A_BOX",
+                    "history": history_meta,
+                    "history_entity": history_meta,
+                    "repair_revision_id": fix_event["repair_revision_id"],
+                    "action": fix_event["action"],
+                }
+                if entry.get("ambiguous"):
+                    stats_payload["ambiguous"] = True
+                stats_payload["entity_history_scanned"] = entity_history_scanned
+                stats_payload["property_history_scanned"] = property_history_scanned
+                stats_logger.log(stats_payload)
             else:
-                progress.write("    [-] No clean diff found.")
-                if history_meta:
-                    summary["no_diff"] += 1
-                else:
-                    summary["no_history"] += 1
-                stats_logger.log(
-                    {
-                        **record_base,
-                        "result": "no_diff" if history_meta else "no_history",
-                        "history": history_meta,
-                    }
+                # Reformer (T-box) path: fall back to constraint evolution when the A-box stayed untouched.
+                tbox_event, tbox_history_meta = find_tbox_reform_revision(
+                    pid,
+                    start_time=start_time,
+                    end_time=end_time,
                 )
+                if tbox_event:
+                    current_values_live = get_current_state(qid, pid)
+                    if current_values_live is None and STRICT_PERSISTENCE:
+                        progress.write("    [x] Dropped: Persistence check failed (Entity/Prop missing).")
+                        summary["persistence_failed"] += 1
+                        stats_logger.log(
+                            {
+                                **record_base,
+                                "result": "persistence_failed",
+                                "reason": "missing_current_value",
+                                "track": "T_BOX",
+                                "property_revision_id": tbox_event["property_revision_id"],
+                            }
+                        )
+                        progress.update(1)
+                        continue
+                    normalized_current_values = current_values_live if current_values_live is not None else []
+                    delta = tbox_event["constraint_delta"]
+                    progress.write(
+                        f"    [+] FOUND T-BOX REFORM! signature {delta['hash_before']} -> {delta['hash_after']}"
+                    )
+                    summary["repairs_found"] += 1
+                    summary["repairs_found_t_box"] += 1
+                    entry = {
+                        # Include qid so every T-box ID stays globally unique across focus nodes.
+                        "id": f"reform_{qid}_{pid}_{tbox_event['property_revision_id']}",
+                        "qid": qid,
+                        "property": pid,
+                        "track": "T_BOX",
+                        "type": violation_type or "TBD",
+                        "violation_context": {
+                            "report_violation_type": violation_type,
+                            "value": None,
+                            "value_current_2025": normalized_current_values,
+                        },
+                        "repair_target": {
+                            "kind": "T_BOX",
+                            "property_revision_id": tbox_event["property_revision_id"],
+                            "property_revision_prev": tbox_event["property_revision_prev"],
+                            "author": tbox_event["author"],
+                            "constraint_delta": delta,
+                        },
+                        "persistence_check": {
+                            "status": "passed",
+                            "current_value_2025": normalized_current_values,
+                        },
+                    }
+                    entry["violation_context"].update(report_metadata)
+                    dataset.append(entry)
+                    entity_history_scanned = history_scanned(history_meta)
+                    property_history_scanned = history_scanned(tbox_history_meta)
+                    stats_logger.log(
+                        {
+                            **record_base,
+                            "result": "repair_found",
+                            "track": "T_BOX",
+                            "history": history_meta,
+                            "history_entity": history_meta,
+                            "history_property": tbox_history_meta,
+                            "property_revision_id": tbox_event["property_revision_id"],
+                            "constraint_hash_before": delta["hash_before"],
+                            "constraint_hash_after": delta["hash_after"],
+                            "entity_history_scanned": entity_history_scanned,
+                            "property_history_scanned": property_history_scanned,
+                        }
+                    )
+                else:
+                    progress.write("    [-] No clean diff found (A-box or T-box).")
+                    entity_history_scanned = history_scanned(history_meta)
+                    property_history_scanned = history_scanned(tbox_history_meta)
+                    has_history = entity_history_scanned or property_history_scanned
+                    if has_history:
+                        summary["no_diff"] += 1
+                    else:
+                        summary["no_history"] += 1
+                    stats_logger.log(
+                        {
+                            **record_base,
+                            "result": "no_diff" if has_history else "no_history",
+                            "history": history_meta,
+                            "history_entity": history_meta,
+                            "history_property": tbox_history_meta,
+                            "entity_history_scanned": entity_history_scanned,
+                            "property_history_scanned": property_history_scanned,
+                        }
+                    )
 
-            if history_meta:
-                if history_meta.get("truncated_by_window"):
-                    summary["truncated_by_window"] += 1
-                if history_meta.get("reached_page_limit"):
-                    summary["reached_page_limit"] += 1
+            record_history_stats(history_meta)
+            record_history_stats(tbox_history_meta)
+            record_history_stats(ambiguous_history_meta)
 
             if i % 10 == 0:
                 with open(WIKIDATA_REPAIRS, "w") as out:
@@ -1082,6 +1426,7 @@ def process_pipeline(max_candidates=None):
             world_file.write("{")
             first = True
             buffer_entries = []
+            emitted_ids = set()
 
             def flush_world_state_buffer():
                 nonlocal first, produced_any, buffer_entries
@@ -1099,6 +1444,10 @@ def process_pipeline(max_candidates=None):
                 buffer_entries = []
 
             for entry_id, context in builder.build(dataset):
+                if entry_id in emitted_ids:
+                    print(f"[!] Duplicate world_state id {entry_id} detected. Skipping to avoid overwriting context.")
+                    continue
+                emitted_ids.add(entry_id)
                 buffer_entries.append((entry_id, context))
                 if len(buffer_entries) >= 10:
                     flush_world_state_buffer()
