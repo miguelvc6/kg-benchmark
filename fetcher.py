@@ -1,3 +1,5 @@
+import argparse
+import argparse
 import gzip
 import hashlib
 import json
@@ -299,6 +301,43 @@ def pick_description(entity, lang="en"):
     return None
 
 
+def extract_aliases(entity, preferred_lang="en"):
+    """Return normalized alias list using preferred language first."""
+    if not entity:
+        return []
+    alias_map = entity.get("aliases") or {}
+    if not alias_map:
+        return []
+    ordered_langs = []
+    if preferred_lang in alias_map:
+        ordered_langs.append(preferred_lang)
+    ordered_langs.extend(sorted(lang for lang in alias_map if lang != preferred_lang))
+    collected = []
+    for lang in ordered_langs:
+        for alias_entry in alias_map.get(lang, []):
+            value = alias_entry.get("value")
+            if value:
+                collected.append(value)
+    return normalize_aliases(collected)
+
+
+def normalize_aliases(aliases):
+    """Deduplicate aliases case-insensitively while keeping order."""
+    if not aliases:
+        return []
+    seen = set()
+    deduped = []
+    for alias in aliases:
+        if not isinstance(alias, str):
+            continue
+        normalized = alias.casefold()
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        deduped.append(alias)
+    return deduped
+
+
 MISSING_LABEL_PLACEHOLDER = "Label unavailable"
 
 
@@ -312,6 +351,124 @@ def chunked(iterable, size):
             batch = []
     if batch:
         yield batch
+
+
+REQUIRED_WORLD_STATE_KEYS = ("L1_ego_node", "L2_labels", "L3_neighborhood", "L4_constraints")
+
+
+def _ensure(condition, message):
+    if not condition:
+        raise ValueError(message)
+
+
+def validate_world_state_entry(entry_id, entry, valid_ids=None):
+    """Validate a single world state entry against the Stage-3 contract."""
+    _ensure(isinstance(entry_id, str), f"World state key {entry_id!r} must be a string id.")
+    if valid_ids is not None:
+        _ensure(
+            entry_id in valid_ids,
+            f"World state key {entry_id!r} not found in Stage-2 repair ids.",
+        )
+    _ensure(isinstance(entry, dict), f"World state entry for {entry_id} must be an object.")
+    for required in REQUIRED_WORLD_STATE_KEYS:
+        _ensure(required in entry, f"World state entry {entry_id} missing required layer {required}.")
+    ego = entry["L1_ego_node"]
+    _ensure(isinstance(ego, dict), f"L1_ego_node for {entry_id} must be an object.")
+    for field in ("qid", "label", "description", "aliases", "properties"):
+        _ensure(field in ego, f"L1_ego_node for {entry_id} missing field {field}.")
+    _ensure(isinstance(ego["aliases"], list), f"L1_ego_node aliases for {entry_id} must be a list.")
+    for alias in ego["aliases"]:
+        _ensure(isinstance(alias, str), f"L1_ego_node aliases for {entry_id} must be strings.")
+    _ensure(isinstance(ego["properties"], dict), f"L1_ego_node properties for {entry_id} must be an object.")
+    neighborhood = entry["L3_neighborhood"]
+    _ensure(isinstance(neighborhood, dict), f"L3_neighborhood for {entry_id} must be a dict.")
+    _ensure(
+        "outgoing_edges" in neighborhood,
+        f"L3_neighborhood for {entry_id} missing outgoing_edges.",
+    )
+    edges = neighborhood["outgoing_edges"]
+    _ensure(isinstance(edges, list), f"L3_neighborhood outgoing_edges for {entry_id} must be a list.")
+    for idx, edge in enumerate(edges):
+        _ensure(isinstance(edge, dict), f"Edge #{idx} for {entry_id} must be an object.")
+        for field in ("property_id", "target_qid", "target_label", "target_description", "target_aliases"):
+            _ensure(field in edge, f"Edge #{idx} for {entry_id} missing field {field}.")
+        aliases = edge["target_aliases"]
+        _ensure(isinstance(aliases, list), f"Edge #{idx} target_aliases for {entry_id} must be a list.")
+        for alias in aliases:
+            _ensure(isinstance(alias, str), f"Edge #{idx} target_aliases for {entry_id} must be strings.")
+    _ensure(isinstance(entry["L2_labels"], dict), f"L2_labels for {entry_id} must be a dict.")
+    _ensure(isinstance(entry["L4_constraints"], dict), f"L4_constraints for {entry_id} must be a dict.")
+
+
+def validate_world_state_document(world_state, valid_ids):
+    """Ensure the top-level structure matches the Stage-3 requirements."""
+    _ensure(isinstance(world_state, dict), "World state root must be a JSON object.")
+    valid_ids = set(valid_ids or [])
+    keys = set(world_state.keys())
+    missing = valid_ids - keys
+    unexpected = keys - valid_ids
+    _ensure(
+        not missing,
+        f"World state missing {len(missing)} ids from Stage-2 dataset: {sorted(list(missing))[:5]} ...",
+    )
+    _ensure(
+        not unexpected,
+        f"World state has unexpected ids not found in Stage-2 dataset: {sorted(list(unexpected))[:5]} ...",
+    )
+    for entry_id, entry in world_state.items():
+        validate_world_state_entry(entry_id, entry, valid_ids)
+
+
+def extract_repair_ids(dataset):
+    """Return ordered list of repair ids extracted from Stage-2 dataset entries."""
+    ids = []
+    valid_entry_count = 0
+    for entry in dataset or []:
+        if not isinstance(entry, dict):
+            continue
+        valid_entry_count += 1
+        entry_id = entry.get("id")
+        if entry_id:
+            ids.append(entry_id)
+    return ids, valid_entry_count
+
+
+def ensure_unique_ids(ids):
+    """Validate that ids are unique and return the deduplicated set."""
+    seen = set()
+    duplicates = set()
+    for entry_id in ids:
+        if entry_id in seen:
+            duplicates.add(entry_id)
+        else:
+            seen.add(entry_id)
+    if duplicates:
+        raise ValueError(f"Duplicate Stage-2 ids detected: {sorted(list(duplicates))[:5]} ...")
+    return seen
+
+
+def ensure_all_entries_have_ids(total_entries, ids):
+    """Ensure that every Stage-2 dataset entry contributed an id."""
+    missing = total_entries - len(ids)
+    if missing > 0:
+        raise ValueError(f"{missing} Stage-2 entries are missing an 'id' field.")
+
+
+def validate_world_state_file(world_state_path, repairs_path):
+    """Validate an on-disk world state artifact against Stage-2 repairs."""
+    dataset = load_cached_repairs(repairs_path)
+    if dataset is None:
+        raise RuntimeError(f"Stage-2 repairs file missing or empty at {repairs_path}.")
+    repair_ids, total_entries = extract_repair_ids(dataset)
+    ensure_all_entries_have_ids(total_entries, repair_ids)
+    expected_ids = ensure_unique_ids(repair_ids)
+    path = Path(world_state_path)
+    if not path.exists():
+        raise RuntimeError(f"World state file not found at {world_state_path}.")
+    with open(path, "r", encoding="utf-8") as fh:
+        payload = json.load(fh)
+    validate_world_state_document(payload, expected_ids)
+    print(f"[+] World state validation passed for {len(payload)} entries.")
 
 
 class WorldStateBuilder:
@@ -479,7 +636,7 @@ class WorldStateBuilder:
             params = {
                 "action": "wbgetentities",
                 "ids": "|".join(batch),
-                "props": "labels|descriptions",
+                "props": "labels|descriptions|aliases",
             }
             data = get_json(params)
             if not data or "entities" not in data:
@@ -491,6 +648,7 @@ class WorldStateBuilder:
                     "id": entity_id,
                     "labels": entity.get("labels", {}),
                     "descriptions": entity.get("descriptions", {}),
+                    "aliases": entity.get("aliases", {}),
                 }
         return resolved
 
@@ -501,6 +659,7 @@ class WorldStateBuilder:
             "qid": focus_entity.get("id"),
             "label": pick_label(focus_entity),
             "description": pick_description(focus_entity),
+            "aliases": extract_aliases(focus_entity),
             "sitelinks_count": len(focus_entity.get("sitelinks", {})),
             "properties": self._extract_properties(focus_entity),
         }
@@ -569,6 +728,7 @@ class WorldStateBuilder:
                             "target_qid": target_id,
                             "target_label": pick_label(neighbor),
                             "target_description": pick_description(neighbor),
+                            "target_aliases": extract_aliases(neighbor),
                         }
                     )
                     edge_count += 1
@@ -1460,40 +1620,24 @@ def process_pipeline(max_candidates=None):
 
     if dataset:
         builder = WorldStateBuilder(LATEST_DUMP_PATH)
-        produced_any = False
+        repair_ids, total_entries = extract_repair_ids(dataset)
+        ensure_all_entries_have_ids(total_entries, repair_ids)
+        expected_ids = ensure_unique_ids(repair_ids)
+        world_state_map = {}
+        for entry_id, context in builder.build(dataset):
+            if entry_id in world_state_map:
+                raise ValueError(f"Duplicate world_state id detected during build: {entry_id}")
+            validate_world_state_entry(entry_id, context, expected_ids)
+            world_state_map[entry_id] = context
+        missing_ids = expected_ids - set(world_state_map.keys())
+        if missing_ids:
+            raise RuntimeError(
+                f"Context builder failed to produce {len(missing_ids)} world state entries: "
+                f"{sorted(list(missing_ids))[:5]} ..."
+            )
+        validate_world_state_document(world_state_map, expected_ids)
         with open(WORLD_STATE_FILE, "w", encoding="utf-8") as world_file:
-            world_file.write("{")
-            first = True
-            buffer_entries = []
-            emitted_ids = set()
-
-            def flush_world_state_buffer():
-                nonlocal first, produced_any, buffer_entries
-                if not buffer_entries:
-                    return
-                for buffered_id, buffered_context in buffer_entries:
-                    produced_any = True
-                    json_context = json.dumps(buffered_context, indent=2).replace("\n", "\n  ")
-                    if first:
-                        world_file.write("\n")
-                        first = False
-                    else:
-                        world_file.write(",\n")
-                    world_file.write(f'  "{buffered_id}": {json_context}')
-                buffer_entries = []
-
-            for entry_id, context in builder.build(dataset):
-                if not isinstance(context, dict) or "L1_ego_node" not in context:
-                    raise RuntimeError(f"World state context for {entry_id} is malformed; refusing to write.")
-                if entry_id in emitted_ids:
-                    print(f"[!] Duplicate world_state id {entry_id} detected. Skipping to avoid overwriting context.")
-                    continue
-                emitted_ids.add(entry_id)
-                buffer_entries.append((entry_id, context))
-                if len(buffer_entries) >= 10:
-                    flush_world_state_buffer()
-            flush_world_state_buffer()
-            world_file.write("\n}\n" if produced_any else "}\n")
+            json.dump(world_state_map, world_file, indent=2)
 
     if summary:
         with open(SUMMARY_FILE, "w", encoding="utf-8") as summary_file:
@@ -1502,5 +1646,29 @@ def process_pipeline(max_candidates=None):
     print(f"\n[+] Extraction Complete. Saved {len(dataset)} verified repairs.")
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="WikidataRepairEval Phase-1 pipeline helper.")
+    parser.add_argument(
+        "--validate-only",
+        action="store_true",
+        help="Validate the generated world state file against Stage-2 repairs and exit.",
+    )
+    parser.add_argument(
+        "--max-candidates",
+        type=int,
+        default=None,
+        help="Limit the number of repair candidates processed (debugging helper).",
+    )
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
+    if args.validate_only:
+        validate_world_state_file(WORLD_STATE_FILE, WIKIDATA_REPAIRS)
+        return
+    process_pipeline(max_candidates=args.max_candidates)
+
+
 if __name__ == "__main__":
-    process_pipeline()
+    main()
