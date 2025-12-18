@@ -76,7 +76,7 @@ without overwriting each other.
   "track": "A_BOX",                      // Either "A_BOX" (Cleaner) or "T_BOX" (Reformer)
   "type": "TBD",                         // Taxonomy Class (Filled by Classifier)
   "violation_context": {
-    "value": "+1952-03-11T00:00:00Z",    // The value that violated the constraint
+    "value": ["+1952-03-11T00:00:00Z"],    // The value that violated the constraint
     "report_fix_date": "2025-05-17T08:04:00Z",
     "report_revision_old": 2098075000,   // Report provenance for reproducibility
     "report_revision_new": 2098081111,
@@ -85,8 +85,8 @@ without overwriting each other.
   "repair_target": {
     "kind": "A_BOX",
     "action": "UPDATE",                  // Operation: UPDATE, CREATE, DELETE
-    "old_value": "+1952-02-11T00:00:00Z",
-    "new_value": "+1952-03-11T00:00:00Z",
+    "old_value": ["+1952-02-11T00:00:00Z"],
+    "new_value": ["+1952-03-11T00:00:00Z"],
     "revision_id": 123456789,            // The Wikidata Revision ID of the fix
     "author": "User:KrBot"               // Who performed the repair
   },

@@ -35,25 +35,25 @@ Improving the **semantics** (truthfulness) of a model, rather than just its **sy
 
 This project (WikidataRepairEval) is the experimental apparatus designed to answer the following specific hypotheses:
 
-### RQ1: The Protocol Definition*
+### RQ1: The Protocol Definition
 
 **Question:** What are the necessary semantic components of a "Knowledge Transaction"?
 
 * **Investigation:** Moving beyond simple triples to a formal schema that encapsulates *Proposal, Rationale, Provenance, and Uncertainty*.
 
-### RQ2: The Information Gap (Ablation Study)*
+### RQ2: The Information Gap (Ablation Study)
 
 **Question:** What is the marginal utility of unstructured context (Text RAG) versus structured topology (Graph RAG) in resolving knowledge violations?
 
 * **Investigation:** We distinguish between errors caused by **reasoning failures** (logic) vs. **informational voids** (missing data). Does adding Wikipedia text actually help verify a constraint, or does it introduce noise compared to the graph neighborhood?.
 
-### RQ3: The Verification Trade-off*
+### RQ3: The Verification Trade-off
 
 **Question:** To what extent can Automated Constraint Verification (SHACL) replace human oversight without compromising KG integrity?
 
 * **Metric:** The **False Positive Acceptance Rate**—how often does the system accept a plausible-sounding but factually wrong patch?.
 
-### RQ4: Loop Dynamics & Model Collapse*
+### RQ4: Loop Dynamics & Model Collapse
 
 **Question:** Does fine-tuning an LLM on its own verified repairs lead to genuine capability gains, or mere overfitting to the constraint logic?
 

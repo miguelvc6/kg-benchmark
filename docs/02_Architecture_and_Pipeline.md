@@ -13,15 +13,15 @@ We reject the traditional approach of parsing the full Wikidata Revision History
 
 The system operates in three distinct, sequential stages. Each stage produces an immutable JSON artifact that serves as the input for the next.
 
-| Stage       | Component                 | Responsibility                                                                                                            | Input Source                    | Output Artifact                    |
-| ----------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------- | ---------------------------------- |
-| **1** | **Indexer**         | **Signal Detection:** Mines bot reports to find "Candidate Repairs" (entities that stopped violating a constraint). | `Wikidata:Database reports/*` | `data/01_repair_candidates.json` |
-| **2** | **Fetcher**         | **Forensics:** Queries API history to find the exact diff and verifies persistence in 2025.                         | Wikibase REST API               | `data/02_wikidata_repairs.json`  |
-| **3** | **Context Builder** | **World State:** Streams the 2025 JSON dump to attach frozen topological context.                                   | `latest-all.json.gz`          | `data/03_world_state.json`       |
+| Stage       | Component                 | Responsibility                                                                                                        | Input Source                    | Output Artifact                    |
+| ----------- | ------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------- | ---------------------------------- |
+| **1** | **Indexer**         | **Signal Detection:** Mines reports to find "Candidate Repairs" (entities that stopped violating a constraint). | `Wikidata:Database reports/*` | `data/01_repair_candidates.json` |
+| **2** | **Fetcher**         | **Forensics:** Queries API history to find the exact diff and verifies persistence in 2025.                     | Wikibase REST API               | `data/02_wikidata_repairs.json`  |
+| **3** | **Context Builder** | **World State:** Streams the 2025 JSON dump to attach frozen topological context.                               | `latest-all.json.gz`          | `data/03_world_state.json`       |
 
 ---
 
-## 2. Stage 1: The Indexer (Signal Detection)
+## 2. Stage I: The Indexer (Signal Detection)
 
 ### Objective
 
@@ -39,7 +39,7 @@ The system monitors the revision history of **Wikidata Database Reports** (speci
 
 ---
 
-## 3. Stage 2: The Fetcher (Forensics)
+## 3. Stage II: The Fetcher
 
 ### Objective
 
@@ -51,6 +51,7 @@ A critical engineering challenge is the latency between the **Repair Event** (Us
 
 * **Analysis:** Statistical analysis of bot schedules reveals gaps of up to 6 days between report updates.
 * **Configuration:** We set `REVISION_LOOKBACK_DAYS = 7`. This window ensures that even if a bot delays reporting, the fetcher will scan far enough back to find the user's edit.
+* **Scan:** Stage II starts from each `(qid, property_id, fix_date)` to anchor a 7‑day window around the report disappearance. Within that window it inspects the entity’s own history for an A‑box edit on the subject entity that touched the property implicated by the violation. If no entity-level change is found, Stage II switches to the property’s history fetching P2302 claims for each revision to detect changes to the constraint definition (T‑box edits) and stores the before/after constraint hashes plus snapshots.
 * **Ambiguity Guard:** When an A-box repair is found, the fetcher performs a secondary, signature-only scan from the end of the property history (bounded to ~25 revisions) to detect whether the constraint definition changed in the same window. Such cases are flagged as `ambiguous` to inform evaluation splits.
 
 ### The Persistence Filter (Time-Travel Protection)
@@ -70,7 +71,7 @@ To ensure ecological validity, we enforce **Strict Persistence** *after* identif
 
 ---
 
-## 4. Stage 3: The Context Builder (World State Snapshot)
+## 4. Stage III: The Context Builder (World State Snapshot)
 
 ### Objective
 
