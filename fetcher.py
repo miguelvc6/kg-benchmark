@@ -1,5 +1,4 @@
 import argparse
-import argparse
 import gzip
 import hashlib
 import json
@@ -41,6 +40,29 @@ INVALID_REPORT_SECTIONS = {
     "Types statistics",
 }
 
+REPORT_VIOLATION_QID_PATTERN = re.compile(r"Q\|?(\d+)")
+QID_EXACT_PATTERN = re.compile(r"^Q\d+$")
+PID_EXACT_PATTERN = re.compile(r"^P\d+$")
+
+
+def is_qid(value):
+    """Return True if the value looks like a Wikidata item id (Q*)."""
+    if not isinstance(value, str):
+        return False
+    return bool(QID_EXACT_PATTERN.fullmatch(value.strip()))
+
+
+def is_pid(value):
+    """Return True if the value looks like a Wikidata property id (P*)."""
+    if not isinstance(value, str):
+        return False
+    return bool(PID_EXACT_PATTERN.fullmatch(value.strip()))
+
+
+def is_entity_or_property_id(value):
+    """Return True for valid QIDs or PIDs."""
+    return is_qid(value) or is_pid(value)
+
 
 def is_valid_violation_section(section):
     """Return True if a report section represents a real violation bucket."""
@@ -66,6 +88,9 @@ SITE = None
 
 DATA_DIR = Path("data")
 DATA_DIR.mkdir(exist_ok=True)
+CACHE_DIR = DATA_DIR / "cache"
+CACHE_DIR.mkdir(parents=True, exist_ok=True)
+LABEL_CACHE_FILE = CACHE_DIR / "id_labels_en.json"
 REPAIR_CANDIDATES_FILE = DATA_DIR / "01_repair_candidates.json"
 WIKIDATA_REPAIRS = DATA_DIR / "02_wikidata_repairs.json"
 
@@ -754,9 +779,11 @@ class WorldStateBuilder:
             entity = entity_map.get(entity_id)
             label = pick_label(entity) if entity else None
             description = pick_description(entity) if entity else None
+            aliases = extract_aliases(entity)
             label_index[entity_id] = {
                 "label": label or MISSING_LABEL_PLACEHOLDER,
                 "description": description,
+                "aliases": aliases,
             }
 
         if focus_entity:
@@ -868,10 +895,12 @@ class WorldStateBuilder:
                 "before": {
                     "hash": delta.get("hash_before"),
                     "signature": delta.get("signature_before"),
+                    "signature_raw": delta.get("signature_before_raw"),
                 },
                 "after": {
                     "hash": delta.get("hash_after"),
                     "signature": delta.get("signature_after"),
+                    "signature_raw": delta.get("signature_after_raw"),
                 },
             },
         }
@@ -1003,6 +1032,11 @@ def _normalize_constraint_claim(claim):
     }
 
 
+def canonicalize_json_structure(payload):
+    """Return the canonical serialization used for hashing constraint signatures."""
+    return json.dumps(payload, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
+
+
 def signature_p2302(claims):
     """
     Return a deterministic signature for constraint statements.
@@ -1017,7 +1051,7 @@ def signature_p2302(claims):
             json.dumps(entry.get("qualifiers", []), sort_keys=True, ensure_ascii=True),
         )
     )
-    serialized = json.dumps(normalized, ensure_ascii=True, sort_keys=True)
+    serialized = canonicalize_json_structure(normalized)
     digest = hashlib.sha1(serialized.encode("utf-8")).hexdigest()
     constraint_types = sorted({entry.get("constraint_qid") for entry in normalized if entry.get("constraint_qid")})
     return {
@@ -1031,8 +1065,10 @@ def signature_p2302(claims):
 def _build_constraint_delta(previous_signature, current_signature, include_snapshots):
     """Assemble before/after hashes (optionally include raw constraints)."""
     delta = {
-        "signature_before": previous_signature["signature"],
-        "signature_after": current_signature["signature"],
+        "signature_before_raw": previous_signature["signature"],
+        "signature_after_raw": current_signature["signature"],
+        "signature_before": previous_signature["normalized"],
+        "signature_after": current_signature["normalized"],
         "hash_before": previous_signature["hash"],
         "hash_after": current_signature["hash"],
         "changed_constraint_types": sorted(
@@ -1081,6 +1117,105 @@ def get_json(params=None, *, endpoint=API_ENDPOINT, with_format=True):
             print(f"    [!] Exception: {exc}")
         time.sleep(0.2)
     return None
+
+
+class LabelResolver:
+    """Deterministic ID -> label resolution with disk caching."""
+
+    def __init__(self, cache_path=LABEL_CACHE_FILE, preferred_lang="en"):
+        self.cache_path = Path(cache_path)
+        self.preferred_lang = preferred_lang
+        self.cache = {}
+        self.failed_ids = set()
+        self._load_cache()
+
+    def _load_cache(self):
+        if not self.cache_path.exists():
+            return
+        try:
+            with open(self.cache_path, "r", encoding="utf-8") as fh:
+                payload = json.load(fh)
+        except Exception as exc:
+            print(f"[!] Warning: Could not load label cache {self.cache_path}: {exc}")
+            return
+        if isinstance(payload, dict):
+            self.cache.update(payload)
+
+    def _persist_cache(self):
+        self.cache_path.parent.mkdir(parents=True, exist_ok=True)
+        ordered_keys = sorted(self.cache.keys())
+        serialized = {key: self.cache[key] for key in ordered_keys}
+        with open(self.cache_path, "w", encoding="utf-8") as fh:
+            json.dump(serialized, fh, ensure_ascii=True, indent=2, sort_keys=True)
+
+    @staticmethod
+    def _null_entry():
+        return {
+            "label_en": None,
+            "description_en": None,
+            "aliases_en": [],
+        }
+
+    def resolve(self, ids):
+        """Resolve a batch of ids and return {id: resolution}."""
+        if not ids:
+            return {}
+        ordered_ids = []
+        seen = set()
+        for entity_id in ids:
+            if not is_entity_or_property_id(entity_id):
+                continue
+            if entity_id in seen:
+                continue
+            seen.add(entity_id)
+            ordered_ids.append(entity_id)
+        if not ordered_ids:
+            return {}
+        missing = [entity_id for entity_id in ordered_ids if entity_id not in self.cache]
+        if missing:
+            self._fetch_and_cache(missing)
+        return {entity_id: self.cache.get(entity_id, self._null_entry()) for entity_id in ordered_ids}
+
+    def lookup(self, entity_id):
+        """Return cached resolution for a single id."""
+        if not is_entity_or_property_id(entity_id):
+            return self._null_entry()
+        if entity_id not in self.cache:
+            self.resolve([entity_id])
+        return self.cache.get(entity_id, self._null_entry())
+
+    def _fetch_and_cache(self, ids):
+        newly_cached = False
+        for batch in chunked(ids, 50):
+            params = {
+                "action": "wbgetentities",
+                "ids": "|".join(batch),
+                "props": "labels|descriptions|aliases",
+            }
+            data = get_json(params)
+            resolved_ids = set()
+            if data and "entities" in data:
+                for entity_id, entity in data["entities"].items():
+                    resolved_ids.add(entity_id)
+                    if not entity or "missing" in entity:
+                        self.cache[entity_id] = self._null_entry()
+                        continue
+                    self.cache[entity_id] = {
+                        "label_en": pick_label(entity, self.preferred_lang),
+                        "description_en": pick_description(entity, self.preferred_lang),
+                        "aliases_en": extract_aliases(entity, preferred_lang=self.preferred_lang),
+                    }
+                    newly_cached = True
+            unresolved = set(batch) - resolved_ids
+            for missing_id in unresolved:
+                if missing_id in self.failed_ids:
+                    continue
+                print(f"    [!] Warning: Unable to resolve {missing_id} via Wikidata API.")
+                self.failed_ids.add(missing_id)
+                self.cache[missing_id] = self._null_entry()
+                newly_cached = True
+        if newly_cached:
+            self._persist_cache()
 
 
 def get_current_state(qid, property_id):
@@ -1320,6 +1455,260 @@ def find_tbox_reform_revision(
     return last_change, history_meta
 
 
+def parse_report_violation_type_qids(raw_text):
+    """Extract normalized QIDs from the raw violation type string."""
+    if not raw_text or not isinstance(raw_text, str):
+        return []
+    seen = set()
+    ordered = []
+    for match in REPORT_VIOLATION_QID_PATTERN.finditer(raw_text):
+        qid = f"Q{match.group(1)}"
+        if qid in seen:
+            continue
+        seen.add(qid)
+        ordered.append(qid)
+    return ordered
+
+
+def extract_qids_from_sequence(values):
+    """Return ordered list of QIDs detected inside a list-like payload."""
+    if not values:
+        return []
+    iterable = values if isinstance(values, list) else [values]
+    qids = []
+    for value in iterable:
+        if is_qid(value):
+            qids.append(value)
+    return qids
+
+
+def add_resolved_list_fields(container, field_name, ids, resolved_lookup):
+    """Attach *_labels_en/_descriptions_en/_aliases_en based on an id list."""
+    if not container or not ids:
+        return
+    labels = []
+    descriptions = []
+    aliases = []
+    for entity_id in ids:
+        resolution = resolved_lookup.get(entity_id) or LabelResolver._null_entry()
+        labels.append(resolution["label_en"])
+        descriptions.append(resolution["description_en"])
+        aliases.append(resolution["aliases_en"])
+    container[f"{field_name}_labels_en"] = labels
+    container[f"{field_name}_descriptions_en"] = descriptions
+    container[f"{field_name}_aliases_en"] = aliases
+
+
+def ensure_signature_structures(constraint_delta):
+    """Backfill structured signatures and *_raw fields for older records."""
+    if not constraint_delta or not isinstance(constraint_delta, dict):
+        return
+    for key in ("signature_before", "signature_after"):
+        raw_key = f"{key}_raw"
+        payload = constraint_delta.get(key)
+        if isinstance(payload, str):
+            if raw_key not in constraint_delta:
+                constraint_delta[raw_key] = payload
+            try:
+                constraint_delta[key] = json.loads(payload)
+            except json.JSONDecodeError:
+                constraint_delta[key] = []
+        elif payload is None:
+            constraint_delta[key] = []
+        elif isinstance(payload, list):
+            if raw_key not in constraint_delta and isinstance(constraint_delta.get(raw_key), str):
+                continue
+        else:
+            constraint_delta[key] = []
+
+
+def collect_constraint_related_ids(constraint_delta):
+    """Gather every QID/PID referenced inside the constraint signatures."""
+    ids = set()
+    if not constraint_delta or not isinstance(constraint_delta, dict):
+        return ids
+    ensure_signature_structures(constraint_delta)
+    for field in ("signature_before", "signature_after"):
+        signature = constraint_delta.get(field) or []
+        for constraint in signature:
+            if not isinstance(constraint, dict):
+                continue
+            constraint_qid = constraint.get("constraint_qid")
+            if is_qid(constraint_qid):
+                ids.add(constraint_qid)
+            qualifiers = constraint.get("qualifiers") or []
+            for qualifier in qualifiers:
+                qualifier_pid = qualifier.get("property_id")
+                if is_pid(qualifier_pid):
+                    ids.add(qualifier_pid)
+                for value in qualifier.get("values") or []:
+                    if is_qid(value) or is_pid(value):
+                        ids.add(value)
+    return ids
+
+
+def build_readable_constraints(signature_entries, resolved_lookup):
+    """Return (constraints_readable_en, rule_summaries_en) for a signature list."""
+    readable = []
+    summaries = []
+    entries = signature_entries or []
+    for constraint in entries:
+        if not isinstance(constraint, dict):
+            continue
+        constraint_qid = constraint.get("constraint_qid")
+        constraint_resolution = resolved_lookup.get(constraint_qid) or LabelResolver._null_entry()
+        readable_entry = {
+            "constraint_type": {
+                "id": constraint_qid,
+                "label_en": constraint_resolution["label_en"],
+                "description_en": constraint_resolution["description_en"],
+                "aliases_en": constraint_resolution["aliases_en"],
+            },
+            "rank": constraint.get("rank"),
+            "snaktype": constraint.get("snaktype"),
+            "parameters": {},
+        }
+        summary_segments = []
+        qualifiers = constraint.get("qualifiers") or []
+        for qualifier in qualifiers:
+            qualifier_pid = qualifier.get("property_id")
+            property_resolution = resolved_lookup.get(qualifier_pid) or LabelResolver._null_entry()
+            parameter_key = qualifier_pid
+            parameter_values = []
+            summary_values = []
+            for raw_value in qualifier.get("values") or []:
+                if is_qid(raw_value) or is_pid(raw_value):
+                    value_resolution = resolved_lookup.get(raw_value) or LabelResolver._null_entry()
+                    parameter_values.append(
+                        {
+                            "id": raw_value,
+                            "label_en": value_resolution["label_en"],
+                            "description_en": value_resolution["description_en"],
+                            "aliases_en": value_resolution["aliases_en"],
+                        }
+                    )
+                    summary_values.append(value_resolution["label_en"] or raw_value)
+                else:
+                    parameter_values.append({"value": raw_value})
+                    summary_values.append(raw_value)
+            readable_entry["parameters"].setdefault(parameter_key, []).extend(parameter_values)
+            prop_label = property_resolution["label_en"] or qualifier_pid
+            summary_body = ", ".join(summary_values) if summary_values else "unspecified"
+            summary_segments.append(f"{prop_label}: {summary_body}")
+        readable.append(readable_entry)
+        constraint_label = readable_entry["constraint_type"]["label_en"] or constraint_qid or "Constraint"
+        if summary_segments:
+            summaries.append(f"{constraint_label}: " + "; ".join(summary_segments))
+        else:
+            summaries.append(f"{constraint_label}: no qualifiers recorded")
+    return readable, summaries
+
+
+def annotate_constraint_delta(constraint_delta, resolved_lookup):
+    """Decorate constraint deltas with readable mirrors and ensure *_raw fields."""
+    if not constraint_delta or not isinstance(constraint_delta, dict):
+        return
+    ensure_signature_structures(constraint_delta)
+    before_readable, before_summaries = build_readable_constraints(
+        constraint_delta.get("signature_before"), resolved_lookup
+    )
+    after_readable, after_summaries = build_readable_constraints(
+        constraint_delta.get("signature_after"), resolved_lookup
+    )
+    constraint_delta["constraints_readable_en"] = {
+        "before": before_readable,
+        "after": after_readable,
+    }
+    constraint_delta["rule_summaries_en"] = {
+        "before": before_summaries,
+        "after": after_summaries,
+    }
+
+
+def enrich_repair_entry(entry, resolver):
+    """Add human-readable mirrors for ids while preserving machine-stable fields."""
+    if not isinstance(entry, dict) or resolver is None:
+        return entry
+    violation_context = entry.setdefault("violation_context", {})
+    repair_target = entry.setdefault("repair_target", {})
+    persistence_check = entry.setdefault("persistence_check", {})
+
+    ids_to_resolve = set()
+
+    qid = entry.get("qid")
+    if is_qid(qid):
+        ids_to_resolve.add(qid)
+    property_id = entry.get("property")
+    if is_pid(property_id):
+        ids_to_resolve.add(property_id)
+
+    report_type_raw = violation_context.get("report_violation_type")
+    if report_type_raw and "report_violation_type_raw" not in violation_context:
+        violation_context["report_violation_type_raw"] = report_type_raw
+    report_qids = parse_report_violation_type_qids(report_type_raw)
+    ids_to_resolve.update(report_qids)
+
+    violation_value_qids = extract_qids_from_sequence(violation_context.get("value"))
+    violation_value_current_qids = extract_qids_from_sequence(violation_context.get("value_current_2025"))
+    ids_to_resolve.update(violation_value_qids)
+    ids_to_resolve.update(violation_value_current_qids)
+
+    persistence_qids = extract_qids_from_sequence(persistence_check.get("current_value_2025"))
+    ids_to_resolve.update(persistence_qids)
+
+    old_value_qids = extract_qids_from_sequence(repair_target.get("old_value"))
+    new_value_qids = extract_qids_from_sequence(repair_target.get("new_value"))
+    repair_value_qids = extract_qids_from_sequence(repair_target.get("value"))
+    ids_to_resolve.update(old_value_qids)
+    ids_to_resolve.update(new_value_qids)
+    ids_to_resolve.update(repair_value_qids)
+
+    constraint_delta = repair_target.get("constraint_delta")
+    ids_to_resolve.update(collect_constraint_related_ids(constraint_delta))
+
+    resolved_lookup = resolver.resolve(sorted(ids_to_resolve))
+
+    def resolved_info(entity_id):
+        if not entity_id:
+            return LabelResolver._null_entry()
+        return resolved_lookup.get(entity_id) or LabelResolver._null_entry()
+
+    qid_resolution = resolved_info(qid)
+    entry["qid_label_en"] = qid_resolution["label_en"]
+    entry["qid_description_en"] = qid_resolution["description_en"]
+    entry["qid_aliases_en"] = qid_resolution["aliases_en"]
+
+    property_resolution = resolved_info(property_id)
+    entry["property_label_en"] = property_resolution["label_en"]
+    entry["property_description_en"] = property_resolution["description_en"]
+    entry["property_aliases_en"] = property_resolution["aliases_en"]
+
+    violation_context["report_violation_type_qids"] = report_qids
+    if report_qids:
+        add_resolved_list_fields(violation_context, "report_violation_type", report_qids, resolved_lookup)
+
+    add_resolved_list_fields(violation_context, "value", violation_value_qids, resolved_lookup)
+    add_resolved_list_fields(violation_context, "value_current_2025", violation_value_current_qids, resolved_lookup)
+    add_resolved_list_fields(persistence_check, "current_value_2025", persistence_qids, resolved_lookup)
+    add_resolved_list_fields(repair_target, "old_value", old_value_qids, resolved_lookup)
+    add_resolved_list_fields(repair_target, "new_value", new_value_qids, resolved_lookup)
+    add_resolved_list_fields(repair_target, "value", repair_value_qids, resolved_lookup)
+
+    if constraint_delta:
+        annotate_constraint_delta(constraint_delta, resolved_lookup)
+
+    return entry
+
+
+def enrich_repair_entries(entries, resolver):
+    """Enrich an entire Stage-2 dataset in-place."""
+    if not entries or resolver is None:
+        return entries
+    for entry in entries:
+        enrich_repair_entry(entry, resolver)
+    return entries
+
+
 def process_pipeline(max_candidates=None):
     """Main entry point: reads candidates, finds repairs, and builds context."""
     input_file = REPAIR_CANDIDATES_FILE
@@ -1328,6 +1717,7 @@ def process_pipeline(max_candidates=None):
         print(f"[!] Unable to proceed without {input_file}.")
         return
 
+    label_resolver = LabelResolver()
     dataset = load_cached_repairs(WIKIDATA_REPAIRS)
 
     summary = None
@@ -1335,6 +1725,9 @@ def process_pipeline(max_candidates=None):
         print(
             "[*] Using cached repairs file for Stage 3. Delete data/02_wikidata_repairs.json to force recompute Stage 2."
         )
+        enrich_repair_entries(dataset, label_resolver)
+        with open(WIKIDATA_REPAIRS, "w", encoding="utf-8") as out:
+            json.dump(dataset, out, indent=2)
     else:
         stats_logger = StatsLogger(STATS_FILE)
         summary = {
@@ -1489,7 +1882,7 @@ def process_pipeline(max_candidates=None):
                     entry["ambiguous"] = True
                     entry["ambiguous_reasons"] = ["A_BOX_CHANGED", "T_BOX_CHANGED"]
                     summary["ambiguous_both_changed"] += 1
-                dataset.append(entry)
+                dataset.append(enrich_repair_entry(entry, label_resolver))
                 entity_history_scanned = history_scanned(history_meta)
                 property_history_scanned = history_scanned(ambiguous_history_meta)
                 stats_payload = {
@@ -1566,7 +1959,7 @@ def process_pipeline(max_candidates=None):
                             "current_value_2025": normalized_current_values,
                         },
                     }
-                    dataset.append(entry)
+                    dataset.append(enrich_repair_entry(entry, label_resolver))
                     entity_history_scanned = history_scanned(history_meta)
                     property_history_scanned = history_scanned(tbox_history_meta)
                     stats_logger.log(
