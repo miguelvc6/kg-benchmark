@@ -35,6 +35,31 @@ TARGET_PROPERTIES = [
 ]
 REPORT_HISTORY_DEPTH = 20  # Revision pairs scanned per report page
 QID_PATTERN = re.compile(r"\[\[(Q\d+)\]\]")
+INVALID_REPORT_SECTIONS = {
+    "Types statistics",
+}
+
+
+def is_valid_violation_section(section):
+    """Return True if a report section represents a real violation bucket."""
+    if not section:
+        return False
+    if section in INVALID_REPORT_SECTIONS:
+        return False
+    if section.strip().lower() in {"unknown"}:
+        return False
+    return True
+
+
+def normalize_report_violation_type(section):
+    """Strip lightweight wiki templates/markup for a cleaner display-only header."""
+    if not section:
+        return None
+    normalized = re.sub(r"\{\{[^}]+\}\}", "", section).strip()
+    normalized = re.sub(r"\s+", " ", normalized)
+    return normalized or None
+
+
 SITE = None
 
 DATA_DIR = Path("data")
@@ -96,10 +121,11 @@ def extract_qids_with_context(text):
         return {}
 
     qid_map = {}
-    current_section = "Unknown"
+    current_section = None
 
     # Matches headers like "== Format ==" or "=== Single value ==="
     header_pattern = re.compile(r"^={2,}\s*([^=]+?)\s*={2,}\s*$")
+    cleaner = re.compile(r"['\"\[\]\{\}]| violations$| matches$", re.IGNORECASE)
 
     for line in text.splitlines():
         line = line.strip()
@@ -109,11 +135,15 @@ def extract_qids_with_context(text):
         # Detect section header
         header_match = header_pattern.match(line)
         if header_match:
-            current_section = header_match.group(1).strip()
+            raw_header = header_match.group(1).strip()
+            clean_header = cleaner.sub("", raw_header).strip()
+            current_section = clean_header if is_valid_violation_section(clean_header) else None
             continue
 
         # Extract QIDs in this line
         qids = QID_PATTERN.findall(line)
+        if not current_section:
+            continue
         for qid in qids:
             if qid not in qid_map:
                 qid_map[qid] = set()
@@ -1191,6 +1221,7 @@ def process_pipeline(max_candidates=None):
             qid = item["qid"]
             pid = item["property_id"]
             violation_type = item.get("violation_type")
+            violation_type_normalized = normalize_report_violation_type(violation_type)
 
             if not qid.startswith("Q"):
                 progress.update(1)
@@ -1257,16 +1288,20 @@ def process_pipeline(max_candidates=None):
                     progress.update(1)
                     continue
                 normalized_current_values = current_values_live if current_values_live is not None else []
+                violation_context = {
+                    "report_violation_type": violation_type,
+                    "value": fix_event["old_value"],
+                }
+                if violation_type_normalized:
+                    violation_context["report_violation_type_normalized"] = violation_type_normalized
+                violation_context.update(report_metadata)
                 entry = {
                     "id": f"repair_{qid}_{fix_event['repair_revision_id']}",
                     "qid": qid,
                     "property": pid,
                     "track": "A_BOX",
-                    "type": violation_type or "TBD",
-                    "violation_context": {
-                        "report_violation_type": violation_type,
-                        "value": fix_event["old_value"],
-                    },
+                    "type": "TBD",
+                    "violation_context": violation_context,
                     "repair_target": {
                         "kind": "A_BOX",
                         "action": fix_event["action"],
@@ -1281,7 +1316,6 @@ def process_pipeline(max_candidates=None):
                         "current_value_2025": normalized_current_values,
                     },
                 }
-                entry["violation_context"].update(report_metadata)
                 # Re-run constraint diffing without heavy payloads to flag ambiguous cases.
                 cheap_tbox_event, ambiguous_history_meta = find_tbox_reform_revision(
                     pid,
@@ -1297,7 +1331,7 @@ def process_pipeline(max_candidates=None):
                     summary["ambiguous_both_changed"] += 1
                 dataset.append(entry)
                 entity_history_scanned = history_scanned(history_meta)
-                property_history_scanned = history_scanned(tbox_history_meta)
+                property_history_scanned = history_scanned(ambiguous_history_meta)
                 stats_payload = {
                     **record_base,
                     "result": "repair_found",
@@ -1309,6 +1343,8 @@ def process_pipeline(max_candidates=None):
                 }
                 if entry.get("ambiguous"):
                     stats_payload["ambiguous"] = True
+                if ambiguous_history_meta:
+                    stats_payload["history_property"] = ambiguous_history_meta
                 stats_payload["entity_history_scanned"] = entity_history_scanned
                 stats_payload["property_history_scanned"] = property_history_scanned
                 stats_logger.log(stats_payload)
@@ -1342,18 +1378,22 @@ def process_pipeline(max_candidates=None):
                     )
                     summary["repairs_found"] += 1
                     summary["repairs_found_t_box"] += 1
+                    violation_context = {
+                        "report_violation_type": violation_type,
+                        "value": None,
+                        "value_current_2025": normalized_current_values,
+                    }
+                    if violation_type_normalized:
+                        violation_context["report_violation_type_normalized"] = violation_type_normalized
+                    violation_context.update(report_metadata)
                     entry = {
                         # Include qid so every T-box ID stays globally unique across focus nodes.
                         "id": f"reform_{qid}_{pid}_{tbox_event['property_revision_id']}",
                         "qid": qid,
                         "property": pid,
                         "track": "T_BOX",
-                        "type": violation_type or "TBD",
-                        "violation_context": {
-                            "report_violation_type": violation_type,
-                            "value": None,
-                            "value_current_2025": normalized_current_values,
-                        },
+                        "type": "TBD",
+                        "violation_context": violation_context,
                         "repair_target": {
                             "kind": "T_BOX",
                             "property_revision_id": tbox_event["property_revision_id"],
@@ -1366,7 +1406,6 @@ def process_pipeline(max_candidates=None):
                             "current_value_2025": normalized_current_values,
                         },
                     }
-                    entry["violation_context"].update(report_metadata)
                     dataset.append(entry)
                     entity_history_scanned = history_scanned(history_meta)
                     property_history_scanned = history_scanned(tbox_history_meta)
@@ -1444,6 +1483,8 @@ def process_pipeline(max_candidates=None):
                 buffer_entries = []
 
             for entry_id, context in builder.build(dataset):
+                if not isinstance(context, dict) or "L1_ego_node" not in context:
+                    raise RuntimeError(f"World state context for {entry_id} is malformed; refusing to write.")
                 if entry_id in emitted_ids:
                     print(f"[!] Duplicate world_state id {entry_id} detected. Skipping to avoid overwriting context.")
                     continue
