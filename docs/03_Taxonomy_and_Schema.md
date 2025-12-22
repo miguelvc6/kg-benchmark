@@ -70,7 +70,8 @@ All machine-stable fields remain untouched, but we now add deterministic mirrors
 | `_qids` | Parsed list of normalized QIDs extracted from a free-form field. |
 | `_label_en` / `_labels_en` | Resolved English labels for a single ID or an ordered list. |
 | `_description_en` / `_descriptions_en` | English descriptions aligned with the same cardinality as the ID field. |
-| `_aliases_en` | Alias list (single ID) or list-of-lists aligned with `_labels_en`. |
+
+"Aliases are not stored by design to avoid multilingual noise, prompt bloat, and unintended information leakage. Labels and descriptions are sufficient for all Phase-1 experiments."
 
 The fetcher owns the deterministic label cache stored at `data/cache/id_labels_en.json`. Every lookup goes through this cache to guarantee reproducibility.
 
@@ -79,7 +80,7 @@ The fetcher owns the deterministic label cache stored at `data/cache/id_labels_e
 Every record still captures the core event metadata (`id`, `qid`, `property`, `track`, etc.) and now includes:
 
 * Human-friendly mirrors for `qid` and `property`.
-* Parsed violation types (`report_violation_type_qids`) plus aligned labels/descriptions/aliases.
+* Parsed violation types (`report_violation_type_qids`) plus aligned labels/descriptions (aliases intentionally excluded).
 * Annotated value lists wherever the payload is a QID (`value`, `value_current_2025`, `current_value_2025`, `old_value`, `new_value`, etc.).
 * Structured constraint signatures (`signature_before` / `signature_after`) accompanied by their raw string form, readable projections, and templated `rule_summaries_en`.
 
@@ -91,11 +92,9 @@ Every record still captures the core event metadata (`id`, `qid`, `property`, `t
   "qid": "Q2509775",
   "qid_label_en": "Alex Example",
   "qid_description_en": "Austrian illustrator",
-  "qid_aliases_en": ["Alexander Example", "A. Example"],
   "property": "P21",
   "property_label_en": "sex or gender",
   "property_description_en": "sex or gender identity of the person or animal",
-  "property_aliases_en": ["gender"],
   "track": "A_BOX",
   "violation_context": {
     "report_violation_type": "Type Q|5, Q|6581097",
@@ -105,10 +104,6 @@ Every record still captures the core event metadata (`id`, `qid`, `property`, `t
     "report_violation_type_descriptions_en": [
       "any member of species Homo sapiens",
       "female sex or gender"
-    ],
-    "report_violation_type_aliases_en": [
-      ["person", "people"],
-      ["woman", "female person"]
     ],
     "value": ["Q6581072"],
     "value_labels_en": ["male"],
@@ -209,7 +204,7 @@ The hashes continue to reference the canonical serialization (sorted keys, `sepa
 
 ### 3.3 Stage-3 World State (`data/03_world_state.json`)
 
-World State entries remain keyed by the repair `id` and keep the four-layer contract. The enrichment adds alias metadata to the label layer and exposes structured constraint signatures inside the optional `constraint_change_context`.
+World State entries remain keyed by the repair `id` and keep the four-layer contract. The enrichment adds English labels/descriptions to each layer (aliases intentionally excluded per the noise/ leakage policy) and exposes structured constraint signatures inside the optional `constraint_change_context`.
 
 ```json
 {
@@ -218,20 +213,17 @@ World State entries remain keyed by the repair `id` and keep the four-layer cont
       "qid": "Q2509775",
       "label": "Alex Example",
       "description": "Austrian illustrator",
-      "aliases": ["Alexander Example"],
       "properties": {"P21": ["Q6581097"]}
     },
     "L2_labels": {
       "entities": {
         "Q2509775": {
           "label": "Alex Example",
-          "description": "Austrian illustrator",
-          "aliases": ["Alexander Example"]
+          "description": "Austrian illustrator"
         },
         "P21": {
           "label": "sex or gender",
-          "description": "sex or gender identity of the person or animal",
-          "aliases": ["gender"]
+          "description": "sex or gender identity of the person or animal"
         }
       }
     },
@@ -241,8 +233,7 @@ World State entries remain keyed by the repair `id` and keep the four-layer cont
           "property_id": "P735",
           "target_qid": "Q1234",
           "target_label": "First name",
-          "target_description": "given name",
-          "target_aliases": []
+          "target_description": "given name"
         }
       ]
     },

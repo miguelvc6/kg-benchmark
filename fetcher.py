@@ -326,43 +326,6 @@ def pick_description(entity, lang="en"):
     return None
 
 
-def extract_aliases(entity, preferred_lang="en"):
-    """Return normalized alias list using preferred language first."""
-    if not entity:
-        return []
-    alias_map = entity.get("aliases") or {}
-    if not alias_map:
-        return []
-    ordered_langs = []
-    if preferred_lang in alias_map:
-        ordered_langs.append(preferred_lang)
-    ordered_langs.extend(sorted(lang for lang in alias_map if lang != preferred_lang))
-    collected = []
-    for lang in ordered_langs:
-        for alias_entry in alias_map.get(lang, []):
-            value = alias_entry.get("value")
-            if value:
-                collected.append(value)
-    return normalize_aliases(collected)
-
-
-def normalize_aliases(aliases):
-    """Deduplicate aliases case-insensitively while keeping order."""
-    if not aliases:
-        return []
-    seen = set()
-    deduped = []
-    for alias in aliases:
-        if not isinstance(alias, str):
-            continue
-        normalized = alias.casefold()
-        if normalized in seen:
-            continue
-        seen.add(normalized)
-        deduped.append(alias)
-    return deduped
-
-
 MISSING_LABEL_PLACEHOLDER = "Label unavailable"
 
 
@@ -399,11 +362,8 @@ def validate_world_state_entry(entry_id, entry, valid_ids=None):
         _ensure(required in entry, f"World state entry {entry_id} missing required layer {required}.")
     ego = entry["L1_ego_node"]
     _ensure(isinstance(ego, dict), f"L1_ego_node for {entry_id} must be an object.")
-    for field in ("qid", "label", "description", "aliases", "properties"):
+    for field in ("qid", "label", "description", "properties"):
         _ensure(field in ego, f"L1_ego_node for {entry_id} missing field {field}.")
-    _ensure(isinstance(ego["aliases"], list), f"L1_ego_node aliases for {entry_id} must be a list.")
-    for alias in ego["aliases"]:
-        _ensure(isinstance(alias, str), f"L1_ego_node aliases for {entry_id} must be strings.")
     _ensure(isinstance(ego["properties"], dict), f"L1_ego_node properties for {entry_id} must be an object.")
     neighborhood = entry["L3_neighborhood"]
     _ensure(isinstance(neighborhood, dict), f"L3_neighborhood for {entry_id} must be a dict.")
@@ -415,12 +375,8 @@ def validate_world_state_entry(entry_id, entry, valid_ids=None):
     _ensure(isinstance(edges, list), f"L3_neighborhood outgoing_edges for {entry_id} must be a list.")
     for idx, edge in enumerate(edges):
         _ensure(isinstance(edge, dict), f"Edge #{idx} for {entry_id} must be an object.")
-        for field in ("property_id", "target_qid", "target_label", "target_description", "target_aliases"):
+        for field in ("property_id", "target_qid", "target_label", "target_description"):
             _ensure(field in edge, f"Edge #{idx} for {entry_id} missing field {field}.")
-        aliases = edge["target_aliases"]
-        _ensure(isinstance(aliases, list), f"Edge #{idx} target_aliases for {entry_id} must be a list.")
-        for alias in aliases:
-            _ensure(isinstance(alias, str), f"Edge #{idx} target_aliases for {entry_id} must be strings.")
     _ensure(isinstance(entry["L2_labels"], dict), f"L2_labels for {entry_id} must be a dict.")
     _ensure(isinstance(entry["L4_constraints"], dict), f"L4_constraints for {entry_id} must be a dict.")
 
@@ -661,7 +617,7 @@ class WorldStateBuilder:
             params = {
                 "action": "wbgetentities",
                 "ids": "|".join(batch),
-                "props": "labels|descriptions|aliases",
+                "props": "labels|descriptions",
             }
             data = get_json(params)
             if not data or "entities" not in data:
@@ -673,7 +629,6 @@ class WorldStateBuilder:
                     "id": entity_id,
                     "labels": entity.get("labels", {}),
                     "descriptions": entity.get("descriptions", {}),
-                    "aliases": entity.get("aliases", {}),
                 }
         return resolved
 
@@ -684,7 +639,6 @@ class WorldStateBuilder:
             "qid": focus_entity.get("id"),
             "label": pick_label(focus_entity),
             "description": pick_description(focus_entity),
-            "aliases": extract_aliases(focus_entity),
             "sitelinks_count": len(focus_entity.get("sitelinks", {})),
             "properties": self._extract_properties(focus_entity),
         }
@@ -753,7 +707,6 @@ class WorldStateBuilder:
                             "target_qid": target_id,
                             "target_label": pick_label(neighbor),
                             "target_description": pick_description(neighbor),
-                            "target_aliases": extract_aliases(neighbor),
                         }
                     )
                     edge_count += 1
@@ -779,11 +732,9 @@ class WorldStateBuilder:
             entity = entity_map.get(entity_id)
             label = pick_label(entity) if entity else None
             description = pick_description(entity) if entity else None
-            aliases = extract_aliases(entity)
             label_index[entity_id] = {
                 "label": label or MISSING_LABEL_PLACEHOLDER,
                 "description": description,
-                "aliases": aliases,
             }
 
         if focus_entity:
@@ -1153,7 +1104,6 @@ class LabelResolver:
         return {
             "label_en": None,
             "description_en": None,
-            "aliases_en": [],
         }
 
     def resolve(self, ids):
@@ -1190,7 +1140,7 @@ class LabelResolver:
             params = {
                 "action": "wbgetentities",
                 "ids": "|".join(batch),
-                "props": "labels|descriptions|aliases",
+                "props": "labels|descriptions",
             }
             data = get_json(params)
             resolved_ids = set()
@@ -1203,7 +1153,6 @@ class LabelResolver:
                     self.cache[entity_id] = {
                         "label_en": pick_label(entity, self.preferred_lang),
                         "description_en": pick_description(entity, self.preferred_lang),
-                        "aliases_en": extract_aliases(entity, preferred_lang=self.preferred_lang),
                     }
                     newly_cached = True
             unresolved = set(batch) - resolved_ids
@@ -1483,20 +1432,17 @@ def extract_qids_from_sequence(values):
 
 
 def add_resolved_list_fields(container, field_name, ids, resolved_lookup):
-    """Attach *_labels_en/_descriptions_en/_aliases_en based on an id list."""
+    """Attach *_labels_en/_descriptions_en based on an id list."""
     if not container or not ids:
         return
     labels = []
     descriptions = []
-    aliases = []
     for entity_id in ids:
         resolution = resolved_lookup.get(entity_id) or LabelResolver._null_entry()
         labels.append(resolution["label_en"])
         descriptions.append(resolution["description_en"])
-        aliases.append(resolution["aliases_en"])
     container[f"{field_name}_labels_en"] = labels
     container[f"{field_name}_descriptions_en"] = descriptions
-    container[f"{field_name}_aliases_en"] = aliases
 
 
 def ensure_signature_structures(constraint_delta):
@@ -1562,7 +1508,6 @@ def build_readable_constraints(signature_entries, resolved_lookup):
                 "id": constraint_qid,
                 "label_en": constraint_resolution["label_en"],
                 "description_en": constraint_resolution["description_en"],
-                "aliases_en": constraint_resolution["aliases_en"],
             },
             "rank": constraint.get("rank"),
             "snaktype": constraint.get("snaktype"),
@@ -1584,7 +1529,6 @@ def build_readable_constraints(signature_entries, resolved_lookup):
                             "id": raw_value,
                             "label_en": value_resolution["label_en"],
                             "description_en": value_resolution["description_en"],
-                            "aliases_en": value_resolution["aliases_en"],
                         }
                     )
                     summary_values.append(value_resolution["label_en"] or raw_value)
@@ -1676,12 +1620,10 @@ def enrich_repair_entry(entry, resolver):
     qid_resolution = resolved_info(qid)
     entry["qid_label_en"] = qid_resolution["label_en"]
     entry["qid_description_en"] = qid_resolution["description_en"]
-    entry["qid_aliases_en"] = qid_resolution["aliases_en"]
 
     property_resolution = resolved_info(property_id)
     entry["property_label_en"] = property_resolution["label_en"]
     entry["property_description_en"] = property_resolution["description_en"]
-    entry["property_aliases_en"] = property_resolution["aliases_en"]
 
     violation_context["report_violation_type_qids"] = report_qids
     if report_qids:
