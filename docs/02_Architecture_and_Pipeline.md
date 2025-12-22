@@ -69,7 +69,22 @@ To ensure ecological validity, we enforce **Strict Persistence** *after* identif
 * **Ambiguous Cases:** When both paths detect changes, the entry receives `ambiguous` metadata and contributes to a dedicated stats counter.
 * **Report Provenance:** Every record includes report fix timestamps and revision IDs from Stage 1 so failures can be traced back to the originating bot diff.
 
----
+### Deterministic Label Resolution & Mirroring
+
+Stage 2 now emits human-readable mirrors for every machine-stable identifier without sacrificing determinism.
+
+* **Label Resolver Module:** `fetcher.py` instantiates a `LabelResolver` that batches IDs through `wbgetentities`, persists the responses inside `data/cache/id_labels_en.json`, and reuses the cache on subsequent runs. The resolver always returns `{label_en, description_en, aliases_en}` and falls back to `null/[]` with a warning whenever Wikidata cannot resolve an ID. The cache file is canonicalized (`sort_keys=True`) to keep hashes stable.
+* **Naming Convention:** Raw fields remain unchanged; the pipeline adds siblings such as `qid_label_en`, `property_aliases_en`, `report_violation_type_qids`, `value_current_2025_labels_en`, etc. `_raw` preserves the original string, `_qids` lists parsed IDs, and `_label_en/_labels_en` (plus `_description_en`, `_aliases_en`) carry the interpreted mirrors.
+* **Constraint Introspection:** P2302 qualifier IDs are now expanded into `{id,label_en,...}` tuples under `constraints_readable_en`, and the same lookup powers the templated `rule_summaries_en` strings used in docs and classifiers.
+
+### Structured Constraint Signatures
+
+The old design stored deterministic constraint signatures as JSON strings. We now keep both representations:
+
+* **Canonical serialization:** `canonicalize_json_structure()` renders normalized statements using sorted keys and `separators=(",", ":")` prior to hashing, giving us whitespace-free hashes.
+* **Dual fields:** `signature_before` / `signature_after` are structured lists of qualifier dicts, while `signature_before_raw` / `signature_after_raw` retain the byte-identical string used in the original benchmark. `constraints_readable_en` and `rule_summaries_en` are derived strictly from the structured payload to avoid re-parsing strings downstream.
+
+--- 
 
 ## 4. Stage III: The Context Builder (World State Snapshot)
 
@@ -103,6 +118,6 @@ To efficiently capture the 1-hop neighborhood without scanning the dump twice (w
 For every benchmark case, the `world_state` object contains four distinct layers:
 
 * **L1 (Ego Node):** All properties of the entity (for consistency checks).
-* **L2 (Labels):** Human-readable names for LLM consumption.
+* **L2 (Labels):** Human-readable names plus descriptions and `aliases` for every QID/PID touched by the context.
 * **L3 (Neighborhood):** 1-hop outgoing edges (for testing **Type B: Graph RAG**).
 * **L4 (Constraints):** The full SHACL definition of the violated property (for testing **Type A: Logic**).

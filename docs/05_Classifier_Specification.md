@@ -40,7 +40,7 @@ def classify(repair_event, world_state):
 **Goal:** Determine if the answer (the "Truth") was already present in the graph topology or node text.
 
 * **Search Scope:**
-* **Focus Node:** Label, Description, Aliases (if available).
+* **Focus Node:** Start with the Stage-2 mirrors (`qid_label_en`, `qid_description_en`, `qid_aliases_en`) and fall back to the World State `L1_ego_node` for additional literal evidence.
 * **1-Hop Neighbors:** Target QID Labels and Descriptions from `neighborhood_snapshot`.
 
 
@@ -64,6 +64,7 @@ def classify(repair_event, world_state):
 * **One-of Constraint (`Q21502402`):** Allowed values are enumerated in the constraint definition itself.
 * **Range Constraint (`Q21510860`):** Numerical bounds (Min/Max).
 * **Inverse Constraint (`Q21510855`):** (Debatable, but often implies a logical symmetry fix if the inverse edge exists). *Decision:* Treat as Type B if the inverse edge exists, otherwise Type A if it's a schema fix.
+* **Readable metadata:** Prefer the Stage-2 `constraints_readable_en` and `rule_summaries_en` projections before attempting to parse raw constraint statements. They already contain `{id,label}` tuples for every qualifier.
 
 
 
@@ -79,6 +80,8 @@ def classify(repair_event, world_state):
 ###4.1 Input Handling* Load `02_wikidata_repairs.json` (The list of events).
 * Load `03_world_state.json` (The dictionary of context).
 * **Join:** Iterate through `02`, using the `id` field to look up the context in `03`.
+
+Stage-2 entries already expose deterministic mirrors for all IDs (`qid_label_en`, `property_aliases_en`, `value_current_2025_labels_en`, `report_violation_type_qids`, `constraints_readable_en`, etc.). Use these fields before resorting to bespoke label resolution—they are backed by the shared label cache and keep the classifier deterministic.
 
 ### 4.2 Handling DELETE Operations* A `DELETE` operation usually implies the existing value was wrong.
 * **Classification:**

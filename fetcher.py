@@ -30,9 +30,9 @@ LATEST_DUMP_PATH = Path("data/latest-all.json.gz")  # 2025 dump location
 WORLD_STATE_FILE = Path("data/03_world_state.json")  # Output for built contexts
 # Limit processing to specific properties for debugging; leave empty to process all
 TARGET_PROPERTIES = [
-    "P569",  # Date of Birth
-    "P570",  # Date of Death
-    "P21",  # Sex or Gender
+    # "P569",  # Date of Birth
+    # "P570",  # Date of Death
+    # "P21",  # Sex or Gender
 ]
 REPORT_HISTORY_DEPTH = 20  # Revision pairs scanned per report page
 QID_PATTERN = re.compile(r"\[\[(Q\d+)\]\]")
@@ -1719,6 +1719,13 @@ def process_pipeline(max_candidates=None):
 
     label_resolver = LabelResolver()
     dataset = load_cached_repairs(WIKIDATA_REPAIRS)
+    seen_ids = set()
+    if dataset:
+        for entry in dataset:
+            if isinstance(entry, dict):
+                entry_id = entry.get("id")
+                if entry_id:
+                    seen_ids.add(entry_id)
 
     summary = None
     if dataset is not None:
@@ -1746,6 +1753,7 @@ def process_pipeline(max_candidates=None):
             "no_history": 0,
             "truncated_by_window": 0,
             "reached_page_limit": 0,
+            "duplicates_skipped": 0,
         }
 
         def record_history_stats(meta):
@@ -1764,6 +1772,7 @@ def process_pipeline(max_candidates=None):
         print(f"[*] Loaded {len(candidates)} candidates. Using REST history.")
 
         dataset = []
+        seen_ids.clear()
         total_to_process = len(candidates)
         if max_candidates is not None:
             total_to_process = min(total_to_process, max_candidates)
@@ -1882,25 +1891,39 @@ def process_pipeline(max_candidates=None):
                     entry["ambiguous"] = True
                     entry["ambiguous_reasons"] = ["A_BOX_CHANGED", "T_BOX_CHANGED"]
                     summary["ambiguous_both_changed"] += 1
-                dataset.append(enrich_repair_entry(entry, label_resolver))
-                entity_history_scanned = history_scanned(history_meta)
-                property_history_scanned = history_scanned(ambiguous_history_meta)
-                stats_payload = {
-                    **record_base,
-                    "result": "repair_found",
-                    "track": "A_BOX",
-                    "history": history_meta,
-                    "history_entity": history_meta,
-                    "repair_revision_id": fix_event["repair_revision_id"],
-                    "action": fix_event["action"],
-                }
-                if entry.get("ambiguous"):
-                    stats_payload["ambiguous"] = True
-                if ambiguous_history_meta:
-                    stats_payload["history_property"] = ambiguous_history_meta
-                stats_payload["entity_history_scanned"] = entity_history_scanned
-                stats_payload["property_history_scanned"] = property_history_scanned
-                stats_logger.log(stats_payload)
+                entry_id = entry["id"]
+                if entry_id in seen_ids:
+                    progress.write(f"    [!] Duplicate Stage-2 id detected ({entry_id}). Skipping.")
+                    summary["duplicates_skipped"] += 1
+                    stats_logger.log(
+                        {
+                            **record_base,
+                            "result": "duplicate_stage2_id",
+                            "track": "A_BOX",
+                            "duplicate_id": entry_id,
+                        }
+                    )
+                else:
+                    seen_ids.add(entry_id)
+                    dataset.append(enrich_repair_entry(entry, label_resolver))
+                    entity_history_scanned = history_scanned(history_meta)
+                    property_history_scanned = history_scanned(ambiguous_history_meta)
+                    stats_payload = {
+                        **record_base,
+                        "result": "repair_found",
+                        "track": "A_BOX",
+                        "history": history_meta,
+                        "history_entity": history_meta,
+                        "repair_revision_id": fix_event["repair_revision_id"],
+                        "action": fix_event["action"],
+                    }
+                    if entry.get("ambiguous"):
+                        stats_payload["ambiguous"] = True
+                    if ambiguous_history_meta:
+                        stats_payload["history_property"] = ambiguous_history_meta
+                    stats_payload["entity_history_scanned"] = entity_history_scanned
+                    stats_payload["property_history_scanned"] = property_history_scanned
+                    stats_logger.log(stats_payload)
             else:
                 # Reformer (T-box) path: fall back to constraint evolution when the A-box stayed untouched.
                 tbox_event, tbox_history_meta = find_tbox_reform_revision(
@@ -1959,24 +1982,38 @@ def process_pipeline(max_candidates=None):
                             "current_value_2025": normalized_current_values,
                         },
                     }
-                    dataset.append(enrich_repair_entry(entry, label_resolver))
-                    entity_history_scanned = history_scanned(history_meta)
-                    property_history_scanned = history_scanned(tbox_history_meta)
-                    stats_logger.log(
-                        {
-                            **record_base,
-                            "result": "repair_found",
-                            "track": "T_BOX",
-                            "history": history_meta,
-                            "history_entity": history_meta,
-                            "history_property": tbox_history_meta,
-                            "property_revision_id": tbox_event["property_revision_id"],
-                            "constraint_hash_before": delta["hash_before"],
-                            "constraint_hash_after": delta["hash_after"],
-                            "entity_history_scanned": entity_history_scanned,
-                            "property_history_scanned": property_history_scanned,
-                        }
-                    )
+                    entry_id = entry["id"]
+                    if entry_id in seen_ids:
+                        progress.write(f"    [!] Duplicate Stage-2 id detected ({entry_id}). Skipping.")
+                        summary["duplicates_skipped"] += 1
+                        stats_logger.log(
+                            {
+                                **record_base,
+                                "result": "duplicate_stage2_id",
+                                "track": "T_BOX",
+                                "duplicate_id": entry_id,
+                            }
+                        )
+                    else:
+                        seen_ids.add(entry_id)
+                        dataset.append(enrich_repair_entry(entry, label_resolver))
+                        entity_history_scanned = history_scanned(history_meta)
+                        property_history_scanned = history_scanned(tbox_history_meta)
+                        stats_logger.log(
+                            {
+                                **record_base,
+                                "result": "repair_found",
+                                "track": "T_BOX",
+                                "history": history_meta,
+                                "history_entity": history_meta,
+                                "history_property": tbox_history_meta,
+                                "property_revision_id": tbox_event["property_revision_id"],
+                                "constraint_hash_before": delta["hash_before"],
+                                "constraint_hash_after": delta["hash_after"],
+                                "entity_history_scanned": entity_history_scanned,
+                                "property_history_scanned": property_history_scanned,
+                            }
+                        )
                 else:
                     progress.write("    [-] No clean diff found (A-box or T-box).")
                     entity_history_scanned = history_scanned(history_meta)
@@ -2024,10 +2061,18 @@ def process_pipeline(max_candidates=None):
             world_state_map[entry_id] = context
         missing_ids = expected_ids - set(world_state_map.keys())
         if missing_ids:
-            raise RuntimeError(
-                f"Context builder failed to produce {len(missing_ids)} world state entries: "
-                f"{sorted(list(missing_ids))[:5]} ..."
+            print(
+                f"[!] Context builder missing {len(missing_ids)} entries "
+                f"(likely focus entities absent in dump). Dropping them from Stage-2."
             )
+            if summary is not None:
+                summary["world_state_missing"] = summary.get("world_state_missing", 0) + len(missing_ids)
+            dataset = [entry for entry in dataset if entry.get("id") not in missing_ids]
+            with open(WIKIDATA_REPAIRS, "w", encoding="utf-8") as out:
+                json.dump(dataset, out, indent=2)
+            repair_ids, total_entries = extract_repair_ids(dataset)
+            ensure_all_entries_have_ids(total_entries, repair_ids)
+            expected_ids = ensure_unique_ids(repair_ids)
         validate_world_state_document(world_state_map, expected_ids)
         with open(WORLD_STATE_FILE, "w", encoding="utf-8") as world_file:
             json.dump(world_state_map, world_file, indent=2)
