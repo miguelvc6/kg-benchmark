@@ -1804,7 +1804,7 @@ def process_pipeline(max_candidates=None):
                     "qid": qid,
                     "property": pid,
                     "track": "A_BOX",
-                    "type": "TBD",
+                    "information_type": "TBD",
                     "violation_context": violation_context,
                     "repair_target": {
                         "kind": "A_BOX",
@@ -1910,7 +1910,7 @@ def process_pipeline(max_candidates=None):
                         "qid": qid,
                         "property": pid,
                         "track": "T_BOX",
-                        "type": "TBD",
+                        "information_type": "TBD",
                         "violation_context": violation_context,
                         "repair_target": {
                             "kind": "T_BOX",
