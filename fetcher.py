@@ -4,8 +4,12 @@ import gzip
 import hashlib
 import json
 import math
+import os
 import re
+import threading
 import time
+from collections import OrderedDict
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import quote
@@ -29,13 +33,24 @@ REVISION_LOOKBACK_DAYS = 7  # Historical window size
 MAX_HISTORY_PAGES = 8  # REST paging limit
 MAX_PROPERTY_VALUES = 12  # Max values recorded per property
 MAX_NEIGHBOR_EDGES = 50  # Max neighborhood edges captured
+ENABLE_ENTITY_SNAPSHOT_CACHE = True
+ENTITY_SNAPSHOT_CACHE_DIR = Path("data/cache/entity_snapshots")
+ENTITY_SNAPSHOT_NEGATIVE_TTL_SECONDS = 300
+ENTITY_SNAPSHOT_MEMORY_CACHE_SIZE = 512
+SNAPSHOT_MAX_WORKERS = 32
+SNAPSHOT_MAX_QPS = 10
+SNAPSHOT_PREFETCH = 6
+SNAPSHOT_MAX_RETRIES = 4
+ENABLE_HISTORY_CACHE = True
+HISTORY_CACHE_MAX_ENTRIES = 20000
+HISTORY_CACHE_MAX_SEGMENTS_PER_QID = 4
 LATEST_DUMP_PATH = Path("data/latest-all.json.gz")  # 2025 dump location
 WORLD_STATE_FILE = Path("data/03_world_state.json")  # Output for built contexts
 # Limit processing to specific properties for debugging; leave empty to process all
 TARGET_PROPERTIES = [
-    #"P569",  # Date of Birth
-    #"P570",  # Date of Death
-    #"P21",  # Sex or Gender
+    # "P569",  # Date of Birth
+    # "P570",  # Date of Death
+    # "P21",  # Sex or Gender
 ]
 REPORT_HISTORY_DEPTH = 20  # Revision pairs scanned per report page
 QID_PATTERN = re.compile(r"\[\[(Q\d+)\]\]")
@@ -283,6 +298,58 @@ def ensure_repair_candidates_file(filename, history_limit=REPORT_HISTORY_DEPTH):
         json.dump(fresh_candidates, fh, indent=2)
     print(f"[+] Done. Found {len(fresh_candidates)} candidates. Saved to {filename}.")
     return fresh_candidates
+
+
+def deduplicate_candidates(candidates):
+    """Deduplicate candidate list without dropping violation type information."""
+    if not candidates:
+        return [], {"duplicates_skipped": 0, "violation_type_merges": 0, "exact_duplicates": 0}
+    exact_seen = set()
+    base_seen = {}
+    deduped = []
+    duplicates_skipped = 0
+    violation_type_merges = 0
+    exact_duplicates = 0
+
+    for item in candidates:
+        qid = item.get("qid")
+        pid = item.get("property_id")
+        fix_date = item.get("fix_date")
+        report_old = item.get("report_revision_old")
+        report_new = item.get("report_revision_new")
+        violation_type = item.get("violation_type")
+        exact_key = (qid, pid, fix_date, report_old, report_new, violation_type)
+        if exact_key in exact_seen:
+            exact_duplicates += 1
+            duplicates_skipped += 1
+            continue
+        exact_seen.add(exact_key)
+
+        base_key = (qid, pid, fix_date, report_old, report_new)
+        existing = base_seen.get(base_key)
+        if existing:
+            violation_type_merges += 1
+            duplicates_skipped += 1
+            if not existing.get("violation_type") and violation_type:
+                existing["violation_type"] = violation_type
+            merged_types = existing.setdefault("violation_types", [])
+            if not merged_types and existing.get("violation_type"):
+                merged_types.append(existing.get("violation_type"))
+            if violation_type and violation_type not in merged_types:
+                merged_types.append(violation_type)
+            continue
+
+        base_seen[base_key] = item
+        deduped.append(item)
+
+    return (
+        deduped,
+        {
+            "duplicates_skipped": duplicates_skipped,
+            "violation_type_merges": violation_type_merges,
+            "exact_duplicates": exact_duplicates,
+        },
+    )
 
 
 def load_cached_repairs(path):
@@ -1092,6 +1159,381 @@ def get_json(params=None, *, endpoint=API_ENDPOINT, with_format=True):
     return None
 
 
+class RateLimiter:
+    """Token-bucket rate limiter for outbound snapshot fetches."""
+
+    def __init__(self, max_qps):
+        self.max_qps = max_qps or 0
+        self._tokens = float(self.max_qps)
+        self._last_check = time.monotonic()
+        self._lock = threading.Lock()
+
+    def acquire(self):
+        if self.max_qps <= 0:
+            return
+        while True:
+            with self._lock:
+                now = time.monotonic()
+                elapsed = now - self._last_check
+                self._last_check = now
+                self._tokens = min(self.max_qps, self._tokens + elapsed * self.max_qps)
+                if self._tokens >= 1:
+                    self._tokens -= 1
+                    return
+                sleep_for = max(0.01, (1 - self._tokens) / self.max_qps)
+            time.sleep(sleep_for)
+
+
+class RevisionHistoryCache:
+    """In-memory cache for revision history calls with optional overlap reuse."""
+
+    def __init__(
+        self, max_entries=HISTORY_CACHE_MAX_ENTRIES, max_segments_per_qid=HISTORY_CACHE_MAX_SEGMENTS_PER_QID
+    ):
+        self.max_entries = max_entries
+        self.max_segments_per_qid = max_segments_per_qid
+        self._cache = OrderedDict()
+        self._segments = {}
+        self.hits = 0
+        self.misses = 0
+        self.segment_hits = 0
+
+    def _key(self, qid, start_time, end_time):
+        return (qid, start_time or "", end_time or "")
+
+    def _evict_if_needed(self):
+        while len(self._cache) > self.max_entries:
+            self._cache.popitem(last=False)
+
+    def _segment_covering(self, qid, start_dt, end_dt):
+        segments = self._segments.get(qid) or []
+        for segment in segments:
+            if segment["start_dt"] <= start_dt and segment["end_dt"] >= end_dt:
+                return segment
+        return None
+
+    def _slice_revisions(self, revisions, start_dt, end_dt):
+        if not revisions:
+            return []
+        sliced = []
+        for rev in revisions:
+            rev_dt = rev.get("_rev_dt")
+            if not rev_dt:
+                rev_dt = parse_iso8601(rev.get("timestamp"))
+                rev["_rev_dt"] = rev_dt
+            if rev_dt is None:
+                continue
+            if start_dt and rev_dt < start_dt:
+                continue
+            if end_dt and rev_dt > end_dt:
+                continue
+            sliced.append(rev)
+        return sliced
+
+    def get(self, qid, start_time, end_time):
+        key = self._key(qid, start_time, end_time)
+        cached = self._cache.get(key)
+        if cached:
+            self._cache.move_to_end(key)
+            self.hits += 1
+            revisions, meta, cached_at = cached
+            meta = dict(meta)
+            meta.update({"cache_hit": True, "cache_scope": "exact", "cache_age_seconds": time.time() - cached_at})
+            meta["api_calls"] = 0
+            return revisions, meta
+
+        start_dt = parse_iso8601(start_time) if start_time else None
+        end_dt = parse_iso8601(end_time) if end_time else None
+        if start_dt and end_dt:
+            segment = self._segment_covering(qid, start_dt, end_dt)
+            if segment:
+                self.segment_hits += 1
+                revisions = self._slice_revisions(segment["revisions"], start_dt, end_dt)
+                meta = dict(segment["meta"])
+                meta.update(
+                    {
+                        "qid": qid,
+                        "start_time": start_time,
+                        "end_time": end_time,
+                        "revisions_scanned": len(revisions),
+                        "earliest_revision": revisions[0]["timestamp"] if revisions else None,
+                        "latest_revision": revisions[-1]["timestamp"] if revisions else None,
+                        "cache_hit": True,
+                        "cache_scope": "segment",
+                        "cache_age_seconds": time.time() - segment["cached_at"],
+                        "api_calls": 0,
+                    }
+                )
+                return revisions, meta
+
+        self.misses += 1
+        return None, None
+
+    def store(self, qid, start_time, end_time, revisions, history_meta):
+        key = self._key(qid, start_time, end_time)
+        self._cache[key] = (revisions, history_meta, time.time())
+        self._cache.move_to_end(key)
+        self._evict_if_needed()
+        start_dt = parse_iso8601(start_time) if start_time else None
+        end_dt = parse_iso8601(end_time) if end_time else None
+        if start_dt and end_dt:
+            segments = self._segments.setdefault(qid, [])
+            segments.append(
+                {
+                    "start_dt": start_dt,
+                    "end_dt": end_dt,
+                    "revisions": revisions,
+                    "meta": history_meta,
+                    "cached_at": time.time(),
+                }
+            )
+            if len(segments) > self.max_segments_per_qid:
+                segments.pop(0)
+
+
+class SnapshotFetcher:
+    """Snapshot fetcher with disk cache, in-memory cache, and rate limiting."""
+
+    _NEGATIVE_SENTINEL = object()
+
+    def __init__(
+        self,
+        cache_dir=ENTITY_SNAPSHOT_CACHE_DIR,
+        enable_cache=ENABLE_ENTITY_SNAPSHOT_CACHE,
+        memory_cache_size=ENTITY_SNAPSHOT_MEMORY_CACHE_SIZE,
+        negative_ttl=ENTITY_SNAPSHOT_NEGATIVE_TTL_SECONDS,
+        max_workers=SNAPSHOT_MAX_WORKERS,
+        max_qps=SNAPSHOT_MAX_QPS,
+        max_retries=SNAPSHOT_MAX_RETRIES,
+    ):
+        self.cache_dir = Path(cache_dir)
+        self.enable_cache = enable_cache
+        self.memory_cache_size = memory_cache_size
+        self.negative_ttl = negative_ttl
+        self.max_retries = max_retries
+        self._memory_cache = OrderedDict()
+        self._negative_cache = {}
+        self._inflight = {}
+        self._lock = threading.Lock()
+        self._executor = ThreadPoolExecutor(max_workers=max_workers)
+        self._rate_limiter = RateLimiter(max_qps)
+        self.stats = {
+            "cache_hits": 0,
+            "cache_misses": 0,
+            "negative_hits": 0,
+            "disk_hits": 0,
+            "disk_writes": 0,
+            "network_calls": 0,
+            "network_errors": 0,
+        }
+
+    def _cache_key(self, qid, revision_id):
+        return (qid, str(revision_id))
+
+    def _snapshot_path(self, qid, revision_id):
+        return self.cache_dir / qid / f"{revision_id}.json.gz"
+
+    def _negative_path(self, qid, revision_id):
+        return self.cache_dir / qid / f"{revision_id}.negative.json"
+
+    def _atomic_write_json(self, path, payload, compress=False):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        suffix = path.suffix + ".tmp"
+        tmp_path = path.with_suffix(suffix)
+        if compress:
+            with gzip.open(tmp_path, "wt", encoding="utf-8") as fh:
+                json.dump(payload, fh, ensure_ascii=True)
+        else:
+            with open(tmp_path, "w", encoding="utf-8") as fh:
+                json.dump(payload, fh, ensure_ascii=True)
+        os.replace(tmp_path, path)
+
+    def _get_memory_cached(self, key):
+        with self._lock:
+            cached = self._memory_cache.get(key)
+            if cached is None:
+                return None
+            self._memory_cache.move_to_end(key)
+            self.stats["cache_hits"] += 1
+            return cached
+
+    def _store_memory(self, key, snapshot):
+        if self.memory_cache_size <= 0:
+            return
+        with self._lock:
+            self._memory_cache[key] = snapshot
+            self._memory_cache.move_to_end(key)
+            while len(self._memory_cache) > self.memory_cache_size:
+                self._memory_cache.popitem(last=False)
+
+    def _negative_cached(self, key):
+        now = time.time()
+        with self._lock:
+            expiry = self._negative_cache.get(key)
+            if expiry is None:
+                return False
+            if expiry < now:
+                self._negative_cache.pop(key, None)
+                return False
+            self.stats["negative_hits"] += 1
+            return True
+
+    def _store_negative(self, qid, revision_id):
+        expiry = time.time() + self.negative_ttl
+        key = self._cache_key(qid, revision_id)
+        with self._lock:
+            self._negative_cache[key] = expiry
+        if self.enable_cache:
+            payload = {"timestamp": datetime.now(timezone.utc).isoformat()}
+            try:
+                self._atomic_write_json(self._negative_path(qid, revision_id), payload, compress=False)
+            except Exception:
+                pass
+
+    def _disk_snapshot(self, qid, revision_id):
+        if not self.enable_cache:
+            return None
+        snapshot_path = self._snapshot_path(qid, revision_id)
+        if snapshot_path.exists():
+            try:
+                with gzip.open(snapshot_path, "rt", encoding="utf-8") as fh:
+                    payload = json.load(fh)
+                self.stats["cache_hits"] += 1
+                self.stats["disk_hits"] += 1
+                return payload
+            except Exception:
+                return None
+        return None
+
+    def _disk_negative(self, qid, revision_id):
+        if not self.enable_cache:
+            return False
+        negative_path = self._negative_path(qid, revision_id)
+        if not negative_path.exists():
+            return False
+        try:
+            with open(negative_path, "r", encoding="utf-8") as fh:
+                payload = json.load(fh)
+        except Exception:
+            return False
+        timestamp = payload.get("timestamp")
+        cached_dt = parse_iso8601(timestamp)
+        if not cached_dt:
+            return False
+        if datetime.now(timezone.utc) - cached_dt > timedelta(seconds=self.negative_ttl):
+            try:
+                negative_path.unlink()
+            except Exception:
+                pass
+            return False
+        self.stats["negative_hits"] += 1
+        return True
+
+    def _fetch_snapshot_network(self, qid, revision_id):
+        endpoint = ENTITY_DATA_URL.format(qid=qid)
+        params = {"revision": revision_id}
+        for attempt in range(self.max_retries):
+            self._rate_limiter.acquire()
+            try:
+                response = requests.get(endpoint, headers=HEADERS, params=params, timeout=API_TIMEOUT)
+            except Exception:
+                self.stats["network_errors"] += 1
+                time.sleep(0.5 * (2**attempt))
+                continue
+            self.stats["network_calls"] += 1
+            if response.status_code == 200:
+                return response.json()
+            if response.status_code in {429, 500, 502, 503, 504}:
+                time.sleep(0.5 * (2**attempt))
+                continue
+            self.stats["network_errors"] += 1
+            return None
+        self.stats["network_errors"] += 1
+        return None
+
+    def _parse_snapshot(self, data, qid):
+        if not data or "entities" not in data:
+            return None
+        entity = data["entities"].get(qid)
+        if not entity or "missing" in entity:
+            return None
+        return entity.get("claims", {})
+
+    def _fetch_and_cache(self, qid, revision_id):
+        key = self._cache_key(qid, revision_id)
+        cached = self._get_memory_cached(key)
+        if cached is not None:
+            return cached
+        if self._negative_cached(key):
+            return None
+        snapshot = self._disk_snapshot(qid, revision_id)
+        if snapshot is not None:
+            self._store_memory(key, snapshot)
+            return snapshot
+        if self._disk_negative(qid, revision_id):
+            return None
+
+        self.stats["cache_misses"] += 1
+        data = self._fetch_snapshot_network(qid, revision_id)
+        snapshot = self._parse_snapshot(data, qid)
+        if snapshot is None:
+            self._store_negative(qid, revision_id)
+            return None
+        self._store_memory(key, snapshot)
+        if self.enable_cache:
+            try:
+                self._atomic_write_json(self._snapshot_path(qid, revision_id), snapshot, compress=True)
+                self.stats["disk_writes"] += 1
+            except Exception:
+                pass
+        return snapshot
+
+    def _clear_inflight(self, key):
+        with self._lock:
+            self._inflight.pop(key, None)
+
+    def prefetch(self, qid, revision_ids, max_in_flight=None):
+        if not revision_ids:
+            return
+        max_in_flight = max_in_flight if max_in_flight is not None else SNAPSHOT_PREFETCH
+        for revision_id in revision_ids:
+            key = self._cache_key(qid, revision_id)
+            with self._lock:
+                if key in self._inflight:
+                    continue
+                if len(self._inflight) >= max_in_flight:
+                    break
+            future = self._executor.submit(self._fetch_and_cache, qid, revision_id)
+            with self._lock:
+                if key in self._inflight:
+                    continue
+                self._inflight[key] = future
+            future.add_done_callback(lambda _f, k=key: self._clear_inflight(k))
+
+    def get_snapshot(self, qid, revision_id):
+        key = self._cache_key(qid, revision_id)
+        cached = self._get_memory_cached(key)
+        if cached is not None:
+            return cached
+        if self._negative_cached(key):
+            return None
+        snapshot = self._disk_snapshot(qid, revision_id)
+        if snapshot is not None:
+            self._store_memory(key, snapshot)
+            return snapshot
+        if self._disk_negative(qid, revision_id):
+            return None
+        with self._lock:
+            future = self._inflight.get(key)
+        if future:
+            return future.result()
+        return self._fetch_and_cache(qid, revision_id)
+
+
+REVISION_HISTORY_CACHE = RevisionHistoryCache() if ENABLE_HISTORY_CACHE else None
+SNAPSHOT_FETCHER = SnapshotFetcher()
+
+
 class LabelResolver:
     """Deterministic ID -> label resolution with disk caching."""
 
@@ -1523,6 +1965,11 @@ def get_current_state(qid, property_id):
 
 def fetch_revision_history(qid, start_time, end_time):
     """Collect revision metadata within [start_time, end_time] from REST history."""
+    if ENABLE_HISTORY_CACHE and REVISION_HISTORY_CACHE:
+        cached_revisions, cached_meta = REVISION_HISTORY_CACHE.get(qid, start_time, end_time)
+        if cached_revisions is not None:
+            return cached_revisions, cached_meta
+
     start_dt = parse_iso8601(start_time) if start_time else None
     end_dt = parse_iso8601(end_time) if end_time else None
     revisions = []
@@ -1549,6 +1996,7 @@ def fetch_revision_history(qid, start_time, end_time):
             rev_dt = parse_iso8601(rev_ts)
             if not rev_dt:
                 continue
+            rev["_rev_dt"] = rev_dt
             if end_dt and rev_dt > end_dt:
                 continue
             if start_dt and rev_dt < start_dt:
@@ -1572,8 +2020,10 @@ def fetch_revision_history(qid, start_time, end_time):
                 truncated_by_window = True
                 break
     if carry_revision:
+        if "_rev_dt" not in carry_revision:
+            carry_revision["_rev_dt"] = parse_iso8601(carry_revision.get("timestamp"))
         revisions.append(carry_revision)
-    revisions.sort(key=lambda rev: rev["timestamp"])
+    revisions.sort(key=lambda rev: rev.get("_rev_dt") or parse_iso8601(rev.get("timestamp")))
     if next_endpoint and batches >= MAX_HISTORY_PAGES:
         reached_page_limit = True
 
@@ -1593,24 +2043,30 @@ def fetch_revision_history(qid, start_time, end_time):
         "carry_revision_used": carry_revision is not None,
         "truncated": truncated_by_window or reached_page_limit,
     }
+    history_meta["cache_hit"] = False
+
+    if ENABLE_HISTORY_CACHE and REVISION_HISTORY_CACHE:
+        REVISION_HISTORY_CACHE.store(qid, start_time, end_time, revisions, history_meta)
 
     return revisions, history_meta
 
 
+def get_entity_snapshot(qid, revision_id):
+    """Fetch and cache a full entity snapshot (claims dict) for a revision."""
+    return SNAPSHOT_FETCHER.get_snapshot(qid, revision_id)
+
+
+def get_claims_from_snapshot(snapshot, property_id):
+    """Extract property claims from a snapshot claims dict."""
+    if not snapshot:
+        return []
+    return snapshot.get(property_id, [])
+
+
 def get_claims_for_revision(qid, property_id, revision_id):
-    """Fetch claims for a specific revision via Special:EntityData snapshot."""
-    endpoint = ENTITY_DATA_URL.format(qid=qid)
-    data = get_json(
-        params={"revision": revision_id},
-        endpoint=endpoint,
-        with_format=False,
-    )
-    if not data or "entities" not in data:
-        return []
-    entity = data["entities"].get(qid)
-    if not entity or "missing" in entity:
-        return []
-    return entity.get("claims", {}).get(property_id, [])
+    """Backward-compatible wrapper: fetch claims for a revision."""
+    snapshot = get_entity_snapshot(qid, revision_id)
+    return get_claims_from_snapshot(snapshot, property_id)
 
 
 def extract_user(revision):
@@ -1627,31 +2083,57 @@ def find_repair_revision(qid, property_id, start_time, end_time):
     if not revisions:
         return None, history_meta
 
-    previous_signature = None
-    previous_snapshot = None
-
-    last_valid_repair = None
-    for rev in revisions:
+    ordered_revisions = list(revisions)
+    ordered_revisions.sort(key=lambda rev: rev.get("_rev_dt") or parse_iso8601(rev.get("timestamp")))
+    newest_first = list(reversed(ordered_revisions))
+    revision_items = []
+    for rev in newest_first:
         revision_id = rev.get("id") or rev.get("revid")
-        if not revision_id:
-            continue
-        current_claims = get_claims_for_revision(qid, property_id, revision_id)
+        if revision_id:
+            revision_items.append((rev, revision_id))
+
+    revision_ids = [rev_id for _, rev_id in revision_items]
+    if revision_ids:
+        SNAPSHOT_FETCHER.prefetch(qid, revision_ids[:SNAPSHOT_PREFETCH], max_in_flight=SNAPSHOT_PREFETCH)
+
+    newer_signature = None
+    newer_snapshot = None
+    newer_revision = None
+
+    for idx, (rev, revision_id) in enumerate(revision_items):
+        if revision_ids and idx + 1 < len(revision_ids):
+            next_slice = revision_ids[idx + 1 : idx + 1 + SNAPSHOT_PREFETCH]
+            SNAPSHOT_FETCHER.prefetch(qid, next_slice, max_in_flight=SNAPSHOT_PREFETCH)
+
+        snapshot = get_entity_snapshot(qid, revision_id)
+        current_claims = get_claims_from_snapshot(snapshot, property_id)
         current_signature, current_snapshot = summarize_claims(current_claims)
-        if previous_signature is not None and current_signature != previous_signature:
-            # Found a change. Update our candidate, but keep looking.
-            last_valid_repair = {
-                "repair_revision_id": revision_id,
-                "timestamp": rev.get("timestamp"),
-                "action": classify_action(previous_signature, current_signature),
-                "old_value": previous_snapshot,
-                "new_value": current_snapshot,
-                "author": extract_user(rev),
-            }
 
-        previous_signature = current_signature
-        previous_snapshot = current_snapshot
+        if newer_signature is None:
+            newer_signature = current_signature
+            newer_snapshot = current_snapshot
+            newer_revision = rev
+            continue
 
-    return last_valid_repair, history_meta
+        if current_signature != newer_signature:
+            repair_revision_id = newer_revision.get("id") or newer_revision.get("revid")
+            return (
+                {
+                    "repair_revision_id": repair_revision_id,
+                    "timestamp": newer_revision.get("timestamp"),
+                    "action": classify_action(current_signature, newer_signature),
+                    "old_value": current_snapshot,
+                    "new_value": newer_snapshot,
+                    "author": extract_user(newer_revision),
+                },
+                history_meta,
+            )
+
+        newer_signature = current_signature
+        newer_snapshot = current_snapshot
+        newer_revision = rev
+
+    return None, history_meta
 
 
 def find_tbox_reform_revision(
@@ -1681,13 +2163,24 @@ def find_tbox_reform_revision(
         next_signature = None
         next_revision = None
         scanned = 0
-        for rev in reversed(ordered_revisions):
+        reversed_revisions = list(reversed(ordered_revisions))
+        revision_items = []
+        for rev in reversed_revisions:
+            revision_id = rev.get("id") or rev.get("revid")
+            if revision_id:
+                revision_items.append((rev, revision_id))
+        revision_ids = [rev_id for _, rev_id in revision_items]
+        if revision_ids:
+            SNAPSHOT_FETCHER.prefetch(property_id, revision_ids[:SNAPSHOT_PREFETCH], max_in_flight=SNAPSHOT_PREFETCH)
+
+        for idx, (rev, revision_id) in enumerate(revision_items):
             if max_revisions is not None and scanned >= max_revisions:
                 break
-            revision_id = rev.get("id") or rev.get("revid")
-            if not revision_id:
-                continue
-            constraint_claims = get_claims_for_revision(property_id, "P2302", revision_id)
+            if revision_ids and idx + 1 < len(revision_ids):
+                next_slice = revision_ids[idx + 1 : idx + 1 + SNAPSHOT_PREFETCH]
+                SNAPSHOT_FETCHER.prefetch(property_id, next_slice, max_in_flight=SNAPSHOT_PREFETCH)
+            snapshot = get_entity_snapshot(property_id, revision_id)
+            constraint_claims = get_claims_from_snapshot(snapshot, "P2302")
             current_signature = signature_p2302(constraint_claims)
             if next_signature and current_signature["hash"] != next_signature["hash"]:
                 delta = _build_constraint_delta(current_signature, next_signature, include_snapshots)
@@ -1717,7 +2210,8 @@ def find_tbox_reform_revision(
         revision_id = rev.get("id") or rev.get("revid")
         if not revision_id:
             continue
-        constraint_claims = get_claims_for_revision(property_id, "P2302", revision_id)
+        snapshot = get_entity_snapshot(property_id, revision_id)
+        constraint_claims = get_claims_from_snapshot(snapshot, "P2302")
         current_signature = signature_p2302(constraint_claims)
 
         if previous_signature and current_signature["hash"] != previous_signature["hash"]:
@@ -1992,6 +2486,14 @@ def process_pipeline(max_candidates=None):
     if not candidates:
         print(f"[!] Unable to proceed without {input_file}.")
         return
+    raw_candidate_count = len(candidates)
+    candidates, dedup_stats = deduplicate_candidates(candidates)
+    if dedup_stats.get("duplicates_skipped"):
+        print(
+            "[*] Deduplicated candidates: "
+            f"{dedup_stats['duplicates_skipped']} skipped, "
+            f"{dedup_stats['violation_type_merges']} merged violation types."
+        )
 
     label_resolver = LabelResolver()
     dataset = load_cached_repairs(WIKIDATA_REPAIRS)
@@ -2017,7 +2519,11 @@ def process_pipeline(max_candidates=None):
             "run_id": stats_logger.run_id,
             "lookback_days": REVISION_LOOKBACK_DAYS,
             "max_history_pages": MAX_HISTORY_PAGES,
+            "total_candidates_raw": raw_candidate_count,
             "total_candidates": len(candidates),
+            "candidate_duplicates_skipped": dedup_stats.get("duplicates_skipped", 0),
+            "candidate_violation_type_merges": dedup_stats.get("violation_type_merges", 0),
+            "candidate_exact_duplicates": dedup_stats.get("exact_duplicates", 0),
             "processed": 0,
             "persistence_failed": 0,
             "bad_fix_date": 0,
@@ -2030,6 +2536,16 @@ def process_pipeline(max_candidates=None):
             "truncated_by_window": 0,
             "reached_page_limit": 0,
             "duplicates_skipped": 0,
+            "entity_snapshot_cache_hits": 0,
+            "entity_snapshot_cache_misses": 0,
+            "entity_snapshot_negative_hits": 0,
+            "entity_snapshot_disk_hits": 0,
+            "entity_snapshot_disk_writes": 0,
+            "entity_snapshot_network_calls": 0,
+            "entity_snapshot_network_errors": 0,
+            "history_cache_hits": 0,
+            "history_cache_misses": 0,
+            "history_cache_segment_hits": 0,
         }
 
         def record_history_stats(meta):
@@ -2059,6 +2575,7 @@ def process_pipeline(max_candidates=None):
             qid = item["qid"]
             pid = item["property_id"]
             violation_type = item.get("violation_type")
+            violation_types = item.get("violation_types")
             violation_type_normalized = normalize_report_violation_type(violation_type)
 
             if not qid.startswith("Q"):
@@ -2130,6 +2647,8 @@ def process_pipeline(max_candidates=None):
                     "report_violation_type": violation_type,
                     "value": fix_event["old_value"],
                 }
+                if violation_types:
+                    violation_context["report_violation_types"] = violation_types
                 if violation_type_normalized:
                     violation_context["report_violation_type_normalized"] = violation_type_normalized
                 violation_context.update(report_metadata)
@@ -2235,6 +2754,8 @@ def process_pipeline(max_candidates=None):
                         "value": None,
                         "value_current_2025": normalized_current_values,
                     }
+                    if violation_types:
+                        violation_context["report_violation_types"] = violation_types
                     if violation_type_normalized:
                         violation_context["report_violation_type_normalized"] = violation_type_normalized
                     violation_context.update(report_metadata)
@@ -2321,6 +2842,18 @@ def process_pipeline(max_candidates=None):
             progress.update(1)
         progress.close()
         if summary:
+            snapshot_stats = SNAPSHOT_FETCHER.stats
+            summary["entity_snapshot_cache_hits"] = snapshot_stats.get("cache_hits", 0)
+            summary["entity_snapshot_cache_misses"] = snapshot_stats.get("cache_misses", 0)
+            summary["entity_snapshot_negative_hits"] = snapshot_stats.get("negative_hits", 0)
+            summary["entity_snapshot_disk_hits"] = snapshot_stats.get("disk_hits", 0)
+            summary["entity_snapshot_disk_writes"] = snapshot_stats.get("disk_writes", 0)
+            summary["entity_snapshot_network_calls"] = snapshot_stats.get("network_calls", 0)
+            summary["entity_snapshot_network_errors"] = snapshot_stats.get("network_errors", 0)
+            if REVISION_HISTORY_CACHE:
+                summary["history_cache_hits"] = REVISION_HISTORY_CACHE.hits
+                summary["history_cache_misses"] = REVISION_HISTORY_CACHE.misses
+                summary["history_cache_segment_hits"] = REVISION_HISTORY_CACHE.segment_hits
             with open(WIKIDATA_REPAIRS, "w", encoding="utf-8") as out:
                 json.dump(dataset, out, indent=2)
 
