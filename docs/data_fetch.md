@@ -16,7 +16,7 @@ We construct WikidataRepairEval 1.0 by replaying real repair events rather than 
 | Stage              | Description                                                                                                  | Inputs                                                        | Outputs                                            |
 | :----------------- | :----------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------ | :------------------------------------------------- |
 | 1. Indexer         | Mine constraint-violation report histories to find entities that truly disappeared between two snapshots.    | `Wikidata:Database reports/Constraint violations/*` histories | `data\01_repair_candidates.json`                   |
-| 2. Fetcher         | Query revision histories to isolate the exact edit, label it as A-box/T-box, and capture provenance.         | `data\01_repair_candidates.json`, Wikibase REST API           | `data\02_wikidata_repairs.json`                    |
+| 2. Fetcher         | Query revision histories to isolate the exact edit, label it as A-box/T-box, and capture provenance.         | `data\01_repair_candidates.json`, Wikibase REST API           | `data\02_wikidata_repairs.jsonl` + compiled JSON   |
 | 3. Context Builder | Freeze the 2025 neighborhood, labels, constraint metadata, and (for T-box) constraint deltas.                | `data\02_wikidata_repairs.json`, `latest-all.json.gz` dump    | `world_state.json` keyed by each benchmark case    |
 
 ---
@@ -36,15 +36,22 @@ We construct WikidataRepairEval 1.0 by replaying real repair events rather than 
 - **Purpose:** Pinpoint the exact revision that fixed each violation, classify the fix as A-box (entity edit) or T-box (constraint edit), and capture the relevant before/after evidence.
 - **Inputs:** `data\01_repair_candidates.json`, Wikibase REST API endpoint `GET /w/rest.php/v1/page/{qid}/history`, plus `Special:EntityData` snapshots.
 - **Process:**
+  - Deduplicate candidates before scanning to avoid repeated Stage-2 work while preserving all violation types.
+  - Walk revisions from newest to oldest and stop at the first property signature diff (the last change in-window).
+  - Cache revision histories per QID/window and reuse overlapping windows when possible.
+  - Cache entity snapshots per `(qid, revision_id)` on disk (plus short-lived negative caching) so multiple properties share one download.
+  - Fetch snapshots with bounded concurrency and a global rate limiter to avoid sustained 429s.
   - Scan entity histories within the 7-day lookback window and store the *latest* property change (action + old/new signatures). Each record now includes `track`, `repair_target.kind`, and a fully explicit before/after payload.
   - If no entity edit exists, scan the property (`Property:{pid}`) for the most recent `P2302` signature change, capturing deterministic SHA1 hashes and optional serialized constraint statements in `constraint_delta`.
   - When an A-box fix is found, run a cheap reverse scan (≤25 revisions) over the property history to detect coincident T-box edits and mark `ambiguous` entries.
 - **Persistence Filter:** Live 2025 data is fetched *after* the repair type is known. DELETE actions may legitimately return `None`; all other repairs must still exist in the live graph or the candidate is dropped.
-- **Outputs:** `data\02_wikidata_repairs.json`, where each entry stores:
+- **Outputs:** Append-only `data\02_wikidata_repairs.jsonl` during execution, compiled into `data\02_wikidata_repairs.json` at the end. Each entry stores:
   - Unique IDs (`repair_{qid}_{rev}` or `reform_{qid}_{pid}_{rev}`), track labels, and report provenance.
-  - `violation_context` (offending value or `null`, Stage‑1 timestamps, report revisions).
+  - `violation_context` (offending value or `null`, Stage-1 timestamps, report revisions).
   - `repair_target` discriminated unions for A-box vs. T-box, plus persistence metadata and optional `ambiguous_reasons`.
+- **Stats Logging:** Per-candidate stats are buffered in memory and flushed in large JSONL batches to reduce I/O overhead.
 - **Note:** This artifact drives both the taxonomy labels and the context builder.
+- **Migration Note (2026):** Label and snapshot caches are now stored in SQLite (`data/cache/labels_en.sqlite`, `data/cache/entity_snapshots.sqlite`). Legacy JSON label caches and per-entity snapshot folders are deprecated.
 
 ---
 

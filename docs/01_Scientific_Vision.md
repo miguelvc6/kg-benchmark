@@ -73,3 +73,5 @@ Existing resources (Tanon, Ferranti, Lin) are fragmented, outdated, or purely fu
 
 2. **Ecological Validity:** Unlike synthetic datasets, we use historical human repairs filtered for **persistence** in the 2025 graph, ensuring the benchmark reflects real-world modeling challenges.
 3. **Differentiation of Repair Semantics:** We explicitly separate **A-Box Repairs** (correcting data) from **T-Box Reforms** (correcting the schema), enabling the first rigorous study of "Concept Drift" detection.
+
+Entity popularity is used to differentiate common knowledge from long-tail entities in a controlled, auditable manner.

@@ -200,6 +200,27 @@ Every record still captures the core event metadata (`id`, `qid`, `property`, `t
 }
 ```
 
+### 3.3 Entity Popularity (Stage-2 + Stage-3)
+
+A deterministic `popularity` block is attached to every Stage-2 repair entry and mirrored onto the Stage-3 `L1_ego_node`. The raw scores live in `data/00_entity_popularity.json` (keyed by QID) and are joined into downstream artifacts verbatim so that auditors can trace every number.
+
+Each block exposes:
+
+* `components`: Raw metrics computed per entity: `pageviews_365d` (enwiki article views over the last 365 days), `out_degree` (count of entity-valued outgoing statements in the dump), and `sitelinks` (total sitelinks across Wikimedia projects).
+* `normalization`: Percentile-normalized values after applying `log(1 + x)` to every component across the full set of processed entities.
+* `score`: Composite popularity score computed with the fixed policy
+
+```text
+score =
+  0.5 * pageviews_norm +
+  0.3 * degree_norm +
+  0.2 * sitelinks_norm
+```
+
+* `policy`: Provenance fields describing the extraction window (`window_days = 365`, `wiki = enwiki`), the build date, and the exact Wikimedia Pageviews API parameters used (`project = en.wikipedia.org`, `access = all-access`, `agent = user`, `granularity = daily`, `start`, `end`).
+
+The popularity artifact is rebuilt only when the set of focus QIDs changes. Pageview totals are cached locally and every run records the build date to guarantee identical scores given identical inputs.
+
 The hashes continue to reference the canonical serialization (sorted keys, `separators=(",", ":")`). `signature_*_raw` preserves the exact byte sequence that feeds the SHA1 digest.
 
 ### 3.3 Stage-3 World State (`data/03_world_state.json`)

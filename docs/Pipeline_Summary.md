@@ -22,7 +22,7 @@ This process is applied to **all ~2,000 properties currently monitored by bots**
 There is latency between when a human fixes a violation and when bots update the reports.
 For each candidate repair:
 
-1. I scan the **entity revision history** within a bounded lookback window to find an **A-box edit** that modified the property implicated in the violation.
+1. I scan the **entity revision history** within a lookback window (7 days) to find an **A-box edit** that modified the property implicated in the violation.
 2. If no such entity-level edit exists, I switch to the **property revision history** and detect **T-box edits** by tracking changes to `P2302` (constraint) claims.
 3. Once the repair type is known, I query the **live Wikidata API** to ensure that the entity and property still exist today.
 
@@ -30,6 +30,13 @@ For each candidate repair:
    * Non-DELETE repairs must still be present; otherwise the case is discarded.
 
 This yields a single, well-defined **atomic repair event** with full provenance.
+
+Performance safeguards:
+
+* Candidates are deduplicated up front (merging violation types) to avoid repeated Stage-2 work.
+* Revision windows and entity snapshots are cached, and entity scans walk newest to oldest with early exit.
+* Snapshot fetches run with bounded concurrency and a global rate limiter to avoid sustained 429s.
+* Stage-2 writes append-only JSONL and compiles to JSON at the end; stats logging is buffered to reduce I/O.
 
 ---
 
@@ -107,14 +114,3 @@ Each benchmark case is represented as a `world_state` object with four layers:
   }
 }
 ```
-
----
-
-## One-sentence takeaway (useful verbally)
-
-> *The pipeline reconstructs real Wikidata repairs by detecting when violations disappear, identifying the exact entity- or schema-level edit that caused it, and freezing a clean, reproducible world-state snapshot that separates logic, topology, and external information.*
-
-If you want, I can also:
-
-* compress this into a **30-second verbal explanation**, or
-* adapt it to a **single slide diagram** for supervision meetings.

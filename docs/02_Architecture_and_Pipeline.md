@@ -31,7 +31,8 @@ To identify a high-precision search space of potential repairs without scanning 
 
 The system monitors the revision history of **Wikidata Database Reports** (specifically pages under `Wikidata:Database reports/Constraint violations/`). These pages are updated periodically by community bots (e.g., KrBot).
 
-* **Logic:** We treat the report page history as a time-series signal.
+**Logic:** We treat the report page history as a time-series signal.
+
 * Let $R_t$ be the set of QIDs listed in the report at time $t$.
 * Let $R_{t+1}$ be the set of QIDs listed at time $t+1$.
 * **Candidate Repair:** Any entity e such that $e \in R_t \land e \notin R_{t+1}$ **and is also missing from the entire report at $t_{+1}$**. If the QID merely moved to a different constraint section, the candidate is discarded as a section reclassification rather than a fix. This prevents false positives that would otherwise pollute the fetcher stage.
@@ -75,7 +76,7 @@ Stage 2 now emits human-readable mirrors for every machine-stable identifier wit
 
 * **Label Resolver Module:** `fetcher.py` instantiates a `LabelResolver` that batches IDs through `wbgetentities`, persists the responses inside `data/cache/id_labels_en.json`, and reuses the cache on subsequent runs. The resolver now returns `{label_en, description_en}` only and falls back to `null` values with a warning whenever Wikidata cannot resolve an ID. The cache file is canonicalized (`sort_keys=True`) to keep hashes stable.
 * **Naming Convention:** Raw fields remain unchanged; the pipeline adds siblings such as `qid_label_en`, `property_description_en`, `report_violation_type_qids`, `value_current_2025_labels_en`, etc. `_raw` preserves the original string, `_qids` lists parsed IDs, and `_label_en/_labels_en` plus `_description_en/_descriptions_en` carry the interpreted mirrors while aliases remain intentionally excluded.
-"Aliases are not stored by design to avoid multilingual noise, prompt bloat, and unintended information leakage. Labels and descriptions are sufficient for all Phase-1 experiments."
+  "Aliases are not stored by design to avoid multilingual noise, prompt bloat, and unintended information leakage. Labels and descriptions are sufficient for all Phase-1 experiments."
 * **Constraint Introspection:** P2302 qualifier IDs are now expanded into `{id,label_en,...}` tuples under `constraints_readable_en`, and the same lookup powers the templated `rule_summaries_en` strings used in docs and classifiers.
 
 ### Structured Constraint Signatures
@@ -85,7 +86,7 @@ The old design stored deterministic constraint signatures as JSON strings. We no
 * **Canonical serialization:** `canonicalize_json_structure()` renders normalized statements using sorted keys and `separators=(",", ":")` prior to hashing, giving us whitespace-free hashes.
 * **Dual fields:** `signature_before` / `signature_after` are structured lists of qualifier dicts, while `signature_before_raw` / `signature_after_raw` retain the byte-identical string used in the original benchmark. `constraints_readable_en` and `rule_summaries_en` are derived strictly from the structured payload to avoid re-parsing strings downstream.
 
---- 
+---
 
 ## 4. Stage III: The Context Builder (World State Snapshot)
 
