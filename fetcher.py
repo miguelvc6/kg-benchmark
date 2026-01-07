@@ -17,7 +17,10 @@ from urllib.parse import quote
 import ijson
 import mwclient
 import requests
+import zstandard as zstd
 from tqdm import tqdm
+
+from cache_sqlite import SQLiteLabelCache, SQLiteSnapshotCache
 
 # User agent for polite API usage
 HEADERS = {"User-Agent": "WikidataRepairEval/1.0 (PhD Research; mailto:miguel.vazquez@wu.ac.at)"}
@@ -109,6 +112,8 @@ DATA_DIR.mkdir(exist_ok=True)
 CACHE_DIR = DATA_DIR / "cache"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 LABEL_CACHE_FILE = CACHE_DIR / "id_labels_en.json"
+LABEL_CACHE_DB = CACHE_DIR / "labels_en.sqlite"
+ENTITY_SNAPSHOT_DB = CACHE_DIR / "entity_snapshots.sqlite"
 REPAIR_CANDIDATES_FILE = DATA_DIR / "01_repair_candidates.json"
 WIKIDATA_REPAIRS = DATA_DIR / "02_wikidata_repairs.json"
 WIKIDATA_REPAIRS_JSONL = DATA_DIR / "02_wikidata_repairs.jsonl"
@@ -136,6 +141,7 @@ LOG_DIR.mkdir(exist_ok=True)
 STATS_FILE = LOG_DIR / f"fetcher_stats_{RUN_ID}.jsonl"
 SUMMARY_FILE = LOG_DIR / f"run_summary_{RUN_ID}.json"
 STATS_FLUSH_EVERY = 10000
+STAGE2_LOG_EVERY = 1000
 
 
 def get_wikidata_site():
@@ -1359,13 +1365,13 @@ class RevisionHistoryCache:
 
 
 class SnapshotFetcher:
-    """Snapshot fetcher with disk cache, in-memory cache, and rate limiting."""
+    """Snapshot fetcher with SQLite cache, in-memory cache, and rate limiting."""
 
     _NEGATIVE_SENTINEL = object()
 
     def __init__(
         self,
-        cache_dir=ENTITY_SNAPSHOT_CACHE_DIR,
+        cache_db=ENTITY_SNAPSHOT_DB,
         enable_cache=ENABLE_ENTITY_SNAPSHOT_CACHE,
         memory_cache_size=ENTITY_SNAPSHOT_MEMORY_CACHE_SIZE,
         negative_ttl=ENTITY_SNAPSHOT_NEGATIVE_TTL_SECONDS,
@@ -1373,17 +1379,19 @@ class SnapshotFetcher:
         max_qps=SNAPSHOT_MAX_QPS,
         max_retries=SNAPSHOT_MAX_RETRIES,
     ):
-        self.cache_dir = Path(cache_dir)
+        self.cache_db = Path(cache_db)
         self.enable_cache = enable_cache
         self.memory_cache_size = memory_cache_size
         self.negative_ttl = negative_ttl
         self.max_retries = max_retries
         self._memory_cache = OrderedDict()
-        self._negative_cache = {}
         self._inflight = {}
         self._lock = threading.Lock()
         self._executor = ThreadPoolExecutor(max_workers=max_workers)
         self._rate_limiter = RateLimiter(max_qps)
+        self._snapshot_cache = SQLiteSnapshotCache(self.cache_db) if self.enable_cache else None
+        self._compressor = zstd.ZstdCompressor()
+        self._decompressor = zstd.ZstdDecompressor()
         self.stats = {
             "cache_hits": 0,
             "cache_misses": 0,
@@ -1392,28 +1400,11 @@ class SnapshotFetcher:
             "disk_writes": 0,
             "network_calls": 0,
             "network_errors": 0,
+            "http_status_counts": {200: 0, 400: 0, 404: 0, 429: 0, "other": 0},
         }
 
     def _cache_key(self, qid, revision_id):
-        return (qid, str(revision_id))
-
-    def _snapshot_path(self, qid, revision_id):
-        return self.cache_dir / qid / f"{revision_id}.json.gz"
-
-    def _negative_path(self, qid, revision_id):
-        return self.cache_dir / qid / f"{revision_id}.negative.json"
-
-    def _atomic_write_json(self, path, payload, compress=False):
-        path.parent.mkdir(parents=True, exist_ok=True)
-        suffix = path.suffix + ".tmp"
-        tmp_path = path.with_suffix(suffix)
-        if compress:
-            with gzip.open(tmp_path, "wt", encoding="utf-8") as fh:
-                json.dump(payload, fh, ensure_ascii=True)
-        else:
-            with open(tmp_path, "w", encoding="utf-8") as fh:
-                json.dump(payload, fh, ensure_ascii=True)
-        os.replace(tmp_path, path)
+        return f"{qid}:{revision_id}"
 
     def _get_memory_cached(self, key):
         with self._lock:
@@ -1433,68 +1424,57 @@ class SnapshotFetcher:
             while len(self._memory_cache) > self.memory_cache_size:
                 self._memory_cache.popitem(last=False)
 
-    def _negative_cached(self, key):
-        now = time.time()
-        with self._lock:
-            expiry = self._negative_cache.get(key)
-            if expiry is None:
-                return False
-            if expiry < now:
-                self._negative_cache.pop(key, None)
-                return False
-            self.stats["negative_hits"] += 1
-            return True
+    def _record_status(self, status_code):
+        if status_code in self.stats["http_status_counts"]:
+            self.stats["http_status_counts"][status_code] += 1
+        else:
+            self.stats["http_status_counts"]["other"] += 1
 
-    def _store_negative(self, qid, revision_id):
-        expiry = time.time() + self.negative_ttl
-        key = self._cache_key(qid, revision_id)
-        with self._lock:
-            self._negative_cache[key] = expiry
-        if self.enable_cache:
-            payload = {"timestamp": datetime.now(timezone.utc).isoformat()}
-            try:
-                self._atomic_write_json(self._negative_path(qid, revision_id), payload, compress=False)
-            except Exception:
-                pass
+    def _encode_snapshot(self, snapshot):
+        raw = json.dumps(snapshot, ensure_ascii=True).encode("utf-8")
+        return self._compressor.compress(raw)
 
-    def _disk_snapshot(self, qid, revision_id):
-        if not self.enable_cache:
-            return None
-        snapshot_path = self._snapshot_path(qid, revision_id)
-        if snapshot_path.exists():
-            try:
-                with gzip.open(snapshot_path, "rt", encoding="utf-8") as fh:
-                    payload = json.load(fh)
-                self.stats["cache_hits"] += 1
-                self.stats["disk_hits"] += 1
-                return payload
-            except Exception:
-                return None
-        return None
+    def _decode_snapshot(self, payload):
+        raw = self._decompressor.decompress(payload)
+        return json.loads(raw.decode("utf-8"))
 
-    def _disk_negative(self, qid, revision_id):
-        if not self.enable_cache:
+    def _negative_cache_valid(self, ts):
+        if not ts or self.negative_ttl <= 0:
             return False
-        negative_path = self._negative_path(qid, revision_id)
-        if not negative_path.exists():
-            return False
-        try:
-            with open(negative_path, "r", encoding="utf-8") as fh:
-                payload = json.load(fh)
-        except Exception:
-            return False
-        timestamp = payload.get("timestamp")
-        cached_dt = parse_iso8601(timestamp)
+        cached_dt = parse_iso8601(ts)
         if not cached_dt:
             return False
-        if datetime.now(timezone.utc) - cached_dt > timedelta(seconds=self.negative_ttl):
+        return datetime.now(timezone.utc) - cached_dt <= timedelta(seconds=self.negative_ttl)
+
+    def _db_snapshot(self, key):
+        if not self.enable_cache or not self._snapshot_cache:
+            return None
+        row = self._snapshot_cache.get(key)
+        if not row:
+            self.stats["cache_misses"] += 1
+            return None
+        status, payload, _content_type, ts = row
+        if status == 200:
+            if not payload:
+                self._snapshot_cache.delete(key)
+                self.stats["cache_misses"] += 1
+                return None
             try:
-                negative_path.unlink()
+                snapshot = self._decode_snapshot(payload)
             except Exception:
-                pass
-            return False
-        self.stats["negative_hits"] += 1
-        return True
+                self._snapshot_cache.delete(key)
+                self.stats["cache_misses"] += 1
+                return None
+            self.stats["cache_hits"] += 1
+            self.stats["disk_hits"] += 1
+            return snapshot
+        if self._negative_cache_valid(ts):
+            self.stats["cache_hits"] += 1
+            self.stats["negative_hits"] += 1
+            return self._NEGATIVE_SENTINEL
+        self._snapshot_cache.delete(key)
+        self.stats["cache_misses"] += 1
+        return None
 
     def _fetch_snapshot_network(self, qid, revision_id):
         endpoint = ENTITY_DATA_URL.format(qid=qid)
@@ -1508,15 +1488,23 @@ class SnapshotFetcher:
                 time.sleep(0.5 * (2**attempt))
                 continue
             self.stats["network_calls"] += 1
-            if response.status_code == 200:
-                return response.json()
-            if response.status_code in {429, 500, 502, 503, 504}:
-                time.sleep(0.5 * (2**attempt))
-                continue
+            status = response.status_code
+            content_type = response.headers.get("Content-Type")
+            self._record_status(status)
+            if status == 200:
+                try:
+                    return status, response.json(), content_type
+                except Exception:
+                    self.stats["network_errors"] += 1
+                    return status, None, content_type
+            if status in {429, 500, 502, 503, 504}:
+                if attempt < self.max_retries - 1:
+                    time.sleep(0.5 * (2**attempt))
+                    continue
             self.stats["network_errors"] += 1
-            return None
+            return status, None, content_type
         self.stats["network_errors"] += 1
-        return None
+        return None, None, None
 
     def _parse_snapshot(self, data, qid):
         if not data or "entities" not in data:
@@ -1526,34 +1514,37 @@ class SnapshotFetcher:
             return None
         return entity.get("claims", {})
 
+    def _store_snapshot(self, key, status, snapshot, content_type):
+        if not self.enable_cache or not self._snapshot_cache:
+            return
+        payload = self._encode_snapshot(snapshot) if status == 200 and snapshot is not None else None
+        self._snapshot_cache.put(key, status, payload, content_type)
+        self.stats["disk_writes"] += 1
+
     def _fetch_and_cache(self, qid, revision_id):
         key = self._cache_key(qid, revision_id)
         cached = self._get_memory_cached(key)
         if cached is not None:
             return cached
-        if self._negative_cached(key):
-            return None
-        snapshot = self._disk_snapshot(qid, revision_id)
-        if snapshot is not None:
-            self._store_memory(key, snapshot)
-            return snapshot
-        if self._disk_negative(qid, revision_id):
-            return None
+        snapshot = self._db_snapshot(key)
+        if snapshot is not None or snapshot == self._NEGATIVE_SENTINEL:
+            if snapshot is not None and snapshot is not self._NEGATIVE_SENTINEL:
+                self._store_memory(key, snapshot)
+            return None if snapshot == self._NEGATIVE_SENTINEL else snapshot
 
-        self.stats["cache_misses"] += 1
-        data = self._fetch_snapshot_network(qid, revision_id)
-        snapshot = self._parse_snapshot(data, qid)
-        if snapshot is None:
-            self._store_negative(qid, revision_id)
+        status, data, content_type = self._fetch_snapshot_network(qid, revision_id)
+        if status is None:
             return None
-        self._store_memory(key, snapshot)
-        if self.enable_cache:
-            try:
-                self._atomic_write_json(self._snapshot_path(qid, revision_id), snapshot, compress=True)
-                self.stats["disk_writes"] += 1
-            except Exception:
-                pass
-        return snapshot
+        if status == 200:
+            snapshot = self._parse_snapshot(data, qid)
+            if snapshot is None:
+                self._store_snapshot(key, 404, None, content_type)
+                return None
+            self._store_memory(key, snapshot)
+            self._store_snapshot(key, status, snapshot, content_type)
+            return snapshot
+        self._store_snapshot(key, status, None, content_type)
+        return None
 
     def _clear_inflight(self, key):
         with self._lock:
@@ -1582,19 +1573,21 @@ class SnapshotFetcher:
         cached = self._get_memory_cached(key)
         if cached is not None:
             return cached
-        if self._negative_cached(key):
+        snapshot = self._db_snapshot(key)
+        if snapshot == self._NEGATIVE_SENTINEL:
             return None
-        snapshot = self._disk_snapshot(qid, revision_id)
         if snapshot is not None:
             self._store_memory(key, snapshot)
             return snapshot
-        if self._disk_negative(qid, revision_id):
-            return None
         with self._lock:
             future = self._inflight.get(key)
         if future:
             return future.result()
         return self._fetch_and_cache(qid, revision_id)
+
+    def inflight_size(self):
+        with self._lock:
+            return len(self._inflight)
 
 
 REVISION_HISTORY_CACHE = RevisionHistoryCache() if ENABLE_HISTORY_CACHE else None
@@ -1602,33 +1595,19 @@ SNAPSHOT_FETCHER = SnapshotFetcher()
 
 
 class LabelResolver:
-    """Deterministic ID -> label resolution with disk caching."""
+    """Deterministic ID -> label resolution with SQLite caching."""
 
-    def __init__(self, cache_path=LABEL_CACHE_FILE, preferred_lang="en"):
+    def __init__(self, cache_path=LABEL_CACHE_DB, preferred_lang="en"):
         self.cache_path = Path(cache_path)
         self.preferred_lang = preferred_lang
-        self.cache = {}
+        self.cache = SQLiteLabelCache(self.cache_path)
         self.failed_ids = set()
-        self._load_cache()
-
-    def _load_cache(self):
-        if not self.cache_path.exists():
-            return
-        try:
-            with open(self.cache_path, "r", encoding="utf-8") as fh:
-                payload = json.load(fh)
-        except Exception as exc:
-            print(f"[!] Warning: Could not load label cache {self.cache_path}: {exc}")
-            return
-        if isinstance(payload, dict):
-            self.cache.update(payload)
-
-    def _persist_cache(self):
-        self.cache_path.parent.mkdir(parents=True, exist_ok=True)
-        ordered_keys = sorted(self.cache.keys())
-        serialized = {key: self.cache[key] for key in ordered_keys}
-        with open(self.cache_path, "w", encoding="utf-8") as fh:
-            json.dump(serialized, fh, ensure_ascii=True, indent=2, sort_keys=True)
+        self.stats = {
+            "db_hits": 0,
+            "db_misses": 0,
+            "api_batches": 0,
+            "api_ids": 0,
+        }
 
     @staticmethod
     def _null_entry():
@@ -1652,50 +1631,63 @@ class LabelResolver:
             ordered_ids.append(entity_id)
         if not ordered_ids:
             return {}
-        missing = [entity_id for entity_id in ordered_ids if entity_id not in self.cache]
+
+        cached = self.cache.get_many(ordered_ids)
+        self.stats["db_hits"] += len(cached)
+        missing = [entity_id for entity_id in ordered_ids if entity_id not in cached]
+        self.stats["db_misses"] += len(missing)
         if missing:
-            self._fetch_and_cache(missing)
-        return {entity_id: self.cache.get(entity_id, self._null_entry()) for entity_id in ordered_ids}
+            fetched = self._fetch_and_cache(missing)
+            cached.update(fetched)
+        return {
+            entity_id: {
+                "label_en": cached.get(entity_id, (None, None))[0],
+                "description_en": cached.get(entity_id, (None, None))[1],
+            }
+            for entity_id in ordered_ids
+        }
 
     def lookup(self, entity_id):
         """Return cached resolution for a single id."""
         if not is_entity_or_property_id(entity_id):
             return self._null_entry()
-        if entity_id not in self.cache:
-            self.resolve([entity_id])
-        return self.cache.get(entity_id, self._null_entry())
+        resolved = self.resolve([entity_id])
+        return resolved.get(entity_id, self._null_entry())
 
     def _fetch_and_cache(self, ids):
-        newly_cached = False
+        resolved_payload = {}
         for batch in chunked(ids, 50):
             params = {
                 "action": "wbgetentities",
                 "ids": "|".join(batch),
                 "props": "labels|descriptions",
             }
+            self.stats["api_batches"] += 1
+            self.stats["api_ids"] += len(batch)
             data = get_json(params)
             resolved_ids = set()
+            updates = {}
             if data and "entities" in data:
                 for entity_id, entity in data["entities"].items():
                     resolved_ids.add(entity_id)
                     if not entity or "missing" in entity:
-                        self.cache[entity_id] = self._null_entry()
+                        updates[entity_id] = (None, None)
                         continue
-                    self.cache[entity_id] = {
-                        "label_en": pick_label(entity, self.preferred_lang),
-                        "description_en": pick_description(entity, self.preferred_lang),
-                    }
-                    newly_cached = True
+                    updates[entity_id] = (
+                        pick_label(entity, self.preferred_lang),
+                        pick_description(entity, self.preferred_lang),
+                    )
             unresolved = set(batch) - resolved_ids
             for missing_id in unresolved:
                 if missing_id in self.failed_ids:
                     continue
                 print(f"    [!] Warning: Unable to resolve {missing_id} via Wikidata API.")
                 self.failed_ids.add(missing_id)
-                self.cache[missing_id] = self._null_entry()
-                newly_cached = True
-        if newly_cached:
-            self._persist_cache()
+                updates[missing_id] = (None, None)
+            if updates:
+                self.cache.put_many(updates)
+                resolved_payload.update(updates)
+        return resolved_payload
 
 
 class PageviewClient:
@@ -2627,6 +2619,43 @@ def process_pipeline(max_candidates=None):
             return bool(meta and meta.get("revisions_scanned", 0) > 0)
 
         print(f"[*] Loaded {len(candidates)} candidates. Using REST history.")
+        stage2_start = time.time()
+        last_log_time = stage2_start
+        last_log_processed = 0
+
+        def log_stage2_progress(processed_count):
+            nonlocal last_log_time, last_log_processed
+            if processed_count <= 0 or processed_count % STAGE2_LOG_EVERY != 0:
+                return
+            now = time.time()
+            interval = processed_count - last_log_processed
+            elapsed = now - last_log_time
+            avg_seconds = (elapsed / interval) if interval else 0.0
+            snapshot_stats = SNAPSHOT_FETCHER.stats
+            snapshot_hits = snapshot_stats.get("cache_hits", 0)
+            snapshot_misses = snapshot_stats.get("cache_misses", 0)
+            snapshot_den = snapshot_hits + snapshot_misses
+            snapshot_hit_rate = snapshot_hits / snapshot_den if snapshot_den else 0.0
+            label_hits = label_resolver.stats.get("db_hits", 0)
+            label_misses = label_resolver.stats.get("db_misses", 0)
+            label_den = label_hits + label_misses
+            label_hit_rate = label_hits / label_den if label_den else 0.0
+            status_counts = snapshot_stats.get("http_status_counts", {})
+            inflight = SNAPSHOT_FETCHER.inflight_size()
+            progress.write(
+                "[*] Stage-2 perf: "
+                f"{avg_seconds:.3f}s/entity (rolling), "
+                f"snapshot hit {snapshot_hit_rate:.2%}, "
+                f"label hit {label_hit_rate:.2%}, "
+                f"inflight {inflight}, "
+                f"HTTP 200={status_counts.get(200, 0)} "
+                f"400={status_counts.get(400, 0)} "
+                f"404={status_counts.get(404, 0)} "
+                f"429={status_counts.get(429, 0)} "
+                f"other={status_counts.get('other', 0)}"
+            )
+            last_log_time = now
+            last_log_processed = processed_count
 
         total_to_process = len(candidates)
         if max_candidates is not None:
@@ -2634,6 +2663,11 @@ def process_pipeline(max_candidates=None):
         try:
             with open(WIKIDATA_REPAIRS_JSONL, "a", encoding="utf-8") as repairs_file:
                 progress = tqdm(total=total_to_process, desc="Processing candidates", unit="candidate")
+
+                def finish_candidate():
+                    progress.update(1)
+                    log_stage2_progress(summary["processed"])
+
                 for i, item in enumerate(candidates):
                     if i >= total_to_process:
                         break
@@ -2649,11 +2683,11 @@ def process_pipeline(max_candidates=None):
                     violation_type_normalized = normalize_report_violation_type(violation_type)
 
                     if not qid.startswith("Q"):
-                        progress.update(1)
+                        finish_candidate()
                         continue
 
                     if TARGET_PROPERTIES and pid not in TARGET_PROPERTIES:
-                        progress.update(1)
+                        finish_candidate()
                         continue
 
                     log_candidate(f"[{i + 1}/{total_to_process}] Analyzing {qid} ({pid})...")
@@ -2678,7 +2712,7 @@ def process_pipeline(max_candidates=None):
                                 "report_date": report_date,
                             }
                         )
-                        progress.update(1)
+                        finish_candidate()
                         continue
 
                     fix_event, history_meta = find_repair_revision(
@@ -2711,7 +2745,7 @@ def process_pipeline(max_candidates=None):
                                     "action": fix_event["action"],
                                 }
                             )
-                            progress.update(1)
+                            finish_candidate()
                             continue
                         normalized_current_values = current_values_live if current_values_live is not None else []
                         violation_context = {
@@ -2813,7 +2847,7 @@ def process_pipeline(max_candidates=None):
                                         "property_revision_id": tbox_event["property_revision_id"],
                                     }
                                 )
-                                progress.update(1)
+                                finish_candidate()
                                 continue
                             normalized_current_values = current_values_live if current_values_live is not None else []
                             delta = tbox_event["constraint_delta"]
@@ -2911,7 +2945,7 @@ def process_pipeline(max_candidates=None):
                     record_history_stats(tbox_history_meta)
                     record_history_stats(ambiguous_history_meta)
 
-                    progress.update(1)
+                    finish_candidate()
                 progress.close()
         finally:
             stats_logger.flush()
