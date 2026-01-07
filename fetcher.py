@@ -111,6 +111,7 @@ CACHE_DIR.mkdir(parents=True, exist_ok=True)
 LABEL_CACHE_FILE = CACHE_DIR / "id_labels_en.json"
 REPAIR_CANDIDATES_FILE = DATA_DIR / "01_repair_candidates.json"
 WIKIDATA_REPAIRS = DATA_DIR / "02_wikidata_repairs.json"
+WIKIDATA_REPAIRS_JSONL = DATA_DIR / "02_wikidata_repairs.jsonl"
 POPULARITY_FILE = DATA_DIR / "00_entity_popularity.json"
 PAGEVIEWS_CACHE_FILE = CACHE_DIR / "pageviews_enwiki_365d.json"
 POPULARITY_WINDOW_DAYS = 365
@@ -134,6 +135,7 @@ LOG_DIR = Path("logs")
 LOG_DIR.mkdir(exist_ok=True)
 STATS_FILE = LOG_DIR / f"fetcher_stats_{RUN_ID}.jsonl"
 SUMMARY_FILE = LOG_DIR / f"run_summary_{RUN_ID}.json"
+STATS_FLUSH_EVERY = 10000
 
 
 def get_wikidata_site():
@@ -370,6 +372,61 @@ def load_cached_repairs(path):
     return None
 
 
+def load_jsonl_ids(jsonl_path):
+    """Return (line_count, set(ids)) from a JSONL file, skipping malformed lines."""
+    file_path = Path(jsonl_path)
+    if not file_path.exists():
+        return 0, set()
+    seen_ids = set()
+    line_count = 0
+    with open(file_path, "r", encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            line_count += 1
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(record, dict):
+                entry_id = record.get("id")
+                if entry_id:
+                    seen_ids.add(entry_id)
+    return line_count, seen_ids
+
+
+def append_jsonl_record(file_handle, record):
+    """Append a single JSONL record to an open file handle."""
+    file_handle.write(json.dumps(record, ensure_ascii=True))
+    file_handle.write("\n")
+
+
+def compile_jsonl_to_json(jsonl_path, json_path):
+    """Compile JSONL to a JSON array via a temp file and atomic rename."""
+    jsonl_path = Path(jsonl_path)
+    json_path = Path(json_path)
+    temp_path = json_path.with_suffix(json_path.suffix + ".tmp")
+    with open(jsonl_path, "r", encoding="utf-8") as src, open(temp_path, "w", encoding="utf-8") as dst:
+        dst.write("[")
+        first = True
+        for line in src:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if not first:
+                dst.write(",\n")
+            else:
+                first = False
+            dst.write(json.dumps(record, ensure_ascii=True))
+        dst.write("]\n")
+    os.replace(temp_path, json_path)
+
+
 class StatsLogger:
     """Append-only JSONL logger for per-candidate fetch diagnostics."""
 
@@ -377,14 +434,24 @@ class StatsLogger:
         """Initialize logger with target file and shared run_id."""
         self.stats_path = stats_path
         self.run_id = RUN_ID
+        self.buffer = []
 
     def log(self, record):
         """Write a single JSON object line enriched with the run identifier."""
         enriched = {"run_id": self.run_id}
         enriched.update(record)
+        self.buffer.append(json.dumps(enriched, ensure_ascii=True))
+        if len(self.buffer) >= STATS_FLUSH_EVERY:
+            self.flush()
+
+    def flush(self):
+        """Flush any buffered JSONL lines to disk."""
+        if not self.buffer:
+            return
         with open(self.stats_path, "a", encoding="utf-8") as fh:
-            fh.write(json.dumps(enriched, ensure_ascii=True))
+            fh.write("\n".join(self.buffer))
             fh.write("\n")
+        self.buffer.clear()
 
 
 def pick_label(entity, lang="en"):
@@ -1155,7 +1222,7 @@ def get_json(params=None, *, endpoint=API_ENDPOINT, with_format=True):
                 print(f"    [!] HTTP {response.status_code} for {endpoint}")
         except Exception as exc:
             print(f"    [!] Exception: {exc}")
-        time.sleep(0.2)
+        time.sleep(0.1)
     return None
 
 
@@ -2497,13 +2564,6 @@ def process_pipeline(max_candidates=None):
 
     label_resolver = LabelResolver()
     dataset = load_cached_repairs(WIKIDATA_REPAIRS)
-    seen_ids = set()
-    if dataset:
-        for entry in dataset:
-            if isinstance(entry, dict):
-                entry_id = entry.get("id")
-                if entry_id:
-                    seen_ids.add(entry_id)
 
     summary = None
     if dataset is not None:
@@ -2524,6 +2584,8 @@ def process_pipeline(max_candidates=None):
             "candidate_duplicates_skipped": dedup_stats.get("duplicates_skipped", 0),
             "candidate_violation_type_merges": dedup_stats.get("violation_type_merges", 0),
             "candidate_exact_duplicates": dedup_stats.get("exact_duplicates", 0),
+            "repairs_jsonl_existing": 0,
+            "repairs_jsonl_written": 0,
             "processed": 0,
             "persistence_failed": 0,
             "bad_fix_date": 0,
@@ -2548,6 +2610,9 @@ def process_pipeline(max_candidates=None):
             "history_cache_segment_hits": 0,
         }
 
+        existing_repairs, seen_ids = load_jsonl_ids(WIKIDATA_REPAIRS_JSONL)
+        summary["repairs_jsonl_existing"] = existing_repairs
+
         def record_history_stats(meta):
             """Increment window/page limit counters for any history call."""
             if not meta:
@@ -2563,284 +2628,293 @@ def process_pipeline(max_candidates=None):
 
         print(f"[*] Loaded {len(candidates)} candidates. Using REST history.")
 
-        dataset = []
-        seen_ids.clear()
         total_to_process = len(candidates)
         if max_candidates is not None:
             total_to_process = min(total_to_process, max_candidates)
-        progress = tqdm(total=total_to_process, desc="Processing candidates", unit="candidate")
-        for i, item in enumerate(candidates):
-            if i >= total_to_process:
-                break
-            qid = item["qid"]
-            pid = item["property_id"]
-            violation_type = item.get("violation_type")
-            violation_types = item.get("violation_types")
-            violation_type_normalized = normalize_report_violation_type(violation_type)
+        try:
+            with open(WIKIDATA_REPAIRS_JSONL, "a", encoding="utf-8") as repairs_file:
+                progress = tqdm(total=total_to_process, desc="Processing candidates", unit="candidate")
+                for i, item in enumerate(candidates):
+                    if i >= total_to_process:
+                        break
 
-            if not qid.startswith("Q"):
-                progress.update(1)
-                continue
+                    def log_candidate(message):
+                        if i < 10:
+                            progress.write(message)
 
-            if TARGET_PROPERTIES and pid not in TARGET_PROPERTIES:
-                progress.update(1)
-                continue
+                    qid = item["qid"]
+                    pid = item["property_id"]
+                    violation_type = item.get("violation_type")
+                    violation_types = item.get("violation_types")
+                    violation_type_normalized = normalize_report_violation_type(violation_type)
 
-            progress.write(f"[{i + 1}/{total_to_process}] Analyzing {qid} ({pid})...")
-            summary["processed"] += 1
+                    if not qid.startswith("Q"):
+                        progress.update(1)
+                        continue
 
-            record_base = {
-                "qid": qid,
-                "property": pid,
-                "violation_type": violation_type,
-            }
-            report_metadata = build_report_provenance(item, pid)
+                    if TARGET_PROPERTIES and pid not in TARGET_PROPERTIES:
+                        progress.update(1)
+                        continue
 
-            report_date = item["fix_date"]
-            start_time, end_time = compute_revision_window(report_date)
-            if not end_time:
-                progress.write("    [x] Dropped: Could not parse fix_date.")
-                summary["bad_fix_date"] += 1
-                stats_logger.log(
-                    {
-                        **record_base,
-                        "result": "bad_fix_date",
-                        "report_date": report_date,
+                    log_candidate(f"[{i + 1}/{total_to_process}] Analyzing {qid} ({pid})...")
+                    summary["processed"] += 1
+
+                    record_base = {
+                        "qid": qid,
+                        "property": pid,
+                        "violation_type": violation_type,
                     }
-                )
-                progress.update(1)
-                continue
+                    report_metadata = build_report_provenance(item, pid)
 
-            fix_event, history_meta = find_repair_revision(
-                qid,
-                pid,
-                start_time=start_time,
-                end_time=end_time,
-            )
-            tbox_event = None
-            tbox_history_meta = None
-            ambiguous_history_meta = None
-
-            # Cleaner (A-box) path: prefer instance-level repairs when they exist.
-            if fix_event:
-                progress.write(f"    [+] FOUND A-BOX REPAIR! {fix_event['old_value']} -> {fix_event['new_value']}")
-                summary["repairs_found"] += 1
-                summary["repairs_found_a_box"] += 1
-                current_values_live = get_current_state(qid, pid)
-                if current_values_live is None and STRICT_PERSISTENCE and fix_event["action"] != "DELETE":
-                    progress.write("    [x] Dropped: Persistence check failed (Entity/Prop missing).")
-                    summary["persistence_failed"] += 1
-                    stats_logger.log(
-                        {
-                            **record_base,
-                            "result": "persistence_failed",
-                            "reason": "missing_current_value",
-                            "track": "A_BOX",
-                            "repair_revision_id": fix_event["repair_revision_id"],
-                            "action": fix_event["action"],
-                        }
-                    )
-                    progress.update(1)
-                    continue
-                normalized_current_values = current_values_live if current_values_live is not None else []
-                violation_context = {
-                    "report_violation_type": violation_type,
-                    "value": fix_event["old_value"],
-                }
-                if violation_types:
-                    violation_context["report_violation_types"] = violation_types
-                if violation_type_normalized:
-                    violation_context["report_violation_type_normalized"] = violation_type_normalized
-                violation_context.update(report_metadata)
-                entry = {
-                    "id": f"repair_{qid}_{fix_event['repair_revision_id']}",
-                    "qid": qid,
-                    "property": pid,
-                    "track": "A_BOX",
-                    "information_type": "TBD",
-                    "violation_context": violation_context,
-                    "repair_target": {
-                        "kind": "A_BOX",
-                        "action": fix_event["action"],
-                        "old_value": fix_event["old_value"],
-                        "new_value": fix_event["new_value"],
-                        "value": fix_event["new_value"],
-                        "revision_id": fix_event["repair_revision_id"],
-                        "author": fix_event["author"],
-                    },
-                    "persistence_check": {
-                        "status": "passed",
-                        "current_value_2025": normalized_current_values,
-                    },
-                }
-                # Re-run constraint diffing without heavy payloads to flag ambiguous cases.
-                cheap_tbox_event, ambiguous_history_meta = find_tbox_reform_revision(
-                    pid,
-                    start_time=start_time,
-                    end_time=end_time,
-                    include_snapshots=False,
-                    scan_from_end=True,
-                    max_revisions=25,
-                )
-                if cheap_tbox_event:
-                    entry["ambiguous"] = True
-                    entry["ambiguous_reasons"] = ["A_BOX_CHANGED", "T_BOX_CHANGED"]
-                    summary["ambiguous_both_changed"] += 1
-                entry_id = entry["id"]
-                if entry_id in seen_ids:
-                    progress.write(f"    [!] Duplicate Stage-2 id detected ({entry_id}). Skipping.")
-                    summary["duplicates_skipped"] += 1
-                    stats_logger.log(
-                        {
-                            **record_base,
-                            "result": "duplicate_stage2_id",
-                            "track": "A_BOX",
-                            "duplicate_id": entry_id,
-                        }
-                    )
-                else:
-                    seen_ids.add(entry_id)
-                    dataset.append(enrich_repair_entry(entry, label_resolver))
-                    entity_history_scanned = history_scanned(history_meta)
-                    property_history_scanned = history_scanned(ambiguous_history_meta)
-                    stats_payload = {
-                        **record_base,
-                        "result": "repair_found",
-                        "track": "A_BOX",
-                        "history": history_meta,
-                        "history_entity": history_meta,
-                        "repair_revision_id": fix_event["repair_revision_id"],
-                        "action": fix_event["action"],
-                    }
-                    if entry.get("ambiguous"):
-                        stats_payload["ambiguous"] = True
-                    if ambiguous_history_meta:
-                        stats_payload["history_property"] = ambiguous_history_meta
-                    stats_payload["entity_history_scanned"] = entity_history_scanned
-                    stats_payload["property_history_scanned"] = property_history_scanned
-                    stats_logger.log(stats_payload)
-            else:
-                # Reformer (T-box) path: fall back to constraint evolution when the A-box stayed untouched.
-                tbox_event, tbox_history_meta = find_tbox_reform_revision(
-                    pid,
-                    start_time=start_time,
-                    end_time=end_time,
-                )
-                if tbox_event:
-                    current_values_live = get_current_state(qid, pid)
-                    if current_values_live is None and STRICT_PERSISTENCE:
-                        progress.write("    [x] Dropped: Persistence check failed (Entity/Prop missing).")
-                        summary["persistence_failed"] += 1
+                    report_date = item["fix_date"]
+                    start_time, end_time = compute_revision_window(report_date)
+                    if not end_time:
+                        log_candidate("    [x] Dropped: Could not parse fix_date.")
+                        summary["bad_fix_date"] += 1
                         stats_logger.log(
                             {
                                 **record_base,
-                                "result": "persistence_failed",
-                                "reason": "missing_current_value",
-                                "track": "T_BOX",
-                                "property_revision_id": tbox_event["property_revision_id"],
+                                "result": "bad_fix_date",
+                                "report_date": report_date,
                             }
                         )
                         progress.update(1)
                         continue
-                    normalized_current_values = current_values_live if current_values_live is not None else []
-                    delta = tbox_event["constraint_delta"]
-                    progress.write(
-                        f"    [+] FOUND T-BOX REFORM! signature {delta['hash_before']} -> {delta['hash_after']}"
+
+                    fix_event, history_meta = find_repair_revision(
+                        qid,
+                        pid,
+                        start_time=start_time,
+                        end_time=end_time,
                     )
-                    summary["repairs_found"] += 1
-                    summary["repairs_found_t_box"] += 1
-                    violation_context = {
-                        "report_violation_type": violation_type,
-                        "value": None,
-                        "value_current_2025": normalized_current_values,
-                    }
-                    if violation_types:
-                        violation_context["report_violation_types"] = violation_types
-                    if violation_type_normalized:
-                        violation_context["report_violation_type_normalized"] = violation_type_normalized
-                    violation_context.update(report_metadata)
-                    entry = {
-                        # Include qid so every T-box ID stays globally unique across focus nodes.
-                        "id": f"reform_{qid}_{pid}_{tbox_event['property_revision_id']}",
-                        "qid": qid,
-                        "property": pid,
-                        "track": "T_BOX",
-                        "information_type": "TBD",
-                        "violation_context": violation_context,
-                        "repair_target": {
-                            "kind": "T_BOX",
-                            "property_revision_id": tbox_event["property_revision_id"],
-                            "property_revision_prev": tbox_event["property_revision_prev"],
-                            "author": tbox_event["author"],
-                            "constraint_delta": delta,
-                        },
-                        "persistence_check": {
-                            "status": "passed",
-                            "current_value_2025": normalized_current_values,
-                        },
-                    }
-                    entry_id = entry["id"]
-                    if entry_id in seen_ids:
-                        progress.write(f"    [!] Duplicate Stage-2 id detected ({entry_id}). Skipping.")
-                        summary["duplicates_skipped"] += 1
-                        stats_logger.log(
-                            {
-                                **record_base,
-                                "result": "duplicate_stage2_id",
-                                "track": "T_BOX",
-                                "duplicate_id": entry_id,
-                            }
+                    tbox_event = None
+                    tbox_history_meta = None
+                    ambiguous_history_meta = None
+                    # Cleaner (A-box) path: prefer instance-level repairs when they exist.
+                    if fix_event:
+                        log_candidate(
+                            f"    [+] FOUND A-BOX REPAIR! {fix_event['old_value']} -> {fix_event['new_value']}"
                         )
-                    else:
-                        seen_ids.add(entry_id)
-                        dataset.append(enrich_repair_entry(entry, label_resolver))
-                        entity_history_scanned = history_scanned(history_meta)
-                        property_history_scanned = history_scanned(tbox_history_meta)
-                        stats_logger.log(
-                            {
+                        summary["repairs_found"] += 1
+                        summary["repairs_found_a_box"] += 1
+                        current_values_live = get_current_state(qid, pid)
+                        if current_values_live is None and STRICT_PERSISTENCE and fix_event["action"] != "DELETE":
+                            log_candidate("    [x] Dropped: Persistence check failed (Entity/Prop missing).")
+                            summary["persistence_failed"] += 1
+                            stats_logger.log(
+                                {
+                                    **record_base,
+                                    "result": "persistence_failed",
+                                    "reason": "missing_current_value",
+                                    "track": "A_BOX",
+                                    "repair_revision_id": fix_event["repair_revision_id"],
+                                    "action": fix_event["action"],
+                                }
+                            )
+                            progress.update(1)
+                            continue
+                        normalized_current_values = current_values_live if current_values_live is not None else []
+                        violation_context = {
+                            "report_violation_type": violation_type,
+                            "value": fix_event["old_value"],
+                        }
+                        if violation_types:
+                            violation_context["report_violation_types"] = violation_types
+                        if violation_type_normalized:
+                            violation_context["report_violation_type_normalized"] = violation_type_normalized
+                        violation_context.update(report_metadata)
+                        entry = {
+                            "id": f"repair_{qid}_{fix_event['repair_revision_id']}",
+                            "qid": qid,
+                            "property": pid,
+                            "track": "A_BOX",
+                            "information_type": "TBD",
+                            "violation_context": violation_context,
+                            "repair_target": {
+                                "kind": "A_BOX",
+                                "action": fix_event["action"],
+                                "old_value": fix_event["old_value"],
+                                "new_value": fix_event["new_value"],
+                                "value": fix_event["new_value"],
+                                "revision_id": fix_event["repair_revision_id"],
+                                "author": fix_event["author"],
+                            },
+                            "persistence_check": {
+                                "status": "passed",
+                                "current_value_2025": normalized_current_values,
+                            },
+                        }
+                        # Re-run constraint diffing without heavy payloads to flag ambiguous cases.
+                        cheap_tbox_event, ambiguous_history_meta = find_tbox_reform_revision(
+                            pid,
+                            start_time=start_time,
+                            end_time=end_time,
+                            include_snapshots=False,
+                            scan_from_end=True,
+                            max_revisions=25,
+                        )
+                        if cheap_tbox_event:
+                            entry["ambiguous"] = True
+                            entry["ambiguous_reasons"] = ["A_BOX_CHANGED", "T_BOX_CHANGED"]
+                            summary["ambiguous_both_changed"] += 1
+                        entry_id = entry["id"]
+                        if entry_id in seen_ids:
+                            log_candidate(f"    [!] Duplicate Stage-2 id detected ({entry_id}). Skipping.")
+                            summary["duplicates_skipped"] += 1
+                            stats_logger.log(
+                                {
+                                    **record_base,
+                                    "result": "duplicate_stage2_id",
+                                    "track": "A_BOX",
+                                    "duplicate_id": entry_id,
+                                }
+                            )
+                        else:
+                            seen_ids.add(entry_id)
+                            entry = enrich_repair_entry(entry, label_resolver)
+                            append_jsonl_record(repairs_file, entry)
+                            summary["repairs_jsonl_written"] += 1
+                            entity_history_scanned = history_scanned(history_meta)
+                            property_history_scanned = history_scanned(ambiguous_history_meta)
+                            stats_payload = {
                                 **record_base,
                                 "result": "repair_found",
-                                "track": "T_BOX",
+                                "track": "A_BOX",
                                 "history": history_meta,
                                 "history_entity": history_meta,
-                                "history_property": tbox_history_meta,
-                                "property_revision_id": tbox_event["property_revision_id"],
-                                "constraint_hash_before": delta["hash_before"],
-                                "constraint_hash_after": delta["hash_after"],
-                                "entity_history_scanned": entity_history_scanned,
-                                "property_history_scanned": property_history_scanned,
+                                "repair_revision_id": fix_event["repair_revision_id"],
+                                "action": fix_event["action"],
                             }
-                        )
-                else:
-                    progress.write("    [-] No clean diff found (A-box or T-box).")
-                    entity_history_scanned = history_scanned(history_meta)
-                    property_history_scanned = history_scanned(tbox_history_meta)
-                    has_history = entity_history_scanned or property_history_scanned
-                    if has_history:
-                        summary["no_diff"] += 1
+                            if entry.get("ambiguous"):
+                                stats_payload["ambiguous"] = True
+                            if ambiguous_history_meta:
+                                stats_payload["history_property"] = ambiguous_history_meta
+                            stats_payload["entity_history_scanned"] = entity_history_scanned
+                            stats_payload["property_history_scanned"] = property_history_scanned
+                            stats_logger.log(stats_payload)
                     else:
-                        summary["no_history"] += 1
-                    stats_logger.log(
-                        {
-                            **record_base,
-                            "result": "no_diff" if has_history else "no_history",
-                            "history": history_meta,
-                            "history_entity": history_meta,
-                            "history_property": tbox_history_meta,
-                            "entity_history_scanned": entity_history_scanned,
-                            "property_history_scanned": property_history_scanned,
-                        }
-                    )
+                        # Reformer (T-box) path: fall back to constraint evolution when the A-box stayed untouched.
+                        tbox_event, tbox_history_meta = find_tbox_reform_revision(
+                            pid,
+                            start_time=start_time,
+                            end_time=end_time,
+                        )
+                        if tbox_event:
+                            current_values_live = get_current_state(qid, pid)
+                            if current_values_live is None and STRICT_PERSISTENCE:
+                                log_candidate("    [x] Dropped: Persistence check failed (Entity/Prop missing).")
+                                summary["persistence_failed"] += 1
+                                stats_logger.log(
+                                    {
+                                        **record_base,
+                                        "result": "persistence_failed",
+                                        "reason": "missing_current_value",
+                                        "track": "T_BOX",
+                                        "property_revision_id": tbox_event["property_revision_id"],
+                                    }
+                                )
+                                progress.update(1)
+                                continue
+                            normalized_current_values = current_values_live if current_values_live is not None else []
+                            delta = tbox_event["constraint_delta"]
+                            log_candidate(
+                                f"    [+] FOUND T-BOX REFORM! signature {delta['hash_before']} -> {delta['hash_after']}"
+                            )
+                            summary["repairs_found"] += 1
+                            summary["repairs_found_t_box"] += 1
+                            violation_context = {
+                                "report_violation_type": violation_type,
+                                "value": None,
+                                "value_current_2025": normalized_current_values,
+                            }
+                            if violation_types:
+                                violation_context["report_violation_types"] = violation_types
+                            if violation_type_normalized:
+                                violation_context["report_violation_type_normalized"] = violation_type_normalized
+                            violation_context.update(report_metadata)
+                            entry = {
+                                # Include qid so every T-box ID stays globally unique across focus nodes.
+                                "id": f"reform_{qid}_{pid}_{tbox_event['property_revision_id']}",
+                                "qid": qid,
+                                "property": pid,
+                                "track": "T_BOX",
+                                "information_type": "TBD",
+                                "violation_context": violation_context,
+                                "repair_target": {
+                                    "kind": "T_BOX",
+                                    "property_revision_id": tbox_event["property_revision_id"],
+                                    "property_revision_prev": tbox_event["property_revision_prev"],
+                                    "author": tbox_event["author"],
+                                    "constraint_delta": delta,
+                                },
+                                "persistence_check": {
+                                    "status": "passed",
+                                    "current_value_2025": normalized_current_values,
+                                },
+                            }
+                            entry_id = entry["id"]
+                            if entry_id in seen_ids:
+                                log_candidate(f"    [!] Duplicate Stage-2 id detected ({entry_id}). Skipping.")
+                                summary["duplicates_skipped"] += 1
+                                stats_logger.log(
+                                    {
+                                        **record_base,
+                                        "result": "duplicate_stage2_id",
+                                        "track": "T_BOX",
+                                        "duplicate_id": entry_id,
+                                    }
+                                )
+                            else:
+                                seen_ids.add(entry_id)
+                                entry = enrich_repair_entry(entry, label_resolver)
+                                append_jsonl_record(repairs_file, entry)
+                                summary["repairs_jsonl_written"] += 1
+                                entity_history_scanned = history_scanned(history_meta)
+                                property_history_scanned = history_scanned(tbox_history_meta)
+                                stats_logger.log(
+                                    {
+                                        **record_base,
+                                        "result": "repair_found",
+                                        "track": "T_BOX",
+                                        "history": history_meta,
+                                        "history_entity": history_meta,
+                                        "history_property": tbox_history_meta,
+                                        "property_revision_id": tbox_event["property_revision_id"],
+                                        "constraint_hash_before": delta["hash_before"],
+                                        "constraint_hash_after": delta["hash_after"],
+                                        "entity_history_scanned": entity_history_scanned,
+                                        "property_history_scanned": property_history_scanned,
+                                    }
+                                )
+                        else:
+                            log_candidate("    [-] No clean diff found (A-box or T-box).")
+                            entity_history_scanned = history_scanned(history_meta)
+                            property_history_scanned = history_scanned(tbox_history_meta)
+                            has_history = entity_history_scanned or property_history_scanned
+                            if has_history:
+                                summary["no_diff"] += 1
+                            else:
+                                summary["no_history"] += 1
+                            stats_logger.log(
+                                {
+                                    **record_base,
+                                    "result": "no_diff" if has_history else "no_history",
+                                    "history": history_meta,
+                                    "history_entity": history_meta,
+                                    "history_property": tbox_history_meta,
+                                    "entity_history_scanned": entity_history_scanned,
+                                    "property_history_scanned": property_history_scanned,
+                                }
+                            )
 
-            record_history_stats(history_meta)
-            record_history_stats(tbox_history_meta)
-            record_history_stats(ambiguous_history_meta)
+                    record_history_stats(history_meta)
+                    record_history_stats(tbox_history_meta)
+                    record_history_stats(ambiguous_history_meta)
 
-            if i % 10 == 0:
-                with open(WIKIDATA_REPAIRS, "w") as out:
-                    json.dump(dataset, out, indent=2)
-            progress.update(1)
-        progress.close()
+                    progress.update(1)
+                progress.close()
+        finally:
+            stats_logger.flush()
         if summary:
             snapshot_stats = SNAPSHOT_FETCHER.stats
             summary["entity_snapshot_cache_hits"] = snapshot_stats.get("cache_hits", 0)
@@ -2854,8 +2928,10 @@ def process_pipeline(max_candidates=None):
                 summary["history_cache_hits"] = REVISION_HISTORY_CACHE.hits
                 summary["history_cache_misses"] = REVISION_HISTORY_CACHE.misses
                 summary["history_cache_segment_hits"] = REVISION_HISTORY_CACHE.segment_hits
-            with open(WIKIDATA_REPAIRS, "w", encoding="utf-8") as out:
-                json.dump(dataset, out, indent=2)
+            compile_jsonl_to_json(WIKIDATA_REPAIRS_JSONL, WIKIDATA_REPAIRS)
+            dataset = load_cached_repairs(WIKIDATA_REPAIRS) or []
+        else:
+            dataset = []
 
     if dataset:
         popularity_map = ensure_entity_popularity(dataset)
