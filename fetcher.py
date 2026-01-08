@@ -22,21 +22,20 @@ from tqdm import tqdm
 
 from cache_sqlite import SQLiteLabelCache, SQLiteSnapshotCache
 
-# User agent and base endpoints (Action API, REST history, and snapshot fetches).
+# User agent for polite API usage
 HEADERS = {"User-Agent": "WikidataRepairEval/1.0 (PhD Research; mailto:miguel.vazquez@wu.ac.at)"}
+# Base endpoints for Action API, REST history, and snapshot fetches
 API_ENDPOINT = "https://www.wikidata.org/w/api.php"
 REST_HISTORY_URL = "https://www.wikidata.org/w/rest.php/v1/page/{qid}/history"
 ENTITY_DATA_URL = "https://www.wikidata.org/wiki/Special:EntityData/{qid}.json"
 
-# Fetch tuning and workload limits.
-STRICT_PERSISTENCE = True  # Drop candidates when the current value is missing.
-API_TIMEOUT = 30  # Seconds per HTTP request.
-REVISION_LOOKBACK_DAYS = 7  # Historical window size.
-MAX_HISTORY_PAGES = 8  # REST paging limit.
-MAX_PROPERTY_VALUES = 12  # Max values recorded per property.
-MAX_NEIGHBOR_EDGES = 50  # Max neighborhood edges captured.
-
-# Snapshot caching settings.
+# Fetch tuning knobs and data volume limits
+STRICT_PERSISTENCE = True  # Drop candidates when current value missing
+API_TIMEOUT = 30  # Seconds per HTTP request
+REVISION_LOOKBACK_DAYS = 7  # Historical window size
+MAX_HISTORY_PAGES = 8  # REST paging limit
+MAX_PROPERTY_VALUES = 12  # Max values recorded per property
+MAX_NEIGHBOR_EDGES = 50  # Max neighborhood edges captured
 ENABLE_ENTITY_SNAPSHOT_CACHE = True
 ENTITY_SNAPSHOT_CACHE_DIR = Path("data/cache/entity_snapshots")
 ENTITY_SNAPSHOT_NEGATIVE_TTL_SECONDS = 300
@@ -45,76 +44,26 @@ SNAPSHOT_MAX_WORKERS = 32
 SNAPSHOT_MAX_QPS = 10
 SNAPSHOT_PREFETCH = 6
 SNAPSHOT_MAX_RETRIES = 4
-
-# Revision history cache settings.
 ENABLE_HISTORY_CACHE = True
 HISTORY_CACHE_MAX_ENTRIES = 20000
 HISTORY_CACHE_MAX_SEGMENTS_PER_QID = 4
-
-# Debug-only: limit processing to specific properties (empty means all).
+LATEST_DUMP_PATH = Path("data/latest-all.json.gz")  # 2025 dump location
+WORLD_STATE_FILE = Path("data/03_world_state.json")  # Output for built contexts
+# Limit processing to specific properties for debugging; leave empty to process all
 TARGET_PROPERTIES = [
     # "P569",  # Date of Birth
     # "P570",  # Date of Death
     # "P21",  # Sex or Gender
 ]
-
-# Report mining parameters.
-REPORT_HISTORY_DEPTH = 20  # Revision pairs scanned per report page.
+REPORT_HISTORY_DEPTH = 20  # Revision pairs scanned per report page
+QID_PATTERN = re.compile(r"\[\[(Q\d+)\]\]")
 INVALID_REPORT_SECTIONS = {
     "Types statistics",
 }
 
-# Report/text parsing patterns.
-QID_PATTERN = re.compile(r"\[\[(Q\d+)\]\]")
 REPORT_VIOLATION_QID_PATTERN = re.compile(r"Q\|?(\d+)")
 QID_EXACT_PATTERN = re.compile(r"^Q\d+$")
 PID_EXACT_PATTERN = re.compile(r"^P\d+$")
-
-SITE = None
-
-# Input/output paths.
-LATEST_DUMP_PATH = Path("data/latest-all.json.gz")  # json dump location.
-WORLD_STATE_FILE = Path("data/03_world_state.json")  # Output for built contexts.
-
-# Data/cache directory layout.
-DATA_DIR = Path("data")
-DATA_DIR.mkdir(exist_ok=True)
-CACHE_DIR = DATA_DIR / "cache"
-CACHE_DIR.mkdir(parents=True, exist_ok=True)
-LABEL_CACHE_FILE = CACHE_DIR / "id_labels_en.json"
-LABEL_CACHE_DB = CACHE_DIR / "labels_en.sqlite"
-ENTITY_SNAPSHOT_DB = CACHE_DIR / "entity_snapshots.sqlite"
-REPAIR_CANDIDATES_FILE = DATA_DIR / "01_repair_candidates.json"
-WIKIDATA_REPAIRS = DATA_DIR / "02_wikidata_repairs.json"
-WIKIDATA_REPAIRS_JSONL = DATA_DIR / "02_wikidata_repairs.jsonl"
-POPULARITY_FILE = DATA_DIR / "00_entity_popularity.json"
-PAGEVIEWS_CACHE_FILE = CACHE_DIR / "pageviews_enwiki_365d.json"
-
-# Popularity scoring configuration and API endpoint.
-POPULARITY_WINDOW_DAYS = 365
-POPULARITY_WIKI = "enwiki"
-PAGEVIEWS_PROJECT = "en.wikipedia.org"
-PAGEVIEWS_ACCESS = "all-access"
-PAGEVIEWS_AGENT = "user"
-PAGEVIEWS_GRANULARITY = "daily"
-PAGEVIEWS_ENDPOINT = (
-    "https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/"
-    "{project}/{access}/{agent}/{article}/{granularity}/{start}/{end}"
-)
-POPULARITY_WEIGHTS = {
-    "pageviews_norm": 0.5,
-    "degree_norm": 0.3,
-    "sitelinks_norm": 0.2,
-}
-
-# Run-level logging files and cadence.
-RUN_ID = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
-LOG_DIR = Path("logs")
-LOG_DIR.mkdir(exist_ok=True)
-STATS_FILE = LOG_DIR / f"fetcher_stats_{RUN_ID}.jsonl"
-SUMMARY_FILE = LOG_DIR / f"run_summary_{RUN_ID}.json"
-STATS_FLUSH_EVERY = 10000
-STAGE2_LOG_EVERY = 1000
 
 
 def is_qid(value):
@@ -154,6 +103,45 @@ def normalize_report_violation_type(section):
     normalized = re.sub(r"\{\{[^}]+\}\}", "", section).strip()
     normalized = re.sub(r"\s+", " ", normalized)
     return normalized or None
+
+
+SITE = None
+
+DATA_DIR = Path("data")
+DATA_DIR.mkdir(exist_ok=True)
+CACHE_DIR = DATA_DIR / "cache"
+CACHE_DIR.mkdir(parents=True, exist_ok=True)
+LABEL_CACHE_FILE = CACHE_DIR / "id_labels_en.json"
+LABEL_CACHE_DB = CACHE_DIR / "labels_en.sqlite"
+ENTITY_SNAPSHOT_DB = CACHE_DIR / "entity_snapshots.sqlite"
+REPAIR_CANDIDATES_FILE = DATA_DIR / "01_repair_candidates.json"
+WIKIDATA_REPAIRS = DATA_DIR / "02_wikidata_repairs.json"
+WIKIDATA_REPAIRS_JSONL = DATA_DIR / "02_wikidata_repairs.jsonl"
+POPULARITY_FILE = DATA_DIR / "00_entity_popularity.json"
+PAGEVIEWS_CACHE_FILE = CACHE_DIR / "pageviews_enwiki_365d.json"
+POPULARITY_WINDOW_DAYS = 365
+POPULARITY_WIKI = "enwiki"
+PAGEVIEWS_PROJECT = "en.wikipedia.org"
+PAGEVIEWS_ACCESS = "all-access"
+PAGEVIEWS_AGENT = "user"
+PAGEVIEWS_GRANULARITY = "daily"
+PAGEVIEWS_ENDPOINT = (
+    "https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/"
+    "{project}/{access}/{agent}/{article}/{granularity}/{start}/{end}"
+)
+POPULARITY_WEIGHTS = {
+    "pageviews_norm": 0.5,
+    "degree_norm": 0.3,
+    "sitelinks_norm": 0.2,
+}
+
+RUN_ID = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
+LOG_DIR = Path("logs")
+LOG_DIR.mkdir(exist_ok=True)
+STATS_FILE = LOG_DIR / f"fetcher_stats_{RUN_ID}.jsonl"
+SUMMARY_FILE = LOG_DIR / f"run_summary_{RUN_ID}.json"
+STATS_FLUSH_EVERY = 10000
+STAGE2_LOG_EVERY = 1000
 
 
 def get_wikidata_site():
@@ -1232,9 +1220,6 @@ def get_json(params=None, *, endpoint=API_ENDPOINT, with_format=True):
             )
             if response.status_code == 200:
                 return response.json()
-            if response.status_code in {400, 404}:
-                print(f"    [!] HTTP {response.status_code} for {endpoint}")
-                return None
             if response.status_code == 429:
                 sleep_for = 2**attempt
                 print(f"    [!] Rate limited. Sleeping {sleep_for}s...")
@@ -1405,8 +1390,8 @@ class SnapshotFetcher:
         self._executor = ThreadPoolExecutor(max_workers=max_workers)
         self._rate_limiter = RateLimiter(max_qps)
         self._snapshot_cache = SQLiteSnapshotCache(self.cache_db) if self.enable_cache else None
-        # Shared zstd objects are not thread-safe and can segfault; use thread-local instances.
-        self._zstd_local = threading.local()
+        self._compressor = zstd.ZstdCompressor()
+        self._decompressor = zstd.ZstdDecompressor()
         self.stats = {
             "cache_hits": 0,
             "cache_misses": 0,
@@ -1445,20 +1430,12 @@ class SnapshotFetcher:
         else:
             self.stats["http_status_counts"]["other"] += 1
 
-    def _get_zstd(self):
-        if not hasattr(self._zstd_local, "compressor"):
-            self._zstd_local.compressor = zstd.ZstdCompressor()
-            self._zstd_local.decompressor = zstd.ZstdDecompressor()
-        return self._zstd_local.compressor, self._zstd_local.decompressor
-
     def _encode_snapshot(self, snapshot):
         raw = json.dumps(snapshot, ensure_ascii=True).encode("utf-8")
-        compressor, _ = self._get_zstd()
-        return compressor.compress(raw)
+        return self._compressor.compress(raw)
 
     def _decode_snapshot(self, payload):
-        _, decompressor = self._get_zstd()
-        raw = decompressor.decompress(payload)
+        raw = self._decompressor.decompress(payload)
         return json.loads(raw.decode("utf-8"))
 
     def _negative_cache_valid(self, ts):
