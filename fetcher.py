@@ -4,6 +4,7 @@ import gzip
 import hashlib
 import json
 import math
+import random
 import os
 import re
 import threading
@@ -1390,8 +1391,6 @@ class SnapshotFetcher:
         self._executor = ThreadPoolExecutor(max_workers=max_workers)
         self._rate_limiter = RateLimiter(max_qps)
         self._snapshot_cache = SQLiteSnapshotCache(self.cache_db) if self.enable_cache else None
-        self._compressor = zstd.ZstdCompressor()
-        self._decompressor = zstd.ZstdDecompressor()
         self.stats = {
             "cache_hits": 0,
             "cache_misses": 0,
@@ -1432,10 +1431,10 @@ class SnapshotFetcher:
 
     def _encode_snapshot(self, snapshot):
         raw = json.dumps(snapshot, ensure_ascii=True).encode("utf-8")
-        return self._compressor.compress(raw)
+        return zstd.ZstdCompressor().compress(raw)
 
     def _decode_snapshot(self, payload):
-        raw = self._decompressor.decompress(payload)
+        raw = zstd.ZstdDecompressor().decompress(payload)
         return json.loads(raw.decode("utf-8"))
 
     def _negative_cache_valid(self, ts):
@@ -2547,6 +2546,8 @@ def process_pipeline(max_candidates=None):
         return
     raw_candidate_count = len(candidates)
     candidates, dedup_stats = deduplicate_candidates(candidates)
+    random.seed(42)
+    random.shuffle(candidates)
     if dedup_stats.get("duplicates_skipped"):
         print(
             "[*] Deduplicated candidates: "
