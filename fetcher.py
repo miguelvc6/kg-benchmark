@@ -1232,6 +1232,9 @@ def get_json(params=None, *, endpoint=API_ENDPOINT, with_format=True):
             )
             if response.status_code == 200:
                 return response.json()
+            if response.status_code in {400, 404}:
+                print(f"    [!] HTTP {response.status_code} for {endpoint}")
+                return None
             if response.status_code == 429:
                 sleep_for = 2**attempt
                 print(f"    [!] Rate limited. Sleeping {sleep_for}s...")
@@ -1402,8 +1405,8 @@ class SnapshotFetcher:
         self._executor = ThreadPoolExecutor(max_workers=max_workers)
         self._rate_limiter = RateLimiter(max_qps)
         self._snapshot_cache = SQLiteSnapshotCache(self.cache_db) if self.enable_cache else None
-        self._compressor = zstd.ZstdCompressor()
-        self._decompressor = zstd.ZstdDecompressor()
+        # Shared zstd objects are not thread-safe and can segfault; use thread-local instances.
+        self._zstd_local = threading.local()
         self.stats = {
             "cache_hits": 0,
             "cache_misses": 0,
@@ -1442,12 +1445,20 @@ class SnapshotFetcher:
         else:
             self.stats["http_status_counts"]["other"] += 1
 
+    def _get_zstd(self):
+        if not hasattr(self._zstd_local, "compressor"):
+            self._zstd_local.compressor = zstd.ZstdCompressor()
+            self._zstd_local.decompressor = zstd.ZstdDecompressor()
+        return self._zstd_local.compressor, self._zstd_local.decompressor
+
     def _encode_snapshot(self, snapshot):
         raw = json.dumps(snapshot, ensure_ascii=True).encode("utf-8")
-        return self._compressor.compress(raw)
+        compressor, _ = self._get_zstd()
+        return compressor.compress(raw)
 
     def _decode_snapshot(self, payload):
-        raw = self._decompressor.decompress(payload)
+        _, decompressor = self._get_zstd()
+        raw = decompressor.decompress(payload)
         return json.loads(raw.decode("utf-8"))
 
     def _negative_cache_valid(self, ts):
