@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple
 
 import ijson
+from tqdm import tqdm
 
 QID_RE = re.compile(r"^Q[1-9][0-9]*$")
 PID_RE = re.compile(r"^P[1-9][0-9]*$")
@@ -37,20 +38,10 @@ DEFAULT_OUT_PATH = "04_classified_benchmark.jsonl"
 DEFAULT_OUT_FULL_PATH = "04_classified_benchmark_full.jsonl"
 DEFAULT_STATS_PATH = "reports/classifier_stats.json"
 
-# These are the only ones we *confidently* treat as "Logical" without local/external info.
-# Note: we intentionally key off the report violation type (Stage 1/2), not "all constraints on property".
-LOGICAL_REPORT_TYPES = {
-    "format",
-    "one of",
-    "range",
-}
-
-# Optional: map report type -> canonical constraint type QID (when you want it in outputs)
-REPORT_TYPE_TO_CONSTRAINT_QID = {
-    "format": "Q21502404",  # format constraint
-    "one of": "Q21502402",  # one-of constraint
-    "range": "Q21510860",  # range constraint
-}
+# Constraint QID families (observed in outputs)
+FORMAT_QIDS = {"Q21502404"}  # format constraint
+ONE_OF_QIDS = {"Q21510859", "Q21502402"}  # one-of constraint (observed + legacy)
+RANGE_QIDS = {"Q21510860"}  # range constraint
 
 
 def utc_now_iso() -> str:
@@ -139,6 +130,23 @@ def iter_repairs(path: Path) -> Iterator[Dict[str, Any]]:
         raise ValueError(f"Unsupported JSON content in {path}: {type(obj)}")
 
 
+def count_repairs(path: Path) -> Optional[int]:
+    if path.suffix == ".jsonl":
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                return sum(1 for _ in fh)
+        except Exception:
+            return None
+    # .json array: try streaming count when ijson is available
+    if ijson is not None:
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                return sum(1 for _ in ijson.items(fh, "item"))
+        except Exception:
+            return None
+    return None
+
+
 def safe_get(d: Dict[str, Any], *keys: str, default: Any = None) -> Any:
     cur: Any = d
     for k in keys:
@@ -167,6 +175,121 @@ def extract_constraint_types(world_state_entry: Dict[str, Any]) -> List[Dict[str
             seen.add(qid)
             out.append({"qid": qid, "label_en": label if isinstance(label, str) else None})
     return out
+
+
+def extract_constraint_entries(world_state_entry: Dict[str, Any]) -> List[Dict[str, Any]]:
+    constraints = safe_get(world_state_entry, "L4_constraints", "constraints", default=[])
+    if not isinstance(constraints, list):
+        return []
+    return [c for c in constraints if isinstance(c, dict)]
+
+
+def constraint_kind(ctype: Dict[str, Any]) -> Optional[str]:
+    qid = ctype.get("qid") if isinstance(ctype, dict) else None
+    label = ctype.get("label") if isinstance(ctype, dict) else None
+    if qid in FORMAT_QIDS:
+        return "format"
+    if qid in ONE_OF_QIDS:
+        return "one_of"
+    if qid in RANGE_QIDS:
+        return "range"
+    if isinstance(label, str):
+        ln = normalize_text(label)
+        if ln in {"format constraint", "format"}:
+            return "format"
+        if ln in {"one of constraint", "one-of constraint", "one of", "one-of"}:
+            return "one_of"
+        if ln in {"range constraint", "range"}:
+            return "range"
+    return None
+
+
+def _parse_numeric_token(token: str) -> Optional[Decimal]:
+    if not isinstance(token, str):
+        return None
+    token = token.strip()
+    if not token:
+        return None
+    if re.fullmatch(r"[+-]?\d+(\.\d+)?", token):
+        try:
+            return Decimal(token)
+        except Exception:
+            return None
+    return None
+
+
+def _parse_date_boundary(raw: str) -> Optional[str]:
+    if not isinstance(raw, str):
+        return None
+    m = re.search(r"[+-]?\d{4,}-\d{2}-\d{2}", raw)
+    if not m:
+        return None
+    out = m.group(0)
+    if out.startswith("+"):
+        out = out[1:]
+    return out
+
+
+def _extract_allowed_values(constraint: Dict[str, Any]) -> List[str]:
+    out: List[str] = []
+    qualifiers = constraint.get("qualifiers")
+    if not isinstance(qualifiers, list):
+        return out
+    for q in qualifiers:
+        if not isinstance(q, dict):
+            continue
+        pid = q.get("property_id")
+        if pid != "P2305":
+            continue
+        values = q.get("values")
+        if not isinstance(values, list):
+            continue
+        for v in values:
+            if isinstance(v, dict):
+                if isinstance(v.get("qid"), str):
+                    out.append(v["qid"])
+                elif isinstance(v.get("raw"), str):
+                    out.append(v["raw"])
+            elif isinstance(v, str):
+                out.append(v)
+    # de-dup
+    seen = set()
+    uniq: List[str] = []
+    for t in out:
+        if t not in seen:
+            seen.add(t)
+            uniq.append(t)
+    return uniq
+
+
+def _extract_range_bounds(constraint: Dict[str, Any]) -> Tuple[List[str], List[str]]:
+    mins: List[str] = []
+    maxs: List[str] = []
+    qualifiers = constraint.get("qualifiers")
+    if not isinstance(qualifiers, list):
+        return mins, maxs
+    for q in qualifiers:
+        if not isinstance(q, dict):
+            continue
+        pid = q.get("property_id")
+        if pid not in {"P2310", "P2311"}:
+            continue
+        values = q.get("values")
+        if not isinstance(values, list):
+            continue
+        for v in values:
+            raw = None
+            if isinstance(v, dict):
+                raw = v.get("raw")
+            elif isinstance(v, str):
+                raw = v
+            if not isinstance(raw, str):
+                continue
+            if pid == "P2310":
+                mins.append(raw)
+            else:
+                maxs.append(raw)
+    return mins, maxs
 
 
 def flatten_truth(value: Any) -> List[str]:
@@ -229,35 +352,35 @@ def flatten_truth(value: Any) -> List[str]:
     return uniq
 
 
-def get_truth_tokens(repair_event: Dict[str, Any]) -> List[str]:
+def get_truth_info(repair_event: Dict[str, Any]) -> Tuple[List[str], str, bool]:
     """
-    For A-BOX UPDATE/CREATE: truth is the post-repair value.
-    Falls back to persistence / violation context if missing.
-    For DELETE and T-BOX: no truth; classifier treats separately.
+    Returns (truth_tokens, truth_source, truth_applicable).
+    For A-BOX UPDATE/CREATE: truth is the post-repair value with fallbacks.
+    For DELETE and T-BOX: truth is not applicable.
     """
     rt = repair_event.get("repair_target", {})
     if not isinstance(rt, dict):
-        return []
+        return [], "missing_unexpected", True
 
     kind = rt.get("kind")
     if kind != "A_BOX":
-        return []
+        return [], "none_expected", False
 
     action = rt.get("action")
     if action == "DELETE":
-        return []
+        return [], "none_expected", False
 
     candidates = [
-        rt.get("new_value"),
-        rt.get("value"),
-        safe_get(repair_event, "persistence_check", "current_value_2025"),
-        safe_get(repair_event, "violation_context", "value_current_2025"),
+        ("repair_target.new_value", rt.get("new_value")),
+        ("repair_target.value", rt.get("value")),
+        ("persistence_check.current_value_2025", safe_get(repair_event, "persistence_check", "current_value_2025")),
+        ("violation_context.value_current_2025", safe_get(repair_event, "violation_context", "value_current_2025")),
     ]
-    for v in candidates:
+    for src, v in candidates:
         toks = flatten_truth(v)
         if toks:
-            return toks
-    return []
+            return toks, src, True
+    return [], "missing_unexpected", True
 
 
 def _pre_repair_value(repair_event: Dict[str, Any]) -> Tuple[Any, str]:
@@ -270,18 +393,21 @@ def _pre_repair_value(repair_event: Dict[str, Any]) -> Tuple[Any, str]:
     return None, "missing"
 
 
-def local_context_ids_and_texts(
+def local_context_buckets(
     repair_event: Dict[str, Any],
     world_state_entry: Dict[str, Any],
-) -> Tuple[set, str, Dict[str, Any]]:
+) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """
-    Builds (local_ids_set, local_text_blob) from:
-      - focus node label/description (Stage2 + fallback to L1)
-      - 1-hop outgoing edges (L3), with synthetic pre-repair values
-        for the target property to avoid post-repair leakage.
+    Builds separate buckets for local matching provenance:
+      - ids_neighbors: neighbor QIDs
+      - ids_focus_prerepair: pre-repair target-property QIDs on focus node
+      - text_focus: focus node label/description + pre-repair literals
+      - text_neighbors: neighbor labels/descriptions
     """
-    local_ids: set = set()
-    texts: List[str] = []
+    ids_neighbors: set = set()
+    ids_focus_prerepair: set = set()
+    text_focus: List[str] = []
+    text_neighbors: List[str] = []
     synth_info = {"used_pre_repair_value": False, "pre_repair_source": "missing", "tokens": []}
 
     # Focus node text
@@ -289,7 +415,7 @@ def local_context_ids_and_texts(
     q_desc = repair_event.get("qid_description_en") or safe_get(world_state_entry, "L1_ego_node", "description")
     for x in (q_label, q_desc):
         if isinstance(x, str) and x.strip():
-            texts.append(x)
+            text_focus.append(x)
 
     # Neighborhood
     edges = safe_get(world_state_entry, "L3_neighborhood", "outgoing_edges", default=[])
@@ -304,15 +430,13 @@ def local_context_ids_and_texts(
                 continue
             tq = e.get("target_qid")
             if is_qid(tq):
-                local_ids.add(tq)
+                ids_neighbors.add(tq)
             tl = e.get("target_label")
             td = e.get("target_description")
             if isinstance(tl, str) and tl.strip():
-                texts.append(tl)
+                text_neighbors.append(tl)
             if isinstance(td, str) and td.strip():
-                texts.append(td)
-
-    # Also include constraint-readable labels? (optional; excluded to keep local vs logical separation clean)
+                text_neighbors.append(td)
 
     # Synthetic pre-repair values for the target property (A-Box only)
     rt = repair_event.get("repair_target", {}) if isinstance(repair_event.get("repair_target"), dict) else {}
@@ -325,16 +449,21 @@ def local_context_ids_and_texts(
             synth_info["tokens"] = pre_tokens
             for tok in pre_tokens:
                 if is_qid(tok):
-                    local_ids.add(tok)
+                    ids_focus_prerepair.add(tok)
                 else:
-                    texts.append(str(tok))
+                    text_focus.append(str(tok))
         else:
             synth_info["pre_repair_source"] = pre_src
     else:
         synth_info["pre_repair_source"] = "not_applicable"
 
-    blob = normalize_text(" \n ".join(texts))
-    return local_ids, blob, synth_info
+    buckets = {
+        "ids_neighbors": ids_neighbors,
+        "ids_focus_prerepair": ids_focus_prerepair,
+        "text_focus": normalize_text(" \n ".join(text_focus)),
+        "text_neighbors": normalize_text(" \n ".join(text_neighbors)),
+    }
+    return buckets, synth_info
 
 
 def report_type_normalized(repair_event: Dict[str, Any]) -> str:
@@ -347,50 +476,29 @@ def report_type_normalized(repair_event: Dict[str, Any]) -> str:
     return normalize_text(t)
 
 
-def is_logical_violation(repair_event: Dict[str, Any]) -> bool:
-    t = report_type_normalized(repair_event)
-    # Some report types include extra words; use containment heuristics carefully.
-    # We only treat as logical if it matches the canonical names.
-    for k in LOGICAL_REPORT_TYPES:
-        if t == k:
-            return True
-    return False
-
-
-def logical_from_constraints(constraint_types: List[Dict[str, Optional[str]]]) -> bool:
-    for c in constraint_types:
-        if not isinstance(c, dict):
-            continue
-        qid = c.get("qid")
-        label = c.get("label_en")
-        if qid in REPORT_TYPE_TO_CONSTRAINT_QID.values():
-            return True
-        if isinstance(label, str):
-            ln = normalize_text(label)
-            if ln in {"format constraint", "one of constraint", "one-of constraint", "range constraint"}:
-                return True
-            if ln in {"format", "one of", "one-of", "range"}:
-                return True
-    return False
-
-
-def match_truth_locally(truth_tokens: List[str], local_ids: set, local_text: str) -> Tuple[bool, Dict[str, Any]]:
+def match_truth_locally(truth_tokens: List[str], buckets: Dict[str, Any]) -> Tuple[bool, Dict[str, Any]]:
     """
     Returns:
       - matched: bool
       - evidence: dict with counts and examples
     Matching policy:
-      - QIDs: must appear in local_ids
-      - ISO dates: exact substring
+      - QIDs: must appear in ids_neighbors or ids_focus_prerepair
+      - ISO dates: exact substring on normalized text
       - Other literals: exact substring on normalized text
     """
     if not truth_tokens:
-        return False, {"needed": 0, "found": 0, "matches": []}
+        return False, {"matched": False, "needed": 0, "found": 0, "matches": []}
 
     needed = 0
     found = 0
     matches: List[Dict[str, Any]] = []
     used_literal_substring = False
+    sources_used: set = set()
+
+    ids_neighbors = buckets.get("ids_neighbors", set())
+    ids_focus_prerepair = buckets.get("ids_focus_prerepair", set())
+    text_focus = buckets.get("text_focus", "")
+    text_neighbors = buckets.get("text_neighbors", "")
 
     for tok in truth_tokens:
         if tok is None:
@@ -406,36 +514,161 @@ def match_truth_locally(truth_tokens: List[str], local_ids: set, local_text: str
         needed += 1
 
         if is_qid(tok_s):
-            ok = tok_s in local_ids
-            if ok:
+            if tok_s in ids_focus_prerepair:
                 found += 1
-                matches.append({"token": tok_s, "kind": "qid", "where": "L3_neighborhood"})
+                matches.append({"token": tok_s, "kind": "qid", "source": "FOCUS_PREREPAIR_PROPERTY"})
+                sources_used.add("FOCUS_PREREPAIR_PROPERTY")
+            elif tok_s in ids_neighbors:
+                found += 1
+                matches.append({"token": tok_s, "kind": "qid", "source": "NEIGHBOR_IDS"})
+                sources_used.add("NEIGHBOR_IDS")
             continue
 
         # literal/date matching on normalized text
         if DATE_ISO_RE.match(tok_s):
-            ok = normalize_text(tok_s) in local_text  # exact date required
-            if ok:
+            tok_n = normalize_text(tok_s)
+            if tok_n in text_focus:
                 found += 1
-                matches.append({"token": tok_s, "kind": "date", "where": "text"})
+                matches.append({"token": tok_s, "kind": "date", "source": "FOCUS_TEXT"})
+                sources_used.add("FOCUS_TEXT")
+            elif tok_n in text_neighbors:
+                found += 1
+                matches.append({"token": tok_s, "kind": "date", "source": "NEIGHBOR_TEXT"})
+                sources_used.add("NEIGHBOR_TEXT")
             continue
 
         tok_n = normalize_text(tok_s)
-        ok = tok_n and tok_n in local_text
-        if ok:
+        if tok_n and tok_n in text_focus:
             found += 1
             used_literal_substring = True
-            matches.append({"token": tok_s, "kind": "literal", "where": "text"})
+            matches.append({"token": tok_s, "kind": "literal", "source": "FOCUS_TEXT"})
+            sources_used.add("FOCUS_TEXT")
+        elif tok_n and tok_n in text_neighbors:
+            found += 1
+            used_literal_substring = True
+            matches.append({"token": tok_s, "kind": "literal", "source": "NEIGHBOR_TEXT"})
+            sources_used.add("NEIGHBOR_TEXT")
 
     matched = needed > 0 and found == needed
     evidence = {
+        "matched": matched,
         "needed": needed,
         "found": found,
         "matches": matches,
         "used_literal_substring": used_literal_substring,
-        "local_ids_count": len(local_ids),
+        "sources_used": sorted(sources_used),
+        "local_ids_count": len(ids_neighbors) + len(ids_focus_prerepair),
     }
     return matched, evidence
+
+
+def local_match_subtype(matches: List[Dict[str, Any]]) -> Optional[str]:
+    sources = {m.get("source") for m in matches if isinstance(m, dict)}
+    sources.discard(None)
+    if not sources:
+        return None
+    if len(sources) > 1:
+        return "LOCAL_MIXED"
+    src = next(iter(sources))
+    if src == "NEIGHBOR_IDS":
+        return "LOCAL_NEIGHBOR_IDS"
+    if src == "FOCUS_PREREPAIR_PROPERTY":
+        return "LOCAL_FOCUS_PREREPAIR_PROPERTY"
+    if src in {"FOCUS_TEXT", "NEIGHBOR_TEXT"}:
+        return "LOCAL_TEXT"
+    return "LOCAL_MIXED"
+
+
+def rule_deterministic_classification(
+    repair_event: Dict[str, Any],
+    world_state_entry: Dict[str, Any],
+    truth_tokens: List[str],
+    truth_source: str,
+) -> Tuple[bool, str, str, Dict[str, Any]]:
+    """
+    Returns (is_deterministic, subtype, confidence, detail)
+    subtype values: FORMAT, RANGE, ONE_OF
+    """
+    constraints = extract_constraint_entries(world_state_entry)
+    if not constraints:
+        # fallback: format report type is still rule-driven
+        if report_type_normalized(repair_event) == "format":
+            return True, "FORMAT", "high", {"signal": "report_type"}
+        return False, "", "", {"signal": "none"}
+
+    pre_val, _ = _pre_repair_value(repair_event)
+    pre_tokens = flatten_truth(pre_val)
+
+    for c in constraints:
+        ctype = c.get("constraint_type", {}) if isinstance(c, dict) else {}
+        kind = constraint_kind(ctype)
+        if kind == "format":
+            return True, "FORMAT", "high", {"signal": "L4_constraints", "constraint_type": ctype}
+
+        if kind == "one_of":
+            allowed = _extract_allowed_values(c)
+            if len(allowed) == 1:
+                allowed_val = allowed[0]
+                if not truth_tokens:
+                    return (
+                        True,
+                        "ONE_OF",
+                        "medium",
+                        {
+                            "signal": "L4_constraints",
+                            "constraint_type": ctype,
+                            "allowed_count": 1,
+                            "allowed_value": allowed_val,
+                            "truth_source": truth_source,
+                        },
+                    )
+                if any(tok == allowed_val for tok in truth_tokens):
+                    return (
+                        True,
+                        "ONE_OF",
+                        "high",
+                        {
+                            "signal": "L4_constraints",
+                            "constraint_type": ctype,
+                            "allowed_count": 1,
+                            "allowed_value": allowed_val,
+                        },
+                    )
+            continue
+
+        if kind == "range":
+            if len(truth_tokens) != 1:
+                continue
+            tok = truth_tokens[0]
+            min_raws, max_raws = _extract_range_bounds(c)
+            min_dates = [d for d in (_parse_date_boundary(x) for x in min_raws) if d]
+            max_dates = [d for d in (_parse_date_boundary(x) for x in max_raws) if d]
+            min_nums = [n for n in (_parse_numeric_token(x) for x in min_raws) if n is not None]
+            max_nums = [n for n in (_parse_numeric_token(x) for x in max_raws) if n is not None]
+
+            if DATE_ISO_RE.match(str(tok)):
+                if tok in min_dates or tok in max_dates:
+                    return True, "RANGE", "high", {"signal": "L4_constraints", "constraint_type": ctype}
+            num_tok = _parse_numeric_token(str(tok))
+            if num_tok is not None:
+                if num_tok in min_nums or num_tok in max_nums:
+                    return True, "RANGE", "high", {"signal": "L4_constraints", "constraint_type": ctype}
+            rule_summary = c.get("rule_summary") if isinstance(c, dict) else None
+            if isinstance(rule_summary, str) and truth_tokens and str(tok) in rule_summary:
+                if pre_tokens:
+                    return (
+                        True,
+                        "RANGE",
+                        "medium",
+                        {
+                            "signal": "rule_summary",
+                            "constraint_type": ctype,
+                            "truth_source": truth_source,
+                        },
+                    )
+            continue
+
+    return False, "", "", {"signal": "L4_constraints", "constraint_type": None}
 
 
 def classify_one(
@@ -462,19 +695,31 @@ def classify_one(
             "constraint_types": ctypes,
         }
 
+    truth_tokens, truth_source, truth_applicable = get_truth_info(repair_event)
+    diagnostics = {
+        "truth_applicable": truth_applicable,
+        "truth_tokens": truth_tokens,
+        "truth_source": truth_source,
+    }
+
     if not isinstance(world_state_entry, dict):
         # no context => we cannot safely do local check; treat as external with low confidence
         trace = [
             {"step": "is_delete", "result": None},
+            {"step": "rule_deterministic", "result": None},
             {"step": "local_availability", "result": "missing_world_state"},
-            {"step": "logical_whitelist", "result": is_logical_violation(repair_event)},
             {"step": "fallback_external", "result": True},
             {"step": "branch", "result": "missing_world_state"},
         ]
+        classification = make(
+            "TypeC", "EXTERNAL", "low", trace, "Missing world_state entry; defaulted to external.", []
+        )
+        classification["local_subtype"] = None
+        classification["diagnostics"] = diagnostics
         return (
-            make("TypeC", "EXTERNAL", "low", trace, "Missing world_state entry; defaulted to external.", []),
+            classification,
             "missing_world_state",
-            {"missing_truth_tokens": True, "missing_old_value": False},
+            {"missing_truth_tokens": truth_applicable and not truth_tokens, "missing_old_value": False},
         )
 
     constraint_types = extract_constraint_types(world_state_entry)
@@ -486,52 +731,78 @@ def classify_one(
     if track == "T_BOX" or rt.get("kind") == "T_BOX":
         trace = [
             {"step": "is_delete", "result": False},
+            {"step": "rule_deterministic", "result": None},
             {"step": "local_availability", "result": "not_applicable_t_box"},
-            {"step": "logical_whitelist", "result": None},
             {"step": "fallback_external", "result": None},
             {"step": "branch", "result": "t_box_unknown"},
         ]
-        return (
-            make(
-                "UNKNOWN",
-                "UNKNOWN",
-                "low",
-                trace,
-                "T-Box (Reformer) case: information-necessity taxonomy is defined for A-Box value repairs; labeled UNKNOWN.",
-                constraint_types,
-            ),
-            None,
-            {"missing_truth_tokens": True, "missing_old_value": False},
+        classification = make(
+            "UNKNOWN",
+            "UNKNOWN",
+            "low",
+            trace,
+            "T-Box (Reformer) case: information-necessity taxonomy is defined for A-Box value repairs; labeled UNKNOWN.",
+            constraint_types,
         )
+        classification["local_subtype"] = None
+        classification["diagnostics"] = diagnostics
+        return classification, None, {"missing_truth_tokens": False, "missing_old_value": False}
 
     # A-BOX delete => Type A rejection
     action = rt.get("action")
     if action == "DELETE":
         trace = [
             {"step": "is_delete", "result": True},
+            {"step": "rule_deterministic", "result": None},
             {"step": "local_availability", "result": False},
-            {"step": "logical_whitelist", "result": False},
             {"step": "fallback_external", "result": False},
             {"step": "branch", "result": "delete_rejection"},
         ]
-        return (
-            make(
-                "TypeA",
-                "REJECTION",
-                "high",
-                trace,
-                "A-Box DELETE action treated as logical rejection/cleaning.",
-                constraint_types,
-            ),
-            None,
-            {"missing_truth_tokens": True, "missing_old_value": False},
+        classification = make(
+            "TypeA",
+            "REJECTION",
+            "high",
+            trace,
+            "A-Box DELETE action treated as logical rejection/cleaning.",
+            constraint_types,
         )
+        classification["local_subtype"] = None
+        classification["diagnostics"] = diagnostics
+        return classification, None, {"missing_truth_tokens": False, "missing_old_value": False}
 
-    truth_tokens = get_truth_tokens(repair_event)
     missing_truth = len(truth_tokens) == 0
 
-    local_ids, local_text, synth_info = local_context_ids_and_texts(repair_event, world_state_entry)
-    matched, evidence = match_truth_locally(truth_tokens, local_ids, local_text)
+    # Rule-deterministic check (precedes local)
+    det, det_kind, det_conf, det_detail = rule_deterministic_classification(
+        repair_event, world_state_entry, truth_tokens, truth_source
+    )
+    if det:
+        trace = [
+            {"step": "is_delete", "result": False},
+            {"step": "rule_deterministic", "result": True, "detail": det_detail, "kind": det_kind},
+            {"step": "local_availability", "result": None},
+            {"step": "fallback_external", "result": False},
+            {"step": "branch", "result": "rule_deterministic"},
+        ]
+        classification = make(
+            "TypeA",
+            "LOGICAL",
+            det_conf,
+            trace,
+            f"Rule-deterministic {det_kind.lower()} constraint fix.",
+            constraint_types,
+        )
+        classification["local_subtype"] = None
+        classification["diagnostics"] = diagnostics
+        return (
+            classification,
+            None,
+            {"missing_truth_tokens": truth_applicable and missing_truth, "missing_old_value": False},
+        )
+
+    buckets, synth_info = local_context_buckets(repair_event, world_state_entry)
+    matched, evidence = match_truth_locally(truth_tokens, buckets)
+    local_subtype = local_match_subtype(evidence.get("matches", []))
 
     if matched:
         conf = "high"
@@ -541,90 +812,64 @@ def classify_one(
             conf = "medium"
         trace = [
             {"step": "is_delete", "result": False},
+            {"step": "rule_deterministic", "result": False, "detail": det_detail},
             {"step": "local_availability", "result": True, "evidence": evidence, "synthetic": synth_info},
-        ]
-        # still include the remaining steps for debuggability
-        trace.append({"step": "logical_whitelist", "result": False})
-        trace.append({"step": "fallback_external", "result": False})
-        trace.append({"step": "branch", "result": "local_match"})
-        return (
-            make(
-                "TypeB",
-                "LOCAL",
-                conf,
-                trace,
-                "Truth tokens found in local context using synthetic pre-repair values for target property.",
-                constraint_types,
-            ),
-            None,
-            {"missing_truth_tokens": False, "missing_old_value": synth_info.get("pre_repair_source") == "missing"},
-        )
-
-    # Logical whitelist check based on report violation type
-    logical = False
-    logical_signal = "report_type"
-    if constraint_types:
-        logical = logical_from_constraints(constraint_types)
-        logical_signal = "L4_constraints"
-    else:
-        logical = is_logical_violation(repair_event)
-    if logical:
-        trace = [
-            {"step": "is_delete", "result": False},
-            {"step": "local_availability", "result": False, "evidence": evidence, "synthetic": synth_info},
-            {
-                "step": "logical_whitelist",
-                "result": True,
-                "signal": logical_signal,
-                "report_type": report_type_normalized(repair_event),
-            },
             {"step": "fallback_external", "result": False},
-            {"step": "branch", "result": "logical_constraint"},
+            {"step": "branch", "result": "local_match"},
         ]
+        if local_subtype == "LOCAL_FOCUS_PREREPAIR_PROPERTY":
+            rationale = "Truth tokens matched synthetic pre-repair target property values."
+        elif local_subtype == "LOCAL_NEIGHBOR_IDS":
+            rationale = "Truth tokens matched neighbor identifiers."
+        elif local_subtype == "LOCAL_TEXT":
+            rationale = "Truth tokens matched local text context."
+        else:
+            rationale = "Truth tokens matched multiple local sources."
+        classification = make(
+            "TypeB",
+            local_subtype or "LOCAL_MIXED",
+            conf,
+            trace,
+            rationale,
+            constraint_types,
+        )
+        classification["local_subtype"] = local_subtype
+        classification["diagnostics"] = diagnostics
         return (
-            make(
-                "TypeA",
-                "LOGICAL",
-                "high",
-                trace,
-                "Violation type indicates a logical constraint solvable from the rule definition.",
-                constraint_types,
-            ),
+            classification,
             None,
             {
-                "missing_truth_tokens": missing_truth,
+                "missing_truth_tokens": truth_applicable and missing_truth,
                 "missing_old_value": synth_info.get("pre_repair_source") == "missing",
             },
         )
 
     # Default: external
     conf = "medium"
-    if missing_truth:
+    if truth_applicable and missing_truth:
         conf = "low"
     trace = [
         {"step": "is_delete", "result": False},
+        {"step": "rule_deterministic", "result": False, "detail": det_detail},
         {"step": "local_availability", "result": False, "evidence": evidence, "synthetic": synth_info},
-        {
-            "step": "logical_whitelist",
-            "result": False,
-            "signal": logical_signal if constraint_types else "report_type",
-            "report_type": report_type_normalized(repair_event),
-        },
         {"step": "fallback_external", "result": True},
         {"step": "branch", "result": "external_fallback"},
     ]
+    classification = make(
+        "TypeC",
+        "EXTERNAL",
+        conf,
+        trace,
+        "Truth not found locally and rule is not deterministic; treated as external.",
+        constraint_types,
+    )
+    classification["local_subtype"] = None
+    classification["diagnostics"] = diagnostics
     return (
-        make(
-            "TypeC",
-            "EXTERNAL",
-            conf,
-            trace,
-            "Truth not found locally (using synthetic pre-repair target property) and violation is not purely logical; treated as external.",
-            constraint_types,
-        ),
+        classification,
         None,
         {
-            "missing_truth_tokens": missing_truth,
+            "missing_truth_tokens": truth_applicable and missing_truth,
             "missing_old_value": synth_info.get("pre_repair_source") == "missing",
         },
     )
@@ -681,18 +926,25 @@ def _run_self_tests() -> None:
             ]
         },
     }
-    local_ids, local_text, synth_info = local_context_ids_and_texts(repair_event, world_state_entry)
-    assert "Q99" not in local_ids, "new_value leaked into local_ids"
-    assert "Q1" in local_ids, "old_value missing from synthetic local_ids"
-    matched, _ = match_truth_locally(["Q99"], local_ids, local_text)
+    buckets, synth_info = local_context_buckets(repair_event, world_state_entry)
+    assert "Q99" not in buckets["ids_neighbors"], "new_value leaked into neighbor ids"
+    assert "Q99" not in buckets["ids_focus_prerepair"], "new_value leaked into prerepair ids"
+    assert "Q1" in buckets["ids_focus_prerepair"], "old_value missing from synthetic prerepair ids"
+    matched, _ = match_truth_locally(["Q99"], buckets)
     assert not matched, "new_value should not match local context via target property"
     assert synth_info["used_pre_repair_value"], "synthetic pre-repair value not used"
 
     # ISO date precision: full date must match exactly.
     local_text = normalize_text("born 1999-01-02")
-    matched, _ = match_truth_locally(["1999-01-02"], set(), local_text)
+    matched, _ = match_truth_locally(
+        ["1999-01-02"],
+        {"ids_neighbors": set(), "ids_focus_prerepair": set(), "text_focus": local_text, "text_neighbors": ""},
+    )
     assert matched, "ISO date should match exact full date"
-    matched, _ = match_truth_locally(["1999-01-03"], set(), local_text)
+    matched, _ = match_truth_locally(
+        ["1999-01-03"],
+        {"ids_neighbors": set(), "ids_focus_prerepair": set(), "text_focus": local_text, "text_neighbors": ""},
+    )
     assert not matched, "ISO date should not match a different date"
 
 
@@ -744,7 +996,16 @@ def main() -> int:
     }
 
     def iter_outputs() -> Iterator[Dict[str, Any]]:
-        for repair_event in iter_repairs(repairs_path):
+        repairs_iter: Iterable[Dict[str, Any]] = iter_repairs(repairs_path)
+        total_repairs = count_repairs(repairs_path)
+        repairs_iter = tqdm(
+            repairs_iter,
+            desc="Classifying",
+            unit="records",
+            total=total_repairs,
+            bar_format="{desc}: {percentage:3.0f}%|{bar}| {n:,}/{total:,}{unit} [{elapsed}<{remaining}, {rate_fmt}]",
+        )
+        for repair_event in repairs_iter:
             if not isinstance(repair_event, dict):
                 continue
 
@@ -800,6 +1061,11 @@ def main() -> int:
             stats["counts"][f"class:{c}"] += 1
             stats["counts"][f"subtype:{s}"] += 1
             stats["counts"][f"track:{out.get('track')}"] += 1
+            diag_block = classification.get("diagnostics", {})
+            if isinstance(diag_block, dict):
+                ts = diag_block.get("truth_source")
+                if isinstance(ts, str):
+                    stats["counts"][f"truth_source:{ts}"] += 1
             for step in classification.get("decision_trace", []):
                 if not isinstance(step, dict):
                     continue
