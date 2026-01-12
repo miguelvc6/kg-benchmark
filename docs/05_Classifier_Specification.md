@@ -42,13 +42,16 @@ def classify(repair_event, world_state):
 ## 3. Detailed Logic Specifications
 
 ### 3.1 Step 1: The Local Search (Type B Detection)
+
 **Goal:** Determine if the answer (the "Truth") was already present in the graph topology or node text.
 
-* **Search Scope:**
+**Search Scope:**
+
 * **Focus Node:** Start with the Stage-2 mirrors (`qid_label_en`, `qid_description_en`) and fall back to the World State `L1_ego_node` for additional literal evidence. Aliases are intentionally excluded.
 * **1-Hop Neighbors:** Target QID labels and descriptions from `L3_neighborhood`.
 * **Synthetic Pre-Repair Values:** The target property on the focus node is reconstructed using `repair_target.old_value` (or `violation_context.value`) to avoid post-repair leakage.
-* **Matching Logic:**
+ 
+**Matching Logic:**
 * **Exact ID Match:** If the Truth is a QID (e.g., `Q123`), check in neighbor IDs or synthetic pre-repair focus-property IDs.
 * **Fuzzy String Match:** If the Truth is a string/date/quantity, perform a normalized substring check against focus text or neighbor text.
 * *Normalization:* Lowercase, strip punctuation.
@@ -59,8 +62,8 @@ def classify(repair_event, world_state):
 
 **Goal:** Identify repairs that are solvable purely by understanding the rule, without needing data.
 
-* **Logic:** A repair is Type A only when the rule itself uniquely determines the fix.
-* **Deterministic cases:**
+**Logic:** A repair is Type A only when the rule itself uniquely determines the fix.
+**Deterministic cases:**
 * **Format Constraint (`Q21502404`):** Treated as deterministic (rule-driven).
 * **One-of Constraint (`Q21510859`, `Q21502402`):** Deterministic only if allowed set size is 1.
 * **Range Constraint (`Q21510860`):** Deterministic only when the repair equals a boundary value implied by min/max.
@@ -78,8 +81,8 @@ def classify(repair_event, world_state):
 ## 4. Implementation Guidelines
 
 ### 4.1 Input Handling
-* Load `02_wikidata_repairs.json` or `.jsonl` (streamed).
 
+* Load `02_wikidata_repairs.json` or `.jsonl` (streamed).
 * Load `03_world_state.json` (The dictionary of context).
 * **Join:** Iterate through `02`, using the `id` field to look up the context in `03`.
 
@@ -88,8 +91,8 @@ Stage-2 entries already expose deterministic mirrors for all IDs (`qid_label_en`
 "Aliases are not stored by design to avoid multilingual noise, prompt bloat, and unintended information leakage. Labels and descriptions are sufficient for all Phase-1 experiments."
 
 ### 4.2 Handling DELETE Operations
-* A `DELETE` operation usually implies the existing value was wrong.
 
+* A `DELETE` operation usually implies the existing value was wrong.
 * **Classification:**
 * If the constraint was "Format" or "Range" \rightarrow **Type A** (Cleaning noise).
 * If the constraint was "Mandatory Value" \rightarrow **Type A** (Rejecting the schema applicability).

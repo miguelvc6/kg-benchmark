@@ -7,17 +7,17 @@
 
 ## 1. System Overview: The Hybrid Index-Fetch Strategy
 
-We reject the traditional approach of parsing the full Wikidata Revision History (multi-terabyte XML dumps) due to its low signal-to-noise ratio. Instead, we implement a **Hybrid Index-Fetch Strategy** that leverages existing community maintenance bots as "pointers" to high-quality repair events.
+I implement a **Hybrid Index-Fetch Strategy** that leverages existing community maintenance bots as "pointers" to high-quality repair events.
 
 ### The Core Pipeline
 
 The system operates in four distinct, sequential stages. Each stage produces an immutable JSON artifact that serves as the input for the next.
 
-| Stage       | Component                 | Responsibility                                                                                                        | Input Source                    | Output Artifact                    |
-| ----------- | ------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------- | ---------------------------------- |
-| **1** | **Indexer**         | **Signal Detection:** Mines reports to find "Candidate Repairs" (entities that stopped violating a constraint). | `Wikidata:Database reports/*` | `data/01_repair_candidates.json` |
-| **2** | **Fetcher**         | **Forensics:** Queries API history to find the exact diff and verifies persistence in 2026.                     | Wikibase REST API               | `data/02_wikidata_repairs.json`  |
-| **3** | **Context Builder** | **World State:** Streams the 2026 JSON dump to attach frozen topological context.                               | `latest-all.json.gz`          | `data/03_world_state.json`       |
+| Stage       | Component                 | Responsibility                                                                                                        | Input Source                    | Output Artifact                        |
+| ----------- | ------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------- | -------------------------------------- |
+| **1** | **Indexer**         | **Signal Detection:** Mines reports to find "Candidate Repairs" (entities that stopped violating a constraint). | `Wikidata:Database reports/*` | `data/01_repair_candidates.json`     |
+| **2** | **Fetcher**         | **Forensics:** Queries API history to find the exact diff and verifies persistence in 2026.                     | Wikibase REST API               | `data/02_wikidata_repairs.json`      |
+| **3** | **Context Builder** | **World State:** Streams the 2026 JSON dump to attach frozen topological context.                               | `latest-all.json.gz`          | `data/03_world_state.json`           |
 | **4** | **Classifier**      | **Taxonomy:** Assigns Type A/B/C with decision trace using Stage-2 + Stage-3.                                   | Stage-2 + Stage-3 artifacts     | `data/04_classified_benchmark.jsonl` |
 
 ---
@@ -73,21 +73,16 @@ To ensure ecological validity, we enforce **Strict Persistence** *after* identif
 
 ### Deterministic Label Resolution & Mirroring
 
-Stage 2 now emits human-readable mirrors for every machine-stable identifier without sacrificing determinism.
+Stage 2 emits human-readable mirrors for every machine-stable identifier.
 
 * **Label Resolver Module:** `fetcher.py` instantiates a `LabelResolver` that batches IDs through `wbgetentities`, persists the responses inside `data/cache/id_labels_en.json`, and reuses the cache on subsequent runs. The resolver now returns `{label_en, description_en}` only and falls back to `null` values with a warning whenever Wikidata cannot resolve an ID. The cache file is canonicalized (`sort_keys=True`) to keep hashes stable.
 * **Naming Convention:** Raw fields remain unchanged; the pipeline adds siblings such as `qid_label_en`, `property_description_en`, `report_violation_type_qids`, `value_current_2026_labels_en`, etc. `_raw` preserves the original string, `_qids` lists parsed IDs, and `_label_en/_labels_en` plus `_description_en/_descriptions_en` carry the interpreted mirrors while aliases remain intentionally excluded.
   "Aliases are not stored by design to avoid multilingual noise, prompt bloat, and unintended information leakage. Labels and descriptions are sufficient for all Phase-1 experiments."
-* **Constraint Introspection:** P2302 qualifier IDs are now expanded into `{id,label_en,...}` tuples under `constraints_readable_en`, and the same lookup powers the templated `rule_summaries_en` strings used in docs and classifiers.
-
-### Structured Constraint Signatures
-
-The old design stored deterministic constraint signatures as JSON strings. We now keep both representations:
-
-* **Canonical serialization:** `canonicalize_json_structure()` renders normalized statements using sorted keys and `separators=(",", ":")` prior to hashing, giving us whitespace-free hashes.
-* **Dual fields:** `signature_before` / `signature_after` are structured lists of qualifier dicts, while `signature_before_raw` / `signature_after_raw` retain the byte-identical string used in the original benchmark. `constraints_readable_en` and `rule_summaries_en` are derived strictly from the structured payload to avoid re-parsing strings downstream.
+* **Constraint Introspection:** P2302 qualifier IDs are expanded into `{id,label_en,...}` tuples under `constraints_readable_en`, and the same lookup powers the templated `rule_summaries_en` strings used in docs and classifiers.
 
 ---
+
+
 
 ## 4. Stage III: The Context Builder (World State Snapshot)
 
