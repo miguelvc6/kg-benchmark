@@ -11,13 +11,14 @@ We reject the traditional approach of parsing the full Wikidata Revision History
 
 ### The Core Pipeline
 
-The system operates in three distinct, sequential stages. Each stage produces an immutable JSON artifact that serves as the input for the next.
+The system operates in four distinct, sequential stages. Each stage produces an immutable JSON artifact that serves as the input for the next.
 
 | Stage       | Component                 | Responsibility                                                                                                        | Input Source                    | Output Artifact                    |
 | ----------- | ------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------- | ---------------------------------- |
 | **1** | **Indexer**         | **Signal Detection:** Mines reports to find "Candidate Repairs" (entities that stopped violating a constraint). | `Wikidata:Database reports/*` | `data/01_repair_candidates.json` |
 | **2** | **Fetcher**         | **Forensics:** Queries API history to find the exact diff and verifies persistence in 2025.                     | Wikibase REST API               | `data/02_wikidata_repairs.json`  |
 | **3** | **Context Builder** | **World State:** Streams the 2025 JSON dump to attach frozen topological context.                               | `latest-all.json.gz`          | `data/03_world_state.json`       |
+| **4** | **Classifier**      | **Taxonomy:** Assigns Type A/B/C with decision trace using Stage-2 + Stage-3.                                   | Stage-2 + Stage-3 artifacts     | `data/04_classified_benchmark.jsonl` |
 
 ---
 
@@ -123,3 +124,37 @@ For every benchmark case, the `world_state` object contains four distinct layers
 * **L2 (Labels):** Human-readable names plus descriptions for every QID/PID touched by the context. Aliases remain intentionally excluded to keep the context deterministic and compact.
 * **L3 (Neighborhood):** 1-hop outgoing edges (for testing **Type B: Graph RAG**).
 * **L4 (Constraints):** The full SHACL definition of the violated property (for testing **Type A: Logic**).
+
+---
+
+## 5. Stage IV: The Classifier (Information Necessity)
+
+### Objective
+
+To assign a deterministic Type A/B/C label to each repair event using Stage-2 metadata and Stage-3 world state.
+
+### Core Inputs
+
+* `data/02_wikidata_repairs.json` (or `.jsonl`)
+* `data/03_world_state.json`
+* Optional: `data/00_entity_popularity.json`
+
+### Output Artifacts
+
+* `data/04_classified_benchmark.jsonl` (LEAN)
+* `data/04_classified_benchmark_full.jsonl` (FULL, optional)
+* `reports/classifier_stats.json`
+
+### Classification Order
+
+1. **T-Box:** Labeled `UNKNOWN` (taxonomy not applicable).
+2. **DELETE:** `TypeA/REJECTION`.
+3. **Rule-deterministic constraints:** `TypeA/LOGICAL` when the rule uniquely determines the fix.
+4. **Local availability:** `TypeB/LOCAL_*` when truth appears in local context.
+5. **Fallback:** `TypeC/EXTERNAL`.
+
+### Local Evidence Policy (Leakage Guard)
+
+* The target property is reconstructed to its pre-repair state using `repair_target.old_value` (or `violation_context.value`).
+* Local matching draws from separate buckets for neighbor IDs, focus-node pre-repair IDs, focus text, and neighbor text.
+* Matches are recorded with provenance to enable audit.
