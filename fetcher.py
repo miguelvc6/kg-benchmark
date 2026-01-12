@@ -4,8 +4,8 @@ import gzip
 import hashlib
 import json
 import math
-import random
 import os
+import random
 import re
 import threading
 import time
