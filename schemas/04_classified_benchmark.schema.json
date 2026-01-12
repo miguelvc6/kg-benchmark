@@ -1,0 +1,501 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://example.org/schemas/04_classified_benchmark.schema.json",
+    "title": "WikidataRepairEval 1.0 — Classified Benchmark Record (Lean)",
+    "type": "object",
+    "required": [
+        "id",
+        "qid",
+        "property",
+        "track",
+        "violation_context",
+        "repair_target",
+        "persistence_check",
+        "labels_en",
+        "popularity",
+        "context_ref",
+        "classification"
+    ],
+    "additionalProperties": false,
+    "properties": {
+        "id": {
+            "type": "string",
+            "minLength": 1
+        },
+        "qid": {
+            "type": "string",
+            "pattern": "^Q[1-9][0-9]*$"
+        },
+        "property": {
+            "type": "string",
+            "pattern": "^P[1-9][0-9]*$"
+        },
+        "track": {
+            "type": "string",
+            "enum": [
+                "A_BOX",
+                "T_BOX"
+            ]
+        },
+        "information_type": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "Legacy/placeholder from Stage-2; taxonomy output should not rely on it.",
+            "default": null
+        },
+        "labels_en": {
+            "type": "object",
+            "required": [
+                "qid",
+                "property"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "qid": {
+                    "type": "object",
+                    "required": [
+                        "label",
+                        "description"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                        "label": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        },
+                        "description": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        }
+                    }
+                },
+                "property": {
+                    "type": "object",
+                    "required": [
+                        "label",
+                        "description"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                        "label": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        },
+                        "description": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "violation_context": {
+            "type": "object",
+            "required": [
+                "report_page_title",
+                "report_fix_date",
+                "report_revision_old",
+                "report_revision_new",
+                "report_violation_type_raw",
+                "report_violation_type_normalized",
+                "report_violation_type_qids",
+                "value",
+                "value_current_2025"
+            ],
+            "additionalProperties": true,
+            "properties": {
+                "report_page_title": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "report_fix_date": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "report_revision_old": {
+                    "type": [
+                        "integer",
+                        "null"
+                    ]
+                },
+                "report_revision_new": {
+                    "type": [
+                        "integer",
+                        "null"
+                    ]
+                },
+                "report_violation_type_raw": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "report_violation_type_normalized": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "report_violation_type_qids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "pattern": "^Q[1-9][0-9]*$"
+                    }
+                },
+                "report_violation_type": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "value": {
+                    "description": "Offending value in the report context. May be null for some report types.",
+                    "type": [
+                        "array",
+                        "string",
+                        "number",
+                        "object",
+                        "null"
+                    ]
+                },
+                "value_current_2025": {
+                    "description": "Current live value(s) at build time (2025 snapshot).",
+                    "type": [
+                        "array",
+                        "string",
+                        "number",
+                        "object",
+                        "null"
+                    ]
+                }
+            }
+        },
+        "repair_target": {
+            "type": "object",
+            "required": [
+                "kind",
+                "author"
+            ],
+            "additionalProperties": true,
+            "properties": {
+                "kind": {
+                    "type": "string",
+                    "enum": [
+                        "A_BOX",
+                        "T_BOX"
+                    ]
+                },
+                "author": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "revision_id": {
+                    "type": [
+                        "integer",
+                        "null"
+                    ]
+                },
+                "property_revision_id": {
+                    "type": [
+                        "integer",
+                        "null"
+                    ]
+                },
+                "property_revision_prev": {
+                    "type": [
+                        "integer",
+                        "null"
+                    ]
+                },
+                "action": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "enum": [
+                        "CREATE",
+                        "UPDATE",
+                        "DELETE",
+                        null
+                    ]
+                },
+                "old_value": {
+                    "type": [
+                        "array",
+                        "string",
+                        "number",
+                        "object",
+                        "null"
+                    ]
+                },
+                "new_value": {
+                    "type": [
+                        "array",
+                        "string",
+                        "number",
+                        "object",
+                        "null"
+                    ]
+                },
+                "constraint_delta": {
+                    "type": [
+                        "object",
+                        "null"
+                    ]
+                }
+            }
+        },
+        "persistence_check": {
+            "type": "object",
+            "required": [
+                "status",
+                "current_value_2025"
+            ],
+            "additionalProperties": true,
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "passed",
+                        "failed"
+                    ]
+                },
+                "current_value_2025": {
+                    "type": [
+                        "array",
+                        "string",
+                        "number",
+                        "object",
+                        "null"
+                    ]
+                }
+            }
+        },
+        "popularity": {
+            "type": "object",
+            "required": [
+                "score",
+                "components",
+                "normalization",
+                "policy"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "score": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                },
+                "components": {
+                    "type": "object",
+                    "required": [
+                        "pageviews_365d",
+                        "out_degree",
+                        "sitelinks"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                        "pageviews_365d": {
+                            "type": "integer",
+                            "minimum": 0
+                        },
+                        "out_degree": {
+                            "type": "integer",
+                            "minimum": 0
+                        },
+                        "sitelinks": {
+                            "type": "integer",
+                            "minimum": 0
+                        }
+                    }
+                },
+                "normalization": {
+                    "type": "object",
+                    "required": [
+                        "pageviews_norm",
+                        "degree_norm",
+                        "sitelinks_norm"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                        "pageviews_norm": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                        },
+                        "degree_norm": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                        },
+                        "sitelinks_norm": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                        }
+                    }
+                },
+                "policy": {
+                    "type": "object",
+                    "required": [
+                        "window_days",
+                        "wiki",
+                        "build_date_utc"
+                    ],
+                    "additionalProperties": true,
+                    "properties": {
+                        "window_days": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "wiki": {
+                            "type": "string"
+                        },
+                        "build_date_utc": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "context_ref": {
+            "type": "object",
+            "required": [
+                "world_state_id",
+                "world_state_path"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "world_state_id": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "world_state_path": {
+                    "type": "string",
+                    "description": "Typically 'data/03_world_state.json'. Keeps the lean file portable across folder layouts.",
+                    "minLength": 1
+                }
+            }
+        },
+        "classification": {
+            "type": "object",
+            "required": [
+                "class",
+                "subtype",
+                "confidence",
+                "decision_trace",
+                "rationale",
+                "constraint_types"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "class": {
+                    "type": "string",
+                    "enum": [
+                        "TypeA",
+                        "TypeB",
+                        "TypeC"
+                    ]
+                },
+                "subtype": {
+                    "type": "string",
+                    "enum": [
+                        "LOGICAL",
+                        "LOCAL",
+                        "EXTERNAL",
+                        "REJECTION",
+                        "UNKNOWN"
+                    ]
+                },
+                "confidence": {
+                    "type": "string",
+                    "enum": [
+                        "high",
+                        "medium",
+                        "low"
+                    ]
+                },
+                "decision_trace": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "object",
+                        "required": [
+                            "step",
+                            "result"
+                        ],
+                        "additionalProperties": true,
+                        "properties": {
+                            "step": {
+                                "type": "string",
+                                "enum": [
+                                    "is_delete",
+                                    "local_availability",
+                                    "logical_whitelist",
+                                    "fallback_external"
+                                ]
+                            },
+                            "result": {
+                                "type": [
+                                    "boolean",
+                                    "string",
+                                    "number",
+                                    "null"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "rationale": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "constraint_types": {
+                    "description": "Constraint types present in L4 (and/or in constraint_delta for T-Box).",
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": [
+                            "qid",
+                            "label_en"
+                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                            "qid": {
+                                "type": "string",
+                                "pattern": "^Q[1-9][0-9]*$"
+                            },
+                            "label_en": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "build": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "description": "Optional build metadata; recommended for manifesting and debugging.",
+            "additionalProperties": true
+        }
+    }
+}

@@ -1,8 +1,8 @@
 # WikidataRepairEval 1.0 – Data Acquisition & Validation Protocol
 
-**Project:** Dynamics of Neuro-Symbolic Alignment (Phase 1)  
-**Date:** December 10, 2025  
-**Status:** Protocol Definition & Indexing Phase  
+**Project:** Dynamics of Neuro-Symbolic Alignment (Phase 1)
+**Date:** December 10, 2025
+**Status:** Protocol Definition & Indexing Phase
 **Goal:** Build a gold-standard benchmark of historical Wikidata repairs that isolates logical consistency, topological reasoning, and external retrieval gaps.
 
 ---
@@ -13,11 +13,11 @@ We construct WikidataRepairEval 1.0 by replaying real repair events rather than 
 
 ### Pipeline at a Glance
 
-| Stage              | Description                                                                                                  | Inputs                                                        | Outputs                                            |
-| :----------------- | :----------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------ | :------------------------------------------------- |
-| 1. Indexer         | Mine constraint-violation report histories to find entities that truly disappeared between two snapshots.    | `Wikidata:Database reports/Constraint violations/*` histories | `data\01_repair_candidates.json`                   |
-| 2. Fetcher         | Query revision histories to isolate the exact edit, label it as A-box/T-box, and capture provenance.         | `data\01_repair_candidates.json`, Wikibase REST API           | `data\02_wikidata_repairs.jsonl` + compiled JSON   |
-| 3. Context Builder | Freeze the 2025 neighborhood, labels, constraint metadata, and (for T-box) constraint deltas.                | `data\02_wikidata_repairs.json`, `latest-all.json.gz` dump    | `world_state.json` keyed by each benchmark case    |
+| Stage              | Description                                                                                               | Inputs                                                          | Outputs                                            |
+| :----------------- | :-------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------- | :------------------------------------------------- |
+| 1. Indexer         | Mine constraint-violation report histories to find entities that truly disappeared between two snapshots. | `Wikidata:Database reports/Constraint violations/*` histories | `data\01_repair_candidates.json`                 |
+| 2. Fetcher         | Query revision histories to isolate the exact edit, label it as A-box/T-box, and capture provenance.      | `data\01_repair_candidates.json`, Wikibase REST API           | `data\02_wikidata_repairs.jsonl` + compiled JSON |
+| 3. Context Builder | Freeze the 2026 neighborhood, labels, constraint metadata, and (for T-box) constraint deltas.            | `data\02_wikidata_repairs.json`, `latest-all.json.gz` dump  | `world_state.json` keyed by each benchmark case  |
 
 ---
 
@@ -130,13 +130,9 @@ Freeze the 2025 local topology so evaluators can test reasoning with the same vi
 
 Each repair is classified to enable RQ2 (Information Gap) analysis.
 
-- **Type A – Logical (Internal Consistency):**  
-  Detected and fixed purely via literal checks (e.g., End Date < Start Date). No graph traversal or retrieval.
-
-- **Type B – Local (Topological Reasoning):**  
-  Requires inspecting statements on the subject or directly connected nodes (≤1 hop). Includes textual descriptions on the node, e.g., verifying that a human has the correct role type.
-
-- **Type C – External (Information Void):**  
+- **Type A – Logical (Internal Consistency):**Detected and fixed purely via literal checks (e.g., End Date < Start Date). No graph traversal or retrieval.
+- **Type B – Local (Topological Reasoning):**Requires inspecting statements on the subject or directly connected nodes (≤1 hop). Includes textual descriptions on the node, e.g., verifying that a human has the correct role type.
+- **Type C – External (Information Void):**
   Needs information absent from the graph (beyond 2 hops). Relies on frozen Tavily search results packaged with the case.
 
 ---

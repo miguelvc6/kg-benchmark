@@ -1,4 +1,6 @@
 data/*
+data_sample/*
 __pycache__/
 .venv/
 .venv-wsl/
+logs/
