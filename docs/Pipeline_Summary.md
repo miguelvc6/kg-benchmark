@@ -42,7 +42,7 @@ Performance safeguards:
 
 ## Stage 3 — Context Builder (World-State Snapshot)
 
-For each accepted repair, I construct a **frozen 2025 context** that the Guardian and LLMs will reason over.
+For each accepted repair, I construct a **frozen 2026 context** that the Guardian and LLMs will reason over.
 
 * The **focus entity** and **property definition** are loaded from the latest Wikidata dump (schema-consistent).
 * **Labels and descriptions** of neighboring entities are fetched via the Wikidata API.

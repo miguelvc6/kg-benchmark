@@ -81,7 +81,7 @@ Every record still captures the core event metadata (`id`, `qid`, `property`, `t
 
 * Human-friendly mirrors for `qid` and `property`.
 * Parsed violation types (`report_violation_type_qids`) plus aligned labels/descriptions (aliases intentionally excluded).
-* Annotated value lists wherever the payload is a QID (`value`, `value_current_2025`, `current_value_2025`, `old_value`, `new_value`, etc.).
+* Annotated value lists wherever the payload is a QID (`value`, `value_current_2026`, `current_value_2026`, `old_value`, `new_value`, etc.).
 * Structured constraint signatures (`signature_before` / `signature_after`) accompanied by their raw string form, readable projections, and templated `rule_summaries_en`.
 
 #### Example (A-box)
@@ -107,9 +107,9 @@ Every record still captures the core event metadata (`id`, `qid`, `property`, `t
     ],
     "value": ["Q6581072"],
     "value_labels_en": ["male"],
-    "value_current_2025": ["Q6581097"],
-    "value_current_2025_labels_en": ["female"],
-    "report_fix_date": "2025-12-16T15:52:53Z",
+    "value_current_2026": ["Q6581097"],
+    "value_current_2026_labels_en": ["female"],
+    "report_fix_date": "2026-12-16T15:52:53Z",
     "report_revision_old": 2442751815,
     "report_revision_new": 2443041553
   },
@@ -125,8 +125,8 @@ Every record still captures the core event metadata (`id`, `qid`, `property`, `t
   },
   "persistence_check": {
     "status": "passed",
-    "current_value_2025": ["Q6581097"],
-    "current_value_2025_labels_en": ["female"]
+    "current_value_2026": ["Q6581097"],
+    "current_value_2026_labels_en": ["female"]
   }
 }
 ```

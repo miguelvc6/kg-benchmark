@@ -83,7 +83,7 @@ def classify(repair_event, world_state):
 * Load `03_world_state.json` (The dictionary of context).
 * **Join:** Iterate through `02`, using the `id` field to look up the context in `03`.
 
-Stage-2 entries already expose deterministic mirrors for all IDs (`qid_label_en`, `property_description_en`, `value_current_2025_labels_en`, `report_violation_type_qids`, `constraints_readable_en`, etc.). Use these fields before resorting to bespoke label resolution—they are backed by the shared label cache, include English labels/descriptions, and omit aliases per the benchmark policy.
+Stage-2 entries already expose deterministic mirrors for all IDs (`qid_label_en`, `property_description_en`, `value_current_2026_labels_en`, `report_violation_type_qids`, `constraints_readable_en`, etc.). Use these fields before resorting to bespoke label resolution—they are backed by the shared label cache, include English labels/descriptions, and omit aliases per the benchmark policy.
 
 "Aliases are not stored by design to avoid multilingual noise, prompt bloat, and unintended information leakage. Labels and descriptions are sufficient for all Phase-1 experiments."
 

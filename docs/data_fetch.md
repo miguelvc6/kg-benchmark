@@ -1,7 +1,6 @@
 # WikidataRepairEval 1.0 – Data Acquisition & Validation Protocol
 
 **Project:** Dynamics of Neuro-Symbolic Alignment (Phase 1)
-**Date:** December 10, 2025
 **Status:** Protocol Definition & Indexing Phase
 **Goal:** Build a gold-standard benchmark of historical Wikidata repairs that isolates logical consistency, topological reasoning, and external retrieval gaps.
 
@@ -44,7 +43,7 @@ We construct WikidataRepairEval 1.0 by replaying real repair events rather than 
   - Scan entity histories within the 7-day lookback window and store the *latest* property change (action + old/new signatures). Each record now includes `track`, `repair_target.kind`, and a fully explicit before/after payload.
   - If no entity edit exists, scan the property (`Property:{pid}`) for the most recent `P2302` signature change, capturing deterministic SHA1 hashes and optional serialized constraint statements in `constraint_delta`.
   - When an A-box fix is found, run a cheap reverse scan (≤25 revisions) over the property history to detect coincident T-box edits and mark `ambiguous` entries.
-- **Persistence Filter:** Live 2025 data is fetched *after* the repair type is known. DELETE actions may legitimately return `None`; all other repairs must still exist in the live graph or the candidate is dropped.
+- **Persistence Filter:** Live 2026 data is fetched *after* the repair type is known. DELETE actions may legitimately return `None`; all other repairs must still exist in the live graph or the candidate is dropped.
 - **Outputs:** Append-only `data\02_wikidata_repairs.jsonl` during execution, compiled into `data\02_wikidata_repairs.json` at the end. Each entry stores:
   - Unique IDs (`repair_{qid}_{rev}` or `reform_{qid}_{pid}_{rev}`), track labels, and report provenance.
   - `violation_context` (offending value or `null`, Stage-1 timestamps, report revisions).
@@ -59,12 +58,12 @@ We construct WikidataRepairEval 1.0 by replaying real repair events rather than 
 
 ### Role
 
-Freeze the 2025 local topology so evaluators can test reasoning with the same view of the graph. Acts as the “freezing mechanism” referenced in the Guardian hypothesis.
+Freeze the 2026 local topology so evaluators can test reasoning with the same view of the graph. Acts as the “freezing mechanism” referenced in the Guardian hypothesis.
 
 ### Inputs
 
 - `data\02_wikidata_repairs.json` (provides the `Set<QID>` to preserve).
-- `latest-all.json.gz` (2025 dump).
+- `latest-all.json.gz` (2026 dump).
 
 ### Process
 
@@ -141,8 +140,8 @@ Each repair is classified to enable RQ2 (Information Gap) analysis.
 
 ### Persistence Filter
 
-- **Risk Addressed:** Time-travel paradox—repairs that no longer make sense in 2025.
-- **Rule:** Discard `(E, P, V)` if it no longer exists in the 2025 dump. Sacrifices ~60% of cases to ensure reproducibility.
+- **Risk Addressed:** Time-travel paradox—repairs that no longer make sense in 2026.
+- **Rule:** Discard `(E, P, V)` if it no longer exists in the 2026 dump. Sacrifices ~60% of cases to ensure reproducibility.
 
 ### Frozen Retrieval Snapshots
 

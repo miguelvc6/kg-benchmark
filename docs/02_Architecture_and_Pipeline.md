@@ -16,8 +16,8 @@ The system operates in four distinct, sequential stages. Each stage produces an 
 | Stage       | Component                 | Responsibility                                                                                                        | Input Source                    | Output Artifact                    |
 | ----------- | ------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------- | ---------------------------------- |
 | **1** | **Indexer**         | **Signal Detection:** Mines reports to find "Candidate Repairs" (entities that stopped violating a constraint). | `Wikidata:Database reports/*` | `data/01_repair_candidates.json` |
-| **2** | **Fetcher**         | **Forensics:** Queries API history to find the exact diff and verifies persistence in 2025.                     | Wikibase REST API               | `data/02_wikidata_repairs.json`  |
-| **3** | **Context Builder** | **World State:** Streams the 2025 JSON dump to attach frozen topological context.                               | `latest-all.json.gz`          | `data/03_world_state.json`       |
+| **2** | **Fetcher**         | **Forensics:** Queries API history to find the exact diff and verifies persistence in 2026.                     | Wikibase REST API               | `data/02_wikidata_repairs.json`  |
+| **3** | **Context Builder** | **World State:** Streams the 2026 JSON dump to attach frozen topological context.                               | `latest-all.json.gz`          | `data/03_world_state.json`       |
 | **4** | **Classifier**      | **Taxonomy:** Assigns Type A/B/C with decision trace using Stage-2 + Stage-3.                                   | Stage-2 + Stage-3 artifacts     | `data/04_classified_benchmark.jsonl` |
 
 ---
@@ -58,10 +58,10 @@ A critical engineering challenge is the latency between the **Repair Event** (Us
 
 ### The Persistence Filter (Time-Travel Protection)
 
-To ensure ecological validity, we enforce **Strict Persistence** *after* identifying the candidate repair. This sequencing allows legitimate DELETE actions to remain in the dataset while still rejecting stale candidates that no longer exist in 2025.
+To ensure ecological validity, we enforce **Strict Persistence** *after* identifying the candidate repair. This sequencing allows legitimate DELETE actions to remain in the dataset while still rejecting stale candidates that no longer exist in 2026.
 
-* **Rule:** Once the repair type is known, the system queries the **live** 2025 Wikidata API for the affected entity/property.
-* **Check:** Does the entity still exist? Does the property definition still exist? If the human fix was a DELETE, the absence of the property in 2025 is acceptable.
+* **Rule:** Once the repair type is known, the system queries the **live** 2026 Wikidata API for the affected entity/property.
+* **Check:** Does the entity still exist? Does the property definition still exist? If the human fix was a DELETE, the absence of the property in 2026 is acceptable.
 * **Outcome:** Non-DELETE repairs with missing live values are discarded, preserving reproducibility without biasing against deletion cases.
 
 ### Dual-Track Detection & Provenance
@@ -76,7 +76,7 @@ To ensure ecological validity, we enforce **Strict Persistence** *after* identif
 Stage 2 now emits human-readable mirrors for every machine-stable identifier without sacrificing determinism.
 
 * **Label Resolver Module:** `fetcher.py` instantiates a `LabelResolver` that batches IDs through `wbgetentities`, persists the responses inside `data/cache/id_labels_en.json`, and reuses the cache on subsequent runs. The resolver now returns `{label_en, description_en}` only and falls back to `null` values with a warning whenever Wikidata cannot resolve an ID. The cache file is canonicalized (`sort_keys=True`) to keep hashes stable.
-* **Naming Convention:** Raw fields remain unchanged; the pipeline adds siblings such as `qid_label_en`, `property_description_en`, `report_violation_type_qids`, `value_current_2025_labels_en`, etc. `_raw` preserves the original string, `_qids` lists parsed IDs, and `_label_en/_labels_en` plus `_description_en/_descriptions_en` carry the interpreted mirrors while aliases remain intentionally excluded.
+* **Naming Convention:** Raw fields remain unchanged; the pipeline adds siblings such as `qid_label_en`, `property_description_en`, `report_violation_type_qids`, `value_current_2026_labels_en`, etc. `_raw` preserves the original string, `_qids` lists parsed IDs, and `_label_en/_labels_en` plus `_description_en/_descriptions_en` carry the interpreted mirrors while aliases remain intentionally excluded.
   "Aliases are not stored by design to avoid multilingual noise, prompt bloat, and unintended information leakage. Labels and descriptions are sufficient for all Phase-1 experiments."
 * **Constraint Introspection:** P2302 qualifier IDs are now expanded into `{id,label_en,...}` tuples under `constraints_readable_en`, and the same lookup powers the templated `rule_summaries_en` strings used in docs and classifiers.
 

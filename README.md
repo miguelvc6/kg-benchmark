@@ -2,7 +2,7 @@
 
 WikidataRepairEval 1.0: a benchmark of real Wikidata repair events with frozen
 context for evaluating knowledge graph repair and retrieval needs. The pipeline
-reconstructs historical fixes, attaches a 2025 world-state snapshot, and labels
+reconstructs historical fixes, attaches a 2026 world-state snapshot, and labels
 each case by information necessity (Type A/B/C).
 
 ## Pipeline overview
@@ -64,7 +64,7 @@ python classifier.py --self-test
 
 - `data/01_repair_candidates.json`: candidate repair events from report diffs
 - `data/02_wikidata_repairs.json(.jsonl)`: atomic repair events with provenance
-- `data/03_world_state.json`: frozen 2025 context keyed by repair id
+- `data/03_world_state.json`: frozen 2026 context keyed by repair id
 - `data/04_classified_benchmark.jsonl`: labeled benchmark (lean)
 - `data/04_classified_benchmark_full.jsonl`: labeled benchmark with embedded context
 - `reports/classifier_stats.json`: summary counts and diagnostics
@@ -74,7 +74,7 @@ at repo root for inspection.
 
 ## Notes
 
-- The fetcher hits the live Wikidata API and can take hours. It writes large
+- The fetcher hits the live Wikidata API and can take days. It writes large
   artifacts and caches under `data/cache/`.
 - Stage 3 requires the `data/latest-all.json.gz` Wikidata dump.
 - See `docs/` for detailed protocol and taxonomy documentation.

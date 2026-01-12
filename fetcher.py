@@ -67,7 +67,7 @@ DATA_DIR = Path("data")
 DATA_DIR.mkdir(exist_ok=True)
 CACHE_DIR = DATA_DIR / "cache"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
-LATEST_DUMP_PATH = Path("data/latest-all.json.gz")  # 2025 dump location
+LATEST_DUMP_PATH = Path("data/latest-all.json.gz")  # 2026 dump location
 WORLD_STATE_FILE = Path("data/03_world_state.json")  # Output for built contexts
 LABEL_CACHE_FILE = CACHE_DIR / "id_labels_en.json"
 LABEL_CACHE_DB = CACHE_DIR / "labels_en.sqlite"
@@ -623,7 +623,7 @@ def validate_world_state_file(world_state_path, repairs_path):
 
 
 class WorldStateBuilder:
-    """Streams the 2025 dump to attach ego/neighbor context to each repair."""
+    """Streams the 2026 dump to attach ego/neighbor context to each repair."""
 
     def __init__(self, dump_path):
         """Record dump location and flag whether it is available."""
@@ -2488,11 +2488,11 @@ def enrich_repair_entry(entry, resolver):
     ids_to_resolve.update(report_qids)
 
     violation_value_qids = extract_qids_from_sequence(violation_context.get("value"))
-    violation_value_current_qids = extract_qids_from_sequence(violation_context.get("value_current_2025"))
+    violation_value_current_qids = extract_qids_from_sequence(violation_context.get("value_current_2026"))
     ids_to_resolve.update(violation_value_qids)
     ids_to_resolve.update(violation_value_current_qids)
 
-    persistence_qids = extract_qids_from_sequence(persistence_check.get("current_value_2025"))
+    persistence_qids = extract_qids_from_sequence(persistence_check.get("current_value_2026"))
     ids_to_resolve.update(persistence_qids)
 
     old_value_qids = extract_qids_from_sequence(repair_target.get("old_value"))
@@ -2525,8 +2525,8 @@ def enrich_repair_entry(entry, resolver):
         add_resolved_list_fields(violation_context, "report_violation_type", report_qids, resolved_lookup)
 
     add_resolved_list_fields(violation_context, "value", violation_value_qids, resolved_lookup)
-    add_resolved_list_fields(violation_context, "value_current_2025", violation_value_current_qids, resolved_lookup)
-    add_resolved_list_fields(persistence_check, "current_value_2025", persistence_qids, resolved_lookup)
+    add_resolved_list_fields(violation_context, "value_current_2026", violation_value_current_qids, resolved_lookup)
+    add_resolved_list_fields(persistence_check, "current_value_2026", persistence_qids, resolved_lookup)
     add_resolved_list_fields(repair_target, "old_value", old_value_qids, resolved_lookup)
     add_resolved_list_fields(repair_target, "new_value", new_value_qids, resolved_lookup)
     add_resolved_list_fields(repair_target, "value", repair_value_qids, resolved_lookup)
@@ -2785,7 +2785,7 @@ def process_pipeline(max_candidates=None):
                             },
                             "persistence_check": {
                                 "status": "passed",
-                                "current_value_2025": normalized_current_values,
+                                "current_value_2026": normalized_current_values,
                             },
                         }
                         # Re-run constraint diffing without heavy payloads to flag ambiguous cases.
@@ -2869,7 +2869,7 @@ def process_pipeline(max_candidates=None):
                             violation_context = {
                                 "report_violation_type": violation_type,
                                 "value": None,
-                                "value_current_2025": normalized_current_values,
+                                "value_current_2026": normalized_current_values,
                             }
                             if violation_types:
                                 violation_context["report_violation_types"] = violation_types
@@ -2893,7 +2893,7 @@ def process_pipeline(max_candidates=None):
                                 },
                                 "persistence_check": {
                                     "status": "passed",
-                                    "current_value_2025": normalized_current_values,
+                                    "current_value_2026": normalized_current_values,
                                 },
                             }
                             entry_id = entry["id"]

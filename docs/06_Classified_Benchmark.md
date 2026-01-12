@@ -15,7 +15,7 @@ The earlier artifacts are provenance-grade and modular:
 
 - `01_repair_candidates.json`: report-diff candidate signal
 - `02_wikidata_repairs.json`: forensic repair events (A-Box/T-Box)
-- `03_world_state.json`: frozen 2025 context (L1-L4)
+- `03_world_state.json`: frozen 2026 context (L1-L4)
 - `00_entity_popularity.json`: deterministic head/tail stratification
 
 However, experiments need a single, joined record with an explicit label for:

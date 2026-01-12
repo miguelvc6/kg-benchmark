@@ -11,7 +11,7 @@ Before calculating performance metrics, every model output must pass a series of
 
 ### 1.1 The Persistence Filter (Time-Travel Paradox)
 
-**Risk:** Evaluating a 2019 repair on a 2025 KG snapshot is invalid if the entity's state has mutated or the constraint has changed.
+**Risk:** Evaluating a 2019 repair on a 2026 KG snapshot is invalid if the entity's state has mutated or the constraint has changed.
 
 * **Protocol:** The benchmark pipeline re-runs the exact SHACL shape from the dataset on the current live KG.
 * **Rule:** If the violation does not exist or has structurally changed (e.g., a different conflicting value is present), the sample is discarded. We prioritize "Persistent Violations" that have remained unsolved or re-occurred.

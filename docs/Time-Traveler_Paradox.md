@@ -2,7 +2,7 @@
 
 ## Why This Matters
 
-The **Time-Travel Paradox** is a fundamental validity issue in benchmarks that replay **historical knowledge graph repairs** but evaluate them against a **current snapshot** of the world (e.g., Wikidata 2025).
+The **Time-Travel Paradox** is a fundamental validity issue in benchmarks that replay **historical knowledge graph repairs** but evaluate them against a **current snapshot** of the world (e.g., Wikidata 2026).
 
 If this issue is not handled correctly, the benchmark no longer measures **reasoning ability** or **information access**, but instead measures **ontology drift** and **world evolution**. This silently invalidates conclusions about model performance.
 
@@ -30,7 +30,7 @@ Let:
 
 - $S_t$: the constraint (SHACL shape) at time $t$
 - $E_t$: the entity state at time $t$
-- $E_{now}$: the entity state in the current snapshot (e.g. 2025)
+- $E_{now}$: the entity state in the current snapshot (e.g. 2026)
 - $V(S, E) \in \{\text{valid}, \text{invalid}\}$
 
 A historical repair is triggered because:
@@ -107,7 +107,7 @@ The constraint is also tightened.
 
 ### Naïve Evaluation (Incorrect)
 
-Replaying the 2019 repair in 2025 yields:
+Replaying the 2019 repair in 2026 yields:
 
 ```
 
@@ -135,7 +135,7 @@ Re-running means executing:
 
 validate(
 shape = constraint_at_time_of_violation,
-entity = entity_state_2025
+entity = entity_state_2026
 )
 
 ```
@@ -152,7 +152,7 @@ A violation is considered gone if:
 
 ```
 
-validate(shape_t, entity_2025) == valid
+validate(shape_t, entity_2026) == valid
 
 ```
 
