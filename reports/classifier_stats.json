@@ -1,0 +1,34 @@
+{
+  "build_utc": "2026-01-12T12:19:49Z",
+  "inputs": {
+    "repairs": "data_sample\\02_wikidata_repairs.json",
+    "world_state": "data_sample\\03_world_state.json",
+    "popularity": "data_sample\\00_entity_popularity.json"
+  },
+  "counts": {
+    "class:UNKNOWN": 33356,
+    "subtype:UNKNOWN": 33356,
+    "track:T_BOX": 33356,
+    "truth_source:none_expected": 34562,
+    "class:TypeB": 894,
+    "subtype:LOCAL_FOCUS_PREREPAIR_PROPERTY": 832,
+    "track:A_BOX": 5382,
+    "truth_source:repair_target.new_value": 4176,
+    "class:TypeA": 3223,
+    "subtype:LOGICAL": 2017,
+    "class:TypeC": 1265,
+    "subtype:EXTERNAL": 1265,
+    "subtype:REJECTION": 1206,
+    "subtype:LOCAL_TEXT": 46,
+    "subtype:LOCAL_NEIGHBOR_IDS": 9,
+    "subtype:LOCAL_MIXED": 7
+  },
+  "errors": {},
+  "decision_trace": {
+    "t_box_unknown": 33356,
+    "local_match": 894,
+    "rule_deterministic": 2017,
+    "external_fallback": 1265,
+    "delete_rejection": 1206
+  }
+}
