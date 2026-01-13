@@ -1,0 +1,199 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wudata.example.org/schemas/verified_repair_proposal.schema.json",
+  "title": "VerifiedRepairProposal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["case_id", "target", "ops"],
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Benchmark case identifier (Stage-2/Stage-4 id). Used to join to world_state and evaluation traces."
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["qid", "pid"],
+      "properties": {
+        "qid": {
+          "type": "string",
+          "pattern": "^Q[1-9][0-9]*$",
+          "description": "Wikidata entity ID (subject)."
+        },
+        "pid": {
+          "type": "string",
+          "pattern": "^P[1-9][0-9]*$",
+          "description": "Wikidata property ID that is the primary repair target."
+        }
+      }
+    },
+    "ops": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 50,
+      "description": "Atomic operations to apply to the focus entity. Operations are applied in order.",
+      "items": {
+        "oneOf": [
+          { "$ref": "#/$defs/op_set" },
+          { "$ref": "#/$defs/op_add" },
+          { "$ref": "#/$defs/op_remove" },
+          { "$ref": "#/$defs/op_delete_all" }
+        ]
+      }
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000,
+      "description": "Natural language justification derived from the violation message and context."
+    },
+    "provenance": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 20,
+      "description": "Evidence pointers supporting the proposed change. Optional in MVP, required in later phases for Type C.",
+      "items": { "$ref": "#/$defs/provenance_item" }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional run metadata for cost accounting and tracing. The harness may ignore unknown keys by schema design (none allowed).",
+      "properties": {
+        "model": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "run_id": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO timestamp when the proposal was produced."
+        },
+        "token_usage": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "prompt_tokens": { "type": "integer", "minimum": 0 },
+            "completion_tokens": { "type": "integer", "minimum": 0 },
+            "total_tokens": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "qid_or_literal": {
+      "description": "Operation value can be a QID, an ISO date, a number/quantity, or a plain string literal. Normalization happens in patch_parser.",
+      "oneOf": [
+        { "type": "string", "pattern": "^Q[1-9][0-9]*$" },
+        { "type": "string", "format": "date" },
+        { "type": "number" },
+        { "type": "string", "minLength": 1, "maxLength": 1000 }
+      ]
+    },
+    "op_set": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "pid", "value"],
+      "properties": {
+        "op": { "const": "SET" },
+        "pid": { "type": "string", "pattern": "^P[1-9][0-9]*$" },
+        "value": { "$ref": "#/$defs/qid_or_literal" },
+        "rank": {
+          "type": "string",
+          "enum": ["normal", "preferred", "deprecated"],
+          "default": "normal",
+          "description": "Optional rank hint; harness may ignore in MVP."
+        }
+      }
+    },
+    "op_add": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "pid", "value"],
+      "properties": {
+        "op": { "const": "ADD" },
+        "pid": { "type": "string", "pattern": "^P[1-9][0-9]*$" },
+        "value": { "$ref": "#/$defs/qid_or_literal" },
+        "rank": {
+          "type": "string",
+          "enum": ["normal", "preferred", "deprecated"],
+          "default": "normal"
+        }
+      }
+    },
+    "op_remove": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "pid"],
+      "properties": {
+        "op": { "const": "REMOVE" },
+        "pid": { "type": "string", "pattern": "^P[1-9][0-9]*$" },
+        "value": {
+          "$ref": "#/$defs/qid_or_literal",
+          "description": "If provided, remove only this matching value; if omitted, REMOVE acts as DELETE_ALL."
+        }
+      }
+    },
+    "op_delete_all": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "pid"],
+      "properties": {
+        "op": { "const": "DELETE_ALL" },
+        "pid": { "type": "string", "pattern": "^P[1-9][0-9]*$" }
+      }
+    },
+    "provenance_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["WEB", "KG", "HISTORY", "OTHER"],
+          "description": "Source category of evidence."
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "maxLength": 2000,
+          "description": "For kind=WEB."
+        },
+        "snippet": {
+          "type": "string",
+          "maxLength": 2000,
+          "description": "Short supporting excerpt (should be non-verbatim, or short)."
+        },
+        "node_id": {
+          "type": "string",
+          "pattern": "^(Q|P)[1-9][0-9]*$",
+          "description": "For kind=KG (entity or property id)."
+        },
+        "revision_id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "For kind=HISTORY."
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Optional self-reported confidence."
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "WEB" } }, "required": ["kind"] },
+          "then": { "required": ["url"] }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "KG" } }, "required": ["kind"] },
+          "then": { "required": ["node_id"] }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "HISTORY" } }, "required": ["kind"] },
+          "then": { "required": ["revision_id"] }
+        }
+      ]
+    }
+  }
+}
