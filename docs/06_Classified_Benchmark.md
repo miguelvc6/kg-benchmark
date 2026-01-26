@@ -5,7 +5,7 @@ This document defines the final experiment-ready output of Phase 1:
 - `data/04_classified_benchmark.jsonl` (LEAN)
 - `data/04_classified_benchmark_full.jsonl` (FULL, optional)
 
-These artifacts are produced by `classifier.py` and are the canonical inputs for Phase 2-4 experiments (Writer/Verifier, ablations, and learning loops).
+These artifacts are produced by `src/classifier.py` and are the canonical inputs for Phase 2-4 experiments (Writer/Verifier, ablations, and learning loops).
 
 ---
 

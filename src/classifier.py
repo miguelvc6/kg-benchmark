@@ -42,6 +42,19 @@ DEFAULT_STATS_PATH = "reports/classifier_stats.json"
 FORMAT_QIDS = {"Q21502404"}  # format constraint
 ONE_OF_QIDS = {"Q21510859", "Q21502402"}  # one-of constraint (observed + legacy)
 RANGE_QIDS = {"Q21510860"}  # range constraint
+TYPE_QIDS = {"Q21503250"}  # type constraint
+
+VIOLATION_TO_CONSTRAINT_MAP = {
+    "Single value": "Q19474404",
+    "Unique value": "Q21502410",
+    "Format": "Q21502404",
+    "One of": "Q21510859",
+    "Type": "Q21503250",
+    "Value type": "Q21510865",
+    "Range": "Q21510860",
+    "Diff within range": "Q21510861",
+    "Quantity": "Q21510857",
+}
 
 
 def utc_now_iso() -> str:
@@ -202,6 +215,239 @@ def constraint_kind(ctype: Dict[str, Any]) -> Optional[str]:
         if ln in {"range constraint", "range"}:
             return "range"
     return None
+
+
+def is_causal_repair(violation_name: Optional[str], changed_constraint_qids: Iterable[str]) -> bool:
+    if not isinstance(violation_name, str) or not violation_name.strip():
+        return True
+    if changed_constraint_qids is None:
+        changed_constraint_qids = []
+    normalized = normalize_text(violation_name)
+    mapping = {normalize_text(k): v for k, v in VIOLATION_TO_CONSTRAINT_MAP.items()}
+    target_qid = mapping.get(normalized)
+    if not target_qid:
+        return True
+    changed_set = {qid for qid in changed_constraint_qids if isinstance(qid, str)}
+    return target_qid in changed_set
+
+
+def _ensure_list(value: Any) -> List[Any]:
+    if isinstance(value, list):
+        return value
+    if isinstance(value, str):
+        try:
+            loaded = json.loads(value)
+            if isinstance(loaded, list):
+                return loaded
+        except Exception:
+            return []
+    return []
+
+
+def _load_signature_list(delta: Dict[str, Any], primary_key: str, fallback_key: str) -> List[Dict[str, Any]]:
+    raw = delta.get(primary_key)
+    if isinstance(raw, list):
+        return [entry for entry in raw if isinstance(entry, dict)]
+    if isinstance(raw, str):
+        try:
+            loaded = json.loads(raw)
+            if isinstance(loaded, list):
+                return [entry for entry in loaded if isinstance(entry, dict)]
+        except Exception:
+            return []
+    fallback = delta.get(fallback_key)
+    if isinstance(fallback, list):
+        return [entry for entry in fallback if isinstance(entry, dict)]
+    if isinstance(fallback, str):
+        try:
+            loaded = json.loads(fallback)
+            if isinstance(loaded, list):
+                return [entry for entry in loaded if isinstance(entry, dict)]
+        except Exception:
+            return []
+    return []
+
+
+def _collect_qualifiers_for_qid(signature: List[Dict[str, Any]], qid: str) -> List[Dict[str, Any]]:
+    qualifiers: List[Dict[str, Any]] = []
+    for entry in signature:
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("constraint_qid") != qid:
+            continue
+        q_list = entry.get("qualifiers")
+        if isinstance(q_list, list):
+            qualifiers.extend([q for q in q_list if isinstance(q, dict)])
+    return qualifiers
+
+
+def _collect_qualifier_values(qualifiers: List[Dict[str, Any]], property_id: Optional[str] = None) -> List[str]:
+    out: List[str] = []
+    for q in qualifiers:
+        if not isinstance(q, dict):
+            continue
+        if property_id and q.get("property_id") != property_id:
+            continue
+        values = q.get("values")
+        if values is None:
+            continue
+        for tok in flatten_truth(values):
+            if tok is None:
+                continue
+            out.append(str(tok))
+    return out
+
+
+def _extract_numeric_bound(
+    qualifiers: List[Dict[str, Any]],
+    property_id: str,
+    prefer: str,
+) -> Optional[Decimal]:
+    values = _collect_qualifier_values(qualifiers, property_id=property_id)
+    nums = [n for n in (_parse_numeric_token(v) for v in values) if n is not None]
+    if not nums:
+        return None
+    return min(nums) if prefer == "min" else max(nums)
+
+
+def analyze_range_change(old_qualifiers: List[Dict[str, Any]], new_qualifiers: List[Dict[str, Any]]) -> str:
+    old_min = _extract_numeric_bound(old_qualifiers, "P2313", "min")
+    old_max = _extract_numeric_bound(old_qualifiers, "P2312", "max")
+    new_min = _extract_numeric_bound(new_qualifiers, "P2313", "min")
+    new_max = _extract_numeric_bound(new_qualifiers, "P2312", "max")
+
+    widened = False
+    narrowed = False
+    if old_min is not None and new_min is not None:
+        if new_min < old_min:
+            widened = True
+        elif new_min > old_min:
+            narrowed = True
+    if old_max is not None and new_max is not None:
+        if new_max > old_max:
+            widened = True
+        elif new_max < old_max:
+            narrowed = True
+
+    if widened:
+        return "RELAXATION_RANGE_WIDENED"
+    if narrowed:
+        return "RESTRICTION_RANGE_NARROWED"
+    return "SCHEMA_UPDATE"
+
+
+def _compare_sets(old_values: set, new_values: set) -> str:
+    if not old_values or not new_values:
+        return "SCHEMA_UPDATE"
+    if old_values < new_values:
+        return "RELAXATION_SET_EXPANSION"
+    if new_values < old_values:
+        return "RESTRICTION_SET_CONTRACTION"
+    return "SCHEMA_UPDATE"
+
+
+def _analyze_set_change(
+    old_qualifiers: List[Dict[str, Any]],
+    new_qualifiers: List[Dict[str, Any]],
+    property_id: str,
+) -> str:
+    old_values = set(_collect_qualifier_values(old_qualifiers, property_id=property_id))
+    new_values = set(_collect_qualifier_values(new_qualifiers, property_id=property_id))
+    return _compare_sets(old_values, new_values)
+
+
+def _analyze_generic_set_change(
+    old_qualifiers: List[Dict[str, Any]],
+    new_qualifiers: List[Dict[str, Any]],
+) -> str:
+    old_values = set(_collect_qualifier_values(old_qualifiers))
+    new_values = set(_collect_qualifier_values(new_qualifiers))
+    return _compare_sets(old_values, new_values)
+
+
+class ConstraintDiffer:
+    def __init__(self, repair_event: Dict[str, Any], constraint_delta: Optional[Dict[str, Any]]):
+        self.repair_event = repair_event
+        self.delta = constraint_delta if isinstance(constraint_delta, dict) else {}
+        self.changed_constraint_qids = [
+            qid for qid in _ensure_list(self.delta.get("changed_constraint_types")) if isinstance(qid, str)
+        ]
+        self.signature_before = _load_signature_list(self.delta, "signature_before", "old_constraints")
+        self.signature_after = _load_signature_list(self.delta, "signature_after", "new_constraints")
+
+    def _violation_name(self) -> Optional[str]:
+        vc = self.repair_event.get("violation_context", {})
+        if not isinstance(vc, dict):
+            return None
+        name = vc.get("report_violation_type_normalized") or vc.get("report_violation_type")
+        return name if isinstance(name, str) else None
+
+    def _candidate_constraint_qids(self) -> List[str]:
+        qids = []
+        for entry in self.signature_before + self.signature_after:
+            if not isinstance(entry, dict):
+                continue
+            qid = entry.get("constraint_qid")
+            if isinstance(qid, str) and qid not in qids:
+                qids.append(qid)
+        return qids
+
+    def _select_target_qid(self, mapped_qid: Optional[str]) -> Optional[str]:
+        if isinstance(mapped_qid, str):
+            candidates = set(self.changed_constraint_qids) | set(self._candidate_constraint_qids())
+            if mapped_qid in candidates:
+                return mapped_qid
+        if self.changed_constraint_qids:
+            return self.changed_constraint_qids[0]
+        candidates = self._candidate_constraint_qids()
+        return candidates[0] if candidates else None
+
+    def classify_change(self) -> Tuple[str, List[Dict[str, Any]], str]:
+        trace: List[Dict[str, Any]] = []
+        violation_name = self._violation_name()
+        mapping = {normalize_text(k): v for k, v in VIOLATION_TO_CONSTRAINT_MAP.items()}
+        mapped_qid = mapping.get(normalize_text(violation_name)) if isinstance(violation_name, str) else None
+        causal = is_causal_repair(violation_name, self.changed_constraint_qids)
+        trace.append(
+            {
+                "step": "causality_filter",
+                "result": causal,
+                "violation_name": violation_name,
+                "mapped_constraint_qid": mapped_qid,
+                "changed_constraint_qids": self.changed_constraint_qids,
+            }
+        )
+        if not causal:
+            return (
+                "COINCIDENTAL_SCHEMA_CHANGE",
+                trace,
+                "Violation type did not map to the changed constraint types; treated as coincidental schema change.",
+            )
+
+        target_qid = self._select_target_qid(mapped_qid)
+        trace.append({"step": "target_constraint", "result": target_qid})
+        if not target_qid:
+            return "SCHEMA_UPDATE", trace, "No constraint type selected; defaulted to schema update."
+
+        old_qualifiers = _collect_qualifiers_for_qid(self.signature_before, target_qid)
+        new_qualifiers = _collect_qualifiers_for_qid(self.signature_after, target_qid)
+
+        if target_qid in RANGE_QIDS:
+            result = analyze_range_change(old_qualifiers, new_qualifiers)
+            trace.append({"step": "range_semantics", "result": result})
+            rationale = "Range constraint qualifiers compared using numeric bounds."
+            return result, trace, rationale
+
+        if target_qid in ONE_OF_QIDS or target_qid in TYPE_QIDS:
+            result = _analyze_set_change(old_qualifiers, new_qualifiers, property_id="P2305")
+            trace.append({"step": "set_semantics", "result": result, "property_id": "P2305"})
+            rationale = "Constraint values compared as a set for one-of/type constraints."
+            return result, trace, rationale
+
+        result = _analyze_generic_set_change(old_qualifiers, new_qualifiers)
+        trace.append({"step": "generic_set_semantics", "result": result})
+        rationale = "Constraint qualifiers compared with generic set semantics."
+        return result, trace, rationale
 
 
 def _parse_numeric_token(token: str) -> Optional[Decimal]:
@@ -729,19 +975,24 @@ def classify_one(
 
     # T-BOX: taxonomy does not strictly apply (different task: rule drift detection).
     if track == "T_BOX" or rt.get("kind") == "T_BOX":
-        trace = [
-            {"step": "is_delete", "result": False},
-            {"step": "rule_deterministic", "result": None},
-            {"step": "local_availability", "result": "not_applicable_t_box"},
-            {"step": "fallback_external", "result": None},
-            {"step": "branch", "result": "t_box_unknown"},
-        ]
+        differ = ConstraintDiffer(repair_event, rt.get("constraint_delta"))
+        schema_subtype, trace, rationale = differ.classify_change()
+        conf = "medium"
+        if schema_subtype in {
+            "RELAXATION_RANGE_WIDENED",
+            "RESTRICTION_RANGE_NARROWED",
+            "RELAXATION_SET_EXPANSION",
+            "RESTRICTION_SET_CONTRACTION",
+        }:
+            conf = "high"
+        if schema_subtype == "COINCIDENTAL_SCHEMA_CHANGE":
+            conf = "low"
         classification = make(
-            "UNKNOWN",
-            "UNKNOWN",
-            "low",
+            "T_BOX",
+            schema_subtype,
+            conf,
             trace,
-            "T-Box (Reformer) case: information-necessity taxonomy is defined for A-Box value repairs; labeled UNKNOWN.",
+            rationale,
             constraint_types,
         )
         classification["local_subtype"] = None
@@ -946,6 +1197,17 @@ def _run_self_tests() -> None:
         {"ids_neighbors": set(), "ids_focus_prerepair": set(), "text_focus": local_text, "text_neighbors": ""},
     )
     assert not matched, "ISO date should not match a different date"
+
+    # Range widening should be detected via numeric bounds.
+    range_before = [{"property_id": "P2313", "values": ["1900"]}, {"property_id": "P2312", "values": ["2000"]}]
+    range_after = [{"property_id": "P2313", "values": ["1850"]}, {"property_id": "P2312", "values": ["2000"]}]
+    assert analyze_range_change(range_before, range_after) == "RELAXATION_RANGE_WIDENED", (
+        "Range widening not detected"
+    )
+
+    # Causality filter should require the mapped constraint QID.
+    assert is_causal_repair("Unique value", ["Q21502410"]) is True, "Causality filter rejected valid mapping"
+    assert is_causal_repair("Unique value", ["Q21502404"]) is False, "Causality filter allowed mismatched mapping"
 
 
 def main() -> int:

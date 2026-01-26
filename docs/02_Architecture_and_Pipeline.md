@@ -1,7 +1,7 @@
 # Architecture & Data Pipeline
 
 **Component:** WikidataRepairEval 1.0 Data Engine
-**Implementation:** `fetcher.py`
+**Implementation:** `src/fetcher.py`
 
 ---
 
@@ -75,7 +75,7 @@ To ensure ecological validity, we enforce **Strict Persistence** *after* identif
 
 Stage 2 emits human-readable mirrors for every machine-stable identifier.
 
-* **Label Resolver Module:** `fetcher.py` instantiates a `LabelResolver` that batches IDs through `wbgetentities`, persists the responses inside `data/cache/id_labels_en.json`, and reuses the cache on subsequent runs. The resolver now returns `{label_en, description_en}` only and falls back to `null` values with a warning whenever Wikidata cannot resolve an ID. The cache file is canonicalized (`sort_keys=True`) to keep hashes stable.
+* **Label Resolver Module:** `src/fetcher.py` instantiates a `LabelResolver` that batches IDs through `wbgetentities`, persists the responses inside `data/cache/labels_en.sqlite`, and reuses the cache on subsequent runs. The resolver now returns `{label_en, description_en}` only and falls back to `null` values with a warning whenever Wikidata cannot resolve an ID.
 * **Naming Convention:** Raw fields remain unchanged; the pipeline adds siblings such as `qid_label_en`, `property_description_en`, `report_violation_type_qids`, `value_current_2026_labels_en`, etc. `_raw` preserves the original string, `_qids` lists parsed IDs, and `_label_en/_labels_en` plus `_description_en/_descriptions_en` carry the interpreted mirrors while aliases remain intentionally excluded.
   "Aliases are not stored by design to avoid multilingual noise, prompt bloat, and unintended information leakage. Labels and descriptions are sufficient for all Phase-1 experiments."
 * **Constraint Introspection:** P2302 qualifier IDs are expanded into `{id,label_en,...}` tuples under `constraints_readable_en`, and the same lookup powers the templated `rule_summaries_en` strings used in docs and classifiers.

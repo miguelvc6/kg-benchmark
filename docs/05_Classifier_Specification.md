@@ -1,6 +1,6 @@
 # Classifier Specification: The Information Necessity Labeler
 
-**Component:** `classifier.py`
+**Component:** `src/classifier.py`
 **Input Artifacts:** `data/02_wikidata_repairs.json` (or `.jsonl`), `data/03_world_state.json`
 **Output Artifacts:** `data/04_classified_benchmark.jsonl` (LEAN), `data/04_classified_benchmark_full.jsonl` (FULL, optional)
 

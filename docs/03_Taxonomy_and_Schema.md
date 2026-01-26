@@ -73,7 +73,7 @@ All machine-stable fields remain untouched, but we now add deterministic mirrors
 
 "Aliases are not stored by design to avoid multilingual noise, prompt bloat, and unintended information leakage. Labels and descriptions are sufficient for all Phase-1 experiments."
 
-The fetcher owns the deterministic label cache stored at `data/cache/id_labels_en.json`. Every lookup goes through this cache to guarantee reproducibility.
+The fetcher owns the deterministic label cache stored at `data/cache/labels_en.sqlite`. Every lookup goes through this cache to guarantee reproducibility.
 
 ### 3.2 Stage-2 Repair Index (`data/02_wikidata_repairs.json`)
 
@@ -299,6 +299,6 @@ World State entries remain keyed by the repair `id` and keep the four-layer cont
 
 * **Canonical Serializer:** `fetcher.canonicalize_json_structure` renders normalized constraint statements with sorted keys and no whitespace before hashing. This guarantees that identical statements always hash to the same digest regardless of formatting.
 * **Backwards compatibility:** The fetcher automatically upgrades historical artifacts by populating `signature_*` (structured) and `signature_*_raw` when only a string was present. `report_violation_type_qids` is emitted even when parsing fails (empty list) so downstream tooling can rely on the field's presence.
-* **Label Cache:** `data/cache/id_labels_en.json` is part of the deterministic build. Deleting it forces the resolver to re-query Wikidata; keeping it ensures byte-for-byte identical enriched outputs.
+* **Label Cache:** `data/cache/labels_en.sqlite` is part of the deterministic build. Deleting it forces the resolver to re-query Wikidata; keeping it ensures byte-for-byte identical enriched outputs.
 
 These conventions allow the benchmark to remain hash-stable while finally being readable by humans (and LLMs) without additional post-processing.

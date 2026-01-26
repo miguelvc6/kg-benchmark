@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kg-benchmark"
+version = "0.0.0"
+description = "WikidataRepairEval research pipeline"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "ijson>=3.2",
+    "mwclient>=0.11",
+    "requests>=2.32",
+    "tqdm>=4.66",
+    "zstandard>=0.22",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "ruff>=0.4.0",
+]
+analysis = [
+    "matplotlib>=3.8",
+    "numpy>=2.0",
+    "pandas>=2.0",
+    "seaborn>=0.13",
+]
+notebook = [
+    "ipykernel>=6.29",
+    "jupyter>=1.0",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

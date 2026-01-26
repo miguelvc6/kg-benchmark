@@ -14,8 +14,9 @@ Stage 4 - Classifier: assign Type A/B/C and emit audit traces.
 
 ## Repo layout
 
-- `fetcher.py`: stages 1-3 (index, fetch, world state build)
-- `classifier.py`: stage 4 taxonomy labeler
+- `src/fetcher.py`: stages 1-3 (index, fetch, world state build)
+- `src/classifier.py`: stage 4 taxonomy labeler
+- `src/lib/`: shared pipeline modules
 - `data/`: generated artifacts (large)
 - `data_sample/`: sample artifacts for quick runs (large)
 - `reports/`: classifier stats and run summaries
@@ -23,54 +24,56 @@ Stage 4 - Classifier: assign Type A/B/C and emit audit traces.
 
 ## Quick start
 
-Setup:
+Setup (uv + pyproject.toml):
 
 ```bash
-python -m venv .venv
-./.venv/Scripts/pip install -r requirements.txt
+# Windows
+set UV_PROJECT_ENVIRONMENT=.venv
+uv sync
+
+# WSL/Linux
+export UV_PROJECT_ENVIRONMENT=.venv-wsl
+uv sync
 ```
 
 Run the full pipeline (stages 1-3):
 
 ```bash
-python fetcher.py
+uv run python src/fetcher.py
 ```
 
 Debug run with a cap:
 
 ```bash
-python fetcher.py --max-candidates 100
+uv run python src/fetcher.py --max-candidates 100
 ```
 
 Resume an interrupted fetcher run:
 
 ```bash
 # Preferred: resume from a prior stats log (new runs include candidate_key)
-python fetcher.py --resume-stats logs/fetcher_stats_YYYYMMDDTHHMMSS.jsonl
+uv run python src/fetcher.py --resume-stats logs/fetcher_stats_YYYYMMDDTHHMMSS.jsonl
 
 # Resume from a checkpoint file (written every 5k candidates by default)
-python fetcher.py --resume-checkpoint logs/resume_checkpoint_YYYYMMDDTHHMMSS.json
-
-# Fallback for older stats logs without candidate_key
-python fetcher.py --resume-stats logs/fetcher_stats_YYYYMMDDTHHMMSS.jsonl --resume-coarse
+uv run python src/fetcher.py --resume-checkpoint logs/resume_checkpoint_YYYYMMDDTHHMMSS.json
 ```
 
 Validate an existing world state:
 
 ```bash
-python fetcher.py --validate-only
+uv run python src/fetcher.py --validate-only
 ```
 
 Run the classifier (stage 4) on sample data:
 
 ```bash
-python classifier.py --sample
+uv run python src/classifier.py --sample
 ```
 
 Minimal self-test for classifier logic:
 
 ```bash
-python classifier.py --self-test
+uv run python src/classifier.py --self-test
 ```
 
 ## Key artifacts
