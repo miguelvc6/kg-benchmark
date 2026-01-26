@@ -373,8 +373,8 @@ def get_truth_info(repair_event: Dict[str, Any]) -> Tuple[List[str], str, bool]:
     candidates = [
         ("repair_target.new_value", rt.get("new_value")),
         ("repair_target.value", rt.get("value")),
-        ("persistence_check.current_value_2025", safe_get(repair_event, "persistence_check", "current_value_2025")),
-        ("violation_context.value_current_2025", safe_get(repair_event, "violation_context", "value_current_2025")),
+        ("persistence_check.current_value_2026", safe_get(repair_event, "persistence_check", "current_value_2026")),
+        ("violation_context.value_current_2026", safe_get(repair_event, "violation_context", "value_current_2026")),
     ]
     for src, v in candidates:
         toks = flatten_truth(v)
