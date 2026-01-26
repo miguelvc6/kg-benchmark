@@ -456,11 +456,26 @@ def _parse_numeric_token(token: str) -> Optional[Decimal]:
     token = token.strip()
     if not token:
         return None
-    if re.fullmatch(r"[+-]?\d+(\.\d+)?", token):
+
+    # Handle Wikidata time strings like "+2025-01-01T00:00:00Z"
+    if token.startswith("+") or "T" in token:
+        clean_ts = token.lstrip("+").rstrip("Z")
         try:
-            return Decimal(token)
+            dt = _dt.datetime.fromisoformat(clean_ts)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=_dt.UTC)
+            return Decimal(str(dt.timestamp()))
+        except ValueError:
+            pass
+
+    # Handle quantities with units like "10 km"
+    match = re.match(r"[+-]?(?:\d+(?:\.\d+)?|\.\d+)", token)
+    if match:
+        try:
+            return Decimal(match.group(0))
         except Exception:
             return None
+
     return None
 
 
