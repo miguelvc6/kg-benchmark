@@ -64,12 +64,12 @@ The benchmark produces two primary JSON artifacts. The schema is designed to sep
 
 All machine-stable fields remain untouched, but we now add deterministic mirrors that make each artifact self-describing. The following suffixes are used consistently across Stage-2 and Stage-3:
 
-| Suffix | Meaning |
-| --- | --- |
-| `_raw` | Byte-identical value captured from the source (kept for hashing/backwards compatibility). |
-| `_qids` | Parsed list of normalized QIDs extracted from a free-form field. |
-| `_label_en` / `_labels_en` | Resolved English labels for a single ID or an ordered list. |
-| `_description_en` / `_descriptions_en` | English descriptions aligned with the same cardinality as the ID field. |
+| Suffix                                     | Meaning                                                                                   |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| `_raw`                                   | Byte-identical value captured from the source (kept for hashing/backwards compatibility). |
+| `_qids`                                  | Parsed list of normalized QIDs extracted from a free-form field.                          |
+| `_label_en` / `_labels_en`             | Resolved English labels for a single ID or an ordered list.                               |
+| `_description_en` / `_descriptions_en` | English descriptions aligned with the same cardinality as the ID field.                   |
 
 "Aliases are not stored by design to avoid multilingual noise, prompt bloat, and unintended information leakage. Labels and descriptions are sufficient for all Phase-1 experiments."
 

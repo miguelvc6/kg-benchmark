@@ -83,7 +83,7 @@ The taxonomy script must not modify the meaning of Stage-2 raw fields; it only a
 
 The taxonomy label is stored under:
 
-`classification.class` in `{TypeA, TypeB, TypeC}`
+`classification.class` in `{TypeA, TypeB, TypeC, UNKNOWN}`
 
 and a more operational tag:
 
@@ -99,6 +99,7 @@ Steps (in order):
 2. `rule_deterministic`
 3. `local_availability`
 4. `fallback_external`
+5. additional steps allowed; first 4 are canonical
 
 ### 5.2 Constraint Types
 

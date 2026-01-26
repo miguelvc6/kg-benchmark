@@ -16,14 +16,7 @@ Before calculating performance metrics, every model output must pass a series of
 * **Protocol:** The benchmark pipeline re-runs the exact SHACL shape from the dataset on the current live KG.
 * **Rule:** If the violation does not exist or has structurally changed (e.g., a different conflicting value is present), the sample is discarded. We prioritize "Persistent Violations" that have remained unsolved or re-occurred.
 
-### 1.2 Frozen Retrieval Snapshots
-
-**Risk:** Search engine variance (e.g., Google changing results) invalidates reproducibility for Type C (External) tasks.
-
-* **Protocol:** For every "Type C" test case, we pre-fetch and freeze the top-k Tavily Search results.
-* **Rule:** Future researchers must use the provided `retrieval_context` field. Live web access is forbidden during the benchmark run to decouple "Retrieval Variance" from "Reasoning Variance".
-
-### 1.3 Sub-graph Regression Testing (The Ripple Effect)
+### 1.2 Sub-graph Regression Testing (The Ripple Effect)
 
 **Risk:** A repair fixes the target constraint but creates a new violation *on the focus node itself* (e.g., changing a date fixes *Range* but breaks *Ordering* with another property on the same node).
 

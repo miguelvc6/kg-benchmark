@@ -42,6 +42,19 @@ Debug run with a cap:
 python fetcher.py --max-candidates 100
 ```
 
+Resume an interrupted fetcher run:
+
+```bash
+# Preferred: resume from a prior stats log (new runs include candidate_key)
+python fetcher.py --resume-stats logs/fetcher_stats_YYYYMMDDTHHMMSS.jsonl
+
+# Resume from a checkpoint file (written every 5k candidates by default)
+python fetcher.py --resume-checkpoint logs/resume_checkpoint_YYYYMMDDTHHMMSS.json
+
+# Fallback for older stats logs without candidate_key
+python fetcher.py --resume-stats logs/fetcher_stats_YYYYMMDDTHHMMSS.jsonl --resume-coarse
+```
+
 Validate an existing world state:
 
 ```bash
@@ -76,5 +89,7 @@ at repo root for inspection.
 
 - The fetcher hits the live Wikidata API and can take days. It writes large
   artifacts and caches under `data/cache/`.
+- Fetcher runs write resume checkpoints to `logs/resume_checkpoint_<run>.json`
+  unless `--no-checkpoint` is set.
 - Stage 3 requires the `data/latest-all.json.gz` Wikidata dump.
 - See `docs/` for detailed protocol and taxonomy documentation.
