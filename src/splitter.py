@@ -15,7 +15,9 @@ import math
 import random
 from collections import Counter, defaultdict
 from pathlib import Path
-from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
+
+from lib.utils import iter_jsonl
 
 DEFAULT_IN_PATH = "04_classified_benchmark.jsonl"
 DEFAULT_OUT_PATH = "05_splits.json"
@@ -29,15 +31,6 @@ TAIL_FRAC = 0.2
 HEAD_FRAC = 0.2
 ALLOW_MISSING_POPULARITY = False
 MAX_DELTA = 0.02
-
-
-def iter_jsonl(path: Path) -> Iterator[Dict[str, Any]]:
-    with open(path, "r", encoding="utf-8") as fh:
-        for line in fh:
-            line = line.strip()
-            if not line:
-                continue
-            yield json.loads(line)
 
 
 def _popularity_score(rec: Dict[str, Any]) -> Optional[float]:

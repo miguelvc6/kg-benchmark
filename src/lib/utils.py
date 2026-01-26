@@ -1,10 +1,13 @@
 import hashlib
 import json
 import os
+import re
 import time
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from pathlib import Path
 
+import ijson
 import requests
 
 from . import config
@@ -27,6 +30,117 @@ def is_pid(value):
 def is_entity_or_property_id(value):
     """Return True for valid QIDs or PIDs."""
     return is_qid(value) or is_pid(value)
+
+
+def utc_now_iso():
+    """Return a UTC timestamp string in ISO 8601 format (second precision)."""
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def normalize_text(text):
+    """Lowercase and collapse whitespace while keeping digits/letters/punctuation."""
+    if not isinstance(text, str):
+        return ""
+    out = text.lower()
+    out = re.sub(r"[^\w\s\-:/\.]", " ", out)
+    out = re.sub(r"\s+", " ", out).strip()
+    return out
+
+
+def read_json(path):
+    """Read JSON from disk and return the decoded payload."""
+    with open(Path(path), "r", encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def _json_default(obj):
+    """JSON serializer fallback for Decimal and Path."""
+    if isinstance(obj, Decimal):
+        return float(obj)
+    if isinstance(obj, Path):
+        return str(obj)
+    return str(obj)
+
+
+def iter_jsonl(path):
+    """Yield objects from a JSONL file."""
+    with open(Path(path), "r", encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            yield json.loads(line)
+
+
+def iter_repairs(path):
+    """
+    Supports:
+      - .jsonl: one object per line
+      - .json: either a JSON array, or a single JSON object (not expected here)
+    For large arrays, uses ijson if available.
+    """
+    path = Path(path)
+    if path.suffix == ".jsonl":
+        yield from iter_jsonl(path)
+        return
+
+    with open(path, "r", encoding="utf-8") as fh:
+        start = fh.read(2048)
+    first = next((c for c in start if not c.isspace()), "")
+
+    if first == "[":
+        if ijson is None:
+            data = read_json(path)
+            if not isinstance(data, list):
+                raise ValueError(f"Expected a list in {path}, got {type(data)}")
+            for obj in data:
+                if not isinstance(obj, dict):
+                    continue
+                yield obj
+        else:
+            with open(path, "r", encoding="utf-8") as fh:
+                for obj in ijson.items(fh, "item"):
+                    if isinstance(obj, dict):
+                        yield obj
+        return
+
+    obj = read_json(path)
+    if isinstance(obj, dict):
+        yield obj
+    elif isinstance(obj, list):
+        for entry in obj:
+            if isinstance(entry, dict):
+                yield entry
+    else:
+        raise ValueError(f"Unsupported JSON content in {path}: {type(obj)}")
+
+
+def count_repairs(path):
+    """Return count of repairs in a JSON or JSONL file (best-effort)."""
+    path = Path(path)
+    if path.suffix == ".jsonl":
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                return sum(1 for _ in fh)
+        except Exception:
+            return None
+    if ijson is not None:
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                return sum(1 for _ in ijson.items(fh, "item"))
+        except Exception:
+            return None
+    return None
+
+
+def safe_get(payload, *keys, default=None):
+    """Traverse nested dicts safely and return default on missing keys."""
+    cur = payload
+    for key in keys:
+        if not isinstance(cur, dict) or key not in cur:
+            return default
+        cur = cur[key]
+    return cur
 
 
 def load_cached_repairs(path):

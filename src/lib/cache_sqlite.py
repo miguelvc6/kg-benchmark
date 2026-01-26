@@ -1,11 +1,8 @@
 import sqlite3
 import threading
-from datetime import datetime, timezone
 from pathlib import Path
 
-
-def _utc_now_iso():
-    return datetime.now(timezone.utc).isoformat()
+from .utils import utc_now_iso
 
 
 def _chunked(values, size):
@@ -66,7 +63,7 @@ class SQLiteLabelCache:
     def put_many(self, rows):
         if not rows:
             return
-        now = _utc_now_iso()
+        now = utc_now_iso()
         payload = [(key, value[0], value[1], now) for key, value in rows.items()]
         with self._lock:
             self._conn.executemany(
@@ -85,7 +82,7 @@ class SQLiteLabelCache:
     def mark_missing(self, ids):
         if not ids:
             return
-        now = _utc_now_iso()
+        now = utc_now_iso()
         payload = [(entity_id, now) for entity_id in ids]
         with self._lock:
             self._conn.executemany(
@@ -150,7 +147,7 @@ class SQLiteSnapshotCache:
         return row
 
     def put(self, key, status, payload, content_type):
-        now = _utc_now_iso()
+        now = utc_now_iso()
         with self._lock:
             self._conn.execute(
                 """

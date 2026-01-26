@@ -23,11 +23,21 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple
 
-import ijson
 from tqdm import tqdm
 
-QID_RE = re.compile(r"^Q[1-9][0-9]*$")
-PID_RE = re.compile(r"^P[1-9][0-9]*$")
+from lib.utils import (
+    _json_default,
+    count_repairs,
+    is_pid,
+    is_qid,
+    iter_jsonl,
+    iter_repairs,
+    normalize_text,
+    read_json,
+    safe_get,
+    utc_now_iso,
+)
+
 DATE_ISO_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 # Default paths
@@ -55,118 +65,6 @@ VIOLATION_TO_CONSTRAINT_MAP = {
     "Diff within range": "Q21510861",
     "Quantity": "Q21510857",
 }
-
-
-def utc_now_iso() -> str:
-    return _dt.datetime.now(_dt.UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
-
-
-def is_qid(x: Any) -> bool:
-    return isinstance(x, str) and bool(QID_RE.match(x))
-
-
-def is_pid(x: Any) -> bool:
-    return isinstance(x, str) and bool(PID_RE.match(x))
-
-
-def normalize_text(s: str) -> str:
-    s = s.lower()
-    # keep digits/letters; collapse whitespace
-    s = re.sub(r"[^\w\s\-:/\.]", " ", s)
-    s = re.sub(r"\s+", " ", s).strip()
-    return s
-
-
-def read_json(path: Path) -> Any:
-    with open(path, "r", encoding="utf-8") as fh:
-        return json.load(fh)
-
-
-def _json_default(obj: Any) -> Any:
-    if isinstance(obj, Decimal):
-        return float(obj)
-    if isinstance(obj, Path):
-        return str(obj)
-    return str(obj)
-
-
-def iter_jsonl(path: Path) -> Iterator[Dict[str, Any]]:
-    with open(path, "r", encoding="utf-8") as fh:
-        for line in fh:
-            line = line.strip()
-            if not line:
-                continue
-            yield json.loads(line)
-
-
-def iter_repairs(path: Path) -> Iterator[Dict[str, Any]]:
-    """
-    Supports:
-      - .jsonl: one object per line
-      - .json: either a JSON array, or a single JSON object (not expected here)
-    For large arrays, uses ijson if available.
-    """
-    if path.suffix == ".jsonl":
-        yield from iter_jsonl(path)
-        return
-
-    # Peek first non-whitespace char
-    with open(path, "r", encoding="utf-8") as fh:
-        start = fh.read(2048)
-    first = next((c for c in start if not c.isspace()), "")
-
-    if first == "[":
-        if ijson is None:
-            data = read_json(path)
-            if not isinstance(data, list):
-                raise ValueError(f"Expected a list in {path}, got {type(data)}")
-            for obj in data:
-                if not isinstance(obj, dict):
-                    continue
-                yield obj
-        else:
-            with open(path, "r", encoding="utf-8") as fh:
-                for obj in ijson.items(fh, "item"):
-                    if isinstance(obj, dict):
-                        yield obj
-        return
-
-    # Fallback: assume a single object (rare/unexpected)
-    obj = read_json(path)
-    if isinstance(obj, dict):
-        yield obj
-    elif isinstance(obj, list):
-        for x in obj:
-            if isinstance(x, dict):
-                yield x
-    else:
-        raise ValueError(f"Unsupported JSON content in {path}: {type(obj)}")
-
-
-def count_repairs(path: Path) -> Optional[int]:
-    if path.suffix == ".jsonl":
-        try:
-            with open(path, "r", encoding="utf-8") as fh:
-                return sum(1 for _ in fh)
-        except Exception:
-            return None
-    # .json array: try streaming count when ijson is available
-    if ijson is not None:
-        try:
-            with open(path, "r", encoding="utf-8") as fh:
-                return sum(1 for _ in ijson.items(fh, "item"))
-        except Exception:
-            return None
-    return None
-
-
-def safe_get(d: Dict[str, Any], *keys: str, default: Any = None) -> Any:
-    cur: Any = d
-    for k in keys:
-        if not isinstance(cur, dict) or k not in cur:
-            return default
-        cur = cur[k]
-    return cur
 
 
 def extract_constraint_types(world_state_entry: Dict[str, Any]) -> List[Dict[str, Optional[str]]]:
