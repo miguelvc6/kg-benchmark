@@ -19,9 +19,8 @@ import ijson
 import mwclient
 import requests
 import zstandard as zstd
-from tqdm import tqdm
-
 from cache_sqlite import SQLiteLabelCache, SQLiteSnapshotCache
+from tqdm import tqdm
 
 # HTTP identity and base endpoints
 HEADERS = {"User-Agent": "WikidataRepairEval/1.0 (PhD Research; mailto:miguel.vazquez@wu.ac.at)"}
@@ -110,6 +109,8 @@ STATS_FILE = LOG_DIR / f"fetcher_stats_{RUN_ID}.jsonl"
 SUMMARY_FILE = LOG_DIR / f"run_summary_{RUN_ID}.json"
 STATS_FLUSH_EVERY = 10000
 STAGE2_LOG_EVERY = 1000
+RESUME_CHECKPOINT_EVERY = 5000
+RESUME_DEFAULT_CHECKPOINT = LOG_DIR / f"resume_checkpoint_{RUN_ID}.json"
 
 # Lazy MediaWiki site handle (initialized on first use)
 SITE = None
@@ -410,6 +411,102 @@ def load_jsonl_ids(jsonl_path):
                 if entry_id:
                     seen_ids.add(entry_id)
     return line_count, seen_ids
+
+
+def build_candidate_key(item):
+    """Return a stable resume key for a candidate based on report provenance."""
+    parts = [
+        item.get("qid") or "",
+        item.get("property_id") or "",
+        item.get("fix_date") or "",
+        item.get("report_revision_old") or "",
+        item.get("report_revision_new") or "",
+    ]
+    return "|".join(str(part) for part in parts)
+
+
+def build_coarse_key(qid, pid, violation_type):
+    """Return a coarse resume key when candidate provenance is unavailable."""
+    return f"{qid}|{pid}|{violation_type or ''}"
+
+
+def load_resume_stats(stats_path, include_coarse=False):
+    """Load resume metadata from a stats JSONL file."""
+    file_path = Path(stats_path) if stats_path else None
+    if not file_path or not file_path.exists():
+        return {
+            "line_count": 0,
+            "processed_keys": set(),
+            "coarse_keys": set(),
+            "last_record": None,
+            "has_candidate_keys": False,
+        }
+    line_count = 0
+    processed_keys = set()
+    coarse_keys = set()
+    last_record = None
+    has_candidate_keys = False
+    with open(file_path, "r", encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(record, dict):
+                continue
+            line_count += 1
+            last_record = record
+            candidate_key = record.get("candidate_key")
+            if candidate_key:
+                processed_keys.add(candidate_key)
+                has_candidate_keys = True
+            if include_coarse:
+                qid = record.get("qid")
+                pid = record.get("property")
+                violation_type = record.get("violation_type")
+                if qid and pid:
+                    coarse_keys.add(build_coarse_key(qid, pid, violation_type))
+    return {
+        "line_count": line_count,
+        "processed_keys": processed_keys,
+        "coarse_keys": coarse_keys,
+        "last_record": last_record,
+        "has_candidate_keys": has_candidate_keys,
+    }
+
+
+def load_resume_checkpoint(checkpoint_path):
+    """Load a resume checkpoint from disk."""
+    if not checkpoint_path:
+        return None
+    file_path = Path(checkpoint_path)
+    if not file_path.exists():
+        print(f"[!] Resume checkpoint not found: {file_path}")
+        return None
+    try:
+        with open(file_path, "r", encoding="utf-8") as fh:
+            payload = json.load(fh)
+    except Exception as exc:
+        print(f"[!] Failed to read resume checkpoint ({file_path}): {exc}")
+        return None
+    if not isinstance(payload, dict):
+        print(f"[!] Resume checkpoint malformed: {file_path}")
+        return None
+    return payload
+
+
+def write_resume_checkpoint(checkpoint_path, payload):
+    """Persist resume checkpoint atomically."""
+    if not checkpoint_path:
+        return
+    path = Path(checkpoint_path)
+    temp_path = path.with_suffix(path.suffix + ".tmp")
+    with open(temp_path, "w", encoding="utf-8") as fh:
+        json.dump(payload, fh, indent=2)
+    os.replace(temp_path, path)
 
 
 def append_jsonl_record(file_handle, record):
@@ -2546,7 +2643,16 @@ def enrich_repair_entries(entries, resolver):
     return entries
 
 
-def process_pipeline(max_candidates=None):
+def process_pipeline(
+    max_candidates=None,
+    resume_stats=None,
+    resume_checkpoint=None,
+    resume_after_index=None,
+    resume_coarse=False,
+    resume_dry_run=False,
+    checkpoint_path=None,
+    disable_checkpoint=False,
+):
     """Main entry point: reads candidates, finds repairs, and builds context."""
     input_file = REPAIR_CANDIDATES_FILE
     candidates = ensure_repair_candidates_file(input_file)
@@ -2577,6 +2683,94 @@ def process_pipeline(max_candidates=None):
             json.dump(dataset, out, indent=2)
     else:
         stats_logger = StatsLogger(STATS_FILE)
+        resume_info = {
+            "enabled": False,
+            "stats_path": None,
+            "checkpoint_path": None,
+            "checkpoint_output_path": None,
+            "start_index": 0,
+            "skip_keys": set(),
+            "coarse_keys": set(),
+            "resume_stats_lines": 0,
+            "resume_skipped": 0,
+        }
+        resume_start_index = 0
+        resume_checkpoint_payload = load_resume_checkpoint(resume_checkpoint)
+        if resume_checkpoint_payload and isinstance(resume_checkpoint_payload.get("last_index"), int):
+            resume_start_index = resume_checkpoint_payload["last_index"] + 1
+            resume_info["enabled"] = True
+            resume_info["checkpoint_path"] = str(resume_checkpoint)
+            print(
+                "[*] Resume checkpoint loaded: "
+                f"last_index={resume_checkpoint_payload['last_index']} "
+                f"processed={resume_checkpoint_payload.get('processed_count', 0)}"
+            )
+
+        resume_stats_data = load_resume_stats(resume_stats, include_coarse=resume_coarse)
+        resume_info["resume_stats_lines"] = resume_stats_data["line_count"]
+        if resume_stats:
+            resume_info["stats_path"] = str(resume_stats)
+            if resume_stats_data["has_candidate_keys"]:
+                resume_info["skip_keys"] = resume_stats_data["processed_keys"]
+                resume_info["enabled"] = True
+                print(
+                    f"[*] Resume stats loaded with candidate keys: {len(resume_info['skip_keys'])} processed entries."
+                )
+            elif resume_coarse and resume_stats_data["coarse_keys"]:
+                resume_info["coarse_keys"] = resume_stats_data["coarse_keys"]
+                resume_info["enabled"] = True
+                print(f"[*] Resume stats loaded with coarse keys: {len(resume_info['coarse_keys'])} entries.")
+            elif resume_stats_data["last_record"]:
+                last_record = resume_stats_data["last_record"]
+                last_qid = last_record.get("qid")
+                last_pid = last_record.get("property")
+                last_violation = last_record.get("violation_type")
+                last_index = -1
+                match_count = 0
+                for idx, item in enumerate(candidates):
+                    if (
+                        item.get("qid") == last_qid
+                        and item.get("property_id") == last_pid
+                        and item.get("violation_type") == last_violation
+                    ):
+                        last_index = idx
+                        match_count += 1
+                if last_index >= 0:
+                    resume_start_index = max(resume_start_index, last_index + 1)
+                    resume_info["enabled"] = True
+                    resume_info["start_index"] = resume_start_index
+                    print(
+                        "[*] Resume stats last record matched: "
+                        f"start_index={resume_start_index} matches={match_count}."
+                    )
+                else:
+                    print("[!] Resume stats last record did not match any candidate.")
+
+        if resume_after_index is not None and resume_after_index >= 0:
+            resume_start_index = max(resume_start_index, resume_after_index + 1)
+            resume_info["enabled"] = True
+            resume_info["start_index"] = resume_start_index
+            print(f"[*] Resume override: start_index={resume_start_index}.")
+
+        if resume_start_index >= len(candidates):
+            print("[!] Resume start index exceeds candidate count; nothing to process.")
+            return
+
+        if resume_info["enabled"] and not resume_info["start_index"]:
+            resume_info["start_index"] = resume_start_index
+        if not disable_checkpoint:
+            resume_info["checkpoint_output_path"] = str(checkpoint_path or RESUME_DEFAULT_CHECKPOINT)
+
+        if resume_dry_run:
+            print("[*] Resume dry run: no processing will occur.")
+            print(
+                "[*] Resume summary: "
+                f"start_index={resume_start_index}, "
+                f"skip_keys={len(resume_info['skip_keys'])}, "
+                f"coarse_keys={len(resume_info['coarse_keys'])}."
+            )
+            return
+
         summary = {
             "run_id": stats_logger.run_id,
             "lookback_days": REVISION_LOOKBACK_DAYS,
@@ -2610,6 +2804,13 @@ def process_pipeline(max_candidates=None):
             "history_cache_hits": 0,
             "history_cache_misses": 0,
             "history_cache_segment_hits": 0,
+            "resume_enabled": resume_info["enabled"],
+            "resume_stats_path": resume_info["stats_path"],
+            "resume_checkpoint_path": resume_info["checkpoint_path"],
+            "resume_checkpoint_output_path": resume_info["checkpoint_output_path"],
+            "resume_start_index": resume_start_index,
+            "resume_stats_lines": resume_info["resume_stats_lines"],
+            "resume_skipped": 0,
         }
 
         existing_repairs, seen_ids = load_jsonl_ids(WIKIDATA_REPAIRS_JSONL)
@@ -2667,23 +2868,29 @@ def process_pipeline(max_candidates=None):
             last_log_time = now
             last_log_processed = processed_count
 
-        total_to_process = len(candidates)
+        remaining_candidates = candidates[resume_start_index:]
+        total_to_process = len(remaining_candidates)
         if max_candidates is not None:
             total_to_process = min(total_to_process, max_candidates)
+            remaining_candidates = remaining_candidates[:total_to_process]
         try:
             with open(WIKIDATA_REPAIRS_JSONL, "a", encoding="utf-8") as repairs_file:
                 progress = tqdm(total=total_to_process, desc="Processing candidates", unit="candidate")
+                last_candidate_key = None
+                last_index = None
+                last_qid = None
+                last_pid = None
+                last_violation = None
 
                 def finish_candidate():
                     progress.update(1)
                     log_stage2_progress(summary["processed"])
 
-                for i, item in enumerate(candidates):
-                    if i >= total_to_process:
-                        break
+                for offset, item in enumerate(remaining_candidates):
+                    i = resume_start_index + offset
 
                     def log_candidate(message):
-                        if i < 10:
+                        if offset < 10:
                             progress.write(message)
 
                     qid = item["qid"]
@@ -2691,6 +2898,23 @@ def process_pipeline(max_candidates=None):
                     violation_type = item.get("violation_type")
                     violation_types = item.get("violation_types")
                     violation_type_normalized = normalize_report_violation_type(violation_type)
+                    candidate_key = build_candidate_key(item)
+                    last_candidate_key = candidate_key
+                    last_index = i
+                    last_qid = qid
+                    last_pid = pid
+                    last_violation = violation_type
+
+                    if resume_info["skip_keys"] and candidate_key in resume_info["skip_keys"]:
+                        summary["resume_skipped"] += 1
+                        finish_candidate()
+                        continue
+                    if resume_info["coarse_keys"]:
+                        coarse_key = build_coarse_key(qid, pid, violation_type)
+                        if coarse_key in resume_info["coarse_keys"]:
+                            summary["resume_skipped"] += 1
+                            finish_candidate()
+                            continue
 
                     if not qid.startswith("Q"):
                         finish_candidate()
@@ -2707,6 +2931,11 @@ def process_pipeline(max_candidates=None):
                         "qid": qid,
                         "property": pid,
                         "violation_type": violation_type,
+                        "candidate_key": candidate_key,
+                        "candidate_index": i,
+                        "fix_date": item.get("fix_date"),
+                        "report_revision_old": item.get("report_revision_old"),
+                        "report_revision_new": item.get("report_revision_new"),
                     }
                     report_metadata = build_report_provenance(item, pid)
 
@@ -2956,7 +3185,33 @@ def process_pipeline(max_candidates=None):
                     record_history_stats(ambiguous_history_meta)
 
                     finish_candidate()
+
+                    if not disable_checkpoint and summary["processed"] % RESUME_CHECKPOINT_EVERY == 0:
+                        checkpoint_payload = {
+                            "run_id": stats_logger.run_id,
+                            "processed_count": summary["processed"],
+                            "last_index": last_index,
+                            "last_candidate_key": last_candidate_key,
+                            "last_qid": last_qid,
+                            "last_property": last_pid,
+                            "last_violation_type": last_violation,
+                            "timestamp_utc": datetime.now(UTC).isoformat(),
+                        }
+                        write_resume_checkpoint(checkpoint_path or RESUME_DEFAULT_CHECKPOINT, checkpoint_payload)
                 progress.close()
+                if not disable_checkpoint and last_index is not None:
+                    checkpoint_payload = {
+                        "run_id": stats_logger.run_id,
+                        "processed_count": summary["processed"],
+                        "last_index": last_index,
+                        "last_candidate_key": last_candidate_key,
+                        "last_qid": last_qid,
+                        "last_property": last_pid,
+                        "last_violation_type": last_violation,
+                        "timestamp_utc": datetime.now(UTC).isoformat(),
+                        "completed": True,
+                    }
+                    write_resume_checkpoint(checkpoint_path or RESUME_DEFAULT_CHECKPOINT, checkpoint_payload)
         finally:
             stats_logger.flush()
         if summary:
@@ -3030,6 +3285,45 @@ def parse_args():
         default=None,
         help="Limit the number of repair candidates processed (debugging helper).",
     )
+    parser.add_argument(
+        "--resume-stats",
+        type=str,
+        default=None,
+        help="Path to a prior fetcher_stats_*.jsonl to resume from.",
+    )
+    parser.add_argument(
+        "--resume-checkpoint",
+        type=str,
+        default=None,
+        help="Path to a resume checkpoint JSON produced by a previous run.",
+    )
+    parser.add_argument(
+        "--resume-after-index",
+        type=int,
+        default=None,
+        help="Skip all candidates up to this zero-based index (inclusive).",
+    )
+    parser.add_argument(
+        "--resume-coarse",
+        action="store_true",
+        help="Allow coarse resume matching when stats lack candidate_key fields.",
+    )
+    parser.add_argument(
+        "--resume-dry-run",
+        action="store_true",
+        help="Compute resume plan and exit without processing.",
+    )
+    parser.add_argument(
+        "--checkpoint-path",
+        type=str,
+        default=None,
+        help="Override resume checkpoint output path (default logs/resume_checkpoint_<run>.json).",
+    )
+    parser.add_argument(
+        "--no-checkpoint",
+        action="store_true",
+        help="Disable resume checkpoint writes.",
+    )
     return parser.parse_args()
 
 
@@ -3038,7 +3332,16 @@ def main():
     if args.validate_only:
         validate_world_state_file(WORLD_STATE_FILE, WIKIDATA_REPAIRS)
         return
-    process_pipeline(max_candidates=args.max_candidates)
+    process_pipeline(
+        max_candidates=args.max_candidates,
+        resume_stats=args.resume_stats,
+        resume_checkpoint=args.resume_checkpoint,
+        resume_after_index=args.resume_after_index,
+        resume_coarse=args.resume_coarse,
+        resume_dry_run=args.resume_dry_run,
+        checkpoint_path=args.checkpoint_path,
+        disable_checkpoint=args.no_checkpoint,
+    )
 
 
 if __name__ == "__main__":
