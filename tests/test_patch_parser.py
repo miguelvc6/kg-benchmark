@@ -1,7 +1,9 @@
+import math
 import unittest
 from pathlib import Path
 
 from guardian.patch_parser import PatchValidationError, load_schema, normalize_proposal
+from guardian.patch_parser import canonicalize
 
 
 class PatchParserTests(unittest.TestCase):
@@ -88,6 +90,17 @@ class PatchParserTests(unittest.TestCase):
         with self.assertRaises(PatchValidationError) as ctx:
             normalize_proposal(raw, schema=self.schema)
         self.assertEqual(ctx.exception.code, "INVALID_JSON")
+
+    def test_nan_value_rejected(self) -> None:
+        proposal = self._base_proposal()
+        proposal["ops"][0]["value"] = math.nan
+        with self.assertRaises(PatchValidationError) as ctx:
+            normalize_proposal(proposal, schema=self.schema)
+        self.assertEqual(ctx.exception.code, "INVALID_VALUE")
+
+    def test_canonicalize_rejects_nan(self) -> None:
+        with self.assertRaises(ValueError):
+            canonicalize({"value": math.nan})
 
 
 if __name__ == "__main__":
