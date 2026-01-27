@@ -292,7 +292,16 @@ def process_pipeline(
         logger.info(
             "[*] Using cached repairs file for Stage 3. Delete data/02_wikidata_repairs.json to force recompute Stage 2."
         )
+        logger.info("[*] Stage 3: enriching %s repairs with labels.", len(dataset))
+        enrich_start = time.time()
         enrich_repair_entries(dataset, label_resolver)
+        enrich_elapsed = time.time() - enrich_start
+        enrich_rate = (len(dataset) / enrich_elapsed) if enrich_elapsed else 0.0
+        logger.info(
+            "[*] Stage 3: enrichment complete in %.2fs (%.2f entries/s).",
+            enrich_elapsed,
+            enrich_rate,
+        )
         with open(WIKIDATA_REPAIRS, "w", encoding="utf-8") as out:
             json.dump(dataset, out, indent=2)
     else:
@@ -821,10 +830,24 @@ def process_pipeline(
 
     if dataset:
         # Step 3: Enrich dataset and build world state context
+        logger.info("[*] Stage 3: computing entity popularity.")
+        popularity_start = time.time()
         popularity_map = ensure_entity_popularity(dataset)
+        popularity_elapsed = time.time() - popularity_start
+        logger.info("[*] Stage 3: popularity computed in %.2fs.", popularity_elapsed)
+        logger.info("[*] Stage 3: attaching popularity to %s repairs.", len(dataset))
+        attach_start = time.time()
         attach_entity_popularity(dataset, popularity_map)
+        attach_elapsed = time.time() - attach_start
+        logger.info("[*] Stage 3: popularity attached in %.2fs.", attach_elapsed)
+        logger.info("[*] Stage 3: writing repairs to %s.", WIKIDATA_REPAIRS)
+        repairs_write_start = time.time()
         with open(WIKIDATA_REPAIRS, "w", encoding="utf-8") as out:
             json.dump(dataset, out, indent=2)
+        repairs_write_elapsed = time.time() - repairs_write_start
+        logger.info("[*] Stage 3: repairs written in %.2fs.", repairs_write_elapsed)
+        logger.info("[*] Stage 3: building world state from %s.", LATEST_DUMP_PATH)
+        world_state_start = time.time()
         builder = WorldStateBuilder(LATEST_DUMP_PATH)
         repair_ids, total_entries = extract_repair_ids(dataset)
         ensure_all_entries_have_ids(total_entries, repair_ids)
@@ -849,13 +872,27 @@ def process_pipeline(
             repair_ids, total_entries = extract_repair_ids(dataset)
             ensure_all_entries_have_ids(total_entries, repair_ids)
             expected_ids = ensure_unique_ids(repair_ids)
+        world_state_elapsed = time.time() - world_state_start
+        logger.info("[*] Stage 3: world state build complete in %.2fs.", world_state_elapsed)
+        logger.info("[*] Stage 3: validating world state document.")
+        validate_start = time.time()
         validate_world_state_document(world_state_map, expected_ids)
+        validate_elapsed = time.time() - validate_start
+        logger.info("[*] Stage 3: world state validation complete in %.2fs.", validate_elapsed)
+        logger.info("[*] Stage 3: writing world state to %s.", WORLD_STATE_FILE)
+        world_state_write_start = time.time()
         with open(WORLD_STATE_FILE, "w", encoding="utf-8") as world_file:
             json.dump(world_state_map, world_file, indent=2)
+        world_state_write_elapsed = time.time() - world_state_write_start
+        logger.info("[*] Stage 3: world state written in %.2fs.", world_state_write_elapsed)
 
     if summary:
+        logger.info("[*] Stage 3: writing summary to %s.", SUMMARY_FILE)
+        summary_write_start = time.time()
         with open(SUMMARY_FILE, "w", encoding="utf-8") as summary_file:
             json.dump(summary, summary_file, indent=2)
+        summary_write_elapsed = time.time() - summary_write_start
+        logger.info("[*] Stage 3: summary written in %.2fs.", summary_write_elapsed)
 
         logger.info("[+] Extraction Complete. Saved %s verified repairs.", len(dataset))
 
