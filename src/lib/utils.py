@@ -9,6 +9,7 @@ from pathlib import Path
 
 import ijson
 import requests
+from tqdm import tqdm
 
 from . import config
 
@@ -790,6 +791,6 @@ def enrich_repair_entries(entries, resolver):
     """Enrich an entire Stage-2 dataset in-place."""
     if not entries or resolver is None:
         return entries
-    for entry in entries:
+    for entry in tqdm(entries, desc="Enriching repairs", unit="entry"):
         enrich_repair_entry(entry, resolver)
     return entries

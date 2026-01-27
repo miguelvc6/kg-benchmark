@@ -1,5 +1,6 @@
 import argparse
 import json
+import logging
 import random
 import time
 from datetime import UTC, datetime
@@ -69,6 +70,13 @@ from lib.world_state import (
     validate_world_state_entry,
     validate_world_state_file,
 )
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger(__name__)
 
 
 class StatsLogger:
@@ -263,17 +271,17 @@ def process_pipeline(
     input_file = REPAIR_CANDIDATES_FILE
     candidates = ensure_repair_candidates_file(input_file)
     if not candidates:
-        print(f"[!] Unable to proceed without {input_file}.")
+        logger.warning("[!] Unable to proceed without %s.", input_file)
         return
     raw_candidate_count = len(candidates)
     candidates, dedup_stats = deduplicate_candidates(candidates)
     random.seed(42)
     random.shuffle(candidates)
     if dedup_stats.get("duplicates_skipped"):
-        print(
-            "[*] Deduplicated candidates: "
-            f"{dedup_stats['duplicates_skipped']} skipped, "
-            f"{dedup_stats['violation_type_merges']} merged violation types."
+        logger.info(
+            "[*] Deduplicated candidates: %s skipped, %s merged violation types.",
+            dedup_stats["duplicates_skipped"],
+            dedup_stats["violation_type_merges"],
         )
 
     label_resolver = LabelResolver()
@@ -281,7 +289,7 @@ def process_pipeline(
 
     summary = None
     if dataset is not None:
-        print(
+        logger.info(
             "[*] Using cached repairs file for Stage 3. Delete data/02_wikidata_repairs.json to force recompute Stage 2."
         )
         enrich_repair_entries(dataset, label_resolver)
@@ -306,10 +314,10 @@ def process_pipeline(
             resume_start_index = resume_checkpoint_payload["last_index"] + 1
             resume_info["enabled"] = True
             resume_info["checkpoint_path"] = str(resume_checkpoint)
-            print(
-                "[*] Resume checkpoint loaded: "
-                f"last_index={resume_checkpoint_payload['last_index']} "
-                f"processed={resume_checkpoint_payload.get('processed_count', 0)}"
+            logger.info(
+                "[*] Resume checkpoint loaded: last_index=%s processed=%s",
+                resume_checkpoint_payload["last_index"],
+                resume_checkpoint_payload.get("processed_count", 0),
             )
 
         resume_stats_data = load_resume_stats(resume_stats, include_coarse=False)
@@ -319,8 +327,9 @@ def process_pipeline(
             if resume_stats_data["has_candidate_keys"]:
                 resume_info["skip_keys"] = resume_stats_data["processed_keys"]
                 resume_info["enabled"] = True
-                print(
-                    f"[*] Resume stats loaded with candidate keys: {len(resume_info['skip_keys'])} processed entries."
+                logger.info(
+                    "[*] Resume stats loaded with candidate keys: %s processed entries.",
+                    len(resume_info["skip_keys"]),
                 )
             elif resume_stats_data["last_record"]:
                 last_record = resume_stats_data["last_record"]
@@ -341,14 +350,15 @@ def process_pipeline(
                     resume_start_index = max(resume_start_index, last_index + 1)
                     resume_info["enabled"] = True
                     resume_info["start_index"] = resume_start_index
-                    print(
-                        "[*] Resume stats last record matched: "
-                        f"start_index={resume_start_index} matches={match_count}."
+                    logger.info(
+                        "[*] Resume stats last record matched: start_index=%s matches=%s.",
+                        resume_start_index,
+                        match_count,
                     )
                 else:
-                    print("[!] Resume stats last record did not match any candidate.")
+                    logger.warning("[!] Resume stats last record did not match any candidate.")
         if resume_start_index >= len(candidates):
-            print("[!] Resume start index exceeds candidate count; nothing to process.")
+            logger.warning("[!] Resume start index exceeds candidate count; nothing to process.")
             return
 
         if resume_info["enabled"] and not resume_info["start_index"]:
@@ -412,7 +422,7 @@ def process_pipeline(
             """Return True if the REST history call yielded any revisions."""
             return bool(meta and meta.get("revisions_scanned", 0) > 0)
 
-        print(f"[*] Loaded {len(candidates)} candidates. Using REST history.")
+        logger.info("[*] Loaded %s candidates. Using REST history.", len(candidates))
         stage2_start = time.time()
         last_log_time = stage2_start
         last_log_processed = 0
@@ -827,9 +837,9 @@ def process_pipeline(
             world_state_map[entry_id] = context
         missing_ids = expected_ids - set(world_state_map.keys())
         if missing_ids:
-            print(
-                f"[!] Context builder missing {len(missing_ids)} entries "
-                f"(likely focus entities absent in dump). Dropping them from Stage-2."
+            logger.warning(
+                "[!] Context builder missing %s entries (likely focus entities absent in dump). Dropping them from Stage-2.",
+                len(missing_ids),
             )
             if summary is not None:
                 summary["world_state_missing"] = summary.get("world_state_missing", 0) + len(missing_ids)
@@ -847,7 +857,7 @@ def process_pipeline(
         with open(SUMMARY_FILE, "w", encoding="utf-8") as summary_file:
             json.dump(summary, summary_file, indent=2)
 
-    print(f"\n[+] Extraction Complete. Saved {len(dataset)} verified repairs.")
+        logger.info("[+] Extraction Complete. Saved %s verified repairs.", len(dataset))
 
 
 def parse_args():
