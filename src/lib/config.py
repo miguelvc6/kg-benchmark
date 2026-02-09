@@ -64,6 +64,9 @@ PAGEVIEWS_PROJECT = "en.wikipedia.org"
 PAGEVIEWS_ACCESS = "all-access"
 PAGEVIEWS_AGENT = "user"
 PAGEVIEWS_GRANULARITY = "daily"
+PAGEVIEWS_MAX_WORKERS = 8
+PAGEVIEWS_QPS = 5
+PAGEVIEWS_BATCH_SIZE = 2000
 PAGEVIEWS_ENDPOINT = (
     "https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/"
     "{project}/{access}/{agent}/{article}/{granularity}/{start}/{end}"
@@ -73,6 +76,8 @@ POPULARITY_WEIGHTS = {
     "degree_norm": 0.3,
     "sitelinks_norm": 0.2,
 }
+POPULARITY_SEED_FILE = None  # Optional alternate artifact path to seed popularity cache
+POPULARITY_ALLOW_SUPERSET_CACHE = True
 
 # Optional debug target list; leave empty to process all properties
 TARGET_PROPERTIES = [
