@@ -2,6 +2,7 @@ import hashlib
 import json
 import os
 import re
+import sys
 import time
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
@@ -313,6 +314,15 @@ def compile_jsonl_to_json(jsonl_path, json_path):
     os.replace(temp_path, json_path)
 
 
+def write_json_atomic(path, payload, *, indent=2, ensure_ascii=False):
+    """Write JSON payload atomically to avoid truncated files on interruption."""
+    path = Path(path)
+    temp_path = path.with_suffix(path.suffix + ".tmp")
+    with open(temp_path, "w", encoding="utf-8") as fh:
+        json.dump(payload, fh, indent=indent, ensure_ascii=ensure_ascii)
+    os.replace(temp_path, path)
+
+
 def pick_label(entity, lang="en"):
     """Return preferred label for an entity, falling back to any language."""
     if not entity:
@@ -476,7 +486,14 @@ def signature_p2302(claims):
     )
     serialized = canonicalize_json_structure(normalized)
     digest = hashlib.sha1(serialized.encode("utf-8")).hexdigest()
-    constraint_types = sorted({entry.get("constraint_qid") for entry in normalized if entry.get("constraint_qid")})
+    constraint_types = sorted(
+        {
+            constraint_qid
+            for entry in normalized
+            for constraint_qid in [entry.get("constraint_qid")]
+            if isinstance(constraint_qid, str)
+        }
+    )
     return {
         "normalized": normalized,
         "signature": serialized,
@@ -791,6 +808,6 @@ def enrich_repair_entries(entries, resolver):
     """Enrich an entire Stage-2 dataset in-place."""
     if not entries or resolver is None:
         return entries
-    for entry in tqdm(entries, desc="Enriching repairs", unit="entry"):
+    for entry in tqdm(entries, desc="Enriching repairs", unit="entry", disable=not sys.stderr.isatty()):
         enrich_repair_entry(entry, resolver)
     return entries

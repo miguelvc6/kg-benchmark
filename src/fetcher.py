@@ -2,6 +2,7 @@ import argparse
 import json
 import logging
 import random
+import sys
 import time
 from datetime import UTC, datetime
 
@@ -20,6 +21,7 @@ from lib.caching import (
 from lib.config import (
     LATEST_DUMP_PATH,
     MAX_HISTORY_PAGES,
+    POPULARITY_FILE,
     REPAIR_CANDIDATES_FILE,
     RESUME_CHECKPOINT_EVERY,
     RESUME_DEFAULT_CHECKPOINT,
@@ -42,7 +44,7 @@ from lib.mining import (
     ensure_repair_candidates_file,
     normalize_report_violation_type,
 )
-from lib.popularity import attach_entity_popularity, ensure_entity_popularity
+from lib.popularity import attach_entity_popularity, ensure_entity_popularity, load_popularity_artifact
 from lib.utils import (
     _build_constraint_delta,
     append_jsonl_record,
@@ -59,6 +61,7 @@ from lib.utils import (
     parse_iso8601,
     signature_p2302,
     summarize_claims,
+    write_json_atomic,
     write_resume_checkpoint,
 )
 from lib.world_state import (
@@ -77,6 +80,19 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
+
+
+def _revision_sort_key(rev):
+    """Return a total ordering key for revision dictionaries."""
+    if not isinstance(rev, dict):
+        return datetime.min.replace(tzinfo=UTC)
+    rev_dt = rev.get("_rev_dt")
+    if isinstance(rev_dt, datetime):
+        return rev_dt
+    parsed = parse_iso8601(rev.get("timestamp"))
+    if parsed is None:
+        return datetime.min.replace(tzinfo=UTC)
+    return parsed
 
 
 class StatsLogger:
@@ -113,7 +129,7 @@ def find_repair_revision(qid, property_id, start_time, end_time):
         return None, history_meta
 
     ordered_revisions = list(revisions)
-    ordered_revisions.sort(key=lambda rev: rev.get("_rev_dt") or parse_iso8601(rev.get("timestamp")))
+    ordered_revisions.sort(key=_revision_sort_key)
     newest_first = list(reversed(ordered_revisions))
     revision_items = []
     for rev in newest_first:
@@ -145,6 +161,11 @@ def find_repair_revision(qid, property_id, start_time, end_time):
             continue
 
         if current_signature != newer_signature:
+            if newer_revision is None:
+                newer_signature = current_signature
+                newer_snapshot = current_snapshot
+                newer_revision = rev
+                continue
             repair_revision_id = newer_revision.get("id") or newer_revision.get("revid")
             return (
                 {
@@ -265,6 +286,7 @@ def process_pipeline(
     max_candidates=None,
     resume_stats=None,
     resume_checkpoint=None,
+    reuse_popularity_artifact=False,
 ):
     """Main entry point: reads candidates, finds repairs, and builds context."""
     # Step 1: Load candidates and de-duplicate
@@ -286,11 +308,20 @@ def process_pipeline(
 
     label_resolver = LabelResolver()
     dataset = load_cached_repairs(WIKIDATA_REPAIRS)
+    if dataset is None and WIKIDATA_REPAIRS_JSONL.exists():
+        logger.warning(
+            "[!] Cached repairs JSON is unavailable/invalid. Rebuilding %s from %s to skip Stage 2.",
+            WIKIDATA_REPAIRS,
+            WIKIDATA_REPAIRS_JSONL,
+        )
+        compile_jsonl_to_json(WIKIDATA_REPAIRS_JSONL, WIKIDATA_REPAIRS)
+        dataset = load_cached_repairs(WIKIDATA_REPAIRS)
 
     summary = None
     if dataset is not None:
         logger.info(
-            "[*] Using cached repairs file for Stage 3. Delete data/02_wikidata_repairs.json to force recompute Stage 2."
+            "[*] Using cached repairs file for Stage 3. "
+            "Delete data/02_wikidata_repairs.json to force recompute Stage 2."
         )
         logger.info("[*] Stage 3: enriching %s repairs with labels.", len(dataset))
         enrich_start = time.time()
@@ -302,8 +333,7 @@ def process_pipeline(
             enrich_elapsed,
             enrich_rate,
         )
-        with open(WIKIDATA_REPAIRS, "w", encoding="utf-8") as out:
-            json.dump(dataset, out, indent=2)
+        write_json_atomic(WIKIDATA_REPAIRS, dataset, indent=2, ensure_ascii=False)
     else:
         # Step 2: Resume planning and Stage-2 analysis loop
         stats_logger = StatsLogger(STATS_FILE)
@@ -477,7 +507,12 @@ def process_pipeline(
             remaining_candidates = remaining_candidates[:total_to_process]
         try:
             with open(WIKIDATA_REPAIRS_JSONL, "a", encoding="utf-8") as repairs_file:
-                progress = tqdm(total=total_to_process, desc="Processing candidates", unit="candidate")
+                progress = tqdm(
+                    total=total_to_process,
+                    desc="Processing candidates",
+                    unit="candidate",
+                    disable=not sys.stderr.isatty(),
+                )
                 last_candidate_key = None
                 last_index = None
                 last_qid = None
@@ -687,7 +722,8 @@ def process_pipeline(
                             normalized_current_values = current_values_live if current_values_live is not None else []
                             delta = tbox_event["constraint_delta"]
                             log_candidate(
-                                f"    [+] FOUND T-BOX REFORM! signature {delta['hash_before']} -> {delta['hash_after']}"
+                                "    [+] FOUND T-BOX REFORM! signature "
+                                f"{delta['hash_before']} -> {delta['hash_after']}"
                             )
                             summary["repairs_found"] += 1
                             summary["repairs_found_t_box"] += 1
@@ -830,11 +866,29 @@ def process_pipeline(
 
     if dataset:
         # Step 3: Enrich dataset and build world state context
-        logger.info("[*] Stage 3: computing entity popularity.")
         popularity_start = time.time()
-        popularity_map = ensure_entity_popularity(dataset)
+        if reuse_popularity_artifact:
+            logger.info("[*] Stage 3: reusing popularity artifact from %s.", POPULARITY_FILE)
+            cached_popularity = load_popularity_artifact(POPULARITY_FILE)
+            if not cached_popularity:
+                raise RuntimeError(
+                    f"Requested --reuse-popularity-artifact but no readable artifact found at {POPULARITY_FILE}."
+                )
+            requested_qids = {entry.get("qid") for entry in dataset if isinstance(entry, dict) and entry.get("qid")}
+            missing_qids = requested_qids - set(cached_popularity.keys())
+            if missing_qids:
+                logger.warning(
+                    "[!] Popularity artifact missing %s/%s requested QIDs. "
+                    "Those entries keep existing popularity blocks.",
+                    len(missing_qids),
+                    len(requested_qids),
+                )
+            popularity_map = cached_popularity
+        else:
+            logger.info("[*] Stage 3: computing entity popularity.")
+            popularity_map = ensure_entity_popularity(dataset)
         popularity_elapsed = time.time() - popularity_start
-        logger.info("[*] Stage 3: popularity computed in %.2fs.", popularity_elapsed)
+        logger.info("[*] Stage 3: popularity stage complete in %.2fs.", popularity_elapsed)
         logger.info("[*] Stage 3: attaching popularity to %s repairs.", len(dataset))
         attach_start = time.time()
         attach_entity_popularity(dataset, popularity_map)
@@ -861,14 +915,14 @@ def process_pipeline(
         missing_ids = expected_ids - set(world_state_map.keys())
         if missing_ids:
             logger.warning(
-                "[!] Context builder missing %s entries (likely focus entities absent in dump). Dropping them from Stage-2.",
+                "[!] Context builder missing %s entries "
+                "(likely focus entities absent in dump). Dropping them from Stage-2.",
                 len(missing_ids),
             )
             if summary is not None:
                 summary["world_state_missing"] = summary.get("world_state_missing", 0) + len(missing_ids)
             dataset = [entry for entry in dataset if entry.get("id") not in missing_ids]
-            with open(WIKIDATA_REPAIRS, "w", encoding="utf-8") as out:
-                json.dump(dataset, out, indent=2)
+            write_json_atomic(WIKIDATA_REPAIRS, dataset, indent=2, ensure_ascii=False)
             repair_ids, total_entries = extract_repair_ids(dataset)
             ensure_all_entries_have_ids(total_entries, repair_ids)
             expected_ids = ensure_unique_ids(repair_ids)
@@ -881,16 +935,14 @@ def process_pipeline(
         logger.info("[*] Stage 3: world state validation complete in %.2fs.", validate_elapsed)
         logger.info("[*] Stage 3: writing world state to %s.", WORLD_STATE_FILE)
         world_state_write_start = time.time()
-        with open(WORLD_STATE_FILE, "w", encoding="utf-8") as world_file:
-            json.dump(world_state_map, world_file, indent=2)
+        write_json_atomic(WORLD_STATE_FILE, world_state_map, indent=2, ensure_ascii=False)
         world_state_write_elapsed = time.time() - world_state_write_start
         logger.info("[*] Stage 3: world state written in %.2fs.", world_state_write_elapsed)
 
     if summary:
         logger.info("[*] Stage 3: writing summary to %s.", SUMMARY_FILE)
         summary_write_start = time.time()
-        with open(SUMMARY_FILE, "w", encoding="utf-8") as summary_file:
-            json.dump(summary, summary_file, indent=2)
+        write_json_atomic(SUMMARY_FILE, summary, indent=2, ensure_ascii=False)
         summary_write_elapsed = time.time() - summary_write_start
         logger.info("[*] Stage 3: summary written in %.2fs.", summary_write_elapsed)
 
@@ -922,6 +974,11 @@ def parse_args():
         default=None,
         help="Path to a resume checkpoint JSON produced by a previous run.",
     )
+    parser.add_argument(
+        "--reuse-popularity-artifact",
+        action="store_true",
+        help="Skip popularity recomputation and reuse data/00_entity_popularity.json as-is.",
+    )
     return parser.parse_args()
 
 
@@ -934,6 +991,7 @@ def main():
         max_candidates=args.max_candidates,
         resume_stats=args.resume_stats,
         resume_checkpoint=args.resume_checkpoint,
+        reuse_popularity_artifact=args.reuse_popularity_artifact,
     )
 
 

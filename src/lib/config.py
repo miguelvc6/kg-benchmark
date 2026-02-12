@@ -16,6 +16,8 @@ MAX_HISTORY_PAGES = 8  # REST paging limit
 MAX_PROPERTY_VALUES = 12  # Max values recorded per property
 MAX_NEIGHBOR_EDGES = 50  # Max neighborhood edges captured
 REPORT_HISTORY_DEPTH = 20  # Revision pairs scanned per report page
+DUMP_SCAN_TOTAL_ENTITIES = 118319831  # Expected entities in latest-all dump (progress hint)
+PROGRESS_HEARTBEAT_SECONDS = 60  # Emit long-running progress heartbeat logs every N seconds
 
 # Snapshot cache and throttling controls
 ENABLE_ENTITY_SNAPSHOT_CACHE = True

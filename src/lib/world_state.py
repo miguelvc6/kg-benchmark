@@ -1,6 +1,9 @@
 import copy
 import gzip
 import json
+import logging
+import sys
+import time
 from pathlib import Path
 
 import ijson
@@ -8,6 +11,16 @@ from tqdm import tqdm
 
 from . import config
 from .utils import format_datavalue, get_json, load_cached_repairs, pick_description, pick_label
+
+logger = logging.getLogger(__name__)
+
+
+def _format_elapsed(seconds):
+    """Return compact HH:MM:SS elapsed display."""
+    total = max(0, int(seconds))
+    hours, rem = divmod(total, 3600)
+    minutes, secs = divmod(rem, 60)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d}"
 
 
 def _ensure(condition, message):
@@ -131,7 +144,7 @@ class WorldStateBuilder:
         if not entries:
             return
         if not self.has_dump:
-            print(f"[!] Context Builder skipped: dump not found at {self.dump_path}")
+            logger.warning("[!] Context Builder skipped: dump not found at %s", self.dump_path)
             return
 
         # 1. Identify Initial Targets (Focus + Property)
@@ -139,7 +152,7 @@ class WorldStateBuilder:
         property_ids = {entry["property"] for entry in entries}
         target_ids = focus_ids | property_ids
 
-        print(f"[*] Context Builder: Single-pass stream for {len(target_ids)} primary entities...")
+        logger.info("[*] Context Builder: Single-pass stream for %s primary entities...", len(target_ids))
 
         # 2. Single Pass Scan
         # We only load the Focus and Property entities from the dump.
@@ -150,7 +163,7 @@ class WorldStateBuilder:
 
         missing_focus = focus_ids - set(focus_entities)
         if missing_focus:
-            print(f"    [!] Warning: {len(missing_focus)} focus entities not found in dump.")
+            logger.warning("[!] Warning: %s focus entities not found in dump.", len(missing_focus))
 
         # 3. Identify Neighbors from the loaded data
         neighbor_ids = self._collect_neighbor_targets(focus_entities.values())
@@ -160,10 +173,9 @@ class WorldStateBuilder:
         preloaded_ids = set(retrieved_entities.keys())
         api_label_targets = (neighbor_ids | constraint_target_ids) - preloaded_ids
 
-        print(
-            "[*] Context Builder: Fetching {count} neighbor/constraint labels via API (avoiding 2nd dump scan)...".format(
-                count=len(api_label_targets)
-            )
+        logger.info(
+            "[*] Context Builder: Fetching %s neighbor/constraint labels via API (avoiding 2nd dump scan)...",
+            len(api_label_targets),
         )
 
         # 4. API Fallback for Neighbors + constraint references (Much faster than 2nd scan)
@@ -174,7 +186,19 @@ class WorldStateBuilder:
         # (Prioritize Dump data, fall back to API data)
         full_entity_map = {**neighbor_entities_api, **retrieved_entities}
 
-        for entry in tqdm(entries, desc="Building world states", unit="entry"):
+        total_entries = len(entries)
+        heartbeat_every_seconds = max(1, int(config.PROGRESS_HEARTBEAT_SECONDS))
+        start_time = time.monotonic()
+        last_heartbeat = start_time
+        for idx, entry in enumerate(
+            tqdm(
+                entries,
+                desc="Building world states",
+                unit="entry",
+                disable=not sys.stderr.isatty(),
+            ),
+            start=1,
+        ):
             focus_entity = focus_entities.get(entry["qid"])
             if not focus_entity:
                 continue
@@ -188,6 +212,18 @@ class WorldStateBuilder:
                 property_entity,
             )
             yield entry["id"], context
+            now = time.monotonic()
+            if now - last_heartbeat >= heartbeat_every_seconds:
+                elapsed = now - start_time
+                rate = idx / elapsed if elapsed > 0 else 0.0
+                logger.info(
+                    "[*] Context Builder heartbeat: built %s/%s world states in %s (%.2f entries/s).",
+                    idx,
+                    total_entries,
+                    _format_elapsed(elapsed),
+                    rate,
+                )
+                last_heartbeat = now
 
     def _load_entities_from_dump(self, target_ids):
         """Single-pass stream over the dump extracting matching entity blobs."""
@@ -196,18 +232,24 @@ class WorldStateBuilder:
             return found
         target_ids = set(target_ids)
 
+        heartbeat_every_seconds = max(1, int(config.PROGRESS_HEARTBEAT_SECONDS))
+        total_hint = getattr(config, "DUMP_SCAN_TOTAL_ENTITIES", None)
+        scan_start = time.monotonic()
+        last_heartbeat = scan_start
+        scanned = 0
         try:
             with gzip.open(self.dump_path, "rb") as fh:
                 stream = ijson.items(fh, "item")
-                for entity in tqdm(
-                    stream,
-                    desc="Scanning dump for context",
-                    unit=" entity",
-                    miniters=10000,
-                    total=118319831,
-                    bar_format=(
-                        "{desc}: {percentage:3.0f}%|{bar}| {n:,}/{total:,}{unit} [{elapsed}<{remaining}, {rate_fmt}]"
+                for scanned, entity in enumerate(
+                    tqdm(
+                        stream,
+                        desc="Scanning dump for context",
+                        unit=" entity",
+                        miniters=10000,
+                        total=total_hint,
+                        disable=not sys.stderr.isatty(),
                     ),
+                    start=1,
                 ):
                     eid = entity.get("id")
                     if eid in target_ids:
@@ -216,14 +258,33 @@ class WorldStateBuilder:
                         if len(found) == len(target_ids):
                             tqdm.write("    [+] Found all targets. Stopping stream early.")
                             break
+                    now = time.monotonic()
+                    if now - last_heartbeat >= heartbeat_every_seconds:
+                        elapsed = now - scan_start
+                        rate = scanned / elapsed if elapsed > 0 else 0.0
+                        logger.info(
+                            "[*] Dump scan heartbeat: scanned %s entities, found %s/%s targets in %s (%.2f entities/s).",
+                            f"{scanned:,}",
+                            len(found),
+                            len(target_ids),
+                            _format_elapsed(elapsed),
+                            rate,
+                        )
+                        last_heartbeat = now
         except Exception as exc:
-            print(f"    [!] Dump stream error: {exc}")
+            logger.warning(
+                "[!] Dump stream error after scanning %s entities and finding %s/%s targets: %s",
+                f"{scanned:,}",
+                len(found),
+                len(target_ids),
+                exc,
+            )
         return found
 
     def _collect_neighbor_targets(self, entities):
         """Gather unique QIDs reachable via outbound statements."""
         neighbors = set()
-        for entity in tqdm(entities, desc="Collecting neighbors", unit="focus"):
+        for entity in tqdm(entities, desc="Collecting neighbors", unit="focus", disable=not sys.stderr.isatty()):
             edges = 0
             claims = entity.get("claims", {})
             for pid, statements in claims.items():
@@ -278,10 +339,18 @@ class WorldStateBuilder:
         id_list = list(ids)
         if not id_list:
             return resolved
-        for start in tqdm(
-            range(0, len(id_list), 50),
-            desc="Fetching neighbor labels",
-            unit="batch",
+        total_batches = (len(id_list) + 49) // 50
+        heartbeat_every_seconds = max(1, int(config.PROGRESS_HEARTBEAT_SECONDS))
+        fetch_start = time.monotonic()
+        last_heartbeat = fetch_start
+        for batch_index, start in enumerate(
+            tqdm(
+                range(0, len(id_list), 50),
+                desc="Fetching neighbor labels",
+                unit="batch",
+                disable=not sys.stderr.isatty(),
+            ),
+            start=1,
         ):
             batch = id_list[start : start + 50]
             params = {
@@ -300,6 +369,19 @@ class WorldStateBuilder:
                     "labels": entity.get("labels", {}),
                     "descriptions": entity.get("descriptions", {}),
                 }
+            now = time.monotonic()
+            if now - last_heartbeat >= heartbeat_every_seconds:
+                elapsed = now - fetch_start
+                rate = batch_index / elapsed if elapsed > 0 else 0.0
+                logger.info(
+                    "[*] Label fetch heartbeat: %s/%s batches, resolved %s ids in %s (%.2f batch/s).",
+                    batch_index,
+                    total_batches,
+                    len(resolved),
+                    _format_elapsed(elapsed),
+                    rate,
+                )
+                last_heartbeat = now
         return resolved
 
     def _assemble_world_state(self, focus_entity, full_entity_map, entry, property_entity):

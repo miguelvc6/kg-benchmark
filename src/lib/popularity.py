@@ -1,5 +1,6 @@
 import copy
 import json
+import logging
 import math
 import time
 from datetime import UTC, datetime, timedelta
@@ -11,6 +12,8 @@ import requests
 from . import config
 from .utils import is_qid
 from .world_state import WorldStateBuilder
+
+logger = logging.getLogger(__name__)
 
 
 class PageviewClient:
@@ -167,17 +170,33 @@ class PopularityCalculator:
         focus_entities = entity_loader._load_entities_from_dump(set(focus_ids))
         missing = set(focus_ids) - set(focus_entities.keys())
         if missing:
-            print(f"    [!] Warning: Popularity calculation missing {len(missing)} focus entities in dump.")
+            logger.warning("[!] Warning: Popularity calculation missing %s focus entities in dump.", len(missing))
         start_str, end_str = self._window_bounds()
         raw_components = {}
         log_pairs = {"pageviews": [], "degree": [], "sitelinks": []}
-        for qid in focus_ids:
+        heartbeat_every_seconds = max(1, int(config.PROGRESS_HEARTBEAT_SECONDS))
+        start_time = time.monotonic()
+        last_heartbeat = start_time
+        total_qids = len(focus_ids)
+        for idx, qid in enumerate(focus_ids, start=1):
             entity = focus_entities.get(qid)
             components = self._compute_components(qid, entity, start_str, end_str)
             raw_components[qid] = components
             log_pairs["pageviews"].append((math.log1p(components["pageviews_365d"]), qid))
             log_pairs["degree"].append((math.log1p(components["out_degree"]), qid))
             log_pairs["sitelinks"].append((math.log1p(components["sitelinks_count"]), qid))
+            now = time.monotonic()
+            if now - last_heartbeat >= heartbeat_every_seconds:
+                elapsed = now - start_time
+                rate = idx / elapsed if elapsed > 0 else 0.0
+                logger.info(
+                    "[*] Popularity heartbeat: computed %s/%s entities in %.0fs (%.2f entities/s).",
+                    idx,
+                    total_qids,
+                    elapsed,
+                    rate,
+                )
+                last_heartbeat = now
 
         pageviews_norm = _percentile_map(log_pairs["pageviews"])
         degree_norm = _percentile_map(log_pairs["degree"])
@@ -259,11 +278,11 @@ def load_popularity_artifact(path=config.POPULARITY_FILE):
         with open(artifact_path, "r", encoding="utf-8") as fh:
             payload = json.load(fh)
     except Exception as exc:
-        print(f"[!] Warning: Could not read popularity artifact {artifact_path}: {exc}")
+        logger.warning("[!] Warning: Could not read popularity artifact %s: %s", artifact_path, exc)
         return None
     if isinstance(payload, dict) and payload:
         return payload
-    print(f"[!] Warning: Popularity artifact {artifact_path} malformed. Recomputing.")
+    logger.warning("[!] Warning: Popularity artifact %s malformed. Recomputing.", artifact_path)
     return None
 
 
@@ -278,13 +297,22 @@ def persist_popularity_artifact(popularity_map, path=config.POPULARITY_FILE):
 def ensure_entity_popularity(entries):
     """Return popularity map aligned with the provided Stage-2 entries."""
     qids = [entry.get("qid") for entry in entries if isinstance(entry, dict) and entry.get("qid")]
+    requested_ids = set(qids)
     cached = load_popularity_artifact()
     if cached:
         cached_ids = set(cached.keys())
-        if cached_ids == set(qids):
-            print(f"[+] Using cached popularity artifact at {config.POPULARITY_FILE}.")
+        if cached_ids == requested_ids:
+            logger.info("[+] Using cached popularity artifact at %s.", config.POPULARITY_FILE)
             return cached
-        print("[*] Popularity artifact out of date. Recomputing to maintain deterministic percentiles.")
+        if config.POPULARITY_ALLOW_SUPERSET_CACHE and requested_ids.issubset(cached_ids):
+            logger.info(
+                "[*] Using superset popularity artifact at %s (requested=%s, cached=%s).",
+                config.POPULARITY_FILE,
+                len(requested_ids),
+                len(cached_ids),
+            )
+            return {qid: cached[qid] for qid in requested_ids}
+        logger.info("[*] Popularity artifact out of date. Recomputing to maintain deterministic percentiles.")
     calculator = PopularityCalculator()
     popularity_map = calculator.build(qids)
     persist_popularity_artifact(popularity_map)

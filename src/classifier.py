@@ -18,6 +18,7 @@ import argparse
 import datetime as _dt
 import json
 import re
+import sys
 from collections import Counter
 from decimal import Decimal
 from pathlib import Path
@@ -1179,6 +1180,7 @@ def main() -> int:
             unit="records",
             total=total_repairs,
             bar_format="{desc}: {percentage:3.0f}%|{bar}| {n:,}/{total:,}{unit} [{elapsed}<{remaining}, {rate_fmt}]",
+            disable=not sys.stderr.isatty(),
         )
         for repair_event in repairs_iter:
             if not isinstance(repair_event, dict):

@@ -56,6 +56,9 @@ uv run python src/fetcher.py --resume-stats logs/fetcher_stats_YYYYMMDDTHHMMSS.j
 
 # Resume from a checkpoint file (written every 5k candidates by default)
 uv run python src/fetcher.py --resume-checkpoint logs/resume_checkpoint_YYYYMMDDTHHMMSS.json
+
+# Reuse existing popularity artifact instead of rebuilding data/00_entity_popularity.json
+uv run python src/fetcher.py --reuse-popularity-artifact
 ```
 
 Validate an existing world state:

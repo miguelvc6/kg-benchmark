@@ -560,7 +560,17 @@ def fetch_revision_history(qid, start_time, end_time):
         if "_rev_dt" not in carry_revision:
             carry_revision["_rev_dt"] = parse_iso8601(carry_revision.get("timestamp"))
         revisions.append(carry_revision)
-    revisions.sort(key=lambda rev: rev.get("_rev_dt") or parse_iso8601(rev.get("timestamp")))
+
+    def _revision_sort_key(rev):
+        rev_dt = rev.get("_rev_dt")
+        if isinstance(rev_dt, datetime):
+            return rev_dt
+        parsed = parse_iso8601(rev.get("timestamp"))
+        if parsed is not None:
+            return parsed
+        return datetime.min.replace(tzinfo=timezone.utc)
+
+    revisions.sort(key=_revision_sort_key)
     if next_endpoint and batches >= config.MAX_HISTORY_PAGES:
         reached_page_limit = True
 

@@ -1,5 +1,6 @@
 import json
 import re
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -125,7 +126,7 @@ def mine_repairs(property_id, max_items=100):
     candidates = []
     revision_pairs = range(len(revisions) - 1)
 
-    for i in tqdm(revision_pairs, desc=f"Diffing {property_id}", unit="pair"):
+    for i in tqdm(revision_pairs, desc=f"Diffing {property_id}", unit="pair", disable=not sys.stderr.isatty()):
         newer_rev = revisions[i]
         older_rev = revisions[i + 1]
 
