@@ -9,8 +9,9 @@ from pathlib import Path
 import ijson
 from tqdm import tqdm
 
+from .caching import LabelResolver
 from . import config
-from .utils import format_datavalue, get_json, load_cached_repairs, pick_description, pick_label
+from .utils import format_datavalue, iter_repairs, pick_description, pick_label
 
 logger = logging.getLogger(__name__)
 
@@ -116,19 +117,53 @@ def ensure_all_entries_have_ids(total_entries, ids):
 
 def validate_world_state_file(world_state_path, repairs_path):
     """Validate an on-disk world state artifact against Stage-2 repairs."""
-    dataset = load_cached_repairs(repairs_path)
-    if dataset is None:
+    repair_ids = []
+    total_entries = 0
+    for entry in iter_repairs(repairs_path):
+        if not isinstance(entry, dict):
+            continue
+        total_entries += 1
+        entry_id = entry.get("id")
+        if entry_id:
+            repair_ids.append(entry_id)
+    if total_entries == 0:
         raise RuntimeError(f"Stage-2 repairs file missing or empty at {repairs_path}.")
-    repair_ids, total_entries = extract_repair_ids(dataset)
     ensure_all_entries_have_ids(total_entries, repair_ids)
     expected_ids = ensure_unique_ids(repair_ids)
     path = Path(world_state_path)
     if not path.exists():
         raise RuntimeError(f"World state file not found at {world_state_path}.")
-    with open(path, "r", encoding="utf-8") as fh:
-        payload = json.load(fh)
-    validate_world_state_document(payload, expected_ids)
-    print(f"[+] World state validation passed for {len(payload)} entries.")
+    heartbeat_every_seconds = max(1, int(config.PROGRESS_HEARTBEAT_SECONDS))
+    validate_start = time.monotonic()
+    last_heartbeat = validate_start
+    seen_ids = set()
+    with open(path, "rb") as fh:
+        for idx, (entry_id, entry) in enumerate(ijson.kvitems(fh, ""), start=1):
+            _ensure(entry_id not in seen_ids, f"Duplicate world state key encountered: {entry_id}")
+            validate_world_state_entry(entry_id, entry, expected_ids)
+            seen_ids.add(entry_id)
+            now = time.monotonic()
+            if now - last_heartbeat >= heartbeat_every_seconds:
+                elapsed = now - validate_start
+                rate = idx / elapsed if elapsed > 0 else 0.0
+                logger.info(
+                    "[*] World state validate heartbeat: checked %s entries in %s (%.2f entries/s).",
+                    f"{idx:,}",
+                    _format_elapsed(elapsed),
+                    rate,
+                )
+                last_heartbeat = now
+    missing = expected_ids - seen_ids
+    unexpected = seen_ids - expected_ids
+    _ensure(
+        not missing,
+        f"World state missing {len(missing)} ids from Stage-2 dataset: {sorted(list(missing))[:5]} ...",
+    )
+    _ensure(
+        not unexpected,
+        f"World state has unexpected ids not found in Stage-2 dataset: {sorted(list(unexpected))[:5]} ...",
+    )
+    print(f"[+] World state validation passed for {len(seen_ids)} entries.")
 
 
 class WorldStateBuilder:
@@ -138,6 +173,7 @@ class WorldStateBuilder:
         """Record dump location and flag whether it is available."""
         self.dump_path = Path(dump_path)
         self.has_dump = self.dump_path.exists()
+        self.label_resolver = LabelResolver()
 
     def build(self, entries):
         """Yield world_state payloads for the provided repair entries."""
@@ -180,11 +216,11 @@ class WorldStateBuilder:
 
         # 4. API Fallback for Neighbors + constraint references (Much faster than 2nd scan)
         # We fetch these just for labels/descriptions
-        neighbor_entities_api = self._fetch_labels_via_api(api_label_targets)
+        self._prefetch_labels_via_api(api_label_targets)
 
-        # Merge all available entity data for lookup
-        # (Prioritize Dump data, fall back to API data)
-        full_entity_map = {**neighbor_entities_api, **retrieved_entities}
+        # Keep only dump-sourced entities in memory; labels for API-only ids are
+        # looked up lazily via LabelResolver (SQLite-backed).
+        full_entity_map = retrieved_entities
 
         total_entries = len(entries)
         heartbeat_every_seconds = max(1, int(config.PROGRESS_HEARTBEAT_SECONDS))
@@ -333,16 +369,16 @@ class WorldStateBuilder:
                                 targets.add(qualifier_qid)
         return targets
 
-    def _fetch_labels_via_api(self, ids):
-        """Resolve missing neighbor labels/descriptions via Action API."""
-        resolved = {}
+    def _prefetch_labels_via_api(self, ids):
+        """Resolve missing labels/descriptions in batches and persist to label cache."""
         id_list = list(ids)
         if not id_list:
-            return resolved
+            return
         total_batches = (len(id_list) + 49) // 50
         heartbeat_every_seconds = max(1, int(config.PROGRESS_HEARTBEAT_SECONDS))
         fetch_start = time.monotonic()
         last_heartbeat = fetch_start
+        resolved_count = 0
         for batch_index, start in enumerate(
             tqdm(
                 range(0, len(id_list), 50),
@@ -353,22 +389,12 @@ class WorldStateBuilder:
             start=1,
         ):
             batch = id_list[start : start + 50]
-            params = {
-                "action": "wbgetentities",
-                "ids": "|".join(batch),
-                "props": "labels|descriptions",
-            }
-            data = get_json(params)
-            if not data or "entities" not in data:
-                continue
-            for entity_id, entity in data["entities"].items():
-                if not entity or "missing" in entity:
-                    continue
-                resolved[entity_id] = {
-                    "id": entity_id,
-                    "labels": entity.get("labels", {}),
-                    "descriptions": entity.get("descriptions", {}),
-                }
+            resolved_batch = self.label_resolver.resolve(batch)
+            resolved_count += sum(
+                1
+                for payload in resolved_batch.values()
+                if isinstance(payload, dict) and (payload.get("label_en") or payload.get("description_en"))
+            )
             now = time.monotonic()
             if now - last_heartbeat >= heartbeat_every_seconds:
                 elapsed = now - fetch_start
@@ -377,12 +403,11 @@ class WorldStateBuilder:
                     "[*] Label fetch heartbeat: %s/%s batches, resolved %s ids in %s (%.2f batch/s).",
                     batch_index,
                     total_batches,
-                    len(resolved),
+                    resolved_count,
                     _format_elapsed(elapsed),
                     rate,
                 )
                 last_heartbeat = now
-        return resolved
 
     def _assemble_world_state(self, focus_entity, full_entity_map, entry, property_entity):
         """Return the world_state JSON object for one repair entry."""
@@ -454,13 +479,12 @@ class WorldStateBuilder:
                 value = datavalue.get("value")
                 if isinstance(value, dict) and value.get("entity-type") in {"item", "property"}:
                     target_id = value.get("id")
-                    neighbor = neighbor_entities.get(target_id)
                     edges.append(
                         {
                             "property_id": pid,
                             "target_qid": target_id,
-                            "target_label": pick_label(neighbor),
-                            "target_description": pick_description(neighbor),
+                            "target_label": self._lookup_label(target_id, neighbor_entities),
+                            "target_description": self._lookup_description(target_id, neighbor_entities),
                         }
                     )
                     edge_count += 1
@@ -483,9 +507,8 @@ class WorldStateBuilder:
         def track(entity_id):
             if not entity_id or entity_id in label_index:
                 return
-            entity = entity_map.get(entity_id)
-            label = pick_label(entity) if entity else None
-            description = pick_description(entity) if entity else None
+            label = self._lookup_label(entity_id, entity_map)
+            description = self._lookup_description(entity_id, entity_map)
             label_index[entity_id] = {
                 "label": label or config.MISSING_LABEL_PLACEHOLDER,
                 "description": description,
@@ -516,8 +539,24 @@ class WorldStateBuilder:
         if not entity_id:
             return None
         entity = entity_map.get(entity_id)
-        label = pick_label(entity)
+        label = pick_label(entity) if entity else None
+        if not label:
+            cached = self.label_resolver.lookup(entity_id)
+            label = cached.get("label_en") if isinstance(cached, dict) else None
         return label or config.MISSING_LABEL_PLACEHOLDER
+
+    def _lookup_description(self, entity_id, entity_map):
+        """Return the preferred description for entity_id when available."""
+        if not entity_id:
+            return None
+        entity = entity_map.get(entity_id)
+        description = pick_description(entity) if entity else None
+        if description:
+            return description
+        cached = self.label_resolver.lookup(entity_id)
+        if isinstance(cached, dict):
+            return cached.get("description_en")
+        return None
 
     def _extract_constraints(self, property_id, property_entity, full_entity_map):
         """Summarize the on-wiki constraint definition (P2302 statements) with labels."""

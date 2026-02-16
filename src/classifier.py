@@ -17,6 +17,7 @@ Writes:
 import argparse
 import datetime as _dt
 import json
+import logging
 import re
 import sys
 from collections import Counter
@@ -66,6 +67,20 @@ VIOLATION_TO_CONSTRAINT_MAP = {
     "Diff within range": "Q21510861",
     "Quantity": "Q21510857",
 }
+
+
+def configure_logging(verbose: bool, quiet: bool) -> None:
+    if quiet:
+        level = logging.WARNING
+    elif verbose:
+        level = logging.DEBUG
+    else:
+        level = logging.INFO
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s %(levelname)s %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
 
 
 def extract_constraint_types(world_state_entry: Dict[str, Any]) -> List[Dict[str, Optional[str]]]:
@@ -1128,10 +1143,17 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--sample", action="store_true", help="Use data_sample/ inputs/outputs instead of data/")
     ap.add_argument("--self-test", action="store_true", help="Run minimal self-tests and exit")
+    ap.add_argument("--verbose", action="store_true", help="Enable verbose logging")
+    ap.add_argument("--quiet", action="store_true", help="Show only warnings and errors")
+    ap.add_argument("--no-progress", action="store_true", help="Disable tqdm progress bars")
     args = ap.parse_args()
+    configure_logging(verbose=args.verbose, quiet=args.quiet)
+    log = logging.getLogger("classifier")
 
     if args.self_test:
+        log.info("Running self-tests")
         _run_self_tests()
+        log.info("Self-tests passed")
         return 0
 
     # Set up paths
@@ -1144,20 +1166,33 @@ def main() -> int:
     out_path = FOLDER_PATH / DEFAULT_OUT_PATH
     out_full_path = FOLDER_PATH / DEFAULT_OUT_FULL_PATH if DEFAULT_OUT_FULL_PATH else None
     stats_path = Path(DEFAULT_STATS_PATH)
+    use_progress = (not args.no_progress) and sys.stderr.isatty()
+    log.info("Starting classifier run")
+    log.info("Inputs: repairs=%s world_state=%s", repairs_path, world_state_path)
+    if popularity_path:
+        log.info("Optional popularity input=%s", popularity_path)
+    log.info("Outputs: lean=%s full=%s stats=%s", out_path, out_full_path, stats_path)
 
     # Load world state (keyed by repair id)
     world_state = read_json(world_state_path)
     if not isinstance(world_state, dict):
         raise ValueError(f"Expected dict in {world_state_path}, got {type(world_state)}")
+    log.info("Loaded world state entries: %d", len(world_state))
 
     popularity_by_qid: Optional[Dict[str, Any]] = None
     if popularity_path and popularity_path.exists():
         try:
             popularity_by_qid = read_json(popularity_path)
             if not isinstance(popularity_by_qid, dict):
+                log.warning("Popularity file is not a dict: %s", popularity_path)
                 popularity_by_qid = None
         except Exception:
+            log.warning("Failed to read popularity file: %s", popularity_path)
             popularity_by_qid = None
+    elif popularity_path:
+        log.info("Popularity file not found (continuing without it): %s", popularity_path)
+    if popularity_by_qid is not None:
+        log.info("Loaded popularity entries: %d", len(popularity_by_qid))
 
     stats = {
         "build_utc": utc_now_iso(),
@@ -1174,13 +1209,14 @@ def main() -> int:
     def iter_outputs() -> Iterator[Dict[str, Any]]:
         repairs_iter: Iterable[Dict[str, Any]] = iter_repairs(repairs_path)
         total_repairs = count_repairs(repairs_path)
+        log.info("Repairs to process: %d", total_repairs)
         repairs_iter = tqdm(
             repairs_iter,
             desc="Classifying",
             unit="records",
             total=total_repairs,
             bar_format="{desc}: {percentage:3.0f}%|{bar}| {n:,}/{total:,}{unit} [{elapsed}<{remaining}, {rate_fmt}]",
-            disable=not sys.stderr.isatty(),
+            disable=not use_progress,
         )
         for repair_event in repairs_iter:
             if not isinstance(repair_event, dict):
@@ -1249,19 +1285,32 @@ def main() -> int:
                 if step.get("step") == "branch":
                     stats["decision_trace"][str(step.get("result"))] += 1
 
+            stats["counts"]["output_records"] += 1
             yield out
 
     # Write lean output (streaming)
+    log.info("Writing lean output")
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as fh:
         for rec in iter_outputs():
             fh.write(json.dumps(rec, ensure_ascii=False, default=_json_default) + "\n")
+    log.info("Lean output complete: %s", out_path)
 
     # Write optional full output (second pass; acceptable for first draft)
     if out_full_path:
+        log.info("Writing full output")
 
         def iter_full() -> Iterator[Dict[str, Any]]:
-            for rec in iter_jsonl(out_path):
+            full_iter: Iterable[Dict[str, Any]] = iter_jsonl(out_path)
+            full_iter = tqdm(
+                full_iter,
+                desc="Embedding world state",
+                unit="records",
+                total=stats["counts"].get("output_records"),
+                bar_format="{desc}: {percentage:3.0f}%|{bar}| {n:,}/{total:,}{unit} [{elapsed}<{remaining}, {rate_fmt}]",
+                disable=not use_progress,
+            )
+            for rec in full_iter:
                 rid = rec.get("id")
                 ws_entry = world_state.get(rid)
                 rec2 = dict(rec)
@@ -1272,6 +1321,7 @@ def main() -> int:
         with open(out_full_path, "w", encoding="utf-8") as fh:
             for rec in iter_full():
                 fh.write(json.dumps(rec, ensure_ascii=False, default=_json_default) + "\n")
+        log.info("Full output complete: %s", out_full_path)
 
     # Write stats
     stats_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1281,6 +1331,12 @@ def main() -> int:
     stats_out["decision_trace"] = dict(stats["decision_trace"])
     with open(stats_path, "w", encoding="utf-8") as fh:
         json.dump(stats_out, fh, ensure_ascii=False, indent=2, default=_json_default)
+    log.info("Stats written: %s", stats_path)
+    log.info(
+        "Completed classifier run: output_records=%d errors=%d",
+        stats["counts"].get("output_records", 0),
+        sum(stats["errors"].values()),
+    )
 
     return 0
 

@@ -1,8 +1,10 @@
 import argparse
 import json
 import logging
+import os
 import random
 import sys
+import threading
 import time
 from datetime import UTC, datetime
 
@@ -31,6 +33,7 @@ from lib.config import (
     STAGE2_LOG_EVERY,
     STATS_FILE,
     STATS_FLUSH_EVERY,
+    PROGRESS_HEARTBEAT_SECONDS,
     STRICT_PERSISTENCE,
     SUMMARY_FILE,
     TARGET_PROPERTIES,
@@ -69,7 +72,6 @@ from lib.world_state import (
     ensure_all_entries_have_ids,
     ensure_unique_ids,
     extract_repair_ids,
-    validate_world_state_document,
     validate_world_state_entry,
     validate_world_state_file,
 )
@@ -80,6 +82,65 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
+
+
+def _format_elapsed(seconds):
+    total = max(0, int(seconds))
+    hours, rem = divmod(total, 3600)
+    minutes, secs = divmod(rem, 60)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+
+
+def _run_with_heartbeat(label, func, *args, **kwargs):
+    """
+    Execute func(*args, **kwargs) and emit periodic heartbeat logs while blocked.
+    This prevents long external/API-bound calls from appearing frozen.
+    """
+    interval = max(1, int(PROGRESS_HEARTBEAT_SECONDS))
+    start = time.monotonic()
+    stop_event = threading.Event()
+
+    def heartbeat_loop():
+        while not stop_event.wait(interval):
+            elapsed = time.monotonic() - start
+            logger.info("[*] %s still running... elapsed %s", label, _format_elapsed(elapsed))
+
+    thread = threading.Thread(target=heartbeat_loop, daemon=True)
+    thread.start()
+    try:
+        return func(*args, **kwargs)
+    finally:
+        stop_event.set()
+        thread.join(timeout=0.1)
+
+
+def _write_world_state_atomic(path, world_state_items, expected_ids):
+    """Stream world state entries to disk atomically and return written entry ids."""
+    temp_path = path.with_suffix(path.suffix + ".tmp")
+    written_ids = set()
+    try:
+        with open(temp_path, "w", encoding="utf-8") as fh:
+            fh.write("{\n")
+            first = True
+            for entry_id, context in world_state_items:
+                if entry_id in written_ids:
+                    raise ValueError(f"Duplicate world_state id detected during build: {entry_id}")
+                validate_world_state_entry(entry_id, context, expected_ids)
+                if not first:
+                    fh.write(",\n")
+                else:
+                    first = False
+                fh.write(json.dumps(entry_id, ensure_ascii=False))
+                fh.write(": ")
+                json.dump(context, fh, ensure_ascii=False)
+                written_ids.add(entry_id)
+            fh.write("\n}\n")
+        os.replace(temp_path, path)
+        return written_ids
+    except Exception:
+        if temp_path.exists():
+            temp_path.unlink()
+        raise
 
 
 def _revision_sort_key(rev):
@@ -314,7 +375,12 @@ def process_pipeline(
             WIKIDATA_REPAIRS,
             WIKIDATA_REPAIRS_JSONL,
         )
-        compile_jsonl_to_json(WIKIDATA_REPAIRS_JSONL, WIKIDATA_REPAIRS)
+        _run_with_heartbeat(
+            "Cached repairs rebuild (JSONL to JSON)",
+            compile_jsonl_to_json,
+            WIKIDATA_REPAIRS_JSONL,
+            WIKIDATA_REPAIRS,
+        )
         dataset = load_cached_repairs(WIKIDATA_REPAIRS)
 
     summary = None
@@ -325,7 +391,12 @@ def process_pipeline(
         )
         logger.info("[*] Stage 3: enriching %s repairs with labels.", len(dataset))
         enrich_start = time.time()
-        enrich_repair_entries(dataset, label_resolver)
+        _run_with_heartbeat(
+            "Stage 3 label enrichment",
+            enrich_repair_entries,
+            dataset,
+            label_resolver,
+        )
         enrich_elapsed = time.time() - enrich_start
         enrich_rate = (len(dataset) / enrich_elapsed) if enrich_elapsed else 0.0
         logger.info(
@@ -585,7 +656,9 @@ def process_pipeline(
                         finish_candidate()
                         continue
 
-                    fix_event, history_meta = find_repair_revision(
+                    fix_event, history_meta = _run_with_heartbeat(
+                        f"Stage-2 entity history scan for {qid} {pid}",
+                        find_repair_revision,
                         qid,
                         pid,
                         start_time=start_time,
@@ -649,7 +722,9 @@ def process_pipeline(
                             },
                         }
                         # Re-run constraint diffing without heavy payloads to flag ambiguous cases.
-                        cheap_tbox_event, ambiguous_history_meta = find_tbox_reform_revision(
+                        cheap_tbox_event, ambiguous_history_meta = _run_with_heartbeat(
+                            f"Stage-2 ambiguity probe for property {pid}",
+                            find_tbox_reform_revision,
                             pid,
                             start_time=start_time,
                             end_time=end_time,
@@ -698,7 +773,9 @@ def process_pipeline(
                             stats_logger.log(stats_payload)
                     else:
                         # Reformer (T-box) path: fall back to constraint evolution when the A-box stayed untouched.
-                        tbox_event, tbox_history_meta = find_tbox_reform_revision(
+                        tbox_event, tbox_history_meta = _run_with_heartbeat(
+                            f"Stage-2 property history scan for {pid}",
+                            find_tbox_reform_revision,
                             pid,
                             start_time=start_time,
                             end_time=end_time,
@@ -859,7 +936,12 @@ def process_pipeline(
                 summary["history_cache_hits"] = REVISION_HISTORY_CACHE.hits
                 summary["history_cache_misses"] = REVISION_HISTORY_CACHE.misses
                 summary["history_cache_segment_hits"] = REVISION_HISTORY_CACHE.segment_hits
-            compile_jsonl_to_json(WIKIDATA_REPAIRS_JSONL, WIKIDATA_REPAIRS)
+            _run_with_heartbeat(
+                "Stage 2 compile JSONL to JSON",
+                compile_jsonl_to_json,
+                WIKIDATA_REPAIRS_JSONL,
+                WIKIDATA_REPAIRS,
+            )
             dataset = load_cached_repairs(WIKIDATA_REPAIRS) or []
         else:
             dataset = []
@@ -886,12 +968,21 @@ def process_pipeline(
             popularity_map = cached_popularity
         else:
             logger.info("[*] Stage 3: computing entity popularity.")
-            popularity_map = ensure_entity_popularity(dataset)
+            popularity_map = _run_with_heartbeat(
+                "Stage 3 popularity computation",
+                ensure_entity_popularity,
+                dataset,
+            )
         popularity_elapsed = time.time() - popularity_start
         logger.info("[*] Stage 3: popularity stage complete in %.2fs.", popularity_elapsed)
         logger.info("[*] Stage 3: attaching popularity to %s repairs.", len(dataset))
         attach_start = time.time()
-        attach_entity_popularity(dataset, popularity_map)
+        _run_with_heartbeat(
+            "Stage 3 popularity attachment",
+            attach_entity_popularity,
+            dataset,
+            popularity_map,
+        )
         attach_elapsed = time.time() - attach_start
         logger.info("[*] Stage 3: popularity attached in %.2fs.", attach_elapsed)
         logger.info("[*] Stage 3: writing repairs to %s.", WIKIDATA_REPAIRS)
@@ -906,13 +997,17 @@ def process_pipeline(
         repair_ids, total_entries = extract_repair_ids(dataset)
         ensure_all_entries_have_ids(total_entries, repair_ids)
         expected_ids = ensure_unique_ids(repair_ids)
-        world_state_map = {}
-        for entry_id, context in builder.build(dataset):
-            if entry_id in world_state_map:
-                raise ValueError(f"Duplicate world_state id detected during build: {entry_id}")
-            validate_world_state_entry(entry_id, context, expected_ids)
-            world_state_map[entry_id] = context
-        missing_ids = expected_ids - set(world_state_map.keys())
+        logger.info("[*] Stage 3: streaming world state to %s.", WORLD_STATE_FILE)
+        world_state_write_start = time.time()
+        written_world_state_ids = _run_with_heartbeat(
+            "Stage 3 world state streaming/writing",
+            _write_world_state_atomic,
+            WORLD_STATE_FILE,
+            builder.build(dataset),
+            expected_ids,
+        )
+        world_state_write_elapsed = time.time() - world_state_write_start
+        missing_ids = expected_ids - written_world_state_ids
         if missing_ids:
             logger.warning(
                 "[!] Context builder missing %s entries "
@@ -926,18 +1021,23 @@ def process_pipeline(
             repair_ids, total_entries = extract_repair_ids(dataset)
             ensure_all_entries_have_ids(total_entries, repair_ids)
             expected_ids = ensure_unique_ids(repair_ids)
+            if expected_ids != written_world_state_ids:
+                raise ValueError(
+                    "World state ids do not match filtered Stage-2 ids after dropping missing focus entities."
+                )
         world_state_elapsed = time.time() - world_state_start
         logger.info("[*] Stage 3: world state build complete in %.2fs.", world_state_elapsed)
+        logger.info("[*] Stage 3: world state written in %.2fs.", world_state_write_elapsed)
         logger.info("[*] Stage 3: validating world state document.")
         validate_start = time.time()
-        validate_world_state_document(world_state_map, expected_ids)
+        _run_with_heartbeat(
+            "Stage 3 world state validation",
+            validate_world_state_file,
+            WORLD_STATE_FILE,
+            WIKIDATA_REPAIRS,
+        )
         validate_elapsed = time.time() - validate_start
         logger.info("[*] Stage 3: world state validation complete in %.2fs.", validate_elapsed)
-        logger.info("[*] Stage 3: writing world state to %s.", WORLD_STATE_FILE)
-        world_state_write_start = time.time()
-        write_json_atomic(WORLD_STATE_FILE, world_state_map, indent=2, ensure_ascii=False)
-        world_state_write_elapsed = time.time() - world_state_write_start
-        logger.info("[*] Stage 3: world state written in %.2fs.", world_state_write_elapsed)
 
     if summary:
         logger.info("[*] Stage 3: writing summary to %s.", SUMMARY_FILE)
@@ -985,7 +1085,14 @@ def parse_args():
 def main():
     args = parse_args()
     if args.validate_only:
-        validate_world_state_file(WORLD_STATE_FILE, WIKIDATA_REPAIRS)
+        logger.info("[*] Validate-only mode: validating %s against %s.", WORLD_STATE_FILE, WIKIDATA_REPAIRS)
+        _run_with_heartbeat(
+            "Validate-only world state validation",
+            validate_world_state_file,
+            WORLD_STATE_FILE,
+            WIKIDATA_REPAIRS,
+        )
+        logger.info("[+] Validate-only mode complete.")
         return
     process_pipeline(
         max_candidates=args.max_candidates,
