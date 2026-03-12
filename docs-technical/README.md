@@ -9,6 +9,7 @@ This area contains repository-facing documentation: how the benchmark is built, 
 - [Evaluation Harness](./Evaluation_Harness.md): benchmark scoring workflow, outputs, and metric semantics.
 - [Reasoning Floor](./Reasoning_Floor.md): zero-shot baseline runner, ablation bundles, and provider interface.
 - [Track Diagnosis](./Track_Diagnosis.md): separate A-box vs T-box diagnostic task and scoring outputs.
+- [Paper Execution Plan](./Paper_Execution_Plan.md): terminal runbook for building the benchmark and paper artifacts end to end.
 - [Conceptual Deviation Report](./Conceptual_Deviation_Report.md): mismatches between current conceptual claims and the implemented repository.
 
 Conceptual rationale and research framing live in [docs-conceptual](../docs-conceptual/README.md).
