@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wudata.example.org/schemas/tbox_reform_proposal.schema.json",
+  "title": "TBoxReformProposal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["case_id", "target", "proposal"],
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pid", "constraint_type_qid"],
+      "properties": {
+        "pid": {
+          "type": "string",
+          "pattern": "^P[1-9][0-9]*$"
+        },
+        "constraint_type_qid": {
+          "type": "string",
+          "pattern": "^Q[1-9][0-9]*$"
+        }
+      }
+    },
+    "proposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "signature_after"],
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "RELAXATION_RANGE_WIDENED",
+            "RESTRICTION_RANGE_NARROWED",
+            "RELAXATION_SET_EXPANSION",
+            "RESTRICTION_SET_CONTRACTION",
+            "SCHEMA_UPDATE",
+            "COINCIDENTAL_SCHEMA_CHANGE"
+          ]
+        },
+        "signature_after": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "rationale": {
+      "type": "string"
+    },
+    "provenance": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "metadata": {
+      "type": "object"
+    }
+  }
+}
+
