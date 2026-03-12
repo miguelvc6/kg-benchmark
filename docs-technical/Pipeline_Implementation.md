@@ -8,6 +8,7 @@ The implemented repository currently provides:
 
 - benchmark construction from report mining through classified benchmark generation
 - proposal validation and normalization for A-box and T-box outputs
+- track-diagnosis normalization for A-box vs T-box prediction
 - benchmark evaluation over frozen artifacts
 - a zero-shot reasoning-floor baseline runner
 - deterministic train/dev/test split generation
@@ -169,6 +170,7 @@ Current behavior:
 
 - evaluates every selected benchmark case, even when the proposal is missing
 - supports both A-box repair proposals and T-box reform proposals
+- supports a separate track-diagnosis artifact for predicting `A_BOX`, `T_BOX`, or `AMBIGUOUS`
 - writes per-case traces plus an aggregate summary
 - keeps reserved metric fields in the output even when first-wave runs do not populate them
 - uses frozen benchmark artifacts only; no live web calls are made
@@ -182,6 +184,7 @@ The evaluation details and metric semantics are documented in [Evaluation Harnes
 Current behavior:
 
 - builds three fixed ablation bundles from current artifacts: `minimal_case`, `logic_only`, and `local_graph`
+- runs a separate zero-shot diagnosis call to predict whether the case belongs to the A-box or T-box track
 - routes A-box cases to the A-box proposal schema and T-box cases to the T-box proposal schema
 - records raw model responses, parse status, normalized proposals, evaluation traces, and aggregate summaries
 - uses a provider adapter boundary with one concrete OpenAI implementation and a static provider for tests
@@ -223,4 +226,5 @@ uv run python -m unittest tests/test_patch_parser.py tests/test_tbox_parser.py t
 - Proposal contracts: [Proposal Validation](./Proposal_Validation.md)
 - Evaluation details: [Evaluation Harness](./Evaluation_Harness.md)
 - Zero-shot baseline details: [Reasoning Floor](./Reasoning_Floor.md)
+- Track-diagnosis task: [Track Diagnosis](./Track_Diagnosis.md)
 - Remaining MPU gap tracker: [Conceptual Deviation Report](./Conceptual_Deviation_Report.md)

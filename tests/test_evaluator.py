@@ -19,6 +19,7 @@ class EvaluatorTests(unittest.TestCase):
             world_state_path = root / "world_state.json"
             a_box_path = root / "a_box.jsonl"
             t_box_path = root / "t_box.jsonl"
+            track_path = root / "track.jsonl"
 
             classified_rows = [
                 {
@@ -122,19 +123,27 @@ class EvaluatorTests(unittest.TestCase):
                     }
                 ],
             )
+            self._write_jsonl(
+                track_path,
+                [
+                    {"case_id": "repair_case", "predicted_track": "A_BOX"},
+                    {"case_id": "reform_case", "predicted_track": "T_BOX"},
+                ],
+            )
 
             traces, summary = evaluate_benchmark(
                 classified_path=classified_path,
                 world_state_path=world_state_path,
                 a_box_proposals_path=a_box_path,
                 t_box_proposals_path=t_box_path,
+                track_diagnoses_path=track_path,
             )
 
             self.assertEqual(len(traces), 2)
             self.assertEqual(summary["counts"]["cases"], 2)
             self.assertEqual(summary["counts"]["accepted"], 2)
+            self.assertEqual(summary["counts"]["track_diagnosis_exact_match"], 2)
 
 
 if __name__ == "__main__":
     unittest.main()
-

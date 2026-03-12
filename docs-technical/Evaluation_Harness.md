@@ -8,6 +8,7 @@ The benchmark evaluation entry point is [evaluate.py](/home/mvazquez/kg-benchmar
 - Stage 3 world state
 - normalized A-box proposal JSONL
 - normalized T-box proposal JSONL
+- optional normalized track-diagnosis JSONL
 - optional reasoning-floor run manifest
 
 ## Outputs
@@ -57,3 +58,21 @@ The evaluator aggregates results by:
 - track
 - ablation bundle
 - popularity bucket
+
+## Track-Diagnosis Evaluation
+
+The evaluator also supports a separate diagnosis task:
+
+- input artifact: normalized track-diagnosis JSONL
+- historical target: benchmark `track`
+- supported predictions: `A_BOX`, `T_BOX`, `AMBIGUOUS`
+
+Current trace fields include:
+
+- predicted track
+- historical track
+- exact-track-match
+- ambiguous-prediction flag
+- diagnosis token usage when supplied by the run manifest
+
+Current summaries expose diagnosis accuracy alongside the other grouped aggregates.

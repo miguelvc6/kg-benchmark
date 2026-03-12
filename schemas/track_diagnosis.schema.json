@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wudata.example.org/schemas/track_diagnosis.schema.json",
+  "title": "TrackDiagnosis",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["case_id", "predicted_track"],
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "predicted_track": {
+      "type": "string",
+      "enum": ["A_BOX", "T_BOX", "AMBIGUOUS"]
+    },
+    "confidence": {
+      "type": "string"
+    },
+    "rationale": {
+      "type": "string"
+    }
+  }
+}
+

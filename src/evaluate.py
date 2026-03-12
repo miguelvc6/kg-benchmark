@@ -11,6 +11,7 @@ def main() -> int:
     parser.add_argument("--world-state", default="data/03_world_state.json")
     parser.add_argument("--a-box-proposals", default=None)
     parser.add_argument("--t-box-proposals", default=None)
+    parser.add_argument("--track-diagnoses", default=None)
     parser.add_argument("--run-manifest", default=None)
     parser.add_argument("--ablation-bundle", default=None)
     parser.add_argument("--out-traces", default="reports/evaluation_traces.jsonl")
@@ -24,6 +25,7 @@ def main() -> int:
         world_state_path=args.world_state,
         a_box_proposals_path=args.a_box_proposals,
         t_box_proposals_path=args.t_box_proposals,
+        track_diagnoses_path=args.track_diagnoses,
         run_manifest_path=args.run_manifest,
         ablation_bundle=args.ablation_bundle,
         case_ids=case_ids,
@@ -35,4 +37,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

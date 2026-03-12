@@ -10,6 +10,7 @@ from typing import Any, Iterable, Optional
 from classifier import WorldStateStore
 from lib.utils import iter_jsonl, normalize_text
 from guardian.patch_parser import normalize_proposal as normalize_a_box_proposal
+from guardian.track_parser import normalize_diagnosis as normalize_track_diagnosis
 from guardian.tbox_parser import normalize_proposal as normalize_t_box_proposal
 from guardian.tbox_parser import normalize_signature_after
 
@@ -145,6 +146,12 @@ def _load_t_box_proposals(path: str | Path | None) -> dict[str, Any]:
 
 
 def _load_run_manifest(path: str | Path | None) -> dict[tuple[str, Optional[str]], dict[str, Any]]:
+    return _load_run_manifest_by_task(path)
+
+
+def _load_run_manifest_by_task(
+    path: str | Path | None,
+) -> dict[tuple[str, Optional[str], str], dict[str, Any]]:
     manifest = {}
     if not path:
         return manifest
@@ -159,16 +166,38 @@ def _load_run_manifest(path: str | Path | None) -> dict[tuple[str, Optional[str]
             continue
         bundle = record.get("ablation_bundle")
         bundle_key = bundle if isinstance(bundle, str) and bundle else None
-        manifest[(case_id, bundle_key)] = record
+        task_type = record.get("task_type")
+        task_key = task_type if isinstance(task_type, str) and task_type else "proposal"
+        manifest[(case_id, bundle_key, task_key)] = record
     return manifest
 
 
 def _manifest_record(
-    manifest: dict[tuple[str, Optional[str]], dict[str, Any]],
+    manifest: dict[tuple[str, Optional[str], str], dict[str, Any]],
     case_id: str,
     ablation_bundle: Optional[str],
+    task_type: str = "proposal",
 ) -> dict[str, Any]:
-    return manifest.get((case_id, ablation_bundle)) or manifest.get((case_id, None)) or {}
+    return (
+        manifest.get((case_id, ablation_bundle, task_type))
+        or manifest.get((case_id, None, task_type))
+        or manifest.get((case_id, ablation_bundle, "proposal"))
+        or manifest.get((case_id, None, "proposal"))
+        or {}
+    )
+
+
+def _load_track_diagnoses(path: str | Path | None) -> dict[str, Any]:
+    diagnoses = {}
+    if not path:
+        return diagnoses
+    diagnosis_path = Path(path)
+    if not diagnosis_path.exists():
+        return diagnoses
+    for record in iter_jsonl(diagnosis_path):
+        normalized = normalize_track_diagnosis(record)
+        diagnoses[normalized.case_id] = normalized
+    return diagnoses
 
 
 def _constraint_type_qids(world_state_entry: dict[str, Any]) -> list[str]:
@@ -509,6 +538,32 @@ def evaluate_t_box_case(
     }
 
 
+def evaluate_track_diagnosis(
+    record: dict[str, Any],
+    diagnosis: Any,
+    manifest_record: dict[str, Any],
+) -> dict[str, Any]:
+    diagnosis_missing = diagnosis is None
+    historical_track = record.get("track")
+    predicted_track = diagnosis.predicted_track if diagnosis is not None else None
+    exact_track_match = bool(predicted_track == historical_track)
+    ambiguous_prediction = bool(predicted_track == "AMBIGUOUS")
+    confidence = diagnosis.confidence if diagnosis is not None else None
+    rationale = diagnosis.rationale if diagnosis is not None else None
+    return {
+        "valid": diagnosis is not None,
+        "present": not diagnosis_missing,
+        "parse_status": manifest_record.get("parse_status") or ("missing" if diagnosis_missing else "normalized"),
+        "historical_track": historical_track,
+        "predicted_track": predicted_track,
+        "exact_track_match": exact_track_match,
+        "ambiguous_prediction": ambiguous_prediction,
+        "confidence": confidence,
+        "rationale": rationale,
+        "token_usage": _token_usage(manifest_record),
+    }
+
+
 def summarize_traces(
     traces: list[dict[str, Any]],
     inputs: dict[str, Any],
@@ -531,6 +586,14 @@ def summarize_traces(
             counts["proposal_executable"] += 1
         if trace.get("metrics", {}).get("functional_success") == 1.0:
             counts["functional_success"] += 1
+        diagnosis = trace.get("track_diagnosis")
+        if isinstance(diagnosis, dict):
+            if diagnosis.get("present"):
+                counts["track_diagnosis_present"] += 1
+            if diagnosis.get("exact_track_match"):
+                counts["track_diagnosis_exact_match"] += 1
+            if diagnosis.get("ambiguous_prediction"):
+                counts["track_diagnosis_ambiguous"] += 1
         groups["by_class"][trace.get("classification_class")].append(trace)
         groups["by_subtype"][trace.get("classification_subtype")].append(trace)
         groups["by_track"][trace.get("track")].append(trace)
@@ -548,6 +611,7 @@ def summarize_traces(
 
         token_totals = [trace["metrics"]["token_usage"].get("total_tokens") for trace in group]
         token_totals = [value for value in token_totals if isinstance(value, int)]
+        diagnosis_group = [trace.get("track_diagnosis") for trace in group if isinstance(trace.get("track_diagnosis"), dict)]
         return {
             "count": len(group),
             "accepted_rate": sum(1 for trace in group if trace.get("accepted")) / len(group),
@@ -556,6 +620,16 @@ def summarize_traces(
             "information_preservation_mean": avg("information_preservation"),
             "provenance_completeness_mean": avg("provenance_completeness"),
             "token_usage_total_mean": (sum(token_totals) / len(token_totals)) if token_totals else None,
+            "track_diagnosis_accuracy": (
+                sum(1 for diagnosis in diagnosis_group if diagnosis.get("exact_track_match")) / len(diagnosis_group)
+                if diagnosis_group
+                else None
+            ),
+            "track_diagnosis_present_rate": (
+                sum(1 for diagnosis in diagnosis_group if diagnosis.get("present")) / len(group)
+                if group
+                else None
+            ),
         }
 
     summary = {
@@ -578,6 +652,7 @@ def evaluate_benchmark(
     world_state_path: str | Path,
     a_box_proposals_path: str | Path | None = None,
     t_box_proposals_path: str | Path | None = None,
+    track_diagnoses_path: str | Path | None = None,
     run_manifest_path: str | Path | None = None,
     ablation_bundle: Optional[str] = None,
     case_ids: Optional[Iterable[str]] = None,
@@ -589,6 +664,7 @@ def evaluate_benchmark(
     popularity_buckets = _derive_popularity_buckets(records)
     a_box_proposals = _load_a_box_proposals(a_box_proposals_path)
     t_box_proposals = _load_t_box_proposals(t_box_proposals_path)
+    track_diagnoses = _load_track_diagnoses(track_diagnoses_path)
     run_manifest = _load_run_manifest(run_manifest_path)
 
     traces: list[dict[str, Any]] = []
@@ -597,7 +673,8 @@ def evaluate_benchmark(
     try:
         for record in records:
             case_id = record["id"]
-            manifest_record = _manifest_record(run_manifest, case_id, ablation_bundle)
+            manifest_record = _manifest_record(run_manifest, case_id, ablation_bundle, "proposal")
+            diagnosis_manifest_record = _manifest_record(run_manifest, case_id, ablation_bundle, "track_diagnosis")
             world_state_entry = world_state_store.get(case_id)
             popularity_bucket = popularity_buckets.get(case_id, "unknown")
             if record.get("track") == "T_BOX":
@@ -618,6 +695,11 @@ def evaluate_benchmark(
                     popularity_bucket,
                     ablation_bundle,
                 )
+            trace["track_diagnosis"] = evaluate_track_diagnosis(
+                record,
+                track_diagnoses.get(case_id),
+                diagnosis_manifest_record,
+            )
             traces.append(trace)
     finally:
         world_state_store.close()
@@ -627,6 +709,7 @@ def evaluate_benchmark(
         "world_state": str(world_state_path),
         "a_box_proposals": str(a_box_proposals_path) if a_box_proposals_path else None,
         "t_box_proposals": str(t_box_proposals_path) if t_box_proposals_path else None,
+        "track_diagnoses": str(track_diagnoses_path) if track_diagnoses_path else None,
         "run_manifest": str(run_manifest_path) if run_manifest_path else None,
         "ablation_bundle": ablation_bundle,
     }
@@ -638,4 +721,3 @@ def evaluate_benchmark(
         write_json(out_summary_path, summary)
 
     return traces, summary
-

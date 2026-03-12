@@ -8,6 +8,7 @@ This area contains repository-facing documentation: how the benchmark is built, 
 - [Proposal Validation](./Proposal_Validation.md): A-box and T-box proposal normalization contracts and runtime modules.
 - [Evaluation Harness](./Evaluation_Harness.md): benchmark scoring workflow, outputs, and metric semantics.
 - [Reasoning Floor](./Reasoning_Floor.md): zero-shot baseline runner, ablation bundles, and provider interface.
+- [Track Diagnosis](./Track_Diagnosis.md): separate A-box vs T-box diagnostic task and scoring outputs.
 - [Conceptual Deviation Report](./Conceptual_Deviation_Report.md): mismatches between current conceptual claims and the implemented repository.
 
 Conceptual rationale and research framing live in [docs-conceptual](../docs-conceptual/README.md).

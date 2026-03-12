@@ -13,7 +13,7 @@ Stage 3 - Context builder: freeze 2026 graph context (L1-L4).
 Stage 4 - Classifier: assign Type A/B/C and emit audit traces.
 Stage 5 - Splitter: generate deterministic train/dev/test partitions.
 Stage 6 - Evaluator: score normalized repair/reform proposals against frozen artifacts.
-Stage 7 - Reasoning floor: run the zero-shot baseline over benchmark cases.
+Stage 7 - Reasoning floor: run the zero-shot baseline over benchmark cases, including A-box vs T-box diagnosis.
 
 ## Repo layout
 

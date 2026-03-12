@@ -150,6 +150,7 @@ Two normalized proposal contracts are now implemented:
 
 - `schemas/verified_repair_proposal.schema.json` for A-box entity repairs
 - `schemas/tbox_reform_proposal.schema.json` for T-box schema reforms
+- `schemas/track_diagnosis.schema.json` for A-box vs T-box diagnosis outputs
 
 Normalized A-box proposal JSONL records contain:
 
@@ -170,6 +171,14 @@ Normalized T-box proposal JSONL records contain:
 - optional `rationale`, `provenance`, `metadata`
 - `canonical_hash`
 
+Normalized track-diagnosis JSONL records contain:
+
+- `case_id`
+- `predicted_track` in `{A_BOX, T_BOX, AMBIGUOUS}`
+- optional `confidence`
+- optional `rationale`
+- `canonical_hash`
+
 ## Evaluation Artifacts
 
 `src/evaluate.py` writes:
@@ -183,6 +192,7 @@ Each trace includes:
 - proposal presence, validity, and executability
 - acceptance decision
 - exact-match and semantic-match comparison fields
+- track-diagnosis fields including predicted track, historical track, and exact-track-match
 - metric fields including reserved nulls for later multi-turn runs
 
 The summary aggregates results by:
@@ -211,6 +221,7 @@ Three schema files exist in the repository:
 - `schemas/04_classified_benchmark.schema.json`: intended to describe the lean Stage 4 artifact, but it is not kept in lockstep with the current Python output
 - `schemas/verified_repair_proposal.schema.json`: implemented by `guardian.patch_parser`
 - `schemas/tbox_reform_proposal.schema.json`: implemented by `guardian.tbox_parser`
+- `schemas/track_diagnosis.schema.json`: implemented by `guardian.track_parser`
 
 Treat `schemas/04_classified_benchmark.schema.json` as a design asset unless it is brought back into sync with the classifier output.
 
@@ -221,3 +232,4 @@ Treat `schemas/04_classified_benchmark.schema.json` as a design asset unless it 
 - Proposal contracts: [Proposal Validation](./Proposal_Validation.md)
 - Evaluation semantics: [Evaluation Harness](./Evaluation_Harness.md)
 - Reasoning-floor outputs: [Reasoning Floor](./Reasoning_Floor.md)
+- Track-diagnosis task: [Track Diagnosis](./Track_Diagnosis.md)

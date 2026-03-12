@@ -20,6 +20,7 @@ The repository now implements:
 - Stage 5 deterministic train/dev/test split generation in `src/splitter.py`
 - A-box proposal validation in `guardian.patch_parser`
 - T-box proposal validation in `guardian.tbox_parser`
+- A-box vs T-box diagnosis normalization in `guardian.track_parser`
 - Benchmark evaluation in `src/evaluate.py`
 - Zero-shot reasoning-floor execution in `src/reasoning_floor.py`
 
@@ -28,6 +29,7 @@ Implemented details now live in:
 - [Proposal Validation](./Proposal_Validation.md)
 - [Evaluation Harness](./Evaluation_Harness.md)
 - [Reasoning Floor](./Reasoning_Floor.md)
+- [Track Diagnosis](./Track_Diagnosis.md)
 - [Pipeline Implementation](./Pipeline_Implementation.md)
 
 ## Open Workstreams

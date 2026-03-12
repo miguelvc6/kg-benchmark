@@ -89,6 +89,12 @@ class ReasoningFloorTests(unittest.TestCase):
                 )
 
             def resolver(metadata: dict) -> dict:
+                if metadata["task_type"] == "track_diagnosis":
+                    return {
+                        "case_id": metadata["case_id"],
+                        "predicted_track": "T_BOX" if metadata["case_id"] == "reform_case" else "A_BOX",
+                        "confidence": "high",
+                    }
                 if metadata["case_id"] == "reform_case":
                     return {
                         "case_id": "reform_case",
@@ -120,6 +126,8 @@ class ReasoningFloorTests(unittest.TestCase):
             )
             self.assertIn("paper_summary", summary)
             self.assertEqual(summary["counts"]["cases"], 2)
+            self.assertEqual(summary["counts"]["track_diagnosis_exact_match"], 2)
+
 
 
 if __name__ == "__main__":
