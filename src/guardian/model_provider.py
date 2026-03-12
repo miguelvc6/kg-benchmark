@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Protocol
 
 import requests
+from requests import HTTPError
 
 from lib.env import load_dotenv
 
@@ -48,6 +49,25 @@ def _env_float(name: str) -> float | None:
         return None
 
 
+def _normalize_api_key(env_name: str, value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value.strip()
+    if normalized.lower().startswith("bearer "):
+        normalized = normalized[7:].strip()
+    embedded_prefix = f"{env_name}="
+    if normalized.startswith(embedded_prefix):
+        normalized = normalized[len(embedded_prefix) :].strip()
+    return normalized or None
+
+
+def _uses_gpt5_family(model_name: str | None) -> bool:
+    if not model_name:
+        return False
+    normalized = model_name.strip().lower()
+    return normalized.startswith("gpt-5")
+
+
 def _estimate_cost_usd(
     *,
     provider_env_prefix: str,
@@ -82,7 +102,7 @@ class OpenAIChatProvider:
 
     def __post_init__(self) -> None:
         load_dotenv()
-        self.api_key = self.api_key or os.getenv("OPENAI_API_KEY")
+        self.api_key = _normalize_api_key("OPENAI_API_KEY", self.api_key or os.getenv("OPENAI_API_KEY"))
         self.model = self.model or os.getenv("OPENAI_MODEL")
         self.base_url = (self.base_url or os.getenv("OPENAI_BASE_URL") or "https://api.openai.com/v1").rstrip("/")
         if not self.api_key:
@@ -99,12 +119,13 @@ class OpenAIChatProvider:
     ) -> tuple[Any, Any, dict[str, Any]]:
         payload: dict[str, Any] = {
             "model": self.model,
-            "temperature": 0,
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt},
             ],
         }
+        if not _uses_gpt5_family(self.model):
+            payload["temperature"] = 0
         if response_format:
             payload["response_format"] = response_format
         response = requests.post(
@@ -116,7 +137,30 @@ class OpenAIChatProvider:
             json=payload,
             timeout=self.timeout,
         )
-        response.raise_for_status()
+        try:
+            response.raise_for_status()
+        except HTTPError as exc:
+            if response.status_code == 401:
+                raise RuntimeError(
+                    "OpenAI authentication failed (401 Unauthorized). "
+                    "Check OPENAI_API_KEY in your shell or .env. "
+                    "The value must be the raw API key only, not `OPENAI_API_KEY=...` or `Bearer ...`."
+                ) from exc
+            if response.status_code == 400:
+                detail = ""
+                try:
+                    error_payload = response.json()
+                    error_message = ((error_payload or {}).get("error") or {}).get("message")
+                    if error_message:
+                        detail = f" Details: {error_message}"
+                except ValueError:
+                    pass
+                raise RuntimeError(
+                    "OpenAI rejected the request (400 Bad Request). "
+                    "Check the configured model and request parameters."
+                    f"{detail}"
+                ) from exc
+            raise
         raw_response = response.json()
         choices = raw_response.get("choices", [])
         message = choices[0].get("message", {}) if choices else {}
@@ -157,7 +201,7 @@ class OllamaChatProvider:
 
     def __post_init__(self) -> None:
         load_dotenv()
-        self.api_key = self.api_key or os.getenv("OLLAMA_API_KEY")
+        self.api_key = _normalize_api_key("OLLAMA_API_KEY", self.api_key or os.getenv("OLLAMA_API_KEY"))
         self.model = self.model or os.getenv("OLLAMA_MODEL")
         self.base_url = (self.base_url or os.getenv("OLLAMA_BASE_URL") or "http://localhost:11434/api").rstrip("/")
         if not self.model:
@@ -190,7 +234,16 @@ class OllamaChatProvider:
             json=payload,
             timeout=self.timeout,
         )
-        response.raise_for_status()
+        try:
+            response.raise_for_status()
+        except HTTPError as exc:
+            if response.status_code == 401:
+                raise RuntimeError(
+                    "Ollama authentication failed (401 Unauthorized). "
+                    "Check OLLAMA_API_KEY in your shell or .env. "
+                    "The value must be the raw API key only, not `OLLAMA_API_KEY=...` or `Bearer ...`."
+                ) from exc
+            raise
         raw_response = response.json()
         message = raw_response.get("message", {})
         text = message.get("content") if isinstance(message, dict) else ""

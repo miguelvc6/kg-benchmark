@@ -140,6 +140,8 @@ OPENAI_API_KEY=YOUR_API_KEY
 OPENAI_MODEL=YOUR_MODEL_NAME
 ```
 
+Use the raw key value only. Do not paste `OPENAI_API_KEY=...` into the value itself, and do not add a `Bearer ` prefix.
+
 Optional for a non-default OpenAI-compatible endpoint:
 
 ```dotenv

@@ -43,6 +43,8 @@ Supported runtime settings:
 
 Process environment variables still take precedence over values loaded from `.env`.
 
+For provider API keys, use only the raw secret value in `.env`. Do not include the variable name again or a `Bearer ` prefix.
+
 `src/reasoning_floor.py` also accepts `--model` to override the model name from `.env` without changing provider selection.
 
 The adapter contract is:

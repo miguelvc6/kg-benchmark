@@ -47,6 +47,33 @@ class OpenAIChatProviderTests(unittest.TestCase):
             self.assertIsInstance(provider, OpenAIChatProvider)
             self.assertEqual(provider.model, "override-model")
 
+    def test_strips_common_api_key_wrappers(self) -> None:
+        with patch.dict(os.environ, {"OPENAI_MODEL": "test-model"}, clear=True):
+            provider = OpenAIChatProvider(api_key="Bearer OPENAI_API_KEY=test-key")
+
+        self.assertEqual(provider.api_key, "test-key")
+
+    def test_omits_temperature_for_gpt5_models(self) -> None:
+        response = MagicMock()
+        response.json.return_value = {
+            "choices": [{"message": {"content": "{\"case_id\": \"c1\"}"}}],
+            "usage": {"prompt_tokens": 11, "completion_tokens": 7, "total_tokens": 18},
+        }
+
+        with patch("guardian.model_provider.requests.post", return_value=response) as post:
+            provider = OpenAIChatProvider(api_key="test-key", model="gpt-5-mini-2025-08-07")
+            raw, parsed, usage = provider.generate(
+                prompt="{}",
+                system_prompt="Return JSON only.",
+                response_format={"type": "json_object"},
+                metadata={"case_id": "c1"},
+            )
+
+        self.assertEqual(parsed, {"case_id": "c1"})
+        self.assertEqual(usage["provider"], "openai")
+        self.assertEqual(raw["usage"]["total_tokens"], 18)
+        self.assertNotIn("temperature", post.call_args.kwargs["json"])
+
 
 class OllamaChatProviderTests(unittest.TestCase):
     def test_loads_model_settings_from_dotenv(self) -> None:
