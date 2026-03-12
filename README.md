@@ -16,11 +16,14 @@ Stage 4 - Classifier: assign Type A/B/C and emit audit traces.
 
 - `src/fetcher.py`: stages 1-3 (index, fetch, world state build)
 - `src/classifier.py`: stage 4 taxonomy labeler
+- `src/splitter.py`: deterministic train/dev/test split generation
 - `src/lib/`: shared pipeline modules
 - `data/`: generated artifacts (large)
 - `data_sample/`: sample artifacts for quick runs (large)
 - `reports/`: classifier stats and run summaries
-- `docs/`: design notes, pipeline details, taxonomy specification
+- `docs-conceptual/`: research framing, taxonomy intent, evaluation goals
+- `docs-technical/`: implementation details, artifact schemas, script behavior
+- `docs/README.md`: pointer into the two documentation areas
 
 ## Quick start
 
@@ -98,4 +101,4 @@ at repo root for inspection.
 - Fetcher runs write resume checkpoints to `logs/resume_checkpoint_<run>.json`
   unless `--no-checkpoint` is set.
 - Stage 3 requires the `data/latest-all.json.gz` Wikidata dump.
-- See `docs/` for detailed protocol and taxonomy documentation.
+- See `docs-conceptual/` for benchmark design docs and `docs-technical/` for repository-facing docs.
