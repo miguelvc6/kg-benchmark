@@ -7,21 +7,21 @@ This document describes the current repository workflow. Research motivation is 
 The implemented repository currently provides:
 
 - benchmark construction from report mining through classified benchmark generation
+- proposal validation and normalization for A-box and T-box outputs
+- benchmark evaluation over frozen artifacts
+- a zero-shot reasoning-floor baseline runner
 - deterministic train/dev/test split generation
-- schema and test assets for a future repair-proposal interface
+- a Guardian-ready proposal interface for future intervention loops
 
-The repository does not currently provide:
-
-- an executable benchmark evaluation harness
-- a reasoning-floor baseline runner
-- a Guardian or verifier loop
-- an implemented `guardian.patch_parser` module, even though related tests and schema files exist
+The repository does not currently provide Guardian multi-turn intervention loops.
 
 ## Entry Points
 
 - `src/fetcher.py`: stages 1-3 of benchmark construction plus world-state validation.
 - `src/classifier.py`: stage 4 taxonomy labeling and benchmark materialization.
 - `src/splitter.py`: stage 5 deterministic train/dev/test splits.
+- `src/evaluate.py`: benchmark evaluation entry point for normalized proposal artifacts.
+- `src/reasoning_floor.py`: zero-shot baseline runner over Stage 4 benchmark cases.
 
 ## Current Pipeline
 
@@ -33,8 +33,8 @@ The repository does not currently provide:
 | 3b | `src/fetcher.py` | Build and validate frozen world-state context | `data/03_world_state.json` |
 | 4 | `src/classifier.py` | Assign Type A/B/C labels and write benchmark records | `data/04_classified_benchmark.jsonl`, `data/04_classified_benchmark_full.jsonl`, `reports/classifier_stats.json` |
 | 5 | `src/splitter.py` | Create deterministic train/dev/test splits from Stage 4 output | `data/05_splits.json` |
-
-The stage numbering above reflects the actual code flow. There is no separate implemented evaluation stage after `src/splitter.py`.
+| 6 | `src/evaluate.py` | Score A-box and T-box proposals against frozen benchmark artifacts | `reports/evaluation_traces.jsonl`, `reports/evaluation_summary.json` |
+| 7 | `src/reasoning_floor.py` | Run zero-shot baseline prompting over benchmark cases and score outputs | `reports/reasoning_floor/*` |
 
 ## Stage 1: Candidate Mining
 
@@ -161,16 +161,43 @@ Current stratification dimensions:
 
 The splitter raises an error if split proportions drift beyond the configured tolerance or if popularity is missing while `ALLOW_MISSING_POPULARITY` is `False`.
 
+## Stage 6: Evaluation
+
+`src/evaluate.py` evaluates normalized proposal artifacts against Stage 4 and Stage 3 benchmark data.
+
+Current behavior:
+
+- evaluates every selected benchmark case, even when the proposal is missing
+- supports both A-box repair proposals and T-box reform proposals
+- writes per-case traces plus an aggregate summary
+- keeps reserved metric fields in the output even when first-wave runs do not populate them
+- uses frozen benchmark artifacts only; no live web calls are made
+
+The evaluation details and metric semantics are documented in [Evaluation Harness](./Evaluation_Harness.md).
+
+## Stage 7: Reasoning Floor
+
+`src/reasoning_floor.py` runs the zero-shot pre-Guardian baseline.
+
+Current behavior:
+
+- builds three fixed ablation bundles from current artifacts: `minimal_case`, `logic_only`, and `local_graph`
+- routes A-box cases to the A-box proposal schema and T-box cases to the T-box proposal schema
+- records raw model responses, parse status, normalized proposals, evaluation traces, and aggregate summaries
+- uses a provider adapter boundary with one concrete OpenAI implementation and a static provider for tests
+
+The runner details are documented in [Reasoning Floor](./Reasoning_Floor.md).
+
 ## Verification Notes
 
 Executable checks currently confirmed from the repository:
 
 - `uv run python src/classifier.py --self-test` passes
+- `uv run python -m unittest tests/test_patch_parser.py tests/test_tbox_parser.py tests/test_evaluator.py tests/test_reasoning_floor.py` passes
 
 Repository limitations observed during verification:
 
-- there is no installed `pytest` entry point in the current environment
-- `uv run python -m unittest tests/test_patch_parser.py` fails because `guardian.patch_parser` does not exist in the repository
+- there is no implemented Guardian multi-turn intervention loop yet
 
 ## Common Commands
 
@@ -184,11 +211,16 @@ uv run python src/fetcher.py --validate-only
 uv run python src/classifier.py --sample
 uv run python src/classifier.py --self-test
 uv run python src/splitter.py --sample
-uv run python -m unittest tests/test_patch_parser.py
+uv run python src/evaluate.py --help
+uv run python src/reasoning_floor.py --help
+uv run python -m unittest tests/test_patch_parser.py tests/test_tbox_parser.py tests/test_evaluator.py tests/test_reasoning_floor.py
 ```
 
 ## Related Docs
 
 - Artifact structure: [Artifact Schemas](./Artifact_Schemas.md)
 - Conceptual benchmark framing: [docs-conceptual/Benchmark_Taxonomy.md](../docs-conceptual/Benchmark_Taxonomy.md)
-- Scope mismatch summary: [Conceptual Deviation Report](./Conceptual_Deviation_Report.md)
+- Proposal contracts: [Proposal Validation](./Proposal_Validation.md)
+- Evaluation details: [Evaluation Harness](./Evaluation_Harness.md)
+- Zero-shot baseline details: [Reasoning Floor](./Reasoning_Floor.md)
+- Remaining MPU gap tracker: [Conceptual Deviation Report](./Conceptual_Deviation_Report.md)

@@ -11,13 +11,19 @@ Stage 1 - Indexer: find candidate repairs from Wikidata constraint report diffs.
 Stage 2 - Fetcher: locate the atomic edit and capture provenance (A-box or T-box).
 Stage 3 - Context builder: freeze 2026 graph context (L1-L4).
 Stage 4 - Classifier: assign Type A/B/C and emit audit traces.
+Stage 5 - Splitter: generate deterministic train/dev/test partitions.
+Stage 6 - Evaluator: score normalized repair/reform proposals against frozen artifacts.
+Stage 7 - Reasoning floor: run the zero-shot baseline over benchmark cases.
 
 ## Repo layout
 
 - `src/fetcher.py`: stages 1-3 (index, fetch, world state build)
 - `src/classifier.py`: stage 4 taxonomy labeler
 - `src/splitter.py`: deterministic train/dev/test split generation
+- `src/evaluate.py`: benchmark evaluation entry point
+- `src/reasoning_floor.py`: zero-shot baseline runner
 - `src/lib/`: shared pipeline modules
+- `src/guardian/`: proposal validation, evaluation, and reasoning-floor support modules
 - `data/`: generated artifacts (large)
 - `data_sample/`: sample artifacts for quick runs (large)
 - `reports/`: classifier stats and run summaries
@@ -82,6 +88,18 @@ Minimal self-test for classifier logic:
 uv run python src/classifier.py --self-test
 ```
 
+Show evaluator CLI:
+
+```bash
+uv run python src/evaluate.py --help
+```
+
+Show reasoning-floor CLI:
+
+```bash
+uv run python src/reasoning_floor.py --help
+```
+
 ## Key artifacts
 
 - `data/01_repair_candidates.json`: candidate repair events from report diffs
@@ -89,6 +107,8 @@ uv run python src/classifier.py --self-test
 - `data/03_world_state.json`: frozen 2026 context keyed by repair id
 - `data/04_classified_benchmark.jsonl`: labeled benchmark (lean)
 - `data/04_classified_benchmark_full.jsonl`: labeled benchmark with embedded context
+- `reports/evaluation_traces.jsonl`: per-case evaluator output
+- `reports/evaluation_summary.json`: aggregate evaluator summary
 - `reports/classifier_stats.json`: summary counts and diagnostics
 
 Sample outputs live in `data_sample/`, plus a small `classified_benchmark_sample.json`

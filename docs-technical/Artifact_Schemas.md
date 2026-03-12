@@ -144,17 +144,80 @@ Current stratification uses:
 - `track`
 - popularity bucket derived from the Stage 4 popularity score
 
+## Proposal Artifacts
+
+Two normalized proposal contracts are now implemented:
+
+- `schemas/verified_repair_proposal.schema.json` for A-box entity repairs
+- `schemas/tbox_reform_proposal.schema.json` for T-box schema reforms
+
+Normalized A-box proposal JSONL records contain:
+
+- `case_id`
+- `target.qid`
+- `target.pid`
+- `ops`
+- optional `rationale`, `provenance`, `metadata`
+- `canonical_hash`
+
+Normalized T-box proposal JSONL records contain:
+
+- `case_id`
+- `target.pid`
+- `target.constraint_type_qid`
+- `proposal.action`
+- `proposal.signature_after`
+- optional `rationale`, `provenance`, `metadata`
+- `canonical_hash`
+
+## Evaluation Artifacts
+
+`src/evaluate.py` writes:
+
+- `reports/evaluation_traces.jsonl`
+- `reports/evaluation_summary.json`
+
+Each trace includes:
+
+- case identity and benchmark labels
+- proposal presence, validity, and executability
+- acceptance decision
+- exact-match and semantic-match comparison fields
+- metric fields including reserved nulls for later multi-turn runs
+
+The summary aggregates results by:
+
+- class
+- subtype
+- track
+- ablation bundle
+- popularity bucket
+
+## Reasoning-Floor Artifacts
+
+`src/reasoning_floor.py` writes a run directory under `reports/reasoning_floor/` containing:
+
+- `raw_model_responses.jsonl`
+- `run_manifest.jsonl`
+- one subdirectory per ablation bundle
+- normalized proposal JSONL files per bundle
+- evaluation traces and summaries per bundle
+- `reasoning_floor_summary.json`
+
 ## Schema Files in `schemas/`
 
-Two schema files exist in the repository, but they do not both describe implemented runtime behavior:
+Three schema files exist in the repository:
 
 - `schemas/04_classified_benchmark.schema.json`: intended to describe the lean Stage 4 artifact, but it is not kept in lockstep with the current Python output
-- `schemas/verified_repair_proposal.schema.json`: defines a future repair-proposal format, but no production code in this repository currently emits or validates that proposal format
+- `schemas/verified_repair_proposal.schema.json`: implemented by `guardian.patch_parser`
+- `schemas/tbox_reform_proposal.schema.json`: implemented by `guardian.tbox_parser`
 
-Treat these files as design assets unless and until the corresponding runtime modules exist and are wired into the pipeline.
+Treat `schemas/04_classified_benchmark.schema.json` as a design asset unless it is brought back into sync with the classifier output.
 
 ## Related Docs
 
 - Classification behavior: [Classifier Specification](./Classifier_Specification.md)
 - Pipeline and command flow: [Pipeline Implementation](./Pipeline_Implementation.md)
-- Conceptual mismatches: [Conceptual Deviation Report](./Conceptual_Deviation_Report.md)
+- Proposal contracts: [Proposal Validation](./Proposal_Validation.md)
+- Evaluation semantics: [Evaluation Harness](./Evaluation_Harness.md)
+- Reasoning-floor outputs: [Reasoning Floor](./Reasoning_Floor.md)

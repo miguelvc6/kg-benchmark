@@ -1,81 +1,53 @@
-# Conceptual Deviation Report
+# MPU Implementation Tracker
 
-This report captures mismatches between the current conceptual documentation and the implemented repository as of March 12, 2026. The codebase was treated as the source of truth.
+## Purpose
 
-## Summary
+This document is the living tracker for minimum-publishable-unit gaps between the conceptual program and the implemented repository.
 
-The repository currently implements benchmark construction, classification, and deterministic split generation. It does not yet implement the full evaluation layer or the reasoning-floor baseline described in the conceptual docs.
+Deletion rule:
 
-## Confirmed Implemented Scope
+- when a workstream reaches its exit criteria, remove it from this document
+- move its implementation detail into the normal technical docs
 
-The code currently provides:
+## Current Implemented Scope
+
+The repository now implements:
 
 - Stage 1 candidate mining in `src/fetcher.py` and `src/lib/mining.py`
 - Stage 2 repair reconstruction in `src/fetcher.py`
 - Stage 3 popularity enrichment and world-state construction in `src/fetcher.py`, `src/lib/popularity.py`, and `src/lib/world_state.py`
 - Stage 4 classification in `src/classifier.py`
 - Stage 5 deterministic train/dev/test split generation in `src/splitter.py`
+- A-box proposal validation in `guardian.patch_parser`
+- T-box proposal validation in `guardian.tbox_parser`
+- Benchmark evaluation in `src/evaluate.py`
+- Zero-shot reasoning-floor execution in `src/reasoning_floor.py`
 
-## Deviations from Conceptual Claims
+Implemented details now live in:
 
-### 1. No Executable Evaluation Harness
+- [Proposal Validation](./Proposal_Validation.md)
+- [Evaluation Harness](./Evaluation_Harness.md)
+- [Reasoning Floor](./Reasoning_Floor.md)
+- [Pipeline Implementation](./Pipeline_Implementation.md)
 
-Conceptual docs currently describe repository-level evaluation procedures and metrics as part of the minimum publishable unit.
+## Open Workstreams
 
-Implemented reality:
+No open MPU workstreams are currently tracked here.
 
-- there is no evaluation script or package that executes benchmark proposals against the classified benchmark
-- there is no code for Pass@K, conversion-rate measurement, revert-rate measurement, or information-preservation scoring
-- there is no verifier loop or acceptance harness wired into the repository runtime
+If a future implementation gap appears relative to the conceptual docs, add it back as a new open workstream in this document instead of duplicating backlog detail elsewhere.
 
-Affected conceptual files:
+## Cross-Cutting Constraints
 
-- [Scientific_Vision.md](../docs-conceptual/Scientific_Vision.md)
-- [Evaluation_Framework.md](../docs-conceptual/Evaluation_Framework.md)
-- [README.md](../docs-conceptual/README.md)
+- Stick to the conceptual docs unless an actual conceptual ambiguity is discovered.
+- Do not weaken benchmark validity rules for convenience.
+- Prefer frozen benchmark artifacts and deterministic evaluation over live external dependencies.
+- Keep the end goal explicit: a publishable research paper and a benchmark that is also practically useful.
 
-### 2. No Reasoning-Floor Baseline Runner
+## Exit Criteria
 
-Conceptual docs state that the repository should implement a pre-Guardian reasoning-floor baseline using zero-shot prompting.
+A workstream can be deleted from this tracker only when:
 
-Implemented reality:
-
-- there is no script, module, or CLI entry point that runs zero-shot model prompting over benchmark cases
-- there is no prompt assembly code, model adapter, result recorder, or baseline output artifact in the repository
-- there is no experimental harness that consumes the classified benchmark for baseline measurement
-
-Affected conceptual files:
-
-- [Scientific_Vision.md](../docs-conceptual/Scientific_Vision.md)
-- [Evaluation_Framework.md](../docs-conceptual/Evaluation_Framework.md)
-- [Benchmark_Taxonomy.md](../docs-conceptual/Benchmark_Taxonomy.md)
-- [README.md](../docs-conceptual/README.md)
-
-### 3. Guardian / Proposal Path Exists Only as Design Assets
-
-The conceptual layer discusses Guardian-style intervention and proposal semantics.
-
-Implemented reality:
-
-- `schemas/verified_repair_proposal.schema.json` exists, but no production module in this repository loads it as part of a runnable benchmark workflow
-- `tests/test_patch_parser.py` expects `guardian.patch_parser`, but that module does not exist in the repository
-- `uv run python -m unittest tests/test_patch_parser.py` fails with `ModuleNotFoundError: No module named 'guardian'`
-
-This means the proposal-validation path is planned or partially stubbed, not implemented.
-
-## Code-Verified Notes
-
-The following checks were run during documentation refresh:
-
-- `uv run python src/classifier.py --self-test` passed
-- `uv run python -m unittest tests/test_patch_parser.py` failed because `guardian.patch_parser` is missing
-
-## Recommendation
-
-Either:
-
-- reduce the conceptual claims so they describe these pieces as planned next steps rather than current repository capabilities
-
-or:
-
-- implement the missing evaluation harness, reasoning-floor baseline, and proposal-validation path so the conceptual layer matches reality
+- the code path exists and is runnable
+- tests cover the core contract
+- the relevant technical docs have been updated
+- the implementation remains aligned with the conceptual docs

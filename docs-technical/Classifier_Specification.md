@@ -142,8 +142,4 @@ The classifier preserves Stage 2 semantics; it appends classification results ra
 Confirmed directly from the repository:
 
 - `uv run python src/classifier.py --self-test` passes
-
-Not implemented in the current repository:
-
-- no evaluation harness consumes the classified benchmark
-- no reasoning-floor runner produces baseline outputs from Stage 4 cases
+- Stage 4 output is now consumed by the proposal validator, evaluation harness, and reasoning-floor runner
