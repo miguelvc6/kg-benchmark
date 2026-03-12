@@ -1,9 +1,9 @@
 {
-  "build_utc": "2026-02-16T10:34:37Z",
+  "build_utc": "2026-03-12T11:21:30Z",
   "inputs": {
-    "repairs": "data/02_wikidata_repairs.json",
-    "world_state": "data/03_world_state.json",
-    "popularity": "data/00_entity_popularity.json"
+    "repairs": "data\\02_wikidata_repairs.json",
+    "world_state": "data\\03_world_state.json",
+    "popularity": "data\\00_entity_popularity.json"
   },
   "counts": {
     "class:T_BOX": 456594,

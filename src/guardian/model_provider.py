@@ -7,6 +7,8 @@ from typing import Any, Callable, Protocol
 
 import requests
 
+from lib.env import load_dotenv
+
 
 class ModelProvider(Protocol):
     def generate(
@@ -38,6 +40,7 @@ class OpenAIChatProvider:
     timeout: int = 120
 
     def __post_init__(self) -> None:
+        load_dotenv()
         self.api_key = self.api_key or os.getenv("OPENAI_API_KEY")
         self.model = self.model or os.getenv("OPENAI_MODEL")
         self.base_url = (self.base_url or os.getenv("OPENAI_BASE_URL") or "https://api.openai.com/v1").rstrip("/")

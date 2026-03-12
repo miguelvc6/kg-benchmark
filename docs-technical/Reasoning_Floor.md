@@ -27,6 +27,14 @@ Current implementations:
 - `OpenAIChatProvider`
 - `StaticResponseProvider` for deterministic tests
 
+When `OpenAIChatProvider` is used, it auto-loads a repository `.env` file if present and reads:
+
+- `OPENAI_API_KEY`
+- `OPENAI_MODEL`
+- optional `OPENAI_BASE_URL`
+
+Process environment variables still take precedence over values loaded from `.env`.
+
 The adapter contract is:
 
 `generate(prompt, system_prompt, response_format, metadata) -> raw_response, parsed_payload, usage`

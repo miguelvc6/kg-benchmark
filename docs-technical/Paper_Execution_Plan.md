@@ -127,15 +127,23 @@ This produces:
 The reasoning-floor runner currently expects an OpenAI-compatible provider.
 
 ```bash
-export OPENAI_API_KEY='YOUR_API_KEY'
-export OPENAI_MODEL='YOUR_MODEL_NAME'
+cp .env.example .env
+```
+
+Edit `.env` and set at least:
+
+```dotenv
+OPENAI_API_KEY=YOUR_API_KEY
+OPENAI_MODEL=YOUR_MODEL_NAME
 ```
 
 Optional, only if you are using a non-default OpenAI-compatible endpoint:
 
-```bash
-export OPENAI_BASE_URL='https://your-compatible-endpoint/v1'
+```dotenv
+OPENAI_BASE_URL=https://your-compatible-endpoint/v1
 ```
+
+`src/reasoning_floor.py` auto-loads `.env` from the repository root or a parent directory. Shell-exported variables still override `.env` values when both are set.
 
 ## 7. Run the Zero-Shot Reasoning Floor
 
@@ -231,8 +239,7 @@ uv run python src/fetcher.py
 uv run python src/fetcher.py --validate-only
 uv run python src/classifier.py
 uv run python src/splitter.py
-export OPENAI_API_KEY='YOUR_API_KEY'
-export OPENAI_MODEL='YOUR_MODEL_NAME'
+cp .env.example .env
 RUN_ID=$(date -u +%Y%m%dT%H%M%SZ)
 uv run python src/reasoning_floor.py --classified-benchmark data/04_classified_benchmark.jsonl --world-state data/03_world_state.json --output-dir reports/reasoning_floor/$RUN_ID
 ```

@@ -3,6 +3,7 @@ data_sample/*
 __pycache__/
 .venv/
 .venv-wsl/
+.env
 logs/
 text.md
 script_extractor.py
