@@ -9,7 +9,7 @@ from typing import Any, Iterable, Optional
 from classifier import WorldStateStore
 from lib.utils import iter_jsonl
 from guardian.evaluator import evaluate_benchmark, summarize_traces, write_json, write_jsonl
-from guardian.model_provider import ModelProvider, OpenAIChatProvider
+from guardian.model_provider import ModelProvider, create_model_provider
 from guardian.patch_parser import load_schema as load_a_box_schema
 from guardian.patch_parser import normalize_proposal as normalize_a_box_proposal
 from guardian.track_parser import load_schema as load_track_schema
@@ -144,7 +144,7 @@ def run_reasoning_floor(
     max_cases: Optional[int] = None,
 ) -> dict[str, Any]:
     if provider is None:
-        provider = OpenAIChatProvider()
+        provider = create_model_provider()
 
     records = _select_records(
         _load_records(classified_path),

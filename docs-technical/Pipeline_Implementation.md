@@ -187,7 +187,7 @@ Current behavior:
 - runs a separate zero-shot diagnosis call to predict whether the case belongs to the A-box or T-box track
 - routes A-box cases to the A-box proposal schema and T-box cases to the T-box proposal schema
 - records raw model responses, parse status, normalized proposals, evaluation traces, and aggregate summaries
-- uses a provider adapter boundary with one concrete OpenAI implementation and a static provider for tests
+- uses a provider adapter boundary with concrete OpenAI and Ollama implementations plus a static provider for tests
 
 The runner details are documented in [Reasoning Floor](./Reasoning_Floor.md).
 

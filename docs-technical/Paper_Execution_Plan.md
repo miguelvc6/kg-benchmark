@@ -124,23 +124,45 @@ This produces:
 
 ## 6. Configure the Model Provider
 
-The reasoning-floor runner currently expects an OpenAI-compatible provider.
+The reasoning-floor runner supports OpenAI and Ollama providers.
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` and set at least:
+Edit `.env` for one of the supported providers.
+
+OpenAI:
 
 ```dotenv
+MODEL_PROVIDER=openai
 OPENAI_API_KEY=YOUR_API_KEY
 OPENAI_MODEL=YOUR_MODEL_NAME
 ```
 
-Optional, only if you are using a non-default OpenAI-compatible endpoint:
+Optional for a non-default OpenAI-compatible endpoint:
 
 ```dotenv
 OPENAI_BASE_URL=https://your-compatible-endpoint/v1
+```
+
+Ollama:
+
+```dotenv
+MODEL_PROVIDER=ollama
+OLLAMA_MODEL=llama3.2
+```
+
+Optional for a non-default Ollama endpoint:
+
+```dotenv
+OLLAMA_BASE_URL=http://localhost:11434/api
+```
+
+If you point `OLLAMA_BASE_URL` at `https://ollama.com/api`, also set:
+
+```dotenv
+OLLAMA_API_KEY=your_api_key
 ```
 
 `src/reasoning_floor.py` auto-loads `.env` from the repository root or a parent directory. Shell-exported variables still override `.env` values when both are set.

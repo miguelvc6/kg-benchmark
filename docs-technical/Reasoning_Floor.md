@@ -25,13 +25,21 @@ The runner uses a provider adapter boundary defined in `guardian.model_provider`
 Current implementations:
 
 - `OpenAIChatProvider`
+- `OllamaChatProvider`
 - `StaticResponseProvider` for deterministic tests
 
-When `OpenAIChatProvider` is used, it auto-loads a repository `.env` file if present and reads:
+The default provider is selected from `.env` or the shell with `MODEL_PROVIDER`.
 
+Supported runtime settings:
+
+- `MODEL_PROVIDER=openai`
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL`
 - optional `OPENAI_BASE_URL`
+- `MODEL_PROVIDER=ollama`
+- `OLLAMA_MODEL`
+- optional `OLLAMA_BASE_URL` (defaults to `http://localhost:11434/api`)
+- optional `OLLAMA_API_KEY` for direct `ollama.com/api` access
 
 Process environment variables still take precedence over values loaded from `.env`.
 

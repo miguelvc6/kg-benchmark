@@ -32,6 +32,12 @@ def _extract_json_payload(raw_text: str) -> Any:
         return None
 
 
+def _default_response_format(response_format: dict[str, Any]) -> str | None:
+    if response_format.get("type") == "json_object":
+        return "json"
+    return None
+
+
 @dataclass
 class OpenAIChatProvider:
     api_key: str | None = None
@@ -95,6 +101,80 @@ class OpenAIChatProvider:
         usage_payload["provider"] = "openai"
         usage_payload["request_metadata"] = metadata
         return raw_response, parsed_payload if parsed_payload is not None else text, usage_payload
+
+
+@dataclass
+class OllamaChatProvider:
+    api_key: str | None = None
+    model: str | None = None
+    base_url: str | None = None
+    timeout: int = 120
+
+    def __post_init__(self) -> None:
+        load_dotenv()
+        self.api_key = self.api_key or os.getenv("OLLAMA_API_KEY")
+        self.model = self.model or os.getenv("OLLAMA_MODEL")
+        self.base_url = (self.base_url or os.getenv("OLLAMA_BASE_URL") or "http://localhost:11434/api").rstrip("/")
+        if not self.model:
+            raise RuntimeError("OLLAMA_MODEL is required for the Ollama provider.")
+
+    def generate(
+        self,
+        prompt: str,
+        system_prompt: str,
+        response_format: dict[str, Any],
+        metadata: dict[str, Any],
+    ) -> tuple[Any, Any, dict[str, Any]]:
+        payload: dict[str, Any] = {
+            "model": self.model,
+            "stream": False,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt},
+            ],
+        }
+        ollama_format = _default_response_format(response_format)
+        if ollama_format:
+            payload["format"] = ollama_format
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+        response = requests.post(
+            f"{self.base_url}/chat",
+            headers=headers,
+            json=payload,
+            timeout=self.timeout,
+        )
+        response.raise_for_status()
+        raw_response = response.json()
+        message = raw_response.get("message", {})
+        text = message.get("content") if isinstance(message, dict) else ""
+        text = text or ""
+        parsed_payload = _extract_json_payload(text)
+        prompt_tokens = raw_response.get("prompt_eval_count")
+        completion_tokens = raw_response.get("eval_count")
+        total_tokens = None
+        if isinstance(prompt_tokens, int) and isinstance(completion_tokens, int):
+            total_tokens = prompt_tokens + completion_tokens
+        usage_payload = {
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": total_tokens,
+            "model": self.model,
+            "provider": "ollama",
+            "request_metadata": metadata,
+        }
+        return raw_response, parsed_payload if parsed_payload is not None else text, usage_payload
+
+
+def create_model_provider() -> ModelProvider:
+    load_dotenv()
+    provider_name = os.getenv("MODEL_PROVIDER", "openai").strip().lower()
+    if provider_name == "openai":
+        return OpenAIChatProvider()
+    if provider_name == "ollama":
+        return OllamaChatProvider()
+    raise RuntimeError(f"Unsupported MODEL_PROVIDER: {provider_name}")
 
 
 @dataclass
