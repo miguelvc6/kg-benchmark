@@ -8,6 +8,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
+from tqdm import tqdm
+
 from classifier import WorldStateStore
 from lib.utils import iter_jsonl
 from guardian.evaluator import evaluate_benchmark, summarize_traces, write_json, write_jsonl
@@ -85,6 +87,12 @@ def _aggregate_run_usage(manifest: list[dict[str, Any]]) -> dict[str, Any]:
         "estimated_cost_usd": round(estimated_cost_usd, 10) if has_cost else None,
         "generation_elapsed_seconds": round(elapsed_seconds, 6),
     }
+
+
+def _format_cost(value: float | None) -> str:
+    if value is None:
+        return "n/a"
+    return f"${value:.4f}"
 
 
 @dataclass
@@ -222,6 +230,8 @@ def run_reasoning_floor(
     bundle_list = [bundle for bundle in ablation_bundles if bundle in ABLATION_BUNDLES]
     if not bundle_list:
         raise ValueError("At least one supported ablation bundle is required.")
+    total_instances = len(records) * len(bundle_list)
+    refresh_every = max(1, min(1000, (total_instances + 9) // 10)) if total_instances else 1
 
     run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
     run_dir_name = f"{run_id}_{_slugify(selected_provider)}_{_slugify(selected_model)}"
@@ -232,6 +242,16 @@ def run_reasoning_floor(
 
     world_state_store = WorldStateStore(Path(world_state_path), __import__("logging").getLogger("reasoning_floor"))
     world_state_store.open()
+    progress = tqdm(
+        total=total_instances,
+        desc="reasoning-floor",
+        unit="case",
+        disable=total_instances == 0,
+    )
+    pending_progress = 0
+    completed_instances = 0
+    current_estimated_cost_usd = 0.0
+    has_cost_data = False
     try:
         raw_logs: list[dict[str, Any]] = []
         manifest: list[dict[str, Any]] = []
@@ -354,6 +374,27 @@ def run_reasoning_floor(
                     manifest_record["parser_error"] = str(exc)
                 manifest.append(manifest_record)
 
+                for usage_record in (diagnosis_usage, usage):
+                    estimated_cost = usage_record.get("estimated_cost_usd")
+                    if isinstance(estimated_cost, (int, float)):
+                        current_estimated_cost_usd += float(estimated_cost)
+                        has_cost_data = True
+                completed_instances += 1
+                pending_progress += 1
+                if pending_progress >= refresh_every or completed_instances == total_instances:
+                    estimated_total_cost = None
+                    if has_cost_data and completed_instances > 0:
+                        estimated_total_cost = (current_estimated_cost_usd / completed_instances) * total_instances
+                    progress.update(pending_progress)
+                    progress.set_postfix(
+                        {
+                            "current_cost": _format_cost(current_estimated_cost_usd if has_cost_data else None),
+                            "est_total_cost": _format_cost(estimated_total_cost),
+                        },
+                        refresh=True,
+                    )
+                    pending_progress = 0
+
             write_jsonl(raw_log_path, raw_logs)
             write_jsonl(manifest_path, manifest)
             a_box_path = bundle_dir / "a_box_proposals.jsonl"
@@ -444,4 +485,7 @@ def run_reasoning_floor(
         write_json(out_dir / "reasoning_floor_summary.json", summary)
         return summary
     finally:
+        if pending_progress:
+            progress.update(pending_progress)
+        progress.close()
         world_state_store.close()
