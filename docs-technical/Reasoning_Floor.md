@@ -67,6 +67,8 @@ The combined summary stores run-level provider, model, output directory, total e
 
 During execution, the runner shows a `tqdm` progress bar with elapsed time, ETA, current estimated cost, and estimated total cost. It refreshes in chunks of `min(1000 cases, 10% of total cases)`.
 
+The runner streams Stage 4 cases from disk and appends raw responses, manifest rows, normalized proposals, and evaluation traces incrementally. It does not retain the full classified benchmark or full model-output payloads in memory during generation, which keeps long runs bounded by per-case prompt size rather than total dataset size.
+
 ## Test Coverage
 
 The dry-run integration path is covered by [tests/test_reasoning_floor.py](/home/mvazquez/kg-benchmark/tests/test_reasoning_floor.py).

@@ -568,14 +568,87 @@ def summarize_traces(
     traces: list[dict[str, Any]],
     inputs: dict[str, Any],
 ) -> dict[str, Any]:
+    return summarize_trace_iterable(traces, inputs)
+
+
+def summarize_trace_iterable(
+    traces: Iterable[dict[str, Any]],
+    inputs: dict[str, Any],
+) -> dict[str, Any]:
+    class GroupAccumulator:
+        def __init__(self) -> None:
+            self.count = 0
+            self.accepted = 0
+            self.metric_sums: dict[str, float] = defaultdict(float)
+            self.metric_counts: dict[str, int] = defaultdict(int)
+            self.token_total_sum = 0
+            self.token_total_count = 0
+            self.diagnosis_count = 0
+            self.diagnosis_exact = 0
+            self.diagnosis_present = 0
+
+        def add(self, trace: dict[str, Any]) -> None:
+            self.count += 1
+            if trace.get("accepted"):
+                self.accepted += 1
+            metrics = trace.get("metrics", {})
+            for field in (
+                "functional_success",
+                "exact_historical_agreement",
+                "information_preservation",
+                "provenance_completeness",
+            ):
+                value = metrics.get(field)
+                if isinstance(value, (int, float)):
+                    self.metric_sums[field] += float(value)
+                    self.metric_counts[field] += 1
+            total_tokens = metrics.get("token_usage", {}).get("total_tokens")
+            if isinstance(total_tokens, int):
+                self.token_total_sum += total_tokens
+                self.token_total_count += 1
+            diagnosis = trace.get("track_diagnosis")
+            if isinstance(diagnosis, dict):
+                self.diagnosis_count += 1
+                if diagnosis.get("exact_track_match"):
+                    self.diagnosis_exact += 1
+                if diagnosis.get("present"):
+                    self.diagnosis_present += 1
+
+        def as_dict(self) -> dict[str, Any]:
+            if self.count == 0:
+                return {"count": 0}
+
+            def avg(field: str) -> Optional[float]:
+                count = self.metric_counts.get(field, 0)
+                if count == 0:
+                    return None
+                return self.metric_sums[field] / count
+
+            return {
+                "count": self.count,
+                "accepted_rate": self.accepted / self.count,
+                "functional_success_rate": avg("functional_success"),
+                "exact_historical_agreement_rate": avg("exact_historical_agreement"),
+                "information_preservation_mean": avg("information_preservation"),
+                "provenance_completeness_mean": avg("provenance_completeness"),
+                "token_usage_total_mean": (
+                    self.token_total_sum / self.token_total_count if self.token_total_count else None
+                ),
+                "track_diagnosis_accuracy": (
+                    self.diagnosis_exact / self.diagnosis_count if self.diagnosis_count else None
+                ),
+                "track_diagnosis_present_rate": self.diagnosis_present / self.count if self.count else None,
+            }
+
     groups = {
-        "by_class": defaultdict(list),
-        "by_subtype": defaultdict(list),
-        "by_track": defaultdict(list),
-        "by_ablation_bundle": defaultdict(list),
-        "by_popularity_bucket": defaultdict(list),
+        "by_class": defaultdict(GroupAccumulator),
+        "by_subtype": defaultdict(GroupAccumulator),
+        "by_track": defaultdict(GroupAccumulator),
+        "by_ablation_bundle": defaultdict(GroupAccumulator),
+        "by_popularity_bucket": defaultdict(GroupAccumulator),
     }
     counts = Counter()
+    overall = GroupAccumulator()
     for trace in traces:
         counts["cases"] += 1
         if trace.get("accepted"):
@@ -594,54 +667,23 @@ def summarize_traces(
                 counts["track_diagnosis_exact_match"] += 1
             if diagnosis.get("ambiguous_prediction"):
                 counts["track_diagnosis_ambiguous"] += 1
-        groups["by_class"][trace.get("classification_class")].append(trace)
-        groups["by_subtype"][trace.get("classification_subtype")].append(trace)
-        groups["by_track"][trace.get("track")].append(trace)
-        groups["by_ablation_bundle"][trace.get("ablation_bundle")].append(trace)
-        groups["by_popularity_bucket"][trace.get("popularity_bucket")].append(trace)
-
-    def aggregate(group: list[dict[str, Any]]) -> dict[str, Any]:
-        if not group:
-            return {"count": 0}
-        def avg(field: str) -> Optional[float]:
-            values = [trace["metrics"].get(field) for trace in group if trace["metrics"].get(field) is not None]
-            if not values:
-                return None
-            return sum(values) / len(values)
-
-        token_totals = [trace["metrics"]["token_usage"].get("total_tokens") for trace in group]
-        token_totals = [value for value in token_totals if isinstance(value, int)]
-        diagnosis_group = [trace.get("track_diagnosis") for trace in group if isinstance(trace.get("track_diagnosis"), dict)]
-        return {
-            "count": len(group),
-            "accepted_rate": sum(1 for trace in group if trace.get("accepted")) / len(group),
-            "functional_success_rate": avg("functional_success"),
-            "exact_historical_agreement_rate": avg("exact_historical_agreement"),
-            "information_preservation_mean": avg("information_preservation"),
-            "provenance_completeness_mean": avg("provenance_completeness"),
-            "token_usage_total_mean": (sum(token_totals) / len(token_totals)) if token_totals else None,
-            "track_diagnosis_accuracy": (
-                sum(1 for diagnosis in diagnosis_group if diagnosis.get("exact_track_match")) / len(diagnosis_group)
-                if diagnosis_group
-                else None
-            ),
-            "track_diagnosis_present_rate": (
-                sum(1 for diagnosis in diagnosis_group if diagnosis.get("present")) / len(group)
-                if group
-                else None
-            ),
-        }
+        overall.add(trace)
+        groups["by_class"][trace.get("classification_class")].add(trace)
+        groups["by_subtype"][trace.get("classification_subtype")].add(trace)
+        groups["by_track"][trace.get("track")].add(trace)
+        groups["by_ablation_bundle"][trace.get("ablation_bundle")].add(trace)
+        groups["by_popularity_bucket"][trace.get("popularity_bucket")].add(trace)
 
     summary = {
         "build_utc": _utc_now(),
         "inputs": inputs,
         "counts": dict(counts),
-        "overall_metrics": aggregate(traces),
-        "by_class": {str(key): aggregate(value) for key, value in groups["by_class"].items()},
-        "by_subtype": {str(key): aggregate(value) for key, value in groups["by_subtype"].items()},
-        "by_track": {str(key): aggregate(value) for key, value in groups["by_track"].items()},
-        "by_ablation_bundle": {str(key): aggregate(value) for key, value in groups["by_ablation_bundle"].items()},
-        "by_popularity_bucket": {str(key): aggregate(value) for key, value in groups["by_popularity_bucket"].items()},
+        "overall_metrics": overall.as_dict(),
+        "by_class": {str(key): value.as_dict() for key, value in groups["by_class"].items()},
+        "by_subtype": {str(key): value.as_dict() for key, value in groups["by_subtype"].items()},
+        "by_track": {str(key): value.as_dict() for key, value in groups["by_track"].items()},
+        "by_ablation_bundle": {str(key): value.as_dict() for key, value in groups["by_ablation_bundle"].items()},
+        "by_popularity_bucket": {str(key): value.as_dict() for key, value in groups["by_popularity_bucket"].items()},
     }
     return summary
 
@@ -658,6 +700,7 @@ def evaluate_benchmark(
     case_ids: Optional[Iterable[str]] = None,
     out_traces_path: str | Path | None = None,
     out_summary_path: str | Path | None = None,
+    collect_traces: bool = True,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     selected_case_ids = _normalized_case_ids(case_ids)
     records = _load_records(classified_path, selected_case_ids)
@@ -668,9 +711,14 @@ def evaluate_benchmark(
     run_manifest = _load_run_manifest(run_manifest_path)
 
     traces: list[dict[str, Any]] = []
+    trace_writer = None
     world_state_store = WorldStateStore(Path(world_state_path), __import__("logging").getLogger("evaluator"))
     world_state_store.open()
     try:
+        if out_traces_path:
+            trace_path = Path(out_traces_path)
+            trace_path.parent.mkdir(parents=True, exist_ok=True)
+            trace_writer = open(trace_path, "w", encoding="utf-8")
         for record in records:
             case_id = record["id"]
             manifest_record = _manifest_record(run_manifest, case_id, ablation_bundle, "proposal")
@@ -700,8 +748,13 @@ def evaluate_benchmark(
                 track_diagnoses.get(case_id),
                 diagnosis_manifest_record,
             )
-            traces.append(trace)
+            if collect_traces:
+                traces.append(trace)
+            if trace_writer is not None:
+                trace_writer.write(json.dumps(trace, ensure_ascii=False, default=_json_default) + "\n")
     finally:
+        if trace_writer is not None:
+            trace_writer.close()
         world_state_store.close()
 
     inputs = {
@@ -713,10 +766,7 @@ def evaluate_benchmark(
         "run_manifest": str(run_manifest_path) if run_manifest_path else None,
         "ablation_bundle": ablation_bundle,
     }
-    summary = summarize_traces(traces, inputs)
-
-    if out_traces_path:
-        write_jsonl(out_traces_path, traces)
+    summary = summarize_trace_iterable(iter_jsonl(out_traces_path), inputs) if out_traces_path else summarize_traces(traces, inputs)
     if out_summary_path:
         write_json(out_summary_path, summary)
 

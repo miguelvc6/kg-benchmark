@@ -12,7 +12,7 @@ from tqdm import tqdm
 
 from classifier import WorldStateStore
 from lib.utils import iter_jsonl
-from guardian.evaluator import evaluate_benchmark, summarize_traces, write_json, write_jsonl
+from guardian.evaluator import evaluate_benchmark, summarize_trace_iterable, write_json
 from guardian.model_provider import ModelProvider, create_model_provider
 from guardian.patch_parser import load_schema as load_a_box_schema
 from guardian.patch_parser import normalize_proposal as normalize_a_box_proposal
@@ -171,31 +171,79 @@ def build_track_diagnosis_prompt_bundle(
     return PromptBundle(ablation_bundle=bundle, prompt=prompt, system_prompt=system_prompt, response_format={"type": "json_object"})
 
 
-def _load_records(classified_path: str | Path) -> list[dict[str, Any]]:
-    records = []
-    for record in iter_jsonl(classified_path):
-        if isinstance(record, dict) and isinstance(record.get("id"), str):
-            records.append(record)
-    return records
-
-
-def _select_records(
-    records: list[dict[str, Any]],
+def _iter_selected_records(
+    classified_path: str | Path,
     *,
     case_ids: Optional[Iterable[str]] = None,
     tracks: Optional[Iterable[str]] = None,
     max_cases: Optional[int] = None,
-) -> list[dict[str, Any]]:
-    selected = records
-    if case_ids:
-        case_set = {case_id for case_id in case_ids if case_id}
-        selected = [record for record in selected if record.get("id") in case_set]
-    if tracks:
-        track_set = {track for track in tracks if track}
-        selected = [record for record in selected if record.get("track") in track_set]
-    if max_cases is not None:
-        selected = selected[: max(0, max_cases)]
-    return selected
+) -> Iterable[dict[str, Any]]:
+    case_set = {case_id for case_id in case_ids if case_id} if case_ids else None
+    track_set = {track for track in tracks if track} if tracks else None
+    emitted = 0
+    limit = max(0, max_cases) if max_cases is not None else None
+    for record in iter_jsonl(classified_path):
+        if not isinstance(record, dict):
+            continue
+        case_id = record.get("id")
+        if not isinstance(case_id, str) or not case_id:
+            continue
+        if case_set is not None and case_id not in case_set:
+            continue
+        if track_set is not None and record.get("track") not in track_set:
+            continue
+        yield record
+        emitted += 1
+        if limit is not None and emitted >= limit:
+            break
+
+
+def _selected_case_ids(
+    classified_path: str | Path,
+    *,
+    case_ids: Optional[Iterable[str]] = None,
+    tracks: Optional[Iterable[str]] = None,
+    max_cases: Optional[int] = None,
+) -> list[str]:
+    return [record["id"] for record in _iter_selected_records(classified_path, case_ids=case_ids, tracks=tracks, max_cases=max_cases)]
+
+
+def _append_jsonl_record(handle: Any, record: dict[str, Any]) -> None:
+    handle.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+
+def _iter_bundle_traces(output_dir: Path, bundle_list: list[str]) -> Iterable[dict[str, Any]]:
+    for bundle in bundle_list:
+        traces_path = output_dir / bundle / "evaluation_traces.jsonl"
+        for trace in iter_jsonl(traces_path):
+            if isinstance(trace, dict):
+                yield trace
+
+
+def _failure_taxonomy_from_traces(traces: Iterable[dict[str, Any]]) -> dict[str, float]:
+    total = 0
+    invalid = 0
+    non_executable = 0
+    diagnosis_errors = 0
+    for trace in traces:
+        total += 1
+        if not trace.get("proposal_valid"):
+            invalid += 1
+        if not trace.get("proposal_executable"):
+            non_executable += 1
+        if not (trace.get("track_diagnosis") or {}).get("exact_track_match"):
+            diagnosis_errors += 1
+    if total == 0:
+        return {
+            "missing_or_invalid_proposal_rate": 0.0,
+            "non_executable_rate": 0.0,
+            "track_diagnosis_error_rate": 0.0,
+        }
+    return {
+        "missing_or_invalid_proposal_rate": invalid / total,
+        "non_executable_rate": non_executable / total,
+        "track_diagnosis_error_rate": diagnosis_errors / total,
+    }
 
 
 def _proposal_output_name(track: str) -> str:
@@ -221,8 +269,8 @@ def run_reasoning_floor(
     selected_model = getattr(provider, "model", None) or model_name or "unknown-model"
     selected_provider = getattr(provider, "provider_name", None) or provider.__class__.__name__.replace("ChatProvider", "").lower()
 
-    records = _select_records(
-        _load_records(classified_path),
+    selected_case_ids = _selected_case_ids(
+        classified_path,
         case_ids=case_ids,
         tracks=tracks,
         max_cases=max_cases,
@@ -230,7 +278,7 @@ def run_reasoning_floor(
     bundle_list = [bundle for bundle in ablation_bundles if bundle in ABLATION_BUNDLES]
     if not bundle_list:
         raise ValueError("At least one supported ablation bundle is required.")
-    total_instances = len(records) * len(bundle_list)
+    total_instances = len(selected_case_ids) * len(bundle_list)
     refresh_every = max(1, min(1000, (total_instances + 9) // 10)) if total_instances else 1
 
     run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
@@ -253,177 +301,179 @@ def run_reasoning_floor(
     current_estimated_cost_usd = 0.0
     has_cost_data = False
     try:
-        raw_logs: list[dict[str, Any]] = []
-        manifest: list[dict[str, Any]] = []
-        combined_traces: list[dict[str, Any]] = []
+        usage_manifest: list[dict[str, Any]] = []
 
         a_box_schema = load_a_box_schema(Path("schemas") / "verified_repair_proposal.schema.json")
         t_box_schema = load_t_box_schema(Path("schemas") / "tbox_reform_proposal.schema.json")
         track_schema = load_track_schema(Path("schemas") / "track_diagnosis.schema.json")
         del a_box_schema, t_box_schema, track_schema
 
-        for bundle in bundle_list:
-            bundle_dir = out_dir / bundle
-            bundle_dir.mkdir(parents=True, exist_ok=True)
-            a_box_proposals: list[dict[str, Any]] = []
-            t_box_proposals: list[dict[str, Any]] = []
-            track_diagnoses: list[dict[str, Any]] = []
+        with open(raw_log_path, "w", encoding="utf-8") as raw_log_fh, open(
+            manifest_path, "w", encoding="utf-8"
+        ) as manifest_fh:
+            for bundle in bundle_list:
+                bundle_dir = out_dir / bundle
+                bundle_dir.mkdir(parents=True, exist_ok=True)
+                a_box_path = bundle_dir / "a_box_proposals.jsonl"
+                t_box_path = bundle_dir / "t_box_proposals.jsonl"
+                track_path = bundle_dir / "track_diagnoses.jsonl"
+                traces_path = bundle_dir / "evaluation_traces.jsonl"
+                summary_path = bundle_dir / "evaluation_summary.json"
 
-            for record in records:
-                case_id = record["id"]
-                world_state_entry = world_state_store.get(case_id)
-                diagnosis_bundle = build_track_diagnosis_prompt_bundle(record, world_state_entry, bundle)
-                diagnosis_metadata = {
-                    "run_id": run_id,
-                    "case_id": case_id,
-                    "ablation_bundle": bundle,
-                    "track": record.get("track"),
-                    "task_type": "track_diagnosis",
-                    "model": getattr(provider, "model", "unknown-model"),
-                }
-                diagnosis_started_at = time.perf_counter()
-                diagnosis_raw_response, diagnosis_payload, diagnosis_usage = provider.generate(
-                    diagnosis_bundle.prompt,
-                    diagnosis_bundle.system_prompt,
-                    diagnosis_bundle.response_format,
-                    diagnosis_metadata,
+                with open(a_box_path, "w", encoding="utf-8") as a_box_fh, open(
+                    t_box_path, "w", encoding="utf-8"
+                ) as t_box_fh, open(track_path, "w", encoding="utf-8") as track_fh:
+                    for record in _iter_selected_records(
+                        classified_path,
+                        case_ids=case_ids,
+                        tracks=tracks,
+                        max_cases=max_cases,
+                    ):
+                        case_id = record["id"]
+                        world_state_entry = world_state_store.get(case_id)
+                        diagnosis_bundle = build_track_diagnosis_prompt_bundle(record, world_state_entry, bundle)
+                        diagnosis_metadata = {
+                            "run_id": run_id,
+                            "case_id": case_id,
+                            "ablation_bundle": bundle,
+                            "track": record.get("track"),
+                            "task_type": "track_diagnosis",
+                            "model": getattr(provider, "model", "unknown-model"),
+                        }
+                        diagnosis_started_at = time.perf_counter()
+                        diagnosis_raw_response, diagnosis_payload, diagnosis_usage = provider.generate(
+                            diagnosis_bundle.prompt,
+                            diagnosis_bundle.system_prompt,
+                            diagnosis_bundle.response_format,
+                            diagnosis_metadata,
+                        )
+                        diagnosis_elapsed_seconds = time.perf_counter() - diagnosis_started_at
+                        diagnosis_manifest_record = {
+                            "run_id": run_id,
+                            "case_id": case_id,
+                            "ablation_bundle": bundle,
+                            "track": record.get("track"),
+                            "task_type": "track_diagnosis",
+                            "provider": diagnosis_usage.get("provider"),
+                            "model": diagnosis_usage.get("model"),
+                            "usage": _usage_block(diagnosis_usage, diagnosis_elapsed_seconds),
+                            "timestamp_utc": _utc_now(),
+                        }
+                        _append_jsonl_record(
+                            raw_log_fh,
+                            {
+                                "run_id": run_id,
+                                "case_id": case_id,
+                                "ablation_bundle": bundle,
+                                "track": record.get("track"),
+                                "task_type": "track_diagnosis",
+                                "raw_response": diagnosis_raw_response,
+                                "parsed_payload": diagnosis_payload,
+                            },
+                        )
+                        try:
+                            normalized_diagnosis = normalize_diagnosis(diagnosis_payload)
+                            _append_jsonl_record(track_fh, normalized_diagnosis.to_dict())
+                            diagnosis_manifest_record["parse_status"] = "normalized"
+                            diagnosis_manifest_record["canonical_hash"] = normalized_diagnosis.canonical_hash
+                        except Exception as exc:
+                            diagnosis_manifest_record["parse_status"] = "parse_error"
+                            diagnosis_manifest_record["parser_error"] = str(exc)
+                        _append_jsonl_record(manifest_fh, diagnosis_manifest_record)
+                        usage_manifest.append(diagnosis_manifest_record)
+
+                        prompt_bundle = build_prompt_bundle(record, world_state_entry, bundle)
+                        metadata = {
+                            "run_id": run_id,
+                            "case_id": case_id,
+                            "ablation_bundle": bundle,
+                            "track": record.get("track"),
+                            "task_type": "proposal",
+                            "model": getattr(provider, "model", "unknown-model"),
+                        }
+                        proposal_started_at = time.perf_counter()
+                        raw_response, parsed_payload, usage = provider.generate(
+                            prompt_bundle.prompt,
+                            prompt_bundle.system_prompt,
+                            prompt_bundle.response_format,
+                            metadata,
+                        )
+                        proposal_elapsed_seconds = time.perf_counter() - proposal_started_at
+                        manifest_record = {
+                            "run_id": run_id,
+                            "case_id": case_id,
+                            "ablation_bundle": bundle,
+                            "track": record.get("track"),
+                            "task_type": "proposal",
+                            "provider": usage.get("provider"),
+                            "model": usage.get("model"),
+                            "usage": _usage_block(usage, proposal_elapsed_seconds),
+                            "timestamp_utc": _utc_now(),
+                        }
+                        _append_jsonl_record(
+                            raw_log_fh,
+                            {
+                                "run_id": run_id,
+                                "case_id": case_id,
+                                "ablation_bundle": bundle,
+                                "track": record.get("track"),
+                                "task_type": "proposal",
+                                "raw_response": raw_response,
+                                "parsed_payload": parsed_payload,
+                            },
+                        )
+                        try:
+                            if record.get("track") == "T_BOX":
+                                normalized = normalize_t_box_proposal(parsed_payload)
+                                _append_jsonl_record(t_box_fh, normalized.to_dict())
+                            else:
+                                normalized = normalize_a_box_proposal(parsed_payload)
+                                _append_jsonl_record(a_box_fh, normalized.to_dict())
+                            manifest_record["parse_status"] = "normalized"
+                            manifest_record["canonical_hash"] = normalized.canonical_hash
+                        except Exception as exc:
+                            manifest_record["parse_status"] = "parse_error"
+                            manifest_record["parser_error"] = str(exc)
+                        _append_jsonl_record(manifest_fh, manifest_record)
+                        usage_manifest.append(manifest_record)
+
+                        for usage_record in (diagnosis_usage, usage):
+                            estimated_cost = usage_record.get("estimated_cost_usd")
+                            if isinstance(estimated_cost, (int, float)):
+                                current_estimated_cost_usd += float(estimated_cost)
+                                has_cost_data = True
+                        completed_instances += 1
+                        pending_progress += 1
+                        if pending_progress >= refresh_every or completed_instances == total_instances:
+                            estimated_total_cost = None
+                            if has_cost_data and completed_instances > 0:
+                                estimated_total_cost = (current_estimated_cost_usd / completed_instances) * total_instances
+                            progress.update(pending_progress)
+                            progress.set_postfix(
+                                {
+                                    "current_cost": _format_cost(current_estimated_cost_usd if has_cost_data else None),
+                                    "est_total_cost": _format_cost(estimated_total_cost),
+                                },
+                                refresh=True,
+                            )
+                            pending_progress = 0
+
+                evaluate_benchmark(
+                    classified_path=classified_path,
+                    world_state_path=world_state_path,
+                    a_box_proposals_path=a_box_path,
+                    t_box_proposals_path=t_box_path,
+                    track_diagnoses_path=track_path,
+                    run_manifest_path=manifest_path,
+                    ablation_bundle=bundle,
+                    case_ids=selected_case_ids,
+                    out_traces_path=traces_path,
+                    out_summary_path=summary_path,
+                    collect_traces=False,
                 )
-                diagnosis_elapsed_seconds = time.perf_counter() - diagnosis_started_at
-                diagnosis_manifest_record = {
-                    "run_id": run_id,
-                    "case_id": case_id,
-                    "ablation_bundle": bundle,
-                    "track": record.get("track"),
-                    "task_type": "track_diagnosis",
-                    "provider": diagnosis_usage.get("provider"),
-                    "model": diagnosis_usage.get("model"),
-                    "usage": _usage_block(diagnosis_usage, diagnosis_elapsed_seconds),
-                    "timestamp_utc": _utc_now(),
-                }
-                raw_logs.append(
-                    {
-                        "run_id": run_id,
-                        "case_id": case_id,
-                        "ablation_bundle": bundle,
-                        "track": record.get("track"),
-                        "task_type": "track_diagnosis",
-                        "raw_response": diagnosis_raw_response,
-                        "parsed_payload": diagnosis_payload,
-                    }
-                )
-                try:
-                    normalized_diagnosis = normalize_diagnosis(diagnosis_payload)
-                    track_diagnoses.append(normalized_diagnosis.to_dict())
-                    diagnosis_manifest_record["parse_status"] = "normalized"
-                    diagnosis_manifest_record["canonical_hash"] = normalized_diagnosis.canonical_hash
-                except Exception as exc:
-                    diagnosis_manifest_record["parse_status"] = "parse_error"
-                    diagnosis_manifest_record["parser_error"] = str(exc)
-                manifest.append(diagnosis_manifest_record)
 
-                prompt_bundle = build_prompt_bundle(record, world_state_entry, bundle)
-                metadata = {
-                    "run_id": run_id,
-                    "case_id": case_id,
-                    "ablation_bundle": bundle,
-                    "track": record.get("track"),
-                    "task_type": "proposal",
-                    "model": getattr(provider, "model", "unknown-model"),
-                }
-                proposal_started_at = time.perf_counter()
-                raw_response, parsed_payload, usage = provider.generate(
-                    prompt_bundle.prompt,
-                    prompt_bundle.system_prompt,
-                    prompt_bundle.response_format,
-                    metadata,
-                )
-                proposal_elapsed_seconds = time.perf_counter() - proposal_started_at
-                manifest_record = {
-                    "run_id": run_id,
-                    "case_id": case_id,
-                    "ablation_bundle": bundle,
-                    "track": record.get("track"),
-                    "task_type": "proposal",
-                    "provider": usage.get("provider"),
-                    "model": usage.get("model"),
-                    "usage": _usage_block(usage, proposal_elapsed_seconds),
-                    "timestamp_utc": _utc_now(),
-                }
-                raw_logs.append(
-                    {
-                        "run_id": run_id,
-                        "case_id": case_id,
-                        "ablation_bundle": bundle,
-                        "track": record.get("track"),
-                        "task_type": "proposal",
-                        "raw_response": raw_response,
-                        "parsed_payload": parsed_payload,
-                    }
-                )
-                try:
-                    if record.get("track") == "T_BOX":
-                        normalized = normalize_t_box_proposal(parsed_payload)
-                        t_box_proposals.append(normalized.to_dict())
-                    else:
-                        normalized = normalize_a_box_proposal(parsed_payload)
-                        a_box_proposals.append(normalized.to_dict())
-                    manifest_record["parse_status"] = "normalized"
-                    manifest_record["canonical_hash"] = normalized.canonical_hash
-                except Exception as exc:
-                    manifest_record["parse_status"] = "parse_error"
-                    manifest_record["parser_error"] = str(exc)
-                manifest.append(manifest_record)
-
-                for usage_record in (diagnosis_usage, usage):
-                    estimated_cost = usage_record.get("estimated_cost_usd")
-                    if isinstance(estimated_cost, (int, float)):
-                        current_estimated_cost_usd += float(estimated_cost)
-                        has_cost_data = True
-                completed_instances += 1
-                pending_progress += 1
-                if pending_progress >= refresh_every or completed_instances == total_instances:
-                    estimated_total_cost = None
-                    if has_cost_data and completed_instances > 0:
-                        estimated_total_cost = (current_estimated_cost_usd / completed_instances) * total_instances
-                    progress.update(pending_progress)
-                    progress.set_postfix(
-                        {
-                            "current_cost": _format_cost(current_estimated_cost_usd if has_cost_data else None),
-                            "est_total_cost": _format_cost(estimated_total_cost),
-                        },
-                        refresh=True,
-                    )
-                    pending_progress = 0
-
-            write_jsonl(raw_log_path, raw_logs)
-            write_jsonl(manifest_path, manifest)
-            a_box_path = bundle_dir / "a_box_proposals.jsonl"
-            t_box_path = bundle_dir / "t_box_proposals.jsonl"
-            track_path = bundle_dir / "track_diagnoses.jsonl"
-            traces_path = bundle_dir / "evaluation_traces.jsonl"
-            summary_path = bundle_dir / "evaluation_summary.json"
-            write_jsonl(a_box_path, a_box_proposals)
-            write_jsonl(t_box_path, t_box_proposals)
-            write_jsonl(track_path, track_diagnoses)
-
-            traces, _ = evaluate_benchmark(
-                classified_path=classified_path,
-                world_state_path=world_state_path,
-                a_box_proposals_path=a_box_path,
-                t_box_proposals_path=t_box_path,
-                track_diagnoses_path=track_path,
-                run_manifest_path=manifest_path,
-                ablation_bundle=bundle,
-                case_ids=[record["id"] for record in records],
-                out_traces_path=traces_path,
-                out_summary_path=summary_path,
-            )
-            combined_traces.extend(traces)
-
-        write_jsonl(raw_log_path, raw_logs)
-        write_jsonl(manifest_path, manifest)
-        summary = summarize_traces(
-            combined_traces,
+        summary = summarize_trace_iterable(
+            _iter_bundle_traces(out_dir, bundle_list),
             {
                 "classified_benchmark": str(classified_path),
                 "world_state": str(world_state_path),
@@ -434,8 +484,9 @@ def run_reasoning_floor(
                 "output_dir": str(out_dir),
             },
         )
+        failure_taxonomy = _failure_taxonomy_from_traces(_iter_bundle_traces(out_dir, bundle_list))
         run_elapsed_seconds = time.perf_counter() - run_started_at
-        run_usage = _aggregate_run_usage(manifest)
+        run_usage = _aggregate_run_usage(usage_manifest)
         summary["run_info"] = {
             "run_id": run_id,
             "provider": selected_provider,
@@ -459,28 +510,7 @@ def run_reasoning_floor(
             "track_diagnosis_by_class": {
                 key: value.get("track_diagnosis_accuracy") for key, value in summary.get("by_class", {}).items()
             },
-            "failure_taxonomy": {
-                "missing_or_invalid_proposal_rate": (
-                    0.0
-                    if not combined_traces
-                    else sum(1 for trace in combined_traces if not trace.get("proposal_valid")) / len(combined_traces)
-                ),
-                "non_executable_rate": (
-                    0.0
-                    if not combined_traces
-                    else sum(1 for trace in combined_traces if not trace.get("proposal_executable")) / len(combined_traces)
-                ),
-                "track_diagnosis_error_rate": (
-                    0.0
-                    if not combined_traces
-                    else sum(
-                        1
-                        for trace in combined_traces
-                        if not (trace.get("track_diagnosis") or {}).get("exact_track_match")
-                    )
-                    / len(combined_traces)
-                ),
-            },
+            "failure_taxonomy": failure_taxonomy,
         }
         write_json(out_dir / "reasoning_floor_summary.json", summary)
         return summary
