@@ -43,6 +43,8 @@ Supported runtime settings:
 
 Process environment variables still take precedence over values loaded from `.env`.
 
+`src/reasoning_floor.py` also accepts `--model` to override the model name from `.env` without changing provider selection.
+
 The adapter contract is:
 
 `generate(prompt, system_prompt, response_format, metadata) -> raw_response, parsed_payload, usage`
@@ -53,10 +55,15 @@ A reasoning-floor run writes:
 
 - raw model responses
 - run manifest
+- a model-specific run directory named `<run_id>_<provider>_<model>`
 - normalized track-diagnosis JSONL per ablation bundle
 - normalized proposal JSONL per ablation bundle
 - per-bundle evaluation traces and summaries
 - one combined reasoning-floor summary with paper-facing breakdowns
+
+The run manifest stores per-call token usage, elapsed seconds, and estimated cost when provider token pricing is configured in `.env`.
+
+The combined summary stores run-level provider, model, output directory, total elapsed time, aggregate prompt/completion/total tokens, and aggregate estimated cost.
 
 ## Test Coverage
 

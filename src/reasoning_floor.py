@@ -10,6 +10,7 @@ def main() -> int:
     parser.add_argument("--classified-benchmark", default="data/04_classified_benchmark.jsonl")
     parser.add_argument("--world-state", default="data/03_world_state.json")
     parser.add_argument("--output-dir", default="reports/reasoning_floor")
+    parser.add_argument("--model", default=None, help="Override the model name configured in .env.")
     parser.add_argument("--max-cases", type=int, default=None)
     parser.add_argument("--case-ids", default=None, help="Comma-separated case ids to include.")
     parser.add_argument("--tracks", default=None, help="Comma-separated track filter, e.g. A_BOX,T_BOX.")
@@ -24,6 +25,7 @@ def main() -> int:
         classified_path=args.classified_benchmark,
         world_state_path=args.world_state,
         output_dir=args.output_dir,
+        model_name=args.model,
         case_ids=[item.strip() for item in args.case_ids.split(",")] if args.case_ids else None,
         tracks=[item.strip() for item in args.tracks.split(",")] if args.tracks else None,
         max_cases=args.max_cases,

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import re
+import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -23,6 +25,66 @@ def _utc_now() -> str:
 
 
 ABLATION_BUNDLES = ("minimal_case", "logic_only", "local_graph")
+
+
+def _slugify(value: str) -> str:
+    lowered = value.strip().lower()
+    slug = re.sub(r"[^a-z0-9]+", "_", lowered)
+    return slug.strip("_") or "unknown"
+
+
+def _usage_block(usage: dict[str, Any], elapsed_seconds: float) -> dict[str, Any]:
+    return {
+        "prompt_tokens": usage.get("prompt_tokens"),
+        "completion_tokens": usage.get("completion_tokens"),
+        "total_tokens": usage.get("total_tokens"),
+        "estimated_cost_usd": usage.get("estimated_cost_usd"),
+        "input_cost_per_1m_tokens_usd": usage.get("input_cost_per_1m_tokens_usd"),
+        "output_cost_per_1m_tokens_usd": usage.get("output_cost_per_1m_tokens_usd"),
+        "elapsed_seconds": round(elapsed_seconds, 6),
+    }
+
+
+def _aggregate_run_usage(manifest: list[dict[str, Any]]) -> dict[str, Any]:
+    prompt_tokens = 0
+    completion_tokens = 0
+    total_tokens = 0
+    estimated_cost_usd = 0.0
+    elapsed_seconds = 0.0
+    has_prompt = False
+    has_completion = False
+    has_total = False
+    has_cost = False
+    for record in manifest:
+        usage = record.get("usage")
+        if not isinstance(usage, dict):
+            continue
+        value = usage.get("prompt_tokens")
+        if isinstance(value, int):
+            prompt_tokens += value
+            has_prompt = True
+        value = usage.get("completion_tokens")
+        if isinstance(value, int):
+            completion_tokens += value
+            has_completion = True
+        value = usage.get("total_tokens")
+        if isinstance(value, int):
+            total_tokens += value
+            has_total = True
+        value = usage.get("estimated_cost_usd")
+        if isinstance(value, (int, float)):
+            estimated_cost_usd += float(value)
+            has_cost = True
+        value = usage.get("elapsed_seconds")
+        if isinstance(value, (int, float)):
+            elapsed_seconds += float(value)
+    return {
+        "prompt_tokens": prompt_tokens if has_prompt else None,
+        "completion_tokens": completion_tokens if has_completion else None,
+        "total_tokens": total_tokens if has_total else None,
+        "estimated_cost_usd": round(estimated_cost_usd, 10) if has_cost else None,
+        "generation_elapsed_seconds": round(elapsed_seconds, 6),
+    }
 
 
 @dataclass
@@ -138,13 +200,18 @@ def run_reasoning_floor(
     world_state_path: str | Path,
     output_dir: str | Path,
     provider: Optional[ModelProvider] = None,
+    model_name: str | None = None,
     ablation_bundles: Iterable[str] = ABLATION_BUNDLES,
     case_ids: Optional[Iterable[str]] = None,
     tracks: Optional[Iterable[str]] = None,
     max_cases: Optional[int] = None,
 ) -> dict[str, Any]:
+    run_started_utc = _utc_now()
+    run_started_at = time.perf_counter()
     if provider is None:
-        provider = create_model_provider()
+        provider = create_model_provider(model_name)
+    selected_model = getattr(provider, "model", None) or model_name or "unknown-model"
+    selected_provider = getattr(provider, "provider_name", None) or provider.__class__.__name__.replace("ChatProvider", "").lower()
 
     records = _select_records(
         _load_records(classified_path),
@@ -157,7 +224,8 @@ def run_reasoning_floor(
         raise ValueError("At least one supported ablation bundle is required.")
 
     run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
-    out_dir = Path(output_dir)
+    run_dir_name = f"{run_id}_{_slugify(selected_provider)}_{_slugify(selected_model)}"
+    out_dir = Path(output_dir) / run_dir_name
     out_dir.mkdir(parents=True, exist_ok=True)
     raw_log_path = out_dir / "raw_model_responses.jsonl"
     manifest_path = out_dir / "run_manifest.jsonl"
@@ -193,12 +261,14 @@ def run_reasoning_floor(
                     "task_type": "track_diagnosis",
                     "model": getattr(provider, "model", "unknown-model"),
                 }
+                diagnosis_started_at = time.perf_counter()
                 diagnosis_raw_response, diagnosis_payload, diagnosis_usage = provider.generate(
                     diagnosis_bundle.prompt,
                     diagnosis_bundle.system_prompt,
                     diagnosis_bundle.response_format,
                     diagnosis_metadata,
                 )
+                diagnosis_elapsed_seconds = time.perf_counter() - diagnosis_started_at
                 diagnosis_manifest_record = {
                     "run_id": run_id,
                     "case_id": case_id,
@@ -207,11 +277,7 @@ def run_reasoning_floor(
                     "task_type": "track_diagnosis",
                     "provider": diagnosis_usage.get("provider"),
                     "model": diagnosis_usage.get("model"),
-                    "usage": {
-                        "prompt_tokens": diagnosis_usage.get("prompt_tokens"),
-                        "completion_tokens": diagnosis_usage.get("completion_tokens"),
-                        "total_tokens": diagnosis_usage.get("total_tokens"),
-                    },
+                    "usage": _usage_block(diagnosis_usage, diagnosis_elapsed_seconds),
                     "timestamp_utc": _utc_now(),
                 }
                 raw_logs.append(
@@ -244,12 +310,14 @@ def run_reasoning_floor(
                     "task_type": "proposal",
                     "model": getattr(provider, "model", "unknown-model"),
                 }
+                proposal_started_at = time.perf_counter()
                 raw_response, parsed_payload, usage = provider.generate(
                     prompt_bundle.prompt,
                     prompt_bundle.system_prompt,
                     prompt_bundle.response_format,
                     metadata,
                 )
+                proposal_elapsed_seconds = time.perf_counter() - proposal_started_at
                 manifest_record = {
                     "run_id": run_id,
                     "case_id": case_id,
@@ -258,11 +326,7 @@ def run_reasoning_floor(
                     "task_type": "proposal",
                     "provider": usage.get("provider"),
                     "model": usage.get("model"),
-                    "usage": {
-                        "prompt_tokens": usage.get("prompt_tokens"),
-                        "completion_tokens": usage.get("completion_tokens"),
-                        "total_tokens": usage.get("total_tokens"),
-                    },
+                    "usage": _usage_block(usage, proposal_elapsed_seconds),
                     "timestamp_utc": _utc_now(),
                 }
                 raw_logs.append(
@@ -324,8 +388,28 @@ def run_reasoning_floor(
                 "world_state": str(world_state_path),
                 "run_id": run_id,
                 "ablation_bundles": bundle_list,
+                "provider": selected_provider,
+                "model": selected_model,
+                "output_dir": str(out_dir),
             },
         )
+        run_elapsed_seconds = time.perf_counter() - run_started_at
+        run_usage = _aggregate_run_usage(manifest)
+        summary["run_info"] = {
+            "run_id": run_id,
+            "provider": selected_provider,
+            "model": selected_model,
+            "output_dir": str(out_dir),
+            "started_at_utc": run_started_utc,
+            "elapsed_seconds": round(run_elapsed_seconds, 6),
+            "generation_elapsed_seconds": run_usage["generation_elapsed_seconds"],
+        }
+        summary["usage"] = {
+            "prompt_tokens": run_usage["prompt_tokens"],
+            "completion_tokens": run_usage["completion_tokens"],
+            "total_tokens": run_usage["total_tokens"],
+            "estimated_cost_usd": run_usage["estimated_cost_usd"],
+        }
         summary["paper_summary"] = {
             "overall_success_by_class": summary.get("by_class"),
             "success_by_ablation_bundle": summary.get("by_ablation_bundle"),

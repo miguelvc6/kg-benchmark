@@ -207,12 +207,17 @@ The summary aggregates results by:
 
 `src/reasoning_floor.py` writes a run directory under `reports/reasoning_floor/` containing:
 
+- a top-level directory named `<run_id>_<provider>_<model>`
 - `raw_model_responses.jsonl`
 - `run_manifest.jsonl`
 - one subdirectory per ablation bundle
 - normalized proposal JSONL files per bundle
 - evaluation traces and summaries per bundle
 - `reasoning_floor_summary.json`
+
+`run_manifest.jsonl` includes per-call provider, model, token usage, elapsed seconds, and estimated cost when pricing metadata is configured.
+
+`reasoning_floor_summary.json` includes aggregated run-level token totals, estimated cost, elapsed time, provider, model, and output directory.
 
 ## Schema Files in `schemas/`
 

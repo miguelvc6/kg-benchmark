@@ -28,6 +28,25 @@ class OpenAIChatProviderTests(unittest.TestCase):
             self.assertEqual(provider.model, "test-model")
             self.assertEqual(provider.base_url, "https://api.openai.com/v1")
 
+    def test_factory_allows_model_override(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            (root / ".env").write_text(
+                "MODEL_PROVIDER=openai\nOPENAI_API_KEY=test-key\nOPENAI_MODEL=env-model\n",
+                encoding="utf-8",
+            )
+
+            with patch.dict(os.environ, {}, clear=True):
+                previous_cwd = Path.cwd()
+                try:
+                    os.chdir(root)
+                    provider = create_model_provider("override-model")
+                finally:
+                    os.chdir(previous_cwd)
+
+            self.assertIsInstance(provider, OpenAIChatProvider)
+            self.assertEqual(provider.model, "override-model")
+
 
 class OllamaChatProviderTests(unittest.TestCase):
     def test_loads_model_settings_from_dotenv(self) -> None:

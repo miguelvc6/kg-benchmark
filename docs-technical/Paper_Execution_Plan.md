@@ -146,6 +146,13 @@ Optional for a non-default OpenAI-compatible endpoint:
 OPENAI_BASE_URL=https://your-compatible-endpoint/v1
 ```
 
+Optional for API cost estimation in summaries:
+
+```dotenv
+OPENAI_INPUT_COST_PER_1M_TOKENS=2.50
+OPENAI_OUTPUT_COST_PER_1M_TOKENS=10.00
+```
+
 Ollama:
 
 ```dotenv
@@ -165,23 +172,40 @@ If you point `OLLAMA_BASE_URL` at `https://ollama.com/api`, also set:
 OLLAMA_API_KEY=your_api_key
 ```
 
+Optional for cost estimation in summaries:
+
+```dotenv
+OLLAMA_INPUT_COST_PER_1M_TOKENS=0.00
+OLLAMA_OUTPUT_COST_PER_1M_TOKENS=0.00
+```
+
 `src/reasoning_floor.py` auto-loads `.env` from the repository root or a parent directory. Shell-exported variables still override `.env` values when both are set.
 
 ## 7. Run the Zero-Shot Reasoning Floor
 
-Create a timestamped output directory for the paper run:
+Create a base output directory for the paper run:
 
 ```bash
-RUN_ID=$(date -u +%Y%m%dT%H%M%SZ)
+mkdir -p reports/reasoning_floor
 ```
 
-Run the full zero-shot baseline over the classified benchmark:
+Run the full zero-shot baseline over the classified benchmark. The runner will create a subdirectory named `<run_id>_<provider>_<model>` under the base output directory:
 
 ```bash
 uv run python src/reasoning_floor.py \
   --classified-benchmark data/04_classified_benchmark.jsonl \
   --world-state data/03_world_state.json \
-  --output-dir reports/reasoning_floor/$RUN_ID
+  --output-dir reports/reasoning_floor
+```
+
+If you want to override the `.env` model name for a single run:
+
+```bash
+uv run python src/reasoning_floor.py \
+  --classified-benchmark data/04_classified_benchmark.jsonl \
+  --world-state data/03_world_state.json \
+  --output-dir reports/reasoning_floor \
+  --model llama3.2:latest
 ```
 
 This runs all three ablation bundles by default:
@@ -199,24 +223,31 @@ It also performs:
 
 ## 8. Verify the Paper Outputs
 
-Check that the expected outputs exist:
+Inspect the generated run directories:
 
 ```bash
-find reports/reasoning_floor/$RUN_ID -maxdepth 2 -type f | sort
+find reports/reasoning_floor -maxdepth 1 -mindepth 1 -type d | sort
+```
+
+Set the run directory you want to inspect:
+
+```bash
+RUN_DIR=$(find reports/reasoning_floor -maxdepth 1 -mindepth 1 -type d | sort | tail -n 1)
+find "$RUN_DIR" -maxdepth 2 -type f | sort
 ```
 
 Inspect the combined paper summary:
 
 ```bash
-sed -n '1,240p' reports/reasoning_floor/$RUN_ID/reasoning_floor_summary.json
+sed -n '1,240p' "$RUN_DIR"/reasoning_floor_summary.json
 ```
 
 Inspect the per-bundle summaries:
 
 ```bash
-sed -n '1,240p' reports/reasoning_floor/$RUN_ID/minimal_case/evaluation_summary.json
-sed -n '1,240p' reports/reasoning_floor/$RUN_ID/logic_only/evaluation_summary.json
-sed -n '1,240p' reports/reasoning_floor/$RUN_ID/local_graph/evaluation_summary.json
+sed -n '1,240p' "$RUN_DIR"/minimal_case/evaluation_summary.json
+sed -n '1,240p' "$RUN_DIR"/logic_only/evaluation_summary.json
+sed -n '1,240p' "$RUN_DIR"/local_graph/evaluation_summary.json
 ```
 
 Inspect the benchmark summary artifacts:
@@ -234,13 +265,13 @@ Use this only if you want to rescore existing proposal outputs without rerunning
 uv run python src/evaluate.py \
   --classified-benchmark data/04_classified_benchmark.jsonl \
   --world-state data/03_world_state.json \
-  --a-box-proposals reports/reasoning_floor/$RUN_ID/minimal_case/a_box_proposals.jsonl \
-  --t-box-proposals reports/reasoning_floor/$RUN_ID/minimal_case/t_box_proposals.jsonl \
-  --track-diagnoses reports/reasoning_floor/$RUN_ID/minimal_case/track_diagnoses.jsonl \
-  --run-manifest reports/reasoning_floor/$RUN_ID/run_manifest.jsonl \
+  --a-box-proposals "$RUN_DIR"/minimal_case/a_box_proposals.jsonl \
+  --t-box-proposals "$RUN_DIR"/minimal_case/t_box_proposals.jsonl \
+  --track-diagnoses "$RUN_DIR"/minimal_case/track_diagnoses.jsonl \
+  --run-manifest "$RUN_DIR"/run_manifest.jsonl \
   --ablation-bundle minimal_case \
-  --out-traces reports/reasoning_floor/$RUN_ID/minimal_case/evaluation_traces_rerun.jsonl \
-  --out-summary reports/reasoning_floor/$RUN_ID/minimal_case/evaluation_summary_rerun.json
+  --out-traces "$RUN_DIR"/minimal_case/evaluation_traces_rerun.jsonl \
+  --out-summary "$RUN_DIR"/minimal_case/evaluation_summary_rerun.json
 ```
 
 Repeat with `logic_only` and `local_graph` if needed.
@@ -262,8 +293,7 @@ uv run python src/fetcher.py --validate-only
 uv run python src/classifier.py
 uv run python src/splitter.py
 cp .env.example .env
-RUN_ID=$(date -u +%Y%m%dT%H%M%SZ)
-uv run python src/reasoning_floor.py --classified-benchmark data/04_classified_benchmark.jsonl --world-state data/03_world_state.json --output-dir reports/reasoning_floor/$RUN_ID
+uv run python src/reasoning_floor.py --classified-benchmark data/04_classified_benchmark.jsonl --world-state data/03_world_state.json --output-dir reports/reasoning_floor
 ```
 
 That sequence builds the benchmark, the splits, and the zero-shot paper outputs from the current codebase.

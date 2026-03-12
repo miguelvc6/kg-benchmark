@@ -121,12 +121,18 @@ class ReasoningFloorTests(unittest.TestCase):
                 classified_path=classified_path,
                 world_state_path=world_state_path,
                 output_dir=root / "outputs",
-                provider=StaticResponseProvider(resolver),
+                provider=StaticResponseProvider(resolver, model="stub-model"),
                 ablation_bundles=["minimal_case"],
             )
             self.assertIn("paper_summary", summary)
+            self.assertIn("run_info", summary)
+            self.assertIn("usage", summary)
             self.assertEqual(summary["counts"]["cases"], 2)
             self.assertEqual(summary["counts"]["track_diagnosis_exact_match"], 2)
+            self.assertEqual(summary["run_info"]["model"], "stub-model")
+            self.assertEqual(summary["usage"]["prompt_tokens"], 0)
+            self.assertEqual(summary["usage"]["completion_tokens"], 0)
+            self.assertIn("stub_model", summary["run_info"]["output_dir"])
 
 
 

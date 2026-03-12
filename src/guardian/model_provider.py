@@ -38,6 +38,41 @@ def _default_response_format(response_format: dict[str, Any]) -> str | None:
     return None
 
 
+def _env_float(name: str) -> float | None:
+    raw = os.getenv(name)
+    if raw in (None, ""):
+        return None
+    try:
+        return float(raw)
+    except ValueError:
+        return None
+
+
+def _estimate_cost_usd(
+    *,
+    provider_env_prefix: str,
+    prompt_tokens: int | None,
+    completion_tokens: int | None,
+) -> tuple[float | None, dict[str, float | None]]:
+    input_rate = _env_float(f"{provider_env_prefix}_INPUT_COST_PER_1M_TOKENS")
+    output_rate = _env_float(f"{provider_env_prefix}_OUTPUT_COST_PER_1M_TOKENS")
+    if input_rate is None and output_rate is None:
+        return None, {"input_cost_per_1m_tokens_usd": None, "output_cost_per_1m_tokens_usd": None}
+
+    estimated_cost = 0.0
+    has_component = False
+    if input_rate is not None and isinstance(prompt_tokens, int):
+        estimated_cost += (prompt_tokens / 1_000_000) * input_rate
+        has_component = True
+    if output_rate is not None and isinstance(completion_tokens, int):
+        estimated_cost += (completion_tokens / 1_000_000) * output_rate
+        has_component = True
+    return (estimated_cost if has_component else None), {
+        "input_cost_per_1m_tokens_usd": input_rate,
+        "output_cost_per_1m_tokens_usd": output_rate,
+    }
+
+
 @dataclass
 class OpenAIChatProvider:
     api_key: str | None = None
@@ -92,11 +127,21 @@ class OpenAIChatProvider:
             text = content or ""
         parsed_payload = _extract_json_payload(text)
         usage = raw_response.get("usage") or {}
+        prompt_tokens = usage.get("prompt_tokens")
+        completion_tokens = usage.get("completion_tokens")
+        total_tokens = usage.get("total_tokens")
+        estimated_cost_usd, rate_card = _estimate_cost_usd(
+            provider_env_prefix="OPENAI",
+            prompt_tokens=prompt_tokens if isinstance(prompt_tokens, int) else None,
+            completion_tokens=completion_tokens if isinstance(completion_tokens, int) else None,
+        )
         usage_payload = {
-            "prompt_tokens": usage.get("prompt_tokens"),
-            "completion_tokens": usage.get("completion_tokens"),
-            "total_tokens": usage.get("total_tokens"),
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": total_tokens,
+            "estimated_cost_usd": estimated_cost_usd,
         }
+        usage_payload.update(rate_card)
         usage_payload["model"] = self.model
         usage_payload["provider"] = "openai"
         usage_payload["request_metadata"] = metadata
@@ -156,24 +201,31 @@ class OllamaChatProvider:
         total_tokens = None
         if isinstance(prompt_tokens, int) and isinstance(completion_tokens, int):
             total_tokens = prompt_tokens + completion_tokens
+        estimated_cost_usd, rate_card = _estimate_cost_usd(
+            provider_env_prefix="OLLAMA",
+            prompt_tokens=prompt_tokens if isinstance(prompt_tokens, int) else None,
+            completion_tokens=completion_tokens if isinstance(completion_tokens, int) else None,
+        )
         usage_payload = {
             "prompt_tokens": prompt_tokens,
             "completion_tokens": completion_tokens,
             "total_tokens": total_tokens,
+            "estimated_cost_usd": estimated_cost_usd,
             "model": self.model,
             "provider": "ollama",
             "request_metadata": metadata,
         }
+        usage_payload.update(rate_card)
         return raw_response, parsed_payload if parsed_payload is not None else text, usage_payload
 
 
-def create_model_provider() -> ModelProvider:
+def create_model_provider(model_name: str | None = None) -> ModelProvider:
     load_dotenv()
     provider_name = os.getenv("MODEL_PROVIDER", "openai").strip().lower()
     if provider_name == "openai":
-        return OpenAIChatProvider()
+        return OpenAIChatProvider(model=model_name)
     if provider_name == "ollama":
-        return OllamaChatProvider()
+        return OllamaChatProvider(model=model_name)
     raise RuntimeError(f"Unsupported MODEL_PROVIDER: {provider_name}")
 
 
@@ -181,6 +233,7 @@ def create_model_provider() -> ModelProvider:
 class StaticResponseProvider:
     resolver: Callable[[dict[str, Any]], Any]
     provider_name: str = "static"
+    model: str = "static-model"
 
     def generate(
         self,
@@ -197,7 +250,8 @@ class StaticResponseProvider:
             "prompt_tokens": metadata.get("prompt_tokens", 0),
             "completion_tokens": metadata.get("completion_tokens", 0),
             "total_tokens": metadata.get("total_tokens", 0),
-            "model": metadata.get("model", "static-model"),
+            "estimated_cost_usd": metadata.get("estimated_cost_usd"),
+            "model": metadata.get("model", self.model),
             "provider": self.provider_name,
         }
         return raw, parsed, usage
