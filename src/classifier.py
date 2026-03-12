@@ -19,12 +19,15 @@ import datetime as _dt
 import json
 import logging
 import re
+import sqlite3
 import sys
+import time
 from collections import Counter
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple
 
+import ijson
 from tqdm import tqdm
 
 from lib.utils import (
@@ -1087,6 +1090,159 @@ def write_jsonl(path: Path, records: Iterable[Dict[str, Any]]) -> None:
             fh.write(json.dumps(rec, ensure_ascii=False, default=_json_default) + "\n")
 
 
+class WorldStateStore:
+    """Disk-backed lookup for world_state entries keyed by repair id."""
+
+    def __init__(self, world_state_path: Path, log: logging.Logger):
+        self.world_state_path = Path(world_state_path)
+        self.db_path = self.world_state_path.with_suffix(self.world_state_path.suffix + ".sqlite")
+        self.log = log
+        self.conn: Optional[sqlite3.Connection] = None
+
+    def __enter__(self) -> "WorldStateStore":
+        self.open()
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.close()
+
+    def open(self) -> None:
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self.conn = sqlite3.connect(self.db_path)
+        self.conn.execute("PRAGMA journal_mode=WAL")
+        self.conn.execute("PRAGMA synchronous=NORMAL")
+        self.conn.execute("PRAGMA temp_store=MEMORY")
+        self._ensure_schema()
+        if self._needs_rebuild():
+            self._rebuild()
+
+    def close(self) -> None:
+        if self.conn is not None:
+            self.conn.close()
+            self.conn = None
+
+    def _ensure_schema(self) -> None:
+        assert self.conn is not None
+        self.conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS world_state (
+              id TEXT PRIMARY KEY,
+              payload TEXT NOT NULL
+            )
+            """
+        )
+        self.conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS meta (
+              key TEXT PRIMARY KEY,
+              value TEXT NOT NULL
+            )
+            """
+        )
+        self.conn.commit()
+
+    def _meta_get(self, key: str) -> Optional[str]:
+        assert self.conn is not None
+        row = self.conn.execute("SELECT value FROM meta WHERE key = ?", (key,)).fetchone()
+        if not row:
+            return None
+        return row[0]
+
+    def _meta_set(self, key: str, value: str) -> None:
+        assert self.conn is not None
+        self.conn.execute(
+            "INSERT INTO meta(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+            (key, value),
+        )
+
+    def _source_signature(self) -> str:
+        stat = self.world_state_path.stat()
+        return f"{stat.st_size}:{stat.st_mtime_ns}"
+
+    def _needs_rebuild(self) -> bool:
+        if not self.world_state_path.exists():
+            raise FileNotFoundError(f"World state file not found: {self.world_state_path}")
+        sig = self._source_signature()
+        cached_sig = self._meta_get("source_signature")
+        cached_count = self._meta_get("entry_count")
+        if cached_sig != sig:
+            return True
+        if cached_count is None:
+            return True
+        return False
+
+    def _rebuild(self) -> None:
+        assert self.conn is not None
+        self.log.info("Building world-state index: source=%s db=%s", self.world_state_path, self.db_path)
+        start = time.monotonic()
+        self.conn.execute("DELETE FROM world_state")
+        self.conn.execute("DELETE FROM meta")
+        self.conn.commit()
+
+        batch: List[Tuple[str, str]] = []
+        inserted = 0
+        last_heartbeat = start
+        batch_size = 1000
+        heartbeat_seconds = 30
+
+        with open(self.world_state_path, "rb") as fh:
+            for rid, payload in ijson.kvitems(fh, ""):
+                if not isinstance(rid, str):
+                    continue
+                batch.append((rid, json.dumps(payload, ensure_ascii=False, default=_json_default)))
+                if len(batch) >= batch_size:
+                    self.conn.executemany(
+                        "INSERT INTO world_state(id, payload) VALUES (?, ?)",
+                        batch,
+                    )
+                    inserted += len(batch)
+                    batch.clear()
+                    now = time.monotonic()
+                    if now - last_heartbeat >= heartbeat_seconds:
+                        elapsed = now - start
+                        rate = inserted / elapsed if elapsed > 0 else 0.0
+                        self.log.info(
+                            "World-state index heartbeat: inserted=%s elapsed=%.0fs rate=%.1f rows/s",
+                            f"{inserted:,}",
+                            elapsed,
+                            rate,
+                        )
+                        last_heartbeat = now
+
+        if batch:
+            self.conn.executemany("INSERT INTO world_state(id, payload) VALUES (?, ?)", batch)
+            inserted += len(batch)
+            batch.clear()
+
+        self._meta_set("source_signature", self._source_signature())
+        self._meta_set("entry_count", str(inserted))
+        self.conn.commit()
+        elapsed = time.monotonic() - start
+        self.log.info("World-state index ready: entries=%s elapsed=%.0fs", f"{inserted:,}", elapsed)
+
+    def __len__(self) -> int:
+        count = self._meta_get("entry_count")
+        if count is None:
+            return 0
+        try:
+            return int(count)
+        except Exception:
+            return 0
+
+    def get(self, rid: str) -> Optional[Dict[str, Any]]:
+        assert self.conn is not None
+        row = self.conn.execute("SELECT payload FROM world_state WHERE id = ?", (rid,)).fetchone()
+        if not row:
+            return None
+        payload = row[0]
+        if not isinstance(payload, str):
+            return None
+        parsed = json.loads(payload)
+        if isinstance(parsed, dict):
+            return parsed
+        return None
+
+
 def _run_self_tests() -> None:
     # Synthetic context should not treat target property new_value as local evidence.
     repair_event = {
@@ -1173,170 +1329,171 @@ def main() -> int:
         log.info("Optional popularity input=%s", popularity_path)
     log.info("Outputs: lean=%s full=%s stats=%s", out_path, out_full_path, stats_path)
 
-    # Load world state (keyed by repair id)
-    world_state = read_json(world_state_path)
-    if not isinstance(world_state, dict):
-        raise ValueError(f"Expected dict in {world_state_path}, got {type(world_state)}")
-    log.info("Loaded world state entries: %d", len(world_state))
+    world_state_store = WorldStateStore(world_state_path, log)
+    world_state_store.open()
+    try:
+        log.info("Loaded world state entries: %d", len(world_state_store))
 
-    popularity_by_qid: Optional[Dict[str, Any]] = None
-    if popularity_path and popularity_path.exists():
-        try:
-            popularity_by_qid = read_json(popularity_path)
-            if not isinstance(popularity_by_qid, dict):
-                log.warning("Popularity file is not a dict: %s", popularity_path)
+        popularity_by_qid: Optional[Dict[str, Any]] = None
+        if popularity_path and popularity_path.exists():
+            try:
+                popularity_by_qid = read_json(popularity_path)
+                if not isinstance(popularity_by_qid, dict):
+                    log.warning("Popularity file is not a dict: %s", popularity_path)
+                    popularity_by_qid = None
+            except Exception:
+                log.warning("Failed to read popularity file: %s", popularity_path)
                 popularity_by_qid = None
-        except Exception:
-            log.warning("Failed to read popularity file: %s", popularity_path)
-            popularity_by_qid = None
-    elif popularity_path:
-        log.info("Popularity file not found (continuing without it): %s", popularity_path)
-    if popularity_by_qid is not None:
-        log.info("Loaded popularity entries: %d", len(popularity_by_qid))
+        elif popularity_path:
+            log.info("Popularity file not found (continuing without it): %s", popularity_path)
+        if popularity_by_qid is not None:
+            log.info("Loaded popularity entries: %d", len(popularity_by_qid))
 
-    stats = {
-        "build_utc": utc_now_iso(),
-        "inputs": {
-            "repairs": str(repairs_path),
-            "world_state": str(world_state_path),
-            "popularity": str(popularity_path) if popularity_by_qid is not None else None,
-        },
-        "counts": Counter(),
-        "errors": Counter(),
-        "decision_trace": Counter(),
-    }
+        stats = {
+            "build_utc": utc_now_iso(),
+            "inputs": {
+                "repairs": str(repairs_path),
+                "world_state": str(world_state_path),
+                "popularity": str(popularity_path) if popularity_by_qid is not None else None,
+            },
+            "counts": Counter(),
+            "errors": Counter(),
+            "decision_trace": Counter(),
+        }
 
-    def iter_outputs() -> Iterator[Dict[str, Any]]:
-        repairs_iter: Iterable[Dict[str, Any]] = iter_repairs(repairs_path)
-        total_repairs = count_repairs(repairs_path)
-        log.info("Repairs to process: %d", total_repairs)
-        repairs_iter = tqdm(
-            repairs_iter,
-            desc="Classifying",
-            unit="records",
-            total=total_repairs,
-            bar_format="{desc}: {percentage:3.0f}%|{bar}| {n:,}/{total:,}{unit} [{elapsed}<{remaining}, {rate_fmt}]",
-            disable=not use_progress,
-        )
-        for repair_event in repairs_iter:
-            if not isinstance(repair_event, dict):
-                continue
-
-            rid = repair_event.get("id")
-            if not isinstance(rid, str) or not rid:
-                stats["errors"]["missing_id"] += 1
-                continue
-
-            ws_entry = world_state.get(rid)
-            if ws_entry is None:
-                stats["errors"]["missing_world_state"] += 1
-                classification, err, diag = classify_one(repair_event, None)
-            else:
-                classification, err, diag = classify_one(repair_event, ws_entry)
-
-            if err:
-                stats["errors"][err] += 1
-            if diag.get("missing_truth_tokens"):
-                stats["errors"]["missing_truth_tokens"] += 1
-            if diag.get("missing_old_value"):
-                stats["errors"]["missing_old_value"] += 1
-
-            pop = ensure_popularity(repair_event, popularity_by_qid)
-            if pop is None:
-                stats["errors"]["missing_popularity"] += 1
-                # Keep going; popularity can be optional in early iterations
-
-            out = {
-                "id": rid,
-                "qid": repair_event.get("qid"),
-                "property": repair_event.get("property"),
-                "track": repair_event.get("track"),
-                "information_type": repair_event.get("information_type", None),
-                "labels_en": build_labels_en(repair_event),
-                "violation_context": repair_event.get("violation_context"),
-                "repair_target": repair_event.get("repair_target"),
-                "persistence_check": repair_event.get("persistence_check"),
-                "popularity": pop,
-                "context_ref": {
-                    "world_state_id": rid,
-                    "world_state_path": str(world_state_path),
-                },
-                "classification": classification,
-                "build": {
-                    "classifier_version": "0.1.0",
-                    "built_at_utc": stats["build_utc"],
-                },
-            }
-
-            # Counters
-            c = classification.get("class")
-            s = classification.get("subtype")
-            stats["counts"][f"class:{c}"] += 1
-            stats["counts"][f"subtype:{s}"] += 1
-            stats["counts"][f"track:{out.get('track')}"] += 1
-            diag_block = classification.get("diagnostics", {})
-            if isinstance(diag_block, dict):
-                ts = diag_block.get("truth_source")
-                if isinstance(ts, str):
-                    stats["counts"][f"truth_source:{ts}"] += 1
-            for step in classification.get("decision_trace", []):
-                if not isinstance(step, dict):
-                    continue
-                if step.get("step") == "branch":
-                    stats["decision_trace"][str(step.get("result"))] += 1
-
-            stats["counts"]["output_records"] += 1
-            yield out
-
-    # Write lean output (streaming)
-    log.info("Writing lean output")
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(out_path, "w", encoding="utf-8") as fh:
-        for rec in iter_outputs():
-            fh.write(json.dumps(rec, ensure_ascii=False, default=_json_default) + "\n")
-    log.info("Lean output complete: %s", out_path)
-
-    # Write optional full output (second pass; acceptable for first draft)
-    if out_full_path:
-        log.info("Writing full output")
-
-        def iter_full() -> Iterator[Dict[str, Any]]:
-            full_iter: Iterable[Dict[str, Any]] = iter_jsonl(out_path)
-            full_iter = tqdm(
-                full_iter,
-                desc="Embedding world state",
+        def iter_outputs() -> Iterator[Dict[str, Any]]:
+            repairs_iter: Iterable[Dict[str, Any]] = iter_repairs(repairs_path)
+            total_repairs = count_repairs(repairs_path)
+            log.info("Repairs to process: %d", total_repairs)
+            repairs_iter = tqdm(
+                repairs_iter,
+                desc="Classifying",
                 unit="records",
-                total=stats["counts"].get("output_records"),
+                total=total_repairs,
                 bar_format="{desc}: {percentage:3.0f}%|{bar}| {n:,}/{total:,}{unit} [{elapsed}<{remaining}, {rate_fmt}]",
                 disable=not use_progress,
             )
-            for rec in full_iter:
-                rid = rec.get("id")
-                ws_entry = world_state.get(rid)
-                rec2 = dict(rec)
-                rec2["world_state"] = ws_entry
-                yield rec2
+            for repair_event in repairs_iter:
+                if not isinstance(repair_event, dict):
+                    continue
 
-        out_full_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(out_full_path, "w", encoding="utf-8") as fh:
-            for rec in iter_full():
+                rid = repair_event.get("id")
+                if not isinstance(rid, str) or not rid:
+                    stats["errors"]["missing_id"] += 1
+                    continue
+
+                ws_entry = world_state_store.get(rid)
+                if ws_entry is None:
+                    stats["errors"]["missing_world_state"] += 1
+                    classification, err, diag = classify_one(repair_event, None)
+                else:
+                    classification, err, diag = classify_one(repair_event, ws_entry)
+
+                if err:
+                    stats["errors"][err] += 1
+                if diag.get("missing_truth_tokens"):
+                    stats["errors"]["missing_truth_tokens"] += 1
+                if diag.get("missing_old_value"):
+                    stats["errors"]["missing_old_value"] += 1
+
+                pop = ensure_popularity(repair_event, popularity_by_qid)
+                if pop is None:
+                    stats["errors"]["missing_popularity"] += 1
+                    # Keep going; popularity can be optional in early iterations
+
+                out = {
+                    "id": rid,
+                    "qid": repair_event.get("qid"),
+                    "property": repair_event.get("property"),
+                    "track": repair_event.get("track"),
+                    "information_type": repair_event.get("information_type", None),
+                    "labels_en": build_labels_en(repair_event),
+                    "violation_context": repair_event.get("violation_context"),
+                    "repair_target": repair_event.get("repair_target"),
+                    "persistence_check": repair_event.get("persistence_check"),
+                    "popularity": pop,
+                    "context_ref": {
+                        "world_state_id": rid,
+                        "world_state_path": str(world_state_path),
+                    },
+                    "classification": classification,
+                    "build": {
+                        "classifier_version": "0.1.0",
+                        "built_at_utc": stats["build_utc"],
+                    },
+                }
+
+                # Counters
+                c = classification.get("class")
+                s = classification.get("subtype")
+                stats["counts"][f"class:{c}"] += 1
+                stats["counts"][f"subtype:{s}"] += 1
+                stats["counts"][f"track:{out.get('track')}"] += 1
+                diag_block = classification.get("diagnostics", {})
+                if isinstance(diag_block, dict):
+                    ts = diag_block.get("truth_source")
+                    if isinstance(ts, str):
+                        stats["counts"][f"truth_source:{ts}"] += 1
+                for step in classification.get("decision_trace", []):
+                    if not isinstance(step, dict):
+                        continue
+                    if step.get("step") == "branch":
+                        stats["decision_trace"][str(step.get("result"))] += 1
+
+                stats["counts"]["output_records"] += 1
+                yield out
+
+        # Write lean output (streaming)
+        log.info("Writing lean output")
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(out_path, "w", encoding="utf-8") as fh:
+            for rec in iter_outputs():
                 fh.write(json.dumps(rec, ensure_ascii=False, default=_json_default) + "\n")
-        log.info("Full output complete: %s", out_full_path)
+        log.info("Lean output complete: %s", out_path)
 
-    # Write stats
-    stats_path.parent.mkdir(parents=True, exist_ok=True)
-    stats_out = dict(stats)
-    stats_out["counts"] = dict(stats["counts"])
-    stats_out["errors"] = dict(stats["errors"])
-    stats_out["decision_trace"] = dict(stats["decision_trace"])
-    with open(stats_path, "w", encoding="utf-8") as fh:
-        json.dump(stats_out, fh, ensure_ascii=False, indent=2, default=_json_default)
-    log.info("Stats written: %s", stats_path)
-    log.info(
-        "Completed classifier run: output_records=%d errors=%d",
-        stats["counts"].get("output_records", 0),
-        sum(stats["errors"].values()),
-    )
+        # Write optional full output (second pass; acceptable for first draft)
+        if out_full_path:
+            log.info("Writing full output")
+
+            def iter_full() -> Iterator[Dict[str, Any]]:
+                full_iter: Iterable[Dict[str, Any]] = iter_jsonl(out_path)
+                full_iter = tqdm(
+                    full_iter,
+                    desc="Embedding world state",
+                    unit="records",
+                    total=stats["counts"].get("output_records"),
+                    bar_format="{desc}: {percentage:3.0f}%|{bar}| {n:,}/{total:,}{unit} [{elapsed}<{remaining}, {rate_fmt}]",
+                    disable=not use_progress,
+                )
+                for rec in full_iter:
+                    rid = rec.get("id")
+                    ws_entry = world_state_store.get(rid)
+                    rec2 = dict(rec)
+                    rec2["world_state"] = ws_entry
+                    yield rec2
+
+            out_full_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(out_full_path, "w", encoding="utf-8") as fh:
+                for rec in iter_full():
+                    fh.write(json.dumps(rec, ensure_ascii=False, default=_json_default) + "\n")
+            log.info("Full output complete: %s", out_full_path)
+
+        # Write stats
+        stats_path.parent.mkdir(parents=True, exist_ok=True)
+        stats_out = dict(stats)
+        stats_out["counts"] = dict(stats["counts"])
+        stats_out["errors"] = dict(stats["errors"])
+        stats_out["decision_trace"] = dict(stats["decision_trace"])
+        with open(stats_path, "w", encoding="utf-8") as fh:
+            json.dump(stats_out, fh, ensure_ascii=False, indent=2, default=_json_default)
+        log.info("Stats written: %s", stats_path)
+        log.info(
+            "Completed classifier run: output_records=%d errors=%d",
+            stats["counts"].get("output_records", 0),
+            sum(stats["errors"].values()),
+        )
+    finally:
+        world_state_store.close()
 
     return 0
 
