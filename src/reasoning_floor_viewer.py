@@ -51,37 +51,42 @@ def main() -> None:
     args = parse_args()
     st.set_page_config(page_title="Reasoning Floor Debugger", layout="wide")
     _apply_page_style()
+    _initialize_sidebar_state(args)
 
     st.title("Reasoning Floor Debugger")
     st.caption("Read-only browser for reasoning-floor runs, predictions, prompts, and evaluation traces.")
 
-    reports_root = st.sidebar.text_input("Reports root", value=args.reports_root)
+    reports_root = st.sidebar.text_input("Reports root", key="reports_root_input")
     run_dirs = discover_run_directories(reports_root)
     if not run_dirs:
         st.error(f"No reasoning-floor runs found under {reports_root}.")
         return
 
     run_names = [path.name for path in run_dirs]
-    selected_run_name = st.sidebar.selectbox("Run", options=run_names)
+    selected_run_name = st.sidebar.selectbox("Run", options=run_names, key="selected_run_name")
     run_dir = next(path for path in run_dirs if path.name == selected_run_name)
 
     bundle_names = list_run_bundles(run_dir)
     if not bundle_names:
         st.error(f"No ablation bundle directories found in {run_dir}.")
         return
-    selected_bundle = st.sidebar.selectbox("Ablation bundle", options=bundle_names)
+    selected_bundle = st.sidebar.selectbox("Ablation bundle", options=bundle_names, key="selected_bundle_name")
 
     with st.sidebar.expander("Input Overrides"):
         classified_benchmark = st.text_input(
             "Classified benchmark",
-            value=args.classified_benchmark or "",
+            key="classified_benchmark_override",
             help="Optional override for live evaluation and prompt reconstruction.",
         ).strip()
         world_state = st.text_input(
             "World state",
-            value=args.world_state or "",
+            key="world_state_override",
             help="Optional override for live evaluation and prompt reconstruction.",
         ).strip()
+
+    if st.sidebar.button("Update View", use_container_width=True):
+        load_bundle_data_cached.clear()
+        st.rerun()
 
     bundle_data = load_bundle_data_cached(
         reports_root,
@@ -92,22 +97,33 @@ def main() -> None:
     )
 
     st.sidebar.markdown("### Filters")
-    case_query = st.sidebar.text_input("Case id contains", value="").strip().lower()
+    case_query = st.sidebar.text_input("Case id contains", key="case_query_filter").strip().lower()
     track_options = sorted({row.historical_track for row in bundle_data.case_rows if row.historical_track})
-    selected_tracks = st.sidebar.multiselect("Historical track", track_options, default=track_options)
+    selected_tracks = st.sidebar.multiselect(
+        "Historical track",
+        track_options,
+        default=track_options,
+        key="historical_track_filter",
+    )
     parse_status_options = sorted({row.proposal_parse_status for row in bundle_data.case_rows})
     selected_parse_status = st.sidebar.multiselect(
         "Proposal parse status",
         parse_status_options,
         default=parse_status_options,
+        key="proposal_parse_status_filter",
     )
     proposal_type_options = sorted({row.proposal_type for row in bundle_data.case_rows if row.proposal_type})
     selected_proposal_types = st.sidebar.multiselect(
         "Proposal type",
         proposal_type_options,
         default=proposal_type_options,
+        key="proposal_type_filter",
     )
-    accepted_filter = st.sidebar.selectbox("Accepted", options=["all", "accepted", "rejected", "unknown"])
+    accepted_filter = st.sidebar.selectbox(
+        "Accepted",
+        options=["all", "accepted", "rejected", "unknown"],
+        key="accepted_filter",
+    )
 
     filtered_cases = filter_case_rows(
         bundle_data.case_rows,
@@ -541,6 +557,21 @@ def value_or_na(value: Any) -> str:
     return str(value)
 
 
+def _initialize_sidebar_state(args: argparse.Namespace) -> None:
+    defaults = {
+        "reports_root_input": args.reports_root,
+        "classified_benchmark_override": args.classified_benchmark or "",
+        "world_state_override": args.world_state or "",
+        "case_query_filter": "",
+        "historical_track_filter": [],
+        "proposal_parse_status_filter": [],
+        "proposal_type_filter": [],
+        "accepted_filter": "all",
+    }
+    for key, value in defaults.items():
+        st.session_state.setdefault(key, value)
+
+
 def _apply_page_style() -> None:
     st.markdown(
         """
@@ -554,8 +585,43 @@ def _apply_page_style() -> None:
         [data-testid="stSidebar"] {
             background: linear-gradient(180deg, #19352f 0%, #22443c 100%);
         }
-        [data-testid="stSidebar"] * {
+        [data-testid="stSidebar"] label,
+        [data-testid="stSidebar"] .stMarkdown,
+        [data-testid="stSidebar"] .stCaption,
+        [data-testid="stSidebar"] [data-testid="stExpander"] summary,
+        [data-testid="stSidebar"] [data-testid="stExpander"] summary * {
             color: #f8f5ec;
+        }
+        [data-testid="stSidebar"] input,
+        [data-testid="stSidebar"] textarea,
+        [data-testid="stSidebar"] [data-baseweb="input"] input,
+        [data-testid="stSidebar"] [data-baseweb="input"] textarea,
+        [data-testid="stSidebar"] [data-baseweb="select"] input {
+            color: #17342d !important;
+            -webkit-text-fill-color: #17342d !important;
+        }
+        [data-testid="stSidebar"] [data-baseweb="input"] > div,
+        [data-testid="stSidebar"] [data-baseweb="select"] > div {
+            background: #fffaf0;
+            border-color: rgba(25, 53, 47, 0.24);
+        }
+        [data-testid="stSidebar"] [data-baseweb="tag"] {
+            background: #dfeadf;
+            color: #17342d;
+        }
+        [data-testid="stSidebar"] [data-baseweb="select"] span,
+        [data-testid="stSidebar"] [data-baseweb="select"] div {
+            color: #17342d;
+        }
+        [role="listbox"] *,
+        [role="option"] * {
+            color: #17342d !important;
+        }
+        [data-testid="stSidebar"] .stButton button {
+            background: #ecd487;
+            color: #17342d;
+            border: 1px solid rgba(25, 53, 47, 0.24);
+            font-weight: 600;
         }
         .stMetric {
             background: rgba(255, 255, 255, 0.72);
