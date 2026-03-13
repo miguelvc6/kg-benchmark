@@ -27,7 +27,7 @@ PROMPT_TEMPLATES: dict[str, PromptTemplate] = {
         description="Zero-shot proposal prompt for A-box repair cases in the reasoning floor.",
         system_prompt=(
             "You are producing a zero-shot A-box repair proposal for a benchmark case. "
-            "Return JSON only. Do not use tools or external retrieval."
+            "Return JSON only."
         ),
     ),
     "reasoning_floor_t_box_zero_shot": PromptTemplate(
@@ -35,7 +35,7 @@ PROMPT_TEMPLATES: dict[str, PromptTemplate] = {
         description="Zero-shot proposal prompt for T-box reform cases in the reasoning floor.",
         system_prompt=(
             "You are producing a zero-shot T-box reform proposal for a benchmark case. "
-            "Return JSON only. Do not use tools or external retrieval."
+            "Return JSON only."
         ),
     ),
     "reasoning_floor_track_diagnosis_zero_shot": PromptTemplate(
@@ -45,7 +45,6 @@ PROMPT_TEMPLATES: dict[str, PromptTemplate] = {
             "You are performing a zero-shot benchmark diagnosis task. "
             "Decide whether the historical case should be treated as A_BOX, T_BOX, or AMBIGUOUS. "
             "Return JSON only with case_id, predicted_track, optional confidence, and optional rationale. "
-            "Do not use tools or external retrieval."
         ),
     ),
 }

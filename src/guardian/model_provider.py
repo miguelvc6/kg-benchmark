@@ -39,6 +39,16 @@ def _default_response_format(response_format: dict[str, Any]) -> str | None:
     return None
 
 
+def _openai_message_requests_tools(message: dict[str, Any], finish_reason: Any) -> bool:
+    if finish_reason == "tool_calls":
+        return True
+    if isinstance(message.get("tool_calls"), list) and message.get("tool_calls"):
+        return True
+    if message.get("function_call") is not None:
+        return True
+    return False
+
+
 def _env_float(name: str) -> float | None:
     raw = os.getenv(name)
     if raw in (None, ""):
@@ -151,6 +161,7 @@ class OpenAIChatProvider:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt},
             ],
+            "tool_choice": "none",
         }
         if not _uses_gpt5_family(self.model):
             payload["temperature"] = 0
@@ -192,7 +203,14 @@ class OpenAIChatProvider:
             raise
         raw_response = response.json()
         choices = raw_response.get("choices", [])
-        message = choices[0].get("message", {}) if choices else {}
+        first_choice = choices[0] if choices else {}
+        message = first_choice.get("message", {}) if isinstance(first_choice, dict) else {}
+        finish_reason = first_choice.get("finish_reason") if isinstance(first_choice, dict) else None
+        if _openai_message_requests_tools(message, finish_reason):
+            raise RuntimeError(
+                "OpenAI returned a tool-call response even though this client disables tool use with "
+                "`tool_choice=\"none\"`."
+            )
         content = message.get("content")
         if isinstance(content, list):
             text = "".join(part.get("text", "") for part in content if isinstance(part, dict))
@@ -337,4 +355,3 @@ class StaticResponseProvider:
             "provider": self.provider_name,
         }
         return raw, parsed, usage
-

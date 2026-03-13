@@ -57,7 +57,7 @@ class OpenAIChatProviderTests(unittest.TestCase):
     def test_omits_temperature_for_gpt5_models(self) -> None:
         response = MagicMock()
         response.json.return_value = {
-            "choices": [{"message": {"content": "{\"case_id\": \"c1\"}"}}],
+            "choices": [{"message": {"content": "{\"case_id\": \"c1\"}"}, "finish_reason": "stop"}],
             "usage": {"prompt_tokens": 11, "completion_tokens": 7, "total_tokens": 18},
         }
 
@@ -75,6 +75,32 @@ class OpenAIChatProviderTests(unittest.TestCase):
         self.assertEqual(raw["usage"]["total_tokens"], 18)
         request_payload = json.loads(post.call_args.kwargs["data"].decode("utf-8"))
         self.assertNotIn("temperature", request_payload)
+        self.assertEqual(request_payload["tool_choice"], "none")
+
+    def test_rejects_tool_call_responses(self) -> None:
+        response = MagicMock()
+        response.json.return_value = {
+            "choices": [
+                {
+                    "message": {
+                        "content": "",
+                        "tool_calls": [{"id": "call_123", "type": "function", "function": {"name": "search"}}],
+                    },
+                    "finish_reason": "tool_calls",
+                }
+            ],
+            "usage": {"prompt_tokens": 11, "completion_tokens": 7, "total_tokens": 18},
+        }
+
+        with patch("guardian.model_provider.requests.post", return_value=response):
+            provider = OpenAIChatProvider(api_key="test-key", model="gpt-5-mini-2025-08-07")
+            with self.assertRaisesRegex(RuntimeError, "disables tool use"):
+                provider.generate(
+                    prompt="{}",
+                    system_prompt="Return JSON only.",
+                    response_format={"type": "json_object"},
+                    metadata={"case_id": "c1"},
+                )
 
     def test_fails_before_http_when_payload_is_not_strict_json(self) -> None:
         provider = OpenAIChatProvider(api_key="test-key", model="gpt-5-mini-2025-08-07")

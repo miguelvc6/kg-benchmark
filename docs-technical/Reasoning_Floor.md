@@ -51,7 +51,11 @@ The adapter contract is:
 
 `generate(prompt, system_prompt, response_format, metadata) -> raw_response, parsed_payload, usage`
 
+Named prompt templates for the reasoning floor now live in [src/guardian/prompts.py](/mnt/c/Code/kg-benchmark/src/guardian/prompts.py). This keeps prompt text out of the runner itself and gives each prompt a stable descriptive name that can be reused across callers.
+
 For the OpenAI adapter, request payloads are encoded locally with strict JSON rules before the HTTP call. Non-finite numeric values or invalid Unicode now fail fast with run and case metadata in the error message instead of surfacing later as a remote `400 Bad Request`.
+
+The OpenAI adapter also disables tool calling at the API level by sending `tool_choice: "none"` on each Chat Completions request, and it raises an error if the response still attempts to return a tool call.
  
 ## Outputs
 
@@ -65,7 +69,7 @@ A reasoning-floor run writes:
 - per-bundle evaluation traces and summaries
 - one combined reasoning-floor summary with paper-facing breakdowns
 
-The run manifest stores per-call token usage, elapsed seconds, and estimated cost when provider token pricing is configured in `.env`.
+The run manifest stores per-call token usage, elapsed seconds, estimated cost when provider token pricing is configured in `.env`, and the prompt template name used for that call.
 
 The combined summary stores run-level provider, model, output directory, total elapsed time, aggregate prompt/completion/total tokens, and aggregate estimated cost.
 
