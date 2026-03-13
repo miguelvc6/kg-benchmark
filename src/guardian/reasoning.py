@@ -11,6 +11,7 @@ from typing import Any, Iterable, Optional
 from tqdm import tqdm
 
 from classifier import WorldStateStore
+from lib.benchmark_selection import resolve_case_id_filter
 from lib.utils import iter_jsonl
 from guardian.evaluator import evaluate_benchmark, summarize_trace_iterable, write_json
 from guardian.model_provider import ModelProvider, create_model_provider
@@ -258,6 +259,7 @@ def run_reasoning_floor(
     model_name: str | None = None,
     ablation_bundles: Iterable[str] = ABLATION_BUNDLES,
     case_ids: Optional[Iterable[str]] = None,
+    selection_manifest_path: str | Path | None = None,
     tracks: Optional[Iterable[str]] = None,
     max_cases: Optional[int] = None,
 ) -> dict[str, Any]:
@@ -268,9 +270,13 @@ def run_reasoning_floor(
     selected_model = getattr(provider, "model", None) or model_name or "unknown-model"
     selected_provider = getattr(provider, "provider_name", None) or provider.__class__.__name__.replace("ChatProvider", "").lower()
 
+    resolved_case_ids = resolve_case_id_filter(
+        case_ids=case_ids,
+        selection_manifest_path=selection_manifest_path,
+    )
     selected_case_ids = _selected_case_ids(
         classified_path,
-        case_ids=case_ids,
+        case_ids=resolved_case_ids,
         tracks=tracks,
         max_cases=max_cases,
     )
@@ -324,7 +330,7 @@ def run_reasoning_floor(
                 ) as t_box_fh, open(track_path, "w", encoding="utf-8") as track_fh:
                     for record in _iter_selected_records(
                         classified_path,
-                        case_ids=case_ids,
+                        case_ids=resolved_case_ids,
                         tracks=tracks,
                         max_cases=max_cases,
                     ):
@@ -472,6 +478,7 @@ def run_reasoning_floor(
                     run_manifest_path=manifest_path,
                     ablation_bundle=bundle,
                     case_ids=selected_case_ids,
+                    selection_manifest_path=selection_manifest_path,
                     out_traces_path=traces_path,
                     out_summary_path=summary_path,
                     collect_traces=False,
@@ -487,6 +494,7 @@ def run_reasoning_floor(
                 "provider": selected_provider,
                 "model": selected_model,
                 "output_dir": str(out_dir),
+                "selection_manifest": str(selection_manifest_path) if selection_manifest_path else None,
             },
         )
         failure_taxonomy = _failure_taxonomy_from_traces(_iter_bundle_traces(out_dir, bundle_list))

@@ -78,6 +78,14 @@ Entity popularity is treated as a controlled variable so common-knowledge entiti
 
 Every classification and evaluation decision should be explainable. Decision traces and provenance are therefore part of the benchmark contract, not optional implementation details.
 
+### Repeated T-box Reform Control
+
+The full benchmark remains the canonical historical record.
+
+For paper-facing evaluation, a frozen deterministic subset may cap the number of `T_BOX` instances drawn from the same schema update so that a small number of high-frequency property revisions do not dominate aggregate results.
+
+This cap is an evaluation-control decision, not a relabeling of the underlying benchmark.
+
 ### Pre-Intervention Baseline
 
 The taxonomy is not only for enriched systems. It also defines the inputs for the reasoning floor baseline.

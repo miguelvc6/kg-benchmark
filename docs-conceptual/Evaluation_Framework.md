@@ -62,6 +62,10 @@ A repair should not be considered successful if it fixes one constraint while cr
 
 Accepted repairs should be inspectable. The benchmark values decision traces, provenance chains, and machine-verifiable evidence because these are prerequisites for trustworthy KG updates.
 
+### Repeated-Event Weighting
+
+When many benchmark rows trace back to the same T-box revision, evaluation may use a frozen deterministic subset so aggregate results are not driven mainly by repeated manifestations of a small number of schema edits.
+
 ## Core Success Metrics
 
 ### Pass@K

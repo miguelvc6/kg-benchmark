@@ -10,11 +10,14 @@ The benchmark evaluation entry point is [evaluate.py](/home/mvazquez/kg-benchmar
 - normalized T-box proposal JSONL
 - optional normalized track-diagnosis JSONL
 - optional reasoning-floor run manifest
+- optional benchmark selection manifest containing `selected_case_ids`
 
 ## Outputs
 
 - per-case evaluation traces
 - aggregate summary JSON
+
+The evaluator can restrict scoring to a frozen subset either by explicit `case_ids` or by `--selection-manifest`. When both are supplied, it evaluates the intersection.
 
 ## A-box Evaluation
 

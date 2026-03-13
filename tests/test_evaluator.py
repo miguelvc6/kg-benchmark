@@ -20,6 +20,7 @@ class EvaluatorTests(unittest.TestCase):
             a_box_path = root / "a_box.jsonl"
             t_box_path = root / "t_box.jsonl"
             track_path = root / "track.jsonl"
+            selection_manifest_path = root / "selection.json"
 
             classified_rows = [
                 {
@@ -130,6 +131,10 @@ class EvaluatorTests(unittest.TestCase):
                     {"case_id": "reform_case", "predicted_track": "T_BOX"},
                 ],
             )
+            selection_manifest_path.write_text(
+                json.dumps({"selected_case_ids": ["reform_case"]}),
+                encoding="utf-8",
+            )
 
             traces, summary = evaluate_benchmark(
                 classified_path=classified_path,
@@ -137,12 +142,14 @@ class EvaluatorTests(unittest.TestCase):
                 a_box_proposals_path=a_box_path,
                 t_box_proposals_path=t_box_path,
                 track_diagnoses_path=track_path,
+                selection_manifest_path=selection_manifest_path,
             )
 
-            self.assertEqual(len(traces), 2)
-            self.assertEqual(summary["counts"]["cases"], 2)
-            self.assertEqual(summary["counts"]["accepted"], 2)
-            self.assertEqual(summary["counts"]["track_diagnosis_exact_match"], 2)
+            self.assertEqual(len(traces), 1)
+            self.assertEqual(summary["counts"]["cases"], 1)
+            self.assertEqual(summary["counts"]["accepted"], 1)
+            self.assertEqual(summary["counts"]["track_diagnosis_exact_match"], 1)
+            self.assertEqual(summary["inputs"]["selection_manifest"], str(selection_manifest_path))
 
 
 if __name__ == "__main__":

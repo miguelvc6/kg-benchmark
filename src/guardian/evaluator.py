@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Iterable, Optional
 
 from classifier import WorldStateStore
+from lib.benchmark_selection import resolve_case_id_filter
 from lib.utils import iter_jsonl, normalize_text
 from guardian.patch_parser import normalize_proposal as normalize_a_box_proposal
 from guardian.track_parser import normalize_diagnosis as normalize_track_diagnosis
@@ -42,12 +43,6 @@ def write_json(path: str | Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", encoding="utf-8") as fh:
         json.dump(payload, fh, ensure_ascii=False, indent=2, default=_json_default)
-
-
-def _normalized_case_ids(case_ids: Optional[Iterable[str]]) -> Optional[set[str]]:
-    if not case_ids:
-        return None
-    return {case_id for case_id in case_ids if isinstance(case_id, str) and case_id}
 
 
 def _comparable_atom(value: Any) -> str:
@@ -698,12 +693,17 @@ def evaluate_benchmark(
     run_manifest_path: str | Path | None = None,
     ablation_bundle: Optional[str] = None,
     case_ids: Optional[Iterable[str]] = None,
+    selection_manifest_path: str | Path | None = None,
     out_traces_path: str | Path | None = None,
     out_summary_path: str | Path | None = None,
     collect_traces: bool = True,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    selected_case_ids = _normalized_case_ids(case_ids)
-    records = _load_records(classified_path, selected_case_ids)
+    selected_case_ids = resolve_case_id_filter(
+        case_ids=case_ids,
+        selection_manifest_path=selection_manifest_path,
+    )
+    selected_case_id_set = set(selected_case_ids) if selected_case_ids is not None else None
+    records = _load_records(classified_path, selected_case_id_set)
     popularity_buckets = _derive_popularity_buckets(records)
     a_box_proposals = _load_a_box_proposals(a_box_proposals_path)
     t_box_proposals = _load_t_box_proposals(t_box_proposals_path)
@@ -765,6 +765,7 @@ def evaluate_benchmark(
         "track_diagnoses": str(track_diagnoses_path) if track_diagnoses_path else None,
         "run_manifest": str(run_manifest_path) if run_manifest_path else None,
         "ablation_bundle": ablation_bundle,
+        "selection_manifest": str(selection_manifest_path) if selection_manifest_path else None,
     }
     summary = summarize_trace_iterable(iter_jsonl(out_traces_path), inputs) if out_traces_path else summarize_traces(traces, inputs)
     if out_summary_path:

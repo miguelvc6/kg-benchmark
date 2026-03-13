@@ -13,6 +13,11 @@ def main() -> int:
     parser.add_argument("--model", default=None, help="Override the model name configured in .env.")
     parser.add_argument("--max-cases", type=int, default=None)
     parser.add_argument("--case-ids", default=None, help="Comma-separated case ids to include.")
+    parser.add_argument(
+        "--selection-manifest",
+        default=None,
+        help="Path to a JSON selection manifest containing selected_case_ids.",
+    )
     parser.add_argument("--tracks", default=None, help="Comma-separated track filter, e.g. A_BOX,T_BOX.")
     parser.add_argument(
         "--ablation-bundles",
@@ -27,6 +32,7 @@ def main() -> int:
         output_dir=args.output_dir,
         model_name=args.model,
         case_ids=[item.strip() for item in args.case_ids.split(",")] if args.case_ids else None,
+        selection_manifest_path=args.selection_manifest,
         tracks=[item.strip() for item in args.tracks.split(",")] if args.tracks else None,
         max_cases=args.max_cases,
         ablation_bundles=[item.strip() for item in args.ablation_bundles.split(",") if item.strip()],

@@ -20,6 +20,7 @@ The repository does not currently provide Guardian multi-turn intervention loops
 
 - `src/fetcher.py`: stages 1-3 of benchmark construction plus world-state validation.
 - `src/classifier.py`: stage 4 taxonomy labeling and benchmark materialization.
+- `src/select_benchmark_cases.py`: deterministic paper-subset manifest generation from Stage 4.
 - `src/splitter.py`: stage 5 deterministic train/dev/test splits.
 - `src/evaluate.py`: benchmark evaluation entry point for normalized proposal artifacts.
 - `src/reasoning_floor.py`: zero-shot baseline runner over Stage 4 benchmark cases.
@@ -41,6 +42,7 @@ The repository does not currently provide Guardian multi-turn intervention loops
 | 3a | `src/fetcher.py` | Attach deterministic popularity metadata | `data/00_entity_popularity.json` |
 | 3b | `src/fetcher.py` | Build and validate frozen world-state context | `data/03_world_state.json` |
 | 4 | `src/classifier.py` | Assign Type A/B/C labels and write benchmark records | `data/04_classified_benchmark.jsonl`, `data/04_classified_benchmark_full.jsonl`, `reports/classifier_stats.json` |
+| 4b | `src/select_benchmark_cases.py` | Build a deterministic evaluation subset manifest from Stage 4 | `reports/benchmark_selection/*.json` |
 | 5 | `src/splitter.py` | Create deterministic train/dev/test splits from Stage 4 output | `data/05_splits.json` |
 | 6 | `src/evaluate.py` | Score A-box and T-box proposals against frozen benchmark artifacts | `reports/evaluation_traces.jsonl`, `reports/evaluation_summary.json` |
 | 7 | `src/reasoning_floor.py` | Run zero-shot baseline prompting over benchmark cases and score outputs | `reports/reasoning_floor/*` |
@@ -170,6 +172,17 @@ Current stratification dimensions:
 
 The splitter raises an error if split proportions drift beyond the configured tolerance or if popularity is missing while `ALLOW_MISSING_POPULARITY` is `False`.
 
+## Stage 4b: Selection Manifest
+
+`src/select_benchmark_cases.py` derives a small frozen selection manifest from Stage 4.
+
+Current paper policy:
+
+- keep all `A_BOX` cases
+- cap `T_BOX` cases at `100` per `repair_target.property_revision_id`
+
+The selector does not emit a second benchmark JSONL. It writes case ids plus policy metadata so downstream generation and evaluation can reuse the canonical Stage 4 artifact.
+
 ## Stage 6: Evaluation
 
 `src/evaluate.py` evaluates normalized proposal artifacts against Stage 4 and Stage 3 benchmark data.
@@ -218,6 +231,7 @@ uv run python src/fetcher.py --max-candidates 100
 uv run python src/fetcher.py --resume-stats logs/fetcher_stats_YYYYMMDDTHHMMSS.jsonl
 uv run python src/fetcher.py --resume-checkpoint logs/resume_checkpoint_YYYYMMDDTHHMMSS.json
 uv run python src/fetcher.py --reuse-popularity-artifact
+uv run python src/select_benchmark_cases.py --classified-benchmark data/04_classified_benchmark.jsonl --output reports/benchmark_selection/paper_eval_tbox_cap_100_seed_13.json
 uv run python src/fetcher.py --validate-only
 uv run python src/classifier.py --sample
 uv run python src/classifier.py --self-test

@@ -10,6 +10,8 @@ It executes one model call per case per ablation bundle, without tools, rejectio
 
 It also executes a separate diagnostic call that asks the model to classify each case as `A_BOX`, `T_BOX`, or `AMBIGUOUS`.
 
+The runner also accepts `--selection-manifest` so paper runs can target a deterministic benchmark subset without creating a second Stage 4 JSONL artifact.
+
 ## Ablation Bundles
 
 The first-wave bundles are:
@@ -72,6 +74,8 @@ A reasoning-floor run writes:
 The run manifest stores per-call token usage, elapsed seconds, estimated cost when provider token pricing is configured in `.env`, and the prompt template name used for that call.
 
 The combined summary stores run-level provider, model, output directory, total elapsed time, aggregate prompt/completion/total tokens, and aggregate estimated cost.
+
+When a selection manifest is used, the run summary records its path under `inputs.selection_manifest`.
 
 During execution, the runner shows a `tqdm` progress bar with elapsed time, ETA, current estimated cost, and estimated total cost. It refreshes in chunks of `min(1000 cases, 10% of total cases)`.
 

@@ -4,6 +4,8 @@
 
 This answers the question "which T-BOX updates generated these repairs?" more directly than the raw T-BOX case count, because many violations can map to a single `repair_target.property_revision_id`.
 
+For the deterministic capped paper subset derived from this analysis, see [Benchmark Selection](./Benchmark_Selection.md).
+
 ## Inputs
 
 - `data/04_classified_benchmark.jsonl`

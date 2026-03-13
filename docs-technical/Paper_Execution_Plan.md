@@ -17,6 +17,7 @@ Running this plan produces the current paper-relevant artifacts:
 - `data/04_classified_benchmark_full.jsonl`
 - `data/05_splits.json`
 - `reports/classifier_stats.json`
+- `reports/benchmark_selection/paper_eval_tbox_cap_100_seed_13.json`
 - `reports/reasoning_floor/<RUN_ID>/raw_model_responses.jsonl`
 - `reports/reasoning_floor/<RUN_ID>/run_manifest.jsonl`
 - `reports/reasoning_floor/<RUN_ID>/<bundle>/a_box_proposals.jsonl`
@@ -112,7 +113,23 @@ This produces:
 - `data/04_classified_benchmark_full.jsonl`
 - `reports/classifier_stats.json`
 
-## 5. Build Deterministic Splits
+## 5. Build the Deterministic Paper Subset Manifest
+
+Generate the frozen paper subset that keeps all A-box cases and caps T-box cases at `100` per property revision:
+
+```bash
+uv run python src/select_benchmark_cases.py \
+  --classified-benchmark data/04_classified_benchmark.jsonl \
+  --output reports/benchmark_selection/paper_eval_tbox_cap_100_seed_13.json \
+  --tbox-cap-per-update 100 \
+  --seed 13
+```
+
+This produces:
+
+- `reports/benchmark_selection/paper_eval_tbox_cap_100_seed_13.json`
+
+## 6. Build Deterministic Splits
 
 ```bash
 uv run python src/splitter.py
@@ -122,7 +139,7 @@ This produces:
 
 - `data/05_splits.json`
 
-## 6. Configure the Model Provider
+## 7. Configure the Model Provider
 
 The reasoning-floor runner supports OpenAI and Ollama providers.
 
@@ -183,7 +200,7 @@ OLLAMA_OUTPUT_COST_PER_1M_TOKENS=0.00
 
 `src/reasoning_floor.py` auto-loads `.env` from the repository root or a parent directory. Shell-exported variables still override `.env` values when both are set.
 
-## 7. Run the Zero-Shot Reasoning Floor
+## 8. Run the Zero-Shot Reasoning Floor
 
 Create a base output directory for the paper run:
 
@@ -191,12 +208,13 @@ Create a base output directory for the paper run:
 mkdir -p reports/reasoning_floor
 ```
 
-Run the full zero-shot baseline over the classified benchmark. The runner will create a subdirectory named `<run_id>_<provider>_<model>` under the base output directory:
+Run the zero-shot baseline over the deterministic paper subset. The runner will create a subdirectory named `<run_id>_<provider>_<model>` under the base output directory:
 
 ```bash
 uv run python src/reasoning_floor.py \
   --classified-benchmark data/04_classified_benchmark.jsonl \
   --world-state data/03_world_state.json \
+  --selection-manifest reports/benchmark_selection/paper_eval_tbox_cap_100_seed_13.json \
   --output-dir reports/reasoning_floor
 ```
 
@@ -206,6 +224,7 @@ If you want to override the `.env` model name for a single run:
 uv run python src/reasoning_floor.py \
   --classified-benchmark data/04_classified_benchmark.jsonl \
   --world-state data/03_world_state.json \
+  --selection-manifest reports/benchmark_selection/paper_eval_tbox_cap_100_seed_13.json \
   --output-dir reports/reasoning_floor \
   --model llama3.2:latest
 ```
@@ -223,7 +242,7 @@ It also performs:
 - A-box vs T-box track diagnosis
 - evaluation of all generated outputs
 
-## 8. Verify the Paper Outputs
+## 9. Verify the Paper Outputs
 
 Inspect the generated run directories:
 
@@ -256,10 +275,11 @@ Inspect the benchmark summary artifacts:
 
 ```bash
 sed -n '1,240p' reports/classifier_stats.json
+sed -n '1,240p' reports/benchmark_selection/paper_eval_tbox_cap_100_seed_13.json
 sed -n '1,240p' data/05_splits.json
 ```
 
-## 9. Optional: Rerun Evaluation Only
+## 10. Optional: Rerun Evaluation Only
 
 Use this only if you want to rescore existing proposal outputs without rerunning the model:
 
@@ -267,6 +287,7 @@ Use this only if you want to rescore existing proposal outputs without rerunning
 uv run python src/evaluate.py \
   --classified-benchmark data/04_classified_benchmark.jsonl \
   --world-state data/03_world_state.json \
+  --selection-manifest reports/benchmark_selection/paper_eval_tbox_cap_100_seed_13.json \
   --a-box-proposals "$RUN_DIR"/minimal_case/a_box_proposals.jsonl \
   --t-box-proposals "$RUN_DIR"/minimal_case/t_box_proposals.jsonl \
   --track-diagnoses "$RUN_DIR"/minimal_case/track_diagnoses.jsonl \
@@ -278,7 +299,7 @@ uv run python src/evaluate.py \
 
 Repeat with `logic_only` and `local_graph` if needed.
 
-## 10. Minimal End-to-End Command List
+## 11. Minimal End-to-End Command List
 
 If you only want the shortest strict sequence, run these in order:
 
@@ -293,9 +314,10 @@ uv run python -m unittest discover -s tests
 uv run python src/fetcher.py
 uv run python src/fetcher.py --validate-only
 uv run python src/classifier.py
+uv run python src/select_benchmark_cases.py --classified-benchmark data/04_classified_benchmark.jsonl --output reports/benchmark_selection/paper_eval_tbox_cap_100_seed_13.json --tbox-cap-per-update 100 --seed 13
 uv run python src/splitter.py
 cp .env.example .env
-uv run python src/reasoning_floor.py --classified-benchmark data/04_classified_benchmark.jsonl --world-state data/03_world_state.json --output-dir reports/reasoning_floor
+uv run python src/reasoning_floor.py --classified-benchmark data/04_classified_benchmark.jsonl --world-state data/03_world_state.json --selection-manifest reports/benchmark_selection/paper_eval_tbox_cap_100_seed_13.json --output-dir reports/reasoning_floor
 ```
 
-That sequence builds the benchmark, the splits, and the zero-shot paper outputs from the current codebase.
+That sequence builds the benchmark, the frozen paper subset, the splits, and the zero-shot paper outputs from the current codebase.

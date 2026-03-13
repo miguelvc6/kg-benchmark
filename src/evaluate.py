@@ -17,6 +17,11 @@ def main() -> int:
     parser.add_argument("--out-traces", default="reports/evaluation_traces.jsonl")
     parser.add_argument("--out-summary", default="reports/evaluation_summary.json")
     parser.add_argument("--case-ids", default=None, help="Comma-separated case ids to evaluate.")
+    parser.add_argument(
+        "--selection-manifest",
+        default=None,
+        help="Path to a JSON selection manifest containing selected_case_ids.",
+    )
     args = parser.parse_args()
 
     case_ids = [item.strip() for item in args.case_ids.split(",")] if args.case_ids else None
@@ -29,6 +34,7 @@ def main() -> int:
         run_manifest_path=args.run_manifest,
         ablation_bundle=args.ablation_bundle,
         case_ids=case_ids,
+        selection_manifest_path=args.selection_manifest,
         out_traces_path=args.out_traces,
         out_summary_path=args.out_summary,
     )

@@ -144,6 +144,25 @@ Current stratification uses:
 - `track`
 - popularity bucket derived from the Stage 4 popularity score
 
+## Selection Manifest: `reports/benchmark_selection/*.json`
+
+The deterministic paper-subset selector writes a small JSON manifest rather than a second full benchmark artifact.
+
+Current manifest fields include:
+
+- `manifest_type`
+- `manifest_version`
+- `inputs.classified_benchmark`
+- `policy.scope`
+- `policy.selection_strategy`
+- `policy.t_box_group_key`
+- `policy.tbox_cap_per_update`
+- `policy.seed`
+- `policy.stable_ordering`
+- aggregate `counts`
+- `t_box_selected_counts_by_revision`
+- `selected_case_ids`
+
 ## Proposal Artifacts
 
 Two normalized proposal contracts are now implemented:
@@ -186,6 +205,8 @@ Normalized track-diagnosis JSONL records contain:
 - `reports/evaluation_traces.jsonl`
 - `reports/evaluation_summary.json`
 
+It also accepts an optional selection manifest so evaluation can be restricted to a frozen subset without rewriting Stage 4.
+
 Each trace includes:
 
 - case identity and benchmark labels
@@ -217,7 +238,7 @@ The summary aggregates results by:
 
 `run_manifest.jsonl` includes per-call provider, model, token usage, elapsed seconds, and estimated cost when pricing metadata is configured.
 
-`reasoning_floor_summary.json` includes aggregated run-level token totals, estimated cost, elapsed time, provider, model, and output directory.
+`reasoning_floor_summary.json` includes aggregated run-level token totals, estimated cost, elapsed time, provider, model, output directory, and input references including the optional selection manifest path.
 
 ## Schema Files in `schemas/`
 

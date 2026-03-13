@@ -19,6 +19,7 @@ class ReasoningFloorTests(unittest.TestCase):
             root = Path(tmp_dir)
             classified_path = root / "classified.jsonl"
             world_state_path = root / "world_state.json"
+            selection_manifest_path = root / "selection.json"
 
             classified_rows = [
                 {
@@ -88,6 +89,10 @@ class ReasoningFloorTests(unittest.TestCase):
                     },
                     fh,
                 )
+            selection_manifest_path.write_text(
+                json.dumps({"selected_case_ids": ["reform_case"]}),
+                encoding="utf-8",
+            )
 
             def resolver(metadata: dict) -> dict:
                 if metadata["task_type"] == "track_diagnosis":
@@ -124,16 +129,18 @@ class ReasoningFloorTests(unittest.TestCase):
                 output_dir=root / "outputs",
                 provider=StaticResponseProvider(resolver, model="stub-model"),
                 ablation_bundles=["minimal_case"],
+                selection_manifest_path=selection_manifest_path,
             )
             self.assertIn("paper_summary", summary)
             self.assertIn("run_info", summary)
             self.assertIn("usage", summary)
-            self.assertEqual(summary["counts"]["cases"], 2)
-            self.assertEqual(summary["counts"]["track_diagnosis_exact_match"], 2)
+            self.assertEqual(summary["counts"]["cases"], 1)
+            self.assertEqual(summary["counts"]["track_diagnosis_exact_match"], 1)
             self.assertEqual(summary["run_info"]["model"], "stub-model")
             self.assertEqual(summary["usage"]["prompt_tokens"], 0)
             self.assertEqual(summary["usage"]["completion_tokens"], 0)
             self.assertIn("stub_model", summary["run_info"]["output_dir"])
+            self.assertEqual(summary["inputs"]["selection_manifest"], str(selection_manifest_path))
 
     def test_prompt_bundles_use_named_templates(self) -> None:
         record = {
