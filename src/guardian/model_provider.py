@@ -93,6 +93,33 @@ def _estimate_cost_usd(
     }
 
 
+def _metadata_summary(metadata: dict[str, Any]) -> str:
+    summary_fields = (
+        "run_id",
+        "case_id",
+        "ablation_bundle",
+        "track",
+        "task_type",
+        "model",
+    )
+    parts = []
+    for field in summary_fields:
+        value = metadata.get(field)
+        if value is not None:
+            parts.append(f"{field}={value!r}")
+    return ", ".join(parts) if parts else "no metadata"
+
+
+def _encode_json_body(payload: dict[str, Any], *, metadata: dict[str, Any], provider_name: str) -> bytes:
+    try:
+        return json.dumps(payload, ensure_ascii=False, allow_nan=False).encode("utf-8")
+    except (TypeError, ValueError, UnicodeEncodeError) as exc:
+        raise RuntimeError(
+            f"{provider_name} request payload could not be encoded as strict JSON. "
+            f"Request context: {_metadata_summary(metadata)}. Details: {exc}"
+        ) from exc
+
+
 @dataclass
 class OpenAIChatProvider:
     api_key: str | None = None
@@ -128,13 +155,14 @@ class OpenAIChatProvider:
             payload["temperature"] = 0
         if response_format:
             payload["response_format"] = response_format
+        request_body = _encode_json_body(payload, metadata=metadata, provider_name="OpenAI")
         response = requests.post(
             f"{self.base_url}/chat/completions",
             headers={
                 "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json",
             },
-            json=payload,
+            data=request_body,
             timeout=self.timeout,
         )
         try:

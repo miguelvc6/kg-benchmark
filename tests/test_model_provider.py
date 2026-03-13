@@ -1,3 +1,4 @@
+import json
 import os
 import tempfile
 import unittest
@@ -72,7 +73,19 @@ class OpenAIChatProviderTests(unittest.TestCase):
         self.assertEqual(parsed, {"case_id": "c1"})
         self.assertEqual(usage["provider"], "openai")
         self.assertEqual(raw["usage"]["total_tokens"], 18)
-        self.assertNotIn("temperature", post.call_args.kwargs["json"])
+        request_payload = json.loads(post.call_args.kwargs["data"].decode("utf-8"))
+        self.assertNotIn("temperature", request_payload)
+
+    def test_fails_before_http_when_payload_is_not_strict_json(self) -> None:
+        provider = OpenAIChatProvider(api_key="test-key", model="gpt-5-mini-2025-08-07")
+
+        with self.assertRaisesRegex(RuntimeError, "case_id='c1'"):
+            provider.generate(
+                prompt="{}",
+                system_prompt="Return JSON only.",
+                response_format={"type": "json_object", "bad": float("nan")},
+                metadata={"case_id": "c1", "task_type": "proposal"},
+            )
 
 
 class OllamaChatProviderTests(unittest.TestCase):

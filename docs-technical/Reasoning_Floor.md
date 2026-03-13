@@ -51,6 +51,8 @@ The adapter contract is:
 
 `generate(prompt, system_prompt, response_format, metadata) -> raw_response, parsed_payload, usage`
 
+For the OpenAI adapter, request payloads are encoded locally with strict JSON rules before the HTTP call. Non-finite numeric values or invalid Unicode now fail fast with run and case metadata in the error message instead of surfacing later as a remote `400 Bad Request`.
+ 
 ## Outputs
 
 A reasoning-floor run writes:
