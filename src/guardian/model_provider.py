@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -100,6 +101,30 @@ def _env_float(name: str) -> float | None:
         return float(raw)
     except ValueError:
         return None
+
+
+def _env_int(name: str) -> int | None:
+    raw = os.getenv(name)
+    if raw in (None, ""):
+        return None
+    try:
+        value = int(raw)
+    except ValueError:
+        return None
+    return value if value > 0 else None
+
+
+def _ollama_keep_alive_value(value: Any) -> str | int | None:
+    if value is None:
+        return None
+    if isinstance(value, int):
+        return value if value >= 0 else None
+    normalized = str(value).strip()
+    if not normalized:
+        return None
+    if re.fullmatch(r"\d+", normalized):
+        return int(normalized)
+    return normalized
 
 
 def _normalize_api_key(env_name: str, value: str | None) -> str | None:
@@ -543,12 +568,17 @@ class OllamaChatProvider:
     model: str | None = None
     base_url: str | None = None
     timeout: int = 120
+    keep_alive: str | int | None = None
+    context_length: int | None = None
+    provider_name: str = "ollama"
 
     def __post_init__(self) -> None:
         load_dotenv()
         self.api_key = _normalize_api_key("OLLAMA_API_KEY", self.api_key or os.getenv("OLLAMA_API_KEY"))
         self.model = self.model or os.getenv("OLLAMA_MODEL")
         self.base_url = (self.base_url or os.getenv("OLLAMA_BASE_URL") or "http://localhost:11434/api").rstrip("/")
+        self.keep_alive = _ollama_keep_alive_value(self.keep_alive or os.getenv("OLLAMA_KEEP_ALIVE"))
+        self.context_length = self.context_length or _env_int("OLLAMA_CONTEXT_LENGTH")
         if not self.model:
             raise RuntimeError("OLLAMA_MODEL is required for the Ollama provider.")
 
@@ -570,6 +600,10 @@ class OllamaChatProvider:
         ollama_format = _default_response_format(response_format)
         if ollama_format:
             payload["format"] = ollama_format
+        if self.keep_alive is not None:
+            payload["keep_alive"] = self.keep_alive
+        if isinstance(self.context_length, int) and self.context_length > 0:
+            payload["options"] = {"num_ctx": self.context_length}
         headers = {"Content-Type": "application/json"}
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
@@ -611,7 +645,7 @@ class OllamaChatProvider:
             "cached_tokens": None,
             "estimated_cost_usd": estimated_cost_usd,
             "model": self.model,
-            "provider": "ollama",
+            "provider": self.provider_name,
             "request_metadata": metadata,
         }
         usage_payload.update(rate_card)

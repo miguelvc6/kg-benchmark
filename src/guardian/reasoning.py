@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import time
+from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from contextlib import ExitStack
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -106,6 +108,81 @@ def _format_cost(value: float | None) -> str:
     if value is None:
         return "n/a"
     return f"${value:.4f}"
+
+
+def _env_positive_int(name: str) -> int | None:
+    raw = os.getenv(name)
+    if raw in (None, ""):
+        return None
+    try:
+        value = int(raw)
+    except ValueError:
+        return None
+    return value if value > 0 else None
+
+
+def _ollama_model_size_billions(model_name: str | None) -> float | None:
+    if not isinstance(model_name, str):
+        return None
+    match = re.search(r":(\d+(?:\.\d+)?)b(?:$|[^a-z0-9])", model_name.strip().lower())
+    if not match:
+        return None
+    try:
+        return float(match.group(1))
+    except ValueError:
+        return None
+
+
+def _default_parallel_workers(provider_name: str, model_name: str | None) -> tuple[int, str]:
+    env_value = _env_positive_int("REASONING_FLOOR_PARALLEL_WORKERS")
+    if env_value is not None:
+        return env_value, "env"
+
+    normalized_provider = provider_name.strip().lower()
+    if normalized_provider == "ollama":
+        ollama_parallel_limit = _env_positive_int("OLLAMA_NUM_PARALLEL")
+        model_size = _ollama_model_size_billions(model_name)
+        recommended = 2 if isinstance(model_size, float) and model_size <= 8.0 else 1
+        if ollama_parallel_limit is not None:
+            return min(recommended, ollama_parallel_limit), "heuristic_capped_by_ollama_num_parallel"
+        return recommended, "ollama_model_heuristic"
+
+    return 4, "generic_default"
+
+
+@dataclass(frozen=True)
+class RequestExecutionResult:
+    request_info: dict[str, Any]
+    raw_response: Any
+    parsed_payload: Any
+    usage: dict[str, Any]
+    elapsed_seconds: float
+
+
+def _execute_case_requests(
+    provider: ModelProvider,
+    requests_to_run: list[tuple[PromptBundle, dict[str, Any]]],
+) -> list[RequestExecutionResult]:
+    results: list[RequestExecutionResult] = []
+    for prompt_bundle, request_info in requests_to_run:
+        started_at = time.perf_counter()
+        raw_response, parsed_payload, usage = provider.generate(
+            prompt_bundle.prompt,
+            prompt_bundle.system_prompt,
+            prompt_bundle.response_format,
+            request_info,
+        )
+        elapsed_seconds = time.perf_counter() - started_at
+        results.append(
+            RequestExecutionResult(
+                request_info=request_info,
+                raw_response=raw_response,
+                parsed_payload=parsed_payload,
+                usage=usage,
+                elapsed_seconds=elapsed_seconds,
+            )
+        )
+    return results
 
 
 @dataclass
@@ -407,6 +484,7 @@ def run_reasoning_floor(
     tracks: Optional[Iterable[str]] = None,
     max_cases: Optional[int] = None,
     execution_mode: str | None = None,
+    parallel_workers: int | None = None,
     batch_completion_window: str = "24h",
     batch_poll_interval_seconds: float = 60.0,
 ) -> dict[str, Any]:
@@ -420,12 +498,14 @@ def run_reasoning_floor(
     normalized_execution_mode = (execution_mode or "").strip().lower()
     if not normalized_execution_mode:
         normalized_execution_mode = "batch" if selected_provider == "openai" else "sync"
-    if normalized_execution_mode not in {"sync", "batch"}:
+    if normalized_execution_mode not in {"sync", "parallel", "batch"}:
         raise ValueError(f"Unsupported execution mode: {execution_mode!r}")
     if normalized_execution_mode == "batch" and not isinstance(provider, BatchModelProvider):
         raise RuntimeError(
             f"Execution mode 'batch' is not supported by provider {provider.__class__.__name__}."
         )
+    if parallel_workers is not None and parallel_workers < 1:
+        raise ValueError("parallel_workers must be at least 1 when provided.")
 
     resolved_case_ids = resolve_case_id_filter(
         case_ids=case_ids,
@@ -442,6 +522,18 @@ def run_reasoning_floor(
         raise ValueError("At least one supported ablation bundle is required.")
     total_instances = len(selected_case_ids) * len(bundle_list)
     total_requests = total_instances * 2 if normalized_execution_mode == "batch" else total_instances
+    effective_parallel_workers = 1
+    parallel_worker_source = "disabled"
+    if normalized_execution_mode == "parallel":
+        if parallel_workers is None:
+            effective_parallel_workers, parallel_worker_source = _default_parallel_workers(
+                selected_provider,
+                selected_model,
+            )
+        else:
+            effective_parallel_workers = parallel_workers
+            parallel_worker_source = "argument"
+        effective_parallel_workers = min(effective_parallel_workers, total_instances) if total_instances else 1
     refresh_every = max(1, min(1000, (total_requests + 9) // 10)) if total_requests else 1
 
     run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
@@ -482,112 +574,225 @@ def run_reasoning_floor(
         with open(raw_log_path, "w", encoding="utf-8") as raw_log_fh, open(
             manifest_path, "w", encoding="utf-8"
         ) as manifest_fh:
-            if normalized_execution_mode == "sync":
-                for bundle in bundle_list:
-                    bundle_dir = out_dir / bundle
-                    a_box_path = bundle_dir / "a_box_proposals.jsonl"
-                    t_box_path = bundle_dir / "t_box_proposals.jsonl"
-                    track_path = bundle_dir / "track_diagnoses.jsonl"
+            if normalized_execution_mode in {"sync", "parallel"}:
+                def flush_progress() -> None:
+                    nonlocal pending_progress
+                    estimated_total_cost = None
+                    if has_cost_data and completed_work_units > 0:
+                        estimated_total_cost = (current_estimated_cost_usd / completed_work_units) * total_requests
+                    progress.update(pending_progress)
+                    progress.set_postfix(
+                        {
+                            "current_cost": _format_cost(current_estimated_cost_usd if has_cost_data else None),
+                            "est_total_cost": _format_cost(estimated_total_cost),
+                        },
+                        refresh=True,
+                    )
+                    pending_progress = 0
 
-                    with open(a_box_path, "w", encoding="utf-8") as a_box_fh, open(
-                        t_box_path, "w", encoding="utf-8"
-                    ) as t_box_fh, open(track_path, "w", encoding="utf-8") as track_fh:
-                        for record in _iter_selected_records(
-                            classified_path,
-                            case_ids=resolved_case_ids,
-                            tracks=tracks,
-                            max_cases=max_cases,
-                        ):
-                            case_id = record["id"]
-                            world_state_entry = world_state_store.get(case_id)
-                            diagnosis_bundle = build_track_diagnosis_prompt_bundle(record, world_state_entry, bundle)
-                            diagnosis_metadata = _request_metadata(
-                                run_id=run_id,
-                                case_id=case_id,
-                                bundle=bundle,
-                                prompt_name=diagnosis_bundle.prompt_name,
-                                track=record.get("track"),
-                                task_type="track_diagnosis",
-                                model=getattr(provider, "model", "unknown-model"),
-                            )
-                            diagnosis_started_at = time.perf_counter()
-                            diagnosis_raw_response, diagnosis_payload, diagnosis_usage = provider.generate(
-                                diagnosis_bundle.prompt,
-                                diagnosis_bundle.system_prompt,
-                                diagnosis_bundle.response_format,
-                                diagnosis_metadata,
-                            )
-                            diagnosis_elapsed_seconds = time.perf_counter() - diagnosis_started_at
-                            diagnosis_manifest_record = _record_request_result(
-                                request_info=diagnosis_metadata,
-                                raw_response=diagnosis_raw_response,
-                                parsed_payload=diagnosis_payload,
-                                usage=diagnosis_usage,
-                                raw_log_fh=raw_log_fh,
-                                manifest_fh=manifest_fh,
-                                a_box_fh=a_box_fh,
-                                t_box_fh=t_box_fh,
-                                track_fh=track_fh,
-                                elapsed_seconds=diagnosis_elapsed_seconds,
-                            )
-                            usage_manifest.append(diagnosis_manifest_record)
+                if normalized_execution_mode == "sync":
+                    for bundle in bundle_list:
+                        bundle_dir = out_dir / bundle
+                        a_box_path = bundle_dir / "a_box_proposals.jsonl"
+                        t_box_path = bundle_dir / "t_box_proposals.jsonl"
+                        track_path = bundle_dir / "track_diagnoses.jsonl"
 
-                            prompt_bundle = build_prompt_bundle(record, world_state_entry, bundle)
-                            proposal_metadata = _request_metadata(
-                                run_id=run_id,
-                                case_id=case_id,
-                                bundle=bundle,
-                                prompt_name=prompt_bundle.prompt_name,
-                                track=record.get("track"),
-                                task_type="proposal",
-                                model=getattr(provider, "model", "unknown-model"),
-                            )
-                            proposal_started_at = time.perf_counter()
-                            raw_response, parsed_payload, usage = provider.generate(
-                                prompt_bundle.prompt,
-                                prompt_bundle.system_prompt,
-                                prompt_bundle.response_format,
-                                proposal_metadata,
-                            )
-                            proposal_elapsed_seconds = time.perf_counter() - proposal_started_at
-                            proposal_manifest_record = _record_request_result(
-                                request_info=proposal_metadata,
-                                raw_response=raw_response,
-                                parsed_payload=parsed_payload,
-                                usage=usage,
-                                raw_log_fh=raw_log_fh,
-                                manifest_fh=manifest_fh,
-                                a_box_fh=a_box_fh,
-                                t_box_fh=t_box_fh,
-                                track_fh=track_fh,
-                                elapsed_seconds=proposal_elapsed_seconds,
-                            )
-                            usage_manifest.append(proposal_manifest_record)
-
-                            current_estimated_cost_usd, has_cost_data = _update_cost_tracking(
-                                (diagnosis_usage, usage),
-                                current_estimated_cost_usd,
-                                has_cost_data,
-                            )
-                            completed_work_units += 1
-                            pending_progress += 1
-                            if pending_progress >= refresh_every or completed_work_units == total_requests:
-                                estimated_total_cost = None
-                                if has_cost_data and completed_work_units > 0:
-                                    estimated_total_cost = (
-                                        current_estimated_cost_usd / completed_work_units
-                                    ) * total_requests
-                                progress.update(pending_progress)
-                                progress.set_postfix(
-                                    {
-                                        "current_cost": _format_cost(
-                                            current_estimated_cost_usd if has_cost_data else None
-                                        ),
-                                        "est_total_cost": _format_cost(estimated_total_cost),
-                                    },
-                                    refresh=True,
+                        with open(a_box_path, "w", encoding="utf-8") as a_box_fh, open(
+                            t_box_path, "w", encoding="utf-8"
+                        ) as t_box_fh, open(track_path, "w", encoding="utf-8") as track_fh:
+                            for record in _iter_selected_records(
+                                classified_path,
+                                case_ids=resolved_case_ids,
+                                tracks=tracks,
+                                max_cases=max_cases,
+                            ):
+                                case_id = record["id"]
+                                world_state_entry = world_state_store.get(case_id)
+                                diagnosis_bundle = build_track_diagnosis_prompt_bundle(record, world_state_entry, bundle)
+                                diagnosis_metadata = _request_metadata(
+                                    run_id=run_id,
+                                    case_id=case_id,
+                                    bundle=bundle,
+                                    prompt_name=diagnosis_bundle.prompt_name,
+                                    track=record.get("track"),
+                                    task_type="track_diagnosis",
+                                    model=getattr(provider, "model", "unknown-model"),
                                 )
-                                pending_progress = 0
+                                diagnosis_started_at = time.perf_counter()
+                                diagnosis_raw_response, diagnosis_payload, diagnosis_usage = provider.generate(
+                                    diagnosis_bundle.prompt,
+                                    diagnosis_bundle.system_prompt,
+                                    diagnosis_bundle.response_format,
+                                    diagnosis_metadata,
+                                )
+                                diagnosis_elapsed_seconds = time.perf_counter() - diagnosis_started_at
+                                diagnosis_manifest_record = _record_request_result(
+                                    request_info=diagnosis_metadata,
+                                    raw_response=diagnosis_raw_response,
+                                    parsed_payload=diagnosis_payload,
+                                    usage=diagnosis_usage,
+                                    raw_log_fh=raw_log_fh,
+                                    manifest_fh=manifest_fh,
+                                    a_box_fh=a_box_fh,
+                                    t_box_fh=t_box_fh,
+                                    track_fh=track_fh,
+                                    elapsed_seconds=diagnosis_elapsed_seconds,
+                                )
+                                usage_manifest.append(diagnosis_manifest_record)
+
+                                prompt_bundle = build_prompt_bundle(record, world_state_entry, bundle)
+                                proposal_metadata = _request_metadata(
+                                    run_id=run_id,
+                                    case_id=case_id,
+                                    bundle=bundle,
+                                    prompt_name=prompt_bundle.prompt_name,
+                                    track=record.get("track"),
+                                    task_type="proposal",
+                                    model=getattr(provider, "model", "unknown-model"),
+                                )
+                                proposal_started_at = time.perf_counter()
+                                raw_response, parsed_payload, usage = provider.generate(
+                                    prompt_bundle.prompt,
+                                    prompt_bundle.system_prompt,
+                                    prompt_bundle.response_format,
+                                    proposal_metadata,
+                                )
+                                proposal_elapsed_seconds = time.perf_counter() - proposal_started_at
+                                proposal_manifest_record = _record_request_result(
+                                    request_info=proposal_metadata,
+                                    raw_response=raw_response,
+                                    parsed_payload=parsed_payload,
+                                    usage=usage,
+                                    raw_log_fh=raw_log_fh,
+                                    manifest_fh=manifest_fh,
+                                    a_box_fh=a_box_fh,
+                                    t_box_fh=t_box_fh,
+                                    track_fh=track_fh,
+                                    elapsed_seconds=proposal_elapsed_seconds,
+                                )
+                                usage_manifest.append(proposal_manifest_record)
+
+                                current_estimated_cost_usd, has_cost_data = _update_cost_tracking(
+                                    (diagnosis_usage, usage),
+                                    current_estimated_cost_usd,
+                                    has_cost_data,
+                                )
+                                completed_work_units += 1
+                                pending_progress += 1
+                                if pending_progress >= refresh_every or completed_work_units == total_requests:
+                                    flush_progress()
+                else:
+                    with ExitStack() as stack:
+                        bundle_handles = {}
+                        for bundle in bundle_list:
+                            bundle_dir = out_dir / bundle
+                            bundle_handles[bundle] = {
+                                "a_box": stack.enter_context(
+                                    open(bundle_dir / "a_box_proposals.jsonl", "w", encoding="utf-8")
+                                ),
+                                "t_box": stack.enter_context(
+                                    open(bundle_dir / "t_box_proposals.jsonl", "w", encoding="utf-8")
+                                ),
+                                "track": stack.enter_context(
+                                    open(bundle_dir / "track_diagnoses.jsonl", "w", encoding="utf-8")
+                                ),
+                            }
+
+                        with ThreadPoolExecutor(max_workers=effective_parallel_workers) as executor:
+                            pending_futures: dict[Future[list[RequestExecutionResult]], str] = {}
+
+                            def record_future_result(
+                                future: Future[list[RequestExecutionResult]],
+                            ) -> None:
+                                nonlocal current_estimated_cost_usd
+                                nonlocal has_cost_data
+                                nonlocal completed_work_units
+                                nonlocal pending_progress
+                                request_results = future.result()
+                                for request_result in request_results:
+                                    handles = bundle_handles[request_result.request_info["ablation_bundle"]]
+                                    manifest_record = _record_request_result(
+                                        request_info=request_result.request_info,
+                                        raw_response=request_result.raw_response,
+                                        parsed_payload=request_result.parsed_payload,
+                                        usage=request_result.usage,
+                                        raw_log_fh=raw_log_fh,
+                                        manifest_fh=manifest_fh,
+                                        a_box_fh=handles["a_box"],
+                                        t_box_fh=handles["t_box"],
+                                        track_fh=handles["track"],
+                                        elapsed_seconds=request_result.elapsed_seconds,
+                                    )
+                                    usage_manifest.append(manifest_record)
+                                    current_estimated_cost_usd, has_cost_data = _update_cost_tracking(
+                                        (request_result.usage,),
+                                        current_estimated_cost_usd,
+                                        has_cost_data,
+                                    )
+                                completed_work_units += 1
+                                pending_progress += 1
+                                if pending_progress >= refresh_every or completed_work_units == total_requests:
+                                    flush_progress()
+
+                            def drain_completed_futures(*, wait_for_all: bool) -> None:
+                                if not pending_futures:
+                                    return
+                                if not wait_for_all:
+                                    done, _ = wait(tuple(pending_futures), return_when=FIRST_COMPLETED)
+                                else:
+                                    done, _ = wait(tuple(pending_futures))
+                                for future in done:
+                                    pending_futures.pop(future, None)
+                                    record_future_result(future)
+
+                            for bundle in bundle_list:
+                                for record in _iter_selected_records(
+                                    classified_path,
+                                    case_ids=resolved_case_ids,
+                                    tracks=tracks,
+                                    max_cases=max_cases,
+                                ):
+                                    case_id = record["id"]
+                                    world_state_entry = world_state_store.get(case_id)
+                                    diagnosis_bundle = build_track_diagnosis_prompt_bundle(
+                                        record,
+                                        world_state_entry,
+                                        bundle,
+                                    )
+                                    proposal_bundle = build_prompt_bundle(record, world_state_entry, bundle)
+                                    case_requests = [
+                                        (
+                                            diagnosis_bundle,
+                                            _request_metadata(
+                                                run_id=run_id,
+                                                case_id=case_id,
+                                                bundle=bundle,
+                                                prompt_name=diagnosis_bundle.prompt_name,
+                                                track=record.get("track"),
+                                                task_type="track_diagnosis",
+                                                model=getattr(provider, "model", "unknown-model"),
+                                            ),
+                                        ),
+                                        (
+                                            proposal_bundle,
+                                            _request_metadata(
+                                                run_id=run_id,
+                                                case_id=case_id,
+                                                bundle=bundle,
+                                                prompt_name=proposal_bundle.prompt_name,
+                                                track=record.get("track"),
+                                                task_type="proposal",
+                                                model=getattr(provider, "model", "unknown-model"),
+                                            ),
+                                        ),
+                                    ]
+                                    future = executor.submit(_execute_case_requests, provider, case_requests)
+                                    pending_futures[future] = case_id
+                                    if len(pending_futures) >= effective_parallel_workers:
+                                        drain_completed_futures(wait_for_all=False)
+
+                            while pending_futures:
+                                drain_completed_futures(wait_for_all=True)
             else:
                 assert isinstance(provider, BatchModelProvider)
                 batch_input_path = out_dir / "batch_input.jsonl"
@@ -853,6 +1058,11 @@ def run_reasoning_floor(
             "generation_elapsed_seconds": run_usage["generation_elapsed_seconds"],
             "execution_mode": normalized_execution_mode,
         }
+        if normalized_execution_mode == "parallel":
+            summary["run_info"]["parallel"] = {
+                "workers": effective_parallel_workers,
+                "source": parallel_worker_source,
+            }
         if batch_summary is not None:
             summary["run_info"]["batch"] = batch_summary
         summary["usage"] = {

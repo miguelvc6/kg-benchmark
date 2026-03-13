@@ -44,6 +44,9 @@ Supported runtime settings:
 - `OLLAMA_MODEL`
 - optional `OLLAMA_BASE_URL` (defaults to `http://localhost:11434/api`)
 - optional `OLLAMA_API_KEY` for direct `ollama.com/api` access
+- optional `OLLAMA_KEEP_ALIVE` to keep a model resident between requests
+- optional `OLLAMA_CONTEXT_LENGTH` to send `num_ctx` on each Ollama chat request
+- optional `REASONING_FLOOR_PARALLEL_WORKERS` to override the runner's inferred worker count in `parallel` mode
 
 Process environment variables still take precedence over values loaded from `.env`.
 
@@ -51,9 +54,10 @@ For provider API keys, use only the raw secret value in `.env`. Do not include t
 
 `src/reasoning_floor.py` also accepts `--model` to override the model name from `.env` without changing provider selection.
 
-Batch-specific CLI settings:
+Execution CLI settings:
 
-- `--execution-mode sync|batch`
+- `--execution-mode sync|parallel|batch`
+- `--parallel-workers` for `parallel` mode
 - `--batch-completion-window` (defaults to `24h`)
 - `--batch-poll-interval-seconds` (defaults to `60`)
 
@@ -61,6 +65,17 @@ If `--execution-mode` is omitted:
 
 - `MODEL_PROVIDER=openai` defaults to batch execution
 - other providers default to synchronous execution
+
+`parallel` mode keeps the existing per-case request pattern but overlaps multiple cases with a bounded thread pool. This is the recommended throughput mode for Ollama because Ollama does not expose a provider batch API for text generation in this repository.
+
+When `--execution-mode parallel` is used and `--parallel-workers` is omitted:
+
+- Ollama models up to `8b` default to `2` workers
+- larger or unknown Ollama models default to `1` worker
+- non-Ollama providers default to `4` workers
+- if `OLLAMA_NUM_PARALLEL` is present in the runner environment, the inferred Ollama worker count is capped to that value
+
+The runner's `parallel` worker count is separate from Ollama server concurrency. `OLLAMA_NUM_PARALLEL` must be configured in the environment that launches `ollama serve`.
 
 The adapter contract is:
 
@@ -98,13 +113,13 @@ Batch runs also write provider batch artifacts at the top level of the run direc
 
 The run manifest stores per-call token usage, cached prompt tokens when available, elapsed seconds when available, estimated cost when provider token pricing is configured in `.env`, and the prompt template name used for that call.
 
-The combined summary stores run-level provider, model, output directory, execution mode, total elapsed time, aggregate prompt/completion/total tokens, aggregate cached tokens, and aggregate estimated cost. Batch runs also record provider batch metadata in `run_info.batch`.
+The combined summary stores run-level provider, model, output directory, execution mode, total elapsed time, aggregate prompt/completion/total tokens, aggregate cached tokens, and aggregate estimated cost. Parallel runs also record `run_info.parallel.workers` and its configuration source. Batch runs also record provider batch metadata in `run_info.batch`.
 
 When a selection manifest is used, the run summary records its path under `inputs.selection_manifest`.
 
 During execution, the runner shows a `tqdm` progress bar with elapsed time, ETA, current estimated cost, and estimated total cost. It refreshes in chunks of `min(1000 cases, 10% of total cases)`.
 
-In synchronous mode, the runner streams Stage 4 cases from disk and appends raw responses, manifest rows, normalized proposals, and evaluation traces incrementally. In batch mode, it first writes provider batch-input artifacts, then reconstructs the normal reasoning-floor outputs from the completed batch results.
+In synchronous mode, the runner streams Stage 4 cases from disk and appends raw responses, manifest rows, normalized proposals, and evaluation traces incrementally. In parallel mode, it keeps the same outputs but executes multiple cases concurrently with bounded in-flight work. In batch mode, it first writes provider batch-input artifacts, then reconstructs the normal reasoning-floor outputs from the completed batch results.
 
 ## Test Coverage
 

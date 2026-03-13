@@ -178,6 +178,27 @@ class ReasoningFloorTests(unittest.TestCase):
         self.assertEqual(summary["usage"]["prompt_tokens"], 0)
         self.assertEqual(summary["usage"]["completion_tokens"], 0)
 
+    def test_reasoning_floor_parallel_stub_run(self) -> None:
+        root, classified_path, world_state_path, selection_manifest_path, resolver = self._make_stub_fixture()
+        summary = run_reasoning_floor(
+            classified_path=classified_path,
+            world_state_path=world_state_path,
+            output_dir=root / "outputs",
+            provider=StaticResponseProvider(resolver, model="stub-model"),
+            ablation_bundles=["minimal_case"],
+            selection_manifest_path=selection_manifest_path,
+            execution_mode="parallel",
+            parallel_workers=2,
+        )
+
+        self.assertEqual(summary["counts"]["cases"], 1)
+        self.assertEqual(summary["counts"]["track_diagnosis_exact_match"], 1)
+        self.assertEqual(summary["run_info"]["execution_mode"], "parallel")
+        self.assertEqual(summary["run_info"]["parallel"]["workers"], 1)
+        self.assertEqual(summary["run_info"]["parallel"]["source"], "argument")
+        self.assertEqual(summary["usage"]["prompt_tokens"], 0)
+        self.assertEqual(summary["usage"]["completion_tokens"], 0)
+
     def test_reasoning_floor_defaults_to_batch_for_openai_provider(self) -> None:
         root, classified_path, world_state_path, selection_manifest_path, resolver = self._make_stub_fixture()
         summary = run_reasoning_floor(

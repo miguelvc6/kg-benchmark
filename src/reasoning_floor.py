@@ -13,9 +13,15 @@ def main() -> int:
     parser.add_argument("--model", default=None, help="Override the model name configured in .env.")
     parser.add_argument(
         "--execution-mode",
-        choices=("sync", "batch"),
+        choices=("sync", "parallel", "batch"),
         default=None,
         help="Override execution mode. Defaults to batch for the OpenAI provider and sync otherwise.",
+    )
+    parser.add_argument(
+        "--parallel-workers",
+        type=int,
+        default=None,
+        help="Concurrent case workers for --execution-mode=parallel.",
     )
     parser.add_argument(
         "--batch-completion-window",
@@ -49,6 +55,7 @@ def main() -> int:
         output_dir=args.output_dir,
         model_name=args.model,
         execution_mode=args.execution_mode,
+        parallel_workers=args.parallel_workers,
         batch_completion_window=args.batch_completion_window,
         batch_poll_interval_seconds=args.batch_poll_interval_seconds,
         case_ids=[item.strip() for item in args.case_ids.split(",")] if args.case_ids else None,

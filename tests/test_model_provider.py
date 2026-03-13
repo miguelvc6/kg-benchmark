@@ -161,6 +161,37 @@ class OllamaChatProviderTests(unittest.TestCase):
         self.assertEqual(raw["model"], "llama3.2")
         self.assertEqual(post.call_args.kwargs["json"]["format"], "json")
 
+    def test_applies_ollama_keep_alive_and_context_length(self) -> None:
+        response = MagicMock()
+        response.json.return_value = {
+            "model": "qwen3:8b",
+            "message": {"role": "assistant", "content": "{\"case_id\": \"c1\"}"},
+            "prompt_eval_count": 11,
+            "eval_count": 7,
+        }
+
+        with patch.dict(
+            os.environ,
+            {
+                "OLLAMA_MODEL": "qwen3:8b",
+                "OLLAMA_KEEP_ALIVE": "30m",
+                "OLLAMA_CONTEXT_LENGTH": "4096",
+            },
+            clear=True,
+        ):
+            with patch("guardian.model_provider.requests.post", return_value=response) as post:
+                provider = OllamaChatProvider()
+                provider.generate(
+                    prompt="{}",
+                    system_prompt="Return JSON only.",
+                    response_format={"type": "json_object"},
+                    metadata={"case_id": "c1"},
+                )
+
+        request_payload = post.call_args.kwargs["json"]
+        self.assertEqual(request_payload["keep_alive"], "30m")
+        self.assertEqual(request_payload["options"], {"num_ctx": 4096})
+
 
 if __name__ == "__main__":
     unittest.main()

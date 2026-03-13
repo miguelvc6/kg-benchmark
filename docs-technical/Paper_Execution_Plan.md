@@ -191,6 +191,14 @@ If you point `OLLAMA_BASE_URL` at `https://ollama.com/api`, also set:
 OLLAMA_API_KEY=your_api_key
 ```
 
+Optional Ollama request settings used by the reasoning-floor runner:
+
+```dotenv
+OLLAMA_KEEP_ALIVE=30m
+OLLAMA_CONTEXT_LENGTH=4096
+REASONING_FLOOR_PARALLEL_WORKERS=2
+```
+
 Optional for cost estimation in summaries:
 
 ```dotenv
@@ -199,6 +207,27 @@ OLLAMA_OUTPUT_COST_PER_1M_TOKENS=0.00
 ```
 
 `src/reasoning_floor.py` auto-loads `.env` from the repository root or a parent directory. Shell-exported variables still override `.env` values when both are set.
+
+### Ollama Parallel Configuration
+
+There are two separate parallel settings when you run against Ollama:
+
+- `OLLAMA_NUM_PARALLEL` is a server-side setting for `ollama serve`.
+- `--parallel-workers` or `REASONING_FLOOR_PARALLEL_WORKERS` controls how many benchmark cases this repository sends concurrently.
+
+Set `OLLAMA_NUM_PARALLEL` in the shell that starts the Ollama server, not just in the shell that launches `src/reasoning_floor.py`.
+
+For an NVIDIA A30 24 GiB, use these starting points:
+
+- `3b` and `8b` models: `OLLAMA_NUM_PARALLEL=2`
+- `14b`, `24b`, and `30b` models: `OLLAMA_NUM_PARALLEL=1`
+
+Keep `OLLAMA_CONTEXT_LENGTH` explicit. A practical starting point is `4096`.
+
+Keep the runner-side worker count at or below the Ollama server setting unless you are intentionally benchmarking queueing behavior. The reasoning-floor runner's inferred defaults match that guidance:
+
+- small Ollama models up to `8b` default to `2` workers in `parallel` mode
+- larger or unknown Ollama models default to `1` worker in `parallel` mode
 
 ## 8. Run the Zero-Shot Reasoning Floor
 
@@ -218,6 +247,20 @@ uv run python src/reasoning_floor.py \
   --output-dir reports/reasoning_floor
 ```
 
+For Ollama throughput runs, prefer explicit parallel execution:
+
+```bash
+uv run python src/reasoning_floor.py \
+  --classified-benchmark data/04_classified_benchmark.jsonl \
+  --world-state data/03_world_state.json \
+  --selection-manifest reports/benchmark_selection/paper_eval_tbox_cap_100_seed_13.json \
+  --output-dir reports/reasoning_floor \
+  --execution-mode parallel \
+  --parallel-workers 2
+```
+
+For `14b` and larger models on the A30, change `--parallel-workers` to `1`.
+
 If you want to override the `.env` model name for a single run:
 
 ```bash
@@ -226,7 +269,9 @@ uv run python src/reasoning_floor.py \
   --world-state data/03_world_state.json \
   --selection-manifest reports/benchmark_selection/paper_eval_tbox_cap_100_seed_13.json \
   --output-dir reports/reasoning_floor \
-  --model llama3.2:latest
+  --model llama3.2:latest \
+  --execution-mode parallel \
+  --parallel-workers 2
 ```
 
 This runs all three ablation bundles by default:
