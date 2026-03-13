@@ -75,7 +75,7 @@ class OpenAIChatProviderTests(unittest.TestCase):
         self.assertEqual(raw["usage"]["total_tokens"], 18)
         request_payload = json.loads(post.call_args.kwargs["data"].decode("utf-8"))
         self.assertNotIn("temperature", request_payload)
-        self.assertEqual(request_payload["tool_choice"], "none")
+        self.assertNotIn("tool_choice", request_payload)
 
     def test_rejects_tool_call_responses(self) -> None:
         response = MagicMock()
@@ -94,7 +94,7 @@ class OpenAIChatProviderTests(unittest.TestCase):
 
         with patch("guardian.model_provider.requests.post", return_value=response):
             provider = OpenAIChatProvider(api_key="test-key", model="gpt-5-mini-2025-08-07")
-            with self.assertRaisesRegex(RuntimeError, "disables tool use"):
+            with self.assertRaisesRegex(RuntimeError, "does not configure tools"):
                 provider.generate(
                     prompt="{}",
                     system_prompt="Return JSON only.",

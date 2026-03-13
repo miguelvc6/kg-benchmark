@@ -6,11 +6,13 @@ The zero-shot baseline runner is [reasoning_floor.py](/home/mvazquez/kg-benchmar
 
 This runner implements the pre-Guardian reasoning floor described in the conceptual docs.
 
-It executes one model call per case per ablation bundle, without tools, rejection sampling, or memory.
+It executes one proposal call and one track-diagnosis call per case per ablation bundle, without tools, rejection sampling, or memory.
 
 It also executes a separate diagnostic call that asks the model to classify each case as `A_BOX`, `T_BOX`, or `AMBIGUOUS`.
 
 The runner also accepts `--selection-manifest` so paper runs can target a deterministic benchmark subset without creating a second Stage 4 JSONL artifact.
+
+The default execution mode is synchronous. When the selected provider supports it, `src/reasoning_floor.py` can also submit the run through a provider batch API with `--execution-mode batch`.
 
 ## Ablation Bundles
 
@@ -49,9 +51,21 @@ For provider API keys, use only the raw secret value in `.env`. Do not include t
 
 `src/reasoning_floor.py` also accepts `--model` to override the model name from `.env` without changing provider selection.
 
+Batch-specific CLI settings:
+
+- `--execution-mode sync|batch`
+- `--batch-completion-window` (defaults to `24h`)
+- `--batch-poll-interval-seconds` (defaults to `60`)
+
 The adapter contract is:
 
 `generate(prompt, system_prompt, response_format, metadata) -> raw_response, parsed_payload, usage`
+
+Providers that support batch execution may additionally implement a batch contract used by the reasoning-floor runner to:
+
+- write provider-specific batch-request JSONL lines
+- submit and poll a batch job
+- parse returned batch result records back into the same raw response and usage shape used by synchronous execution
 
 Named prompt templates for the reasoning floor now live in [src/guardian/prompts.py](/mnt/c/Code/kg-benchmark/src/guardian/prompts.py). This keeps prompt text out of the runner itself and gives each prompt a stable descriptive name that can be reused across callers.
 
@@ -71,15 +85,21 @@ A reasoning-floor run writes:
 - per-bundle evaluation traces and summaries
 - one combined reasoning-floor summary with paper-facing breakdowns
 
-The run manifest stores per-call token usage, elapsed seconds, estimated cost when provider token pricing is configured in `.env`, and the prompt template name used for that call.
+Batch runs also write provider batch artifacts at the top level of the run directory:
 
-The combined summary stores run-level provider, model, output directory, total elapsed time, aggregate prompt/completion/total tokens, and aggregate estimated cost.
+- `batch_input.jsonl`
+- `batch_request_manifest.jsonl`
+- provider-specific batch job metadata, output JSONL, and error JSONL when available
+
+The run manifest stores per-call token usage, cached prompt tokens when available, elapsed seconds when available, estimated cost when provider token pricing is configured in `.env`, and the prompt template name used for that call.
+
+The combined summary stores run-level provider, model, output directory, execution mode, total elapsed time, aggregate prompt/completion/total tokens, aggregate cached tokens, and aggregate estimated cost. Batch runs also record provider batch metadata in `run_info.batch`.
 
 When a selection manifest is used, the run summary records its path under `inputs.selection_manifest`.
 
 During execution, the runner shows a `tqdm` progress bar with elapsed time, ETA, current estimated cost, and estimated total cost. It refreshes in chunks of `min(1000 cases, 10% of total cases)`.
 
-The runner streams Stage 4 cases from disk and appends raw responses, manifest rows, normalized proposals, and evaluation traces incrementally. It does not retain the full classified benchmark or full model-output payloads in memory during generation, which keeps long runs bounded by per-case prompt size rather than total dataset size.
+In synchronous mode, the runner streams Stage 4 cases from disk and appends raw responses, manifest rows, normalized proposals, and evaluation traces incrementally. In batch mode, it first writes provider batch-input artifacts, then reconstructs the normal reasoning-floor outputs from the completed batch results.
 
 ## Test Coverage
 

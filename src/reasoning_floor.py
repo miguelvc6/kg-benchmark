@@ -11,6 +11,23 @@ def main() -> int:
     parser.add_argument("--world-state", default="data/03_world_state.json")
     parser.add_argument("--output-dir", default="reports/reasoning_floor")
     parser.add_argument("--model", default=None, help="Override the model name configured in .env.")
+    parser.add_argument(
+        "--execution-mode",
+        choices=("sync", "batch"),
+        default="sync",
+        help="Run requests synchronously or through a provider batch API.",
+    )
+    parser.add_argument(
+        "--batch-completion-window",
+        default="24h",
+        help="Completion window to request when --execution-mode=batch.",
+    )
+    parser.add_argument(
+        "--batch-poll-interval-seconds",
+        type=float,
+        default=60.0,
+        help="Polling interval in seconds while waiting for a batch job to finish.",
+    )
     parser.add_argument("--max-cases", type=int, default=None)
     parser.add_argument("--case-ids", default=None, help="Comma-separated case ids to include.")
     parser.add_argument(
@@ -31,6 +48,9 @@ def main() -> int:
         world_state_path=args.world_state,
         output_dir=args.output_dir,
         model_name=args.model,
+        execution_mode=args.execution_mode,
+        batch_completion_window=args.batch_completion_window,
+        batch_poll_interval_seconds=args.batch_poll_interval_seconds,
         case_ids=[item.strip() for item in args.case_ids.split(",")] if args.case_ids else None,
         selection_manifest_path=args.selection_manifest,
         tracks=[item.strip() for item in args.tracks.split(",")] if args.tracks else None,

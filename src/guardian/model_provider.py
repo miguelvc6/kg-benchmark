@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from dataclasses import dataclass
-from typing import Any, Callable, Protocol
+from pathlib import Path
+from typing import Any, Callable, Protocol, runtime_checkable
 
 import requests
-from requests import HTTPError
+from requests import HTTPError, Response
 
 from lib.env import load_dotenv
+from lib.utils import iter_jsonl
 
 
 class ModelProvider(Protocol):
@@ -19,6 +22,46 @@ class ModelProvider(Protocol):
         response_format: dict[str, Any],
         metadata: dict[str, Any],
     ) -> tuple[Any, Any, dict[str, Any]]:
+        ...
+
+
+@dataclass(frozen=True)
+class BatchExecutionResult:
+    batch: dict[str, Any]
+    output_path: Path | None
+    error_path: Path | None
+
+
+@runtime_checkable
+class BatchModelProvider(Protocol):
+    def write_batch_request(
+        self,
+        handle: Any,
+        *,
+        custom_id: str,
+        prompt: str,
+        system_prompt: str,
+        response_format: dict[str, Any],
+        metadata: dict[str, Any],
+    ) -> None:
+        ...
+
+    def execute_batch(
+        self,
+        batch_input_path: Path,
+        *,
+        request_manifest_path: Path,
+        output_dir: Path,
+        completion_window: str,
+        poll_interval_seconds: float,
+    ) -> BatchExecutionResult:
+        ...
+
+    def parse_batch_result(
+        self,
+        result_record: dict[str, Any],
+        metadata: dict[str, Any],
+    ) -> tuple[Any, Any, dict[str, Any], str | None]:
         ...
 
 
@@ -131,12 +174,110 @@ def _encode_json_body(payload: dict[str, Any], *, metadata: dict[str, Any], prov
         ) from exc
 
 
+def _openai_chat_payload(
+    *,
+    model: str,
+    prompt: str,
+    system_prompt: str,
+    response_format: dict[str, Any],
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": prompt},
+        ],
+    }
+    if not _uses_gpt5_family(model):
+        payload["temperature"] = 0
+    if response_format:
+        payload["response_format"] = response_format
+    return payload
+
+
+def _openai_message_content(raw_response: dict[str, Any]) -> str:
+    choices = raw_response.get("choices", [])
+    first_choice = choices[0] if choices else {}
+    message = first_choice.get("message", {}) if isinstance(first_choice, dict) else {}
+    finish_reason = first_choice.get("finish_reason") if isinstance(first_choice, dict) else None
+    if _openai_message_requests_tools(message, finish_reason):
+        raise RuntimeError(
+            "OpenAI returned a tool-call response even though this client does not configure tools "
+            "for chat completions."
+        )
+    content = message.get("content")
+    if isinstance(content, list):
+        return "".join(part.get("text", "") for part in content if isinstance(part, dict))
+    return content or ""
+
+
+def _openai_usage_payload(
+    *,
+    raw_response: dict[str, Any],
+    metadata: dict[str, Any],
+    model: str,
+    provider_name: str,
+) -> dict[str, Any]:
+    usage = raw_response.get("usage") or {}
+    prompt_tokens = usage.get("prompt_tokens")
+    completion_tokens = usage.get("completion_tokens")
+    total_tokens = usage.get("total_tokens")
+    prompt_token_details = usage.get("prompt_tokens_details")
+    cached_tokens = None
+    if isinstance(prompt_token_details, dict):
+        cached_value = prompt_token_details.get("cached_tokens")
+        if isinstance(cached_value, int):
+            cached_tokens = cached_value
+    estimated_cost_usd, rate_card = _estimate_cost_usd(
+        provider_env_prefix="OPENAI",
+        prompt_tokens=prompt_tokens if isinstance(prompt_tokens, int) else None,
+        completion_tokens=completion_tokens if isinstance(completion_tokens, int) else None,
+    )
+    usage_payload = {
+        "prompt_tokens": prompt_tokens,
+        "completion_tokens": completion_tokens,
+        "total_tokens": total_tokens,
+        "cached_tokens": cached_tokens,
+        "estimated_cost_usd": estimated_cost_usd,
+        "model": raw_response.get("model") if isinstance(raw_response.get("model"), str) else model,
+        "provider": provider_name,
+        "request_metadata": metadata,
+    }
+    usage_payload.update(rate_card)
+    return usage_payload
+
+
+def _parse_openai_chat_completion_response(
+    raw_response: dict[str, Any],
+    *,
+    metadata: dict[str, Any],
+    model: str,
+    provider_name: str,
+) -> tuple[Any, dict[str, Any]]:
+    text = _openai_message_content(raw_response)
+    parsed_payload = _extract_json_payload(text)
+    usage_payload = _openai_usage_payload(
+        raw_response=raw_response,
+        metadata=metadata,
+        model=model,
+        provider_name=provider_name,
+    )
+    return parsed_payload if parsed_payload is not None else text, usage_payload
+
+
+def _write_json_file(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(payload, fh, ensure_ascii=False, indent=2)
+
+
 @dataclass
 class OpenAIChatProvider:
     api_key: str | None = None
     model: str | None = None
     base_url: str | None = None
     timeout: int = 120
+    provider_name: str = "openai"
 
     def __post_init__(self) -> None:
         load_dotenv()
@@ -148,6 +289,55 @@ class OpenAIChatProvider:
         if not self.model:
             raise RuntimeError("OPENAI_MODEL is required for the OpenAI provider.")
 
+    def _auth_headers(self) -> dict[str, str]:
+        return {"Authorization": f"Bearer {self.api_key}"}
+
+    def _json_headers(self) -> dict[str, str]:
+        headers = self._auth_headers()
+        headers["Content-Type"] = "application/json"
+        return headers
+
+    def _handle_http_error(self, response: Response, exc: HTTPError, *, action: str) -> None:
+        detail = ""
+        try:
+            error_payload = response.json()
+        except ValueError:
+            error_payload = {}
+        error_message = ((error_payload or {}).get("error") or {}).get("message")
+        if error_message:
+            detail = f" Details: {error_message}"
+        if response.status_code == 401:
+            raise RuntimeError(
+                "OpenAI authentication failed (401 Unauthorized). "
+                "Check OPENAI_API_KEY in your shell or .env. "
+                "The value must be the raw API key only, not `OPENAI_API_KEY=...` or `Bearer ...`."
+            ) from exc
+        if response.status_code == 400:
+            raise RuntimeError(
+                f"OpenAI {action} failed (400 Bad Request). "
+                "Check the configured model and request parameters."
+                f"{detail}"
+            ) from exc
+        raise RuntimeError(f"OpenAI {action} failed ({response.status_code}).{detail}") from exc
+
+    def _download_file(self, file_id: str, destination: Path) -> Path:
+        response = requests.get(
+            f"{self.base_url}/files/{file_id}/content",
+            headers=self._auth_headers(),
+            stream=True,
+            timeout=self.timeout,
+        )
+        try:
+            response.raise_for_status()
+        except HTTPError as exc:
+            self._handle_http_error(response, exc, action=f"file download for {file_id}")
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        with open(destination, "wb") as fh:
+            for chunk in response.iter_content(chunk_size=1024 * 1024):
+                if chunk:
+                    fh.write(chunk)
+        return destination
+
     def generate(
         self,
         prompt: str,
@@ -155,88 +345,196 @@ class OpenAIChatProvider:
         response_format: dict[str, Any],
         metadata: dict[str, Any],
     ) -> tuple[Any, Any, dict[str, Any]]:
-        payload: dict[str, Any] = {
-            "model": self.model,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt},
-            ],
-            "tool_choice": "none",
-        }
-        if not _uses_gpt5_family(self.model):
-            payload["temperature"] = 0
-        if response_format:
-            payload["response_format"] = response_format
+        payload = _openai_chat_payload(
+            model=self.model,
+            prompt=prompt,
+            system_prompt=system_prompt,
+            response_format=response_format,
+        )
         request_body = _encode_json_body(payload, metadata=metadata, provider_name="OpenAI")
         response = requests.post(
             f"{self.base_url}/chat/completions",
-            headers={
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-            },
+            headers=self._json_headers(),
             data=request_body,
             timeout=self.timeout,
         )
         try:
             response.raise_for_status()
         except HTTPError as exc:
-            if response.status_code == 401:
-                raise RuntimeError(
-                    "OpenAI authentication failed (401 Unauthorized). "
-                    "Check OPENAI_API_KEY in your shell or .env. "
-                    "The value must be the raw API key only, not `OPENAI_API_KEY=...` or `Bearer ...`."
-                ) from exc
-            if response.status_code == 400:
-                detail = ""
-                try:
-                    error_payload = response.json()
-                    error_message = ((error_payload or {}).get("error") or {}).get("message")
-                    if error_message:
-                        detail = f" Details: {error_message}"
-                except ValueError:
-                    pass
-                raise RuntimeError(
-                    "OpenAI rejected the request (400 Bad Request). "
-                    "Check the configured model and request parameters."
-                    f"{detail}"
-                ) from exc
-            raise
+            self._handle_http_error(response, exc, action="request")
         raw_response = response.json()
-        choices = raw_response.get("choices", [])
-        first_choice = choices[0] if choices else {}
-        message = first_choice.get("message", {}) if isinstance(first_choice, dict) else {}
-        finish_reason = first_choice.get("finish_reason") if isinstance(first_choice, dict) else None
-        if _openai_message_requests_tools(message, finish_reason):
-            raise RuntimeError(
-                "OpenAI returned a tool-call response even though this client disables tool use with "
-                "`tool_choice=\"none\"`."
-            )
-        content = message.get("content")
-        if isinstance(content, list):
-            text = "".join(part.get("text", "") for part in content if isinstance(part, dict))
-        else:
-            text = content or ""
-        parsed_payload = _extract_json_payload(text)
-        usage = raw_response.get("usage") or {}
-        prompt_tokens = usage.get("prompt_tokens")
-        completion_tokens = usage.get("completion_tokens")
-        total_tokens = usage.get("total_tokens")
-        estimated_cost_usd, rate_card = _estimate_cost_usd(
-            provider_env_prefix="OPENAI",
-            prompt_tokens=prompt_tokens if isinstance(prompt_tokens, int) else None,
-            completion_tokens=completion_tokens if isinstance(completion_tokens, int) else None,
+        parsed_payload, usage_payload = _parse_openai_chat_completion_response(
+            raw_response,
+            metadata=metadata,
+            model=self.model,
+            provider_name=self.provider_name,
         )
-        usage_payload = {
-            "prompt_tokens": prompt_tokens,
-            "completion_tokens": completion_tokens,
-            "total_tokens": total_tokens,
-            "estimated_cost_usd": estimated_cost_usd,
+        return raw_response, parsed_payload, usage_payload
+
+    def write_batch_request(
+        self,
+        handle: Any,
+        *,
+        custom_id: str,
+        prompt: str,
+        system_prompt: str,
+        response_format: dict[str, Any],
+        metadata: dict[str, Any],
+    ) -> None:
+        payload = _openai_chat_payload(
+            model=self.model,
+            prompt=prompt,
+            system_prompt=system_prompt,
+            response_format=response_format,
+        )
+        request_record = {
+            "custom_id": custom_id,
+            "method": "POST",
+            "url": "/v1/chat/completions",
+            "body": payload,
         }
-        usage_payload.update(rate_card)
-        usage_payload["model"] = self.model
-        usage_payload["provider"] = "openai"
-        usage_payload["request_metadata"] = metadata
-        return raw_response, parsed_payload if parsed_payload is not None else text, usage_payload
+        handle.write(json.dumps(request_record, ensure_ascii=False) + "\n")
+        del metadata
+
+    def execute_batch(
+        self,
+        batch_input_path: Path,
+        *,
+        request_manifest_path: Path,
+        output_dir: Path,
+        completion_window: str,
+        poll_interval_seconds: float,
+    ) -> BatchExecutionResult:
+        del request_manifest_path
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        with open(batch_input_path, "rb") as input_fh:
+            upload_response = requests.post(
+                f"{self.base_url}/files",
+                headers=self._auth_headers(),
+                data={"purpose": "batch"},
+                files={"file": (batch_input_path.name, input_fh, "application/jsonl")},
+                timeout=self.timeout,
+            )
+        try:
+            upload_response.raise_for_status()
+        except HTTPError as exc:
+            self._handle_http_error(upload_response, exc, action="batch input upload")
+        uploaded_file = upload_response.json()
+        _write_json_file(output_dir / "openai_batch_input_file.json", uploaded_file)
+
+        create_response = requests.post(
+            f"{self.base_url}/batches",
+            headers=self._json_headers(),
+            json={
+                "input_file_id": uploaded_file["id"],
+                "endpoint": "/v1/chat/completions",
+                "completion_window": completion_window,
+            },
+            timeout=self.timeout,
+        )
+        try:
+            create_response.raise_for_status()
+        except HTTPError as exc:
+            self._handle_http_error(create_response, exc, action="batch creation")
+        batch = create_response.json()
+
+        terminal_statuses = {"completed", "failed", "expired", "cancelled"}
+        while batch.get("status") not in terminal_statuses:
+            if poll_interval_seconds > 0:
+                time.sleep(poll_interval_seconds)
+            status_response = requests.get(
+                f"{self.base_url}/batches/{batch['id']}",
+                headers=self._auth_headers(),
+                timeout=self.timeout,
+            )
+            try:
+                status_response.raise_for_status()
+            except HTTPError as exc:
+                self._handle_http_error(status_response, exc, action=f"batch status lookup for {batch['id']}")
+            batch = status_response.json()
+
+        _write_json_file(output_dir / "openai_batch_job.json", batch)
+
+        output_path = None
+        output_file_id = batch.get("output_file_id")
+        if isinstance(output_file_id, str) and output_file_id:
+            output_path = self._download_file(output_file_id, output_dir / "openai_batch_output.jsonl")
+
+        error_path = None
+        error_file_id = batch.get("error_file_id")
+        if isinstance(error_file_id, str) and error_file_id:
+            error_path = self._download_file(error_file_id, output_dir / "openai_batch_errors.jsonl")
+
+        if output_path is None and error_path is None:
+            raise RuntimeError(
+                f"OpenAI batch {batch.get('id')} ended with status {batch.get('status')!r} "
+                "and produced no output or error file."
+            )
+
+        return BatchExecutionResult(batch=batch, output_path=output_path, error_path=error_path)
+
+    def parse_batch_result(
+        self,
+        result_record: dict[str, Any],
+        metadata: dict[str, Any],
+    ) -> tuple[Any, Any, dict[str, Any], str | None]:
+        response_block = result_record.get("response")
+        response_body = response_block.get("body") if isinstance(response_block, dict) else None
+        status_code = response_block.get("status_code") if isinstance(response_block, dict) else None
+
+        error_message = None
+        error_block = result_record.get("error")
+        if isinstance(error_block, dict):
+            error_message = error_block.get("message") or error_block.get("code")
+            if not error_message:
+                error_message = json.dumps(error_block, ensure_ascii=False)
+
+        if isinstance(status_code, int) and status_code >= 400:
+            body_error = ((response_body.get("error") or {}).get("message")) if isinstance(response_body, dict) else None
+            usage_payload = {
+                "prompt_tokens": None,
+                "completion_tokens": None,
+                "total_tokens": None,
+                "cached_tokens": None,
+                "estimated_cost_usd": None,
+                "input_cost_per_1m_tokens_usd": _env_float("OPENAI_INPUT_COST_PER_1M_TOKENS"),
+                "output_cost_per_1m_tokens_usd": _env_float("OPENAI_OUTPUT_COST_PER_1M_TOKENS"),
+                "model": metadata.get("model", self.model),
+                "provider": self.provider_name,
+                "request_metadata": metadata,
+            }
+            return (
+                response_body if isinstance(response_body, dict) else result_record,
+                None,
+                usage_payload,
+                error_message or body_error or f"Batch request failed with status {status_code}.",
+            )
+
+        if isinstance(response_body, dict):
+            parsed_payload, usage_payload = _parse_openai_chat_completion_response(
+                response_body,
+                metadata=metadata,
+                model=self.model,
+                provider_name=self.provider_name,
+            )
+            return response_body, parsed_payload, usage_payload, error_message
+
+        usage_payload = {
+            "prompt_tokens": None,
+            "completion_tokens": None,
+            "total_tokens": None,
+            "cached_tokens": None,
+            "estimated_cost_usd": None,
+            "input_cost_per_1m_tokens_usd": _env_float("OPENAI_INPUT_COST_PER_1M_TOKENS"),
+            "output_cost_per_1m_tokens_usd": _env_float("OPENAI_OUTPUT_COST_PER_1M_TOKENS"),
+            "model": metadata.get("model", self.model),
+            "provider": self.provider_name,
+            "request_metadata": metadata,
+        }
+        if error_message is None:
+            error_message = "Batch result did not contain a response body."
+        return result_record, None, usage_payload, error_message
 
 
 @dataclass
@@ -310,6 +608,7 @@ class OllamaChatProvider:
             "prompt_tokens": prompt_tokens,
             "completion_tokens": completion_tokens,
             "total_tokens": total_tokens,
+            "cached_tokens": None,
             "estimated_cost_usd": estimated_cost_usd,
             "model": self.model,
             "provider": "ollama",
@@ -350,8 +649,184 @@ class StaticResponseProvider:
             "prompt_tokens": metadata.get("prompt_tokens", 0),
             "completion_tokens": metadata.get("completion_tokens", 0),
             "total_tokens": metadata.get("total_tokens", 0),
+            "cached_tokens": metadata.get("cached_tokens"),
             "estimated_cost_usd": metadata.get("estimated_cost_usd"),
             "model": metadata.get("model", self.model),
             "provider": self.provider_name,
         }
         return raw, parsed, usage
+
+    def write_batch_request(
+        self,
+        handle: Any,
+        *,
+        custom_id: str,
+        prompt: str,
+        system_prompt: str,
+        response_format: dict[str, Any],
+        metadata: dict[str, Any],
+    ) -> None:
+        del metadata
+        handle.write(
+            json.dumps(
+                {
+                    "custom_id": custom_id,
+                    "method": "POST",
+                    "url": "/v1/chat/completions",
+                    "body": {
+                        "model": self.model,
+                        "messages": [
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": prompt},
+                        ],
+                        "response_format": response_format,
+                    },
+                },
+                ensure_ascii=False,
+            )
+            + "\n"
+        )
+
+    def execute_batch(
+        self,
+        batch_input_path: Path,
+        *,
+        request_manifest_path: Path,
+        output_dir: Path,
+        completion_window: str,
+        poll_interval_seconds: float,
+    ) -> BatchExecutionResult:
+        del completion_window, poll_interval_seconds
+        output_dir.mkdir(parents=True, exist_ok=True)
+        manifest_by_custom_id = {}
+        for row in iter_jsonl(request_manifest_path):
+            if not isinstance(row, dict):
+                continue
+            custom_id = row.get("custom_id")
+            if isinstance(custom_id, str) and custom_id:
+                manifest_by_custom_id[custom_id] = row
+
+        output_path = output_dir / "static_batch_output.jsonl"
+        error_path = output_dir / "static_batch_errors.jsonl"
+        has_errors = False
+        completed = 0
+        total = 0
+        with open(output_path, "w", encoding="utf-8") as output_fh, open(error_path, "w", encoding="utf-8") as error_fh:
+            for request_row in iter_jsonl(batch_input_path):
+                if not isinstance(request_row, dict):
+                    continue
+                total += 1
+                custom_id = request_row.get("custom_id")
+                if not isinstance(custom_id, str) or not custom_id:
+                    has_errors = True
+                    error_fh.write(
+                        json.dumps(
+                            {"error": {"message": "Batch request is missing a custom_id."}},
+                            ensure_ascii=False,
+                        )
+                        + "\n"
+                    )
+                    continue
+                metadata = dict((manifest_by_custom_id.get(custom_id) or {}).get("metadata") or {})
+                try:
+                    payload = self.resolver(dict(metadata))
+                    response_body = {
+                        "id": f"chatcmpl-{custom_id}",
+                        "object": "chat.completion",
+                        "model": metadata.get("model", self.model),
+                        "choices": [
+                            {
+                                "index": 0,
+                                "message": {
+                                    "role": "assistant",
+                                    "content": json.dumps(payload, ensure_ascii=False),
+                                },
+                                "finish_reason": "stop",
+                            }
+                        ],
+                        "usage": {
+                            "prompt_tokens": metadata.get("prompt_tokens", 0),
+                            "completion_tokens": metadata.get("completion_tokens", 0),
+                            "total_tokens": metadata.get("total_tokens", 0),
+                        },
+                    }
+                    output_fh.write(
+                        json.dumps(
+                            {
+                                "custom_id": custom_id,
+                                "response": {"status_code": 200, "body": response_body},
+                                "error": None,
+                            },
+                            ensure_ascii=False,
+                        )
+                        + "\n"
+                    )
+                    completed += 1
+                except Exception as exc:
+                    has_errors = True
+                    error_fh.write(
+                        json.dumps(
+                            {
+                                "custom_id": custom_id,
+                                "response": None,
+                                "error": {"message": str(exc)},
+                            },
+                            ensure_ascii=False,
+                        )
+                        + "\n"
+                    )
+
+        if not has_errors:
+            error_path.unlink()
+            error_path_result = None
+        else:
+            error_path_result = error_path
+
+        batch_payload = {
+            "id": "static-batch",
+            "status": "completed",
+            "request_counts": {
+                "total": total,
+                "completed": completed,
+                "failed": total - completed,
+            },
+        }
+        _write_json_file(output_dir / "static_batch_job.json", batch_payload)
+        return BatchExecutionResult(batch=batch_payload, output_path=output_path, error_path=error_path_result)
+
+    def parse_batch_result(
+        self,
+        result_record: dict[str, Any],
+        metadata: dict[str, Any],
+    ) -> tuple[Any, Any, dict[str, Any], str | None]:
+        response_block = result_record.get("response")
+        response_body = response_block.get("body") if isinstance(response_block, dict) else None
+        error_block = result_record.get("error")
+        error_message = None
+        if isinstance(error_block, dict):
+            error_message = error_block.get("message") or error_block.get("code")
+            if not error_message:
+                error_message = json.dumps(error_block, ensure_ascii=False)
+
+        prompt_tokens = metadata.get("prompt_tokens", 0)
+        completion_tokens = metadata.get("completion_tokens", 0)
+        total_tokens = metadata.get("total_tokens", 0)
+        usage_payload = {
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": total_tokens,
+            "cached_tokens": metadata.get("cached_tokens"),
+            "estimated_cost_usd": metadata.get("estimated_cost_usd"),
+            "model": metadata.get("model", self.model),
+            "provider": self.provider_name,
+            "request_metadata": metadata,
+        }
+
+        if not isinstance(response_body, dict):
+            if error_message is None:
+                error_message = "Batch result did not contain a response body."
+            return result_record, None, usage_payload, error_message
+
+        text = _openai_message_content(response_body)
+        parsed_payload = _extract_json_payload(text)
+        return response_body, parsed_payload if parsed_payload is not None else text, usage_payload, error_message

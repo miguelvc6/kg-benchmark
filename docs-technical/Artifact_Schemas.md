@@ -236,9 +236,15 @@ The summary aggregates results by:
 - evaluation traces and summaries per bundle
 - `reasoning_floor_summary.json`
 
-`run_manifest.jsonl` includes per-call provider, model, token usage, elapsed seconds, and estimated cost when pricing metadata is configured.
+When the runner uses `--execution-mode batch`, the same run directory also includes:
 
-`reasoning_floor_summary.json` includes aggregated run-level token totals, estimated cost, elapsed time, provider, model, output directory, and input references including the optional selection manifest path.
+- `batch_input.jsonl`
+- `batch_request_manifest.jsonl`
+- provider-specific batch job metadata and downloaded output or error files when the provider exposes them
+
+`run_manifest.jsonl` includes per-call provider, model, token usage, cached token counts when available, elapsed seconds when available, and estimated cost when pricing metadata is configured.
+
+`reasoning_floor_summary.json` includes aggregated run-level token totals, cached token totals when available, estimated cost, elapsed time, provider, model, execution mode, output directory, and input references including the optional selection manifest path. Batch runs also include provider batch metadata under `run_info.batch`.
 
 ## Schema Files in `schemas/`
 
