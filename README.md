@@ -100,6 +100,12 @@ Show reasoning-floor CLI:
 uv run python src/reasoning_floor.py --help
 ```
 
+Analyze which property-level T-box updates account for the Stage 4 T-box cases:
+
+```bash
+uv run python src/analyze_tbox_updates.py --input data/04_classified_benchmark.jsonl
+```
+
 ## Key artifacts
 
 - `data/01_repair_candidates.json`: candidate repair events from report diffs

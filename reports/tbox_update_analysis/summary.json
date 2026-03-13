@@ -1,0 +1,4399 @@
+{
+  "total_lines": 535570,
+  "total_tbox_cases": 456594,
+  "distinct_tbox_updates": 305,
+  "top_updates": [
+    {
+      "property_revision_id": 2317303689,
+      "case_count": 20894,
+      "property": "P481",
+      "property_label": "Palissy ID",
+      "property_description": "identifier in the Palissy database of moveable objects of French cultural heritage",
+      "author": "Bob08",
+      "repair_id_example": "reform_Q29119899_P481_2317303689",
+      "report_violation_type": "Item P|136",
+      "changed_constraint_types": "[]",
+      "hash_before": "a3523d7d6eee6283d4c053d612aaaf96b123f92f",
+      "hash_after": "d27719909da0f0b271e813a62de14c170498c5b5",
+      "before_constraint_count": 22,
+      "after_constraint_count": 22
+    },
+    {
+      "property_revision_id": 2402814023,
+      "case_count": 11975,
+      "property": "P18",
+      "property_label": "image",
+      "property_description": "image of relevant illustration of the subject; if available, also use more specific properties (sample: coat of arms image, locator map, flag image, signature image, logo image, collage image)",
+      "author": "Trade",
+      "repair_id_example": "reform_Q3826846_P18_2402814023",
+      "report_violation_type": "Allowed qualifiers",
+      "changed_constraint_types": "[\"Q52558054\"]",
+      "hash_before": "e3303e74183b70ca25ccbb0c41b3be659021a3b8",
+      "hash_after": "17cae97285ddfcaff28dd6eafd2b6674886a02b7",
+      "before_constraint_count": 20,
+      "after_constraint_count": 21
+    },
+    {
+      "property_revision_id": 2393757166,
+      "case_count": 11895,
+      "property": "P18",
+      "property_label": "image",
+      "property_description": "image of relevant illustration of the subject; if available, also use more specific properties (sample: coat of arms image, locator map, flag image, signature image, logo image, collage image)",
+      "author": "Verdy p",
+      "repair_id_example": "reform_Q9902_P18_2393757166",
+      "report_violation_type": "Single value",
+      "changed_constraint_types": "[]",
+      "hash_before": "939de6ad1bd17bae20218d86952ce698c42403a1",
+      "hash_after": "e3303e74183b70ca25ccbb0c41b3be659021a3b8",
+      "before_constraint_count": 20,
+      "after_constraint_count": 20
+    },
+    {
+      "property_revision_id": 2317147423,
+      "case_count": 11619,
+      "property": "P268",
+      "property_label": "Bibliothèque nationale de France ID",
+      "property_description": "identifier for the subject issued by BNF (Bibliothèque nationale de France). Format: 8 digits followed by a check-digit or letter, do not include the initial 'cb'.",
+      "author": "Bob08",
+      "repair_id_example": "reform_Q2343934_P268_2317147423",
+      "report_violation_type": "Single value",
+      "changed_constraint_types": "[]",
+      "hash_before": "269624518af3776a28b6230aaa0646794c944bcd",
+      "hash_after": "e854bde0be5386ff5bb156ff6021a0a807a81ca2",
+      "before_constraint_count": 8,
+      "after_constraint_count": 8
+    },
+    {
+      "property_revision_id": 1687213130,
+      "case_count": 11186,
+      "property": "P242",
+      "property_label": "locator map image",
+      "property_description": "geographic map image which highlights the location of the subject within some larger entity",
+      "author": "عُثمان",
+      "repair_id_example": "reform_Q300446_P242_1687213130",
+      "report_violation_type": "Unique value",
+      "changed_constraint_types": "[]",
+      "hash_before": "69bc2e802f252f396bfac375980dad4b68acfad6",
+      "hash_after": "b10e15e88aead4e1ff900d2102ae20739fac1392",
+      "before_constraint_count": 6,
+      "after_constraint_count": 6
+    },
+    {
+      "property_revision_id": 2254793027,
+      "case_count": 10457,
+      "property": "P166",
+      "property_label": "award received",
+      "property_description": "award or recognition received by a person, organization or creative work",
+      "author": "عُثمان",
+      "repair_id_example": "reform_Q7343484_P166_2254793027",
+      "report_violation_type": "None of",
+      "changed_constraint_types": "[]",
+      "hash_before": "74a153b04c2c54f8592801c6187afd44d4d41016",
+      "hash_after": "dd3141826e6c4ed30fee5d8ea1843f38a994a620",
+      "before_constraint_count": 8,
+      "after_constraint_count": 8
+    },
+    {
+      "property_revision_id": 2351781179,
+      "case_count": 9997,
+      "property": "P2605",
+      "property_label": "ČSFD person ID",
+      "property_description": "identifier for a person in the Czecho-Slovak film database ČSFD",
+      "author": "Bob08",
+      "repair_id_example": "reform_Q357608_P2605_2351781179",
+      "report_violation_type": "Label in sk language",
+      "changed_constraint_types": "[]",
+      "hash_before": "b5f088ca450c371c9de6d5744c70137a2b109a55",
+      "hash_after": "6b49361205443eb211e135ed7d47b00bd7c60831",
+      "before_constraint_count": 10,
+      "after_constraint_count": 10
+    },
+    {
+      "property_revision_id": 1029122128,
+      "case_count": 9924,
+      "property": "P3382",
+      "property_label": "GeneDB ID",
+      "property_description": "gene identifier in GeneDB",
+      "author": "Magnus Manske",
+      "repair_id_example": "reform_Q18970327_P3382_1029122128",
+      "report_violation_type": "Format",
+      "changed_constraint_types": "[]",
+      "hash_before": "1b3e2b6e6a6f6001905f5674afe76d7a59c3c7ee",
+      "hash_after": "958df956f95fc2a2c12e5bde5dd1fb0970658210",
+      "before_constraint_count": 2,
+      "after_constraint_count": 1
+    },
+    {
+      "property_revision_id": 2330325818,
+      "case_count": 9496,
+      "property": "P950",
+      "property_label": "National Library of Spain SpMaBN ID (BNE v1.0)",
+      "property_description": "semi-deprecated control number of the National Library of Spain catalog powered by Symphony. Format for persons: \"XX\" followed by 4 to 7 digits. (Formerly referred to in VIAF as BNE)",
+      "author": "Clemens Dulcis",
+      "repair_id_example": "reform_Q108865583_P950_2330325818",
+      "report_violation_type": "Label in es language",
+      "changed_constraint_types": "[]",
+      "hash_before": "ad05bc98d9f3163d93bc5f8c3a10437cd670b7fb",
+      "hash_after": "c8aebb3da292eb308069209acd9c783c2e9a4727",
+      "before_constraint_count": 7,
+      "after_constraint_count": 7
+    },
+    {
+      "property_revision_id": 1858269104,
+      "case_count": 9011,
+      "property": "P140",
+      "property_label": "religion or worldview",
+      "property_description": "religion of a person, organization or religious building, or associated with this subject",
+      "author": "عُثمان",
+      "repair_id_example": "reform_Q20733430_P140_1858269104",
+      "report_violation_type": "Value type Q|71966963, Q|4392985, Q|1530022, Q|16334295, Q|17364638, Q|211606",
+      "changed_constraint_types": "[]",
+      "hash_before": "76a46513d7cd812bbd1598a668bf57ca51785c36",
+      "hash_after": "9350eb1efaf050760d7a6f09673cbcca6d90d25d",
+      "before_constraint_count": 9,
+      "after_constraint_count": 9
+    },
+    {
+      "property_revision_id": 2407207080,
+      "case_count": 8429,
+      "property": "P1006",
+      "property_label": "Nationale Thesaurus voor Auteursnamen ID",
+      "property_description": "identifier for person names (not: works nor organisations) from the Dutch National Thesaurus for Author names (which also contains non-authors)",
+      "author": "Bob08",
+      "repair_id_example": "reform_Q8864610_P1006_2407207080",
+      "report_violation_type": "Label in nl language",
+      "changed_constraint_types": "[]",
+      "hash_before": "e6f32c2b74e15e9b6a4698544e055002e406667b",
+      "hash_after": "ca030620ee7d5efdf9d65fc7e808ef7ff585b341",
+      "before_constraint_count": 8,
+      "after_constraint_count": 8
+    },
+    {
+      "property_revision_id": 722137891,
+      "case_count": 7779,
+      "property": "P645",
+      "property_label": "genomic end",
+      "property_description": "genomic ending coordinate of the biological sequence (e.g. a gene)",
+      "author": "Gstupp",
+      "repair_id_example": "reform_Q18065630_P645_722137891",
+      "report_violation_type": "Unique value",
+      "changed_constraint_types": "[\"Q21502410\"]",
+      "hash_before": "97813988f422efc68c9bff27622943dfd33a7231",
+      "hash_after": "9fbdde8c58abe755c816c729db15161e3f563dea",
+      "before_constraint_count": 3,
+      "after_constraint_count": 2
+    },
+    {
+      "property_revision_id": 690339121,
+      "case_count": 7757,
+      "property": "P645",
+      "property_label": "genomic end",
+      "property_description": "genomic ending coordinate of the biological sequence (e.g. a gene)",
+      "author": "QuickStatementsBot",
+      "repair_id_example": "reform_Q24418667_P645_690339121",
+      "report_violation_type": "Unique value",
+      "changed_constraint_types": "[\"Q21528958\"]",
+      "hash_before": "fd197730e586961a387a16b4bf8878aa303c20ab",
+      "hash_after": "2ec6011b3b97ebbc0aa1aee83187e00bc604b708",
+      "before_constraint_count": 3,
+      "after_constraint_count": 4
+    },
+    {
+      "property_revision_id": 2439061952,
+      "case_count": 7467,
+      "property": "P7937",
+      "property_label": "form of creative work",
+      "property_description": "structure of a creative work",
+      "author": "Bodhisattwa",
+      "repair_id_example": "reform_Q18849598_P7937_2439061952",
+      "report_violation_type": "Type Q|386724, Q|17489659, Q|15306849",
+      "changed_constraint_types": "[]",
+      "hash_before": "c8fc5ee369daecd23e0417ca84d82310c44a0694",
+      "hash_after": "b0db476d3f8ebb866bc1d80caa20916de63ed409",
+      "before_constraint_count": 16,
+      "after_constraint_count": 16
+    },
+    {
+      "property_revision_id": 1580835843,
+      "case_count": 7314,
+      "property": "P1346",
+      "property_label": "winner",
+      "property_description": "winner of a competition or similar event, not to be used from the awardees record (instead use \"award received\" (P166), possibly qualified with \"for work\" (P1686)) nor for wars or battles",
+      "author": "Valentina.Anitnelav",
+      "repair_id_example": "reform_Q4014144_P1346_1580835843",
+      "report_violation_type": "Single value",
+      "changed_constraint_types": "[]",
+      "hash_before": "47f2262ab5ac29f87f1c5b2e322a6e4ab9e713f6",
+      "hash_after": "2db6a4e2ce016c3d9aa35fac1c48197dc8365138",
+      "before_constraint_count": 7,
+      "after_constraint_count": 7
+    },
+    {
+      "property_revision_id": 722137948,
+      "case_count": 7222,
+      "property": "P644",
+      "property_label": "genomic start",
+      "property_description": "genomic starting coordinate of the biological sequence (e.g. a gene)",
+      "author": "Gstupp",
+      "repair_id_example": "reform_Q23339195_P644_722137948",
+      "report_violation_type": "Unique value",
+      "changed_constraint_types": "[\"Q21502410\"]",
+      "hash_before": "97813988f422efc68c9bff27622943dfd33a7231",
+      "hash_after": "9fbdde8c58abe755c816c729db15161e3f563dea",
+      "before_constraint_count": 3,
+      "after_constraint_count": 2
+    },
+    {
+      "property_revision_id": 2040528587,
+      "case_count": 7049,
+      "property": "P6597",
+      "property_label": "DFD ID",
+      "property_description": "ID of corresponding entry in the DFD online dictionary of family names",
+      "author": "Nikki",
+      "repair_id_example": "reform_Q122835561_P6597_2040528587",
+      "report_violation_type": "Label in de language",
+      "changed_constraint_types": "[]",
+      "hash_before": "077995b0705d0cd9e93a85d257d18baf836c2888",
+      "hash_after": "8901b5ad38dd448c8371c1ec9b6a8dc79d75ba9a",
+      "before_constraint_count": 15,
+      "after_constraint_count": 15
+    },
+    {
+      "property_revision_id": 2252283680,
+      "case_count": 7033,
+      "property": "P1782",
+      "property_label": "courtesy name",
+      "property_description": "name bestowed upon a person at adulthood in addition to one's given name, mostly in East Asia",
+      "author": "Miyakoo",
+      "repair_id_example": "reform_Q10920862_P1782_2252283680",
+      "report_violation_type": "Label in vi language",
+      "changed_constraint_types": "[]",
+      "hash_before": "4eb17ff4cf5f215c3d3026d2794c774a6812ce63",
+      "hash_after": "bfbe5698242757ff9135432eee84bb15116b1eda",
+      "before_constraint_count": 8,
+      "after_constraint_count": 7
+    },
+    {
+      "property_revision_id": 696618533,
+      "case_count": 6951,
+      "property": "P644",
+      "property_label": "genomic start",
+      "property_description": "genomic starting coordinate of the biological sequence (e.g. a gene)",
+      "author": "MisterSynergy",
+      "repair_id_example": "reform_Q23330626_P644_696618533",
+      "report_violation_type": "Unique value",
+      "changed_constraint_types": "[]",
+      "hash_before": "2ec6011b3b97ebbc0aa1aee83187e00bc604b708",
+      "hash_after": "68f5deeea79253a19a40179a82c21dac2748e4cc",
+      "before_constraint_count": 4,
+      "after_constraint_count": 4
+    },
+    {
+      "property_revision_id": 690339109,
+      "case_count": 6947,
+      "property": "P644",
+      "property_label": "genomic start",
+      "property_description": "genomic starting coordinate of the biological sequence (e.g. a gene)",
+      "author": "QuickStatementsBot",
+      "repair_id_example": "reform_Q18035078_P644_690339109",
+      "report_violation_type": "Unique value",
+      "changed_constraint_types": "[\"Q21528958\"]",
+      "hash_before": "fd197730e586961a387a16b4bf8878aa303c20ab",
+      "hash_after": "2ec6011b3b97ebbc0aa1aee83187e00bc604b708",
+      "before_constraint_count": 3,
+      "after_constraint_count": 4
+    },
+    {
+      "property_revision_id": 1713429147,
+      "case_count": 6919,
+      "property": "P1651",
+      "property_label": "YouTube video ID",
+      "property_description": "identifier of a video on YouTube; qualify trailers with \"object has role\" (P3831)=\"trailer\" (Q622550). For channels, use P2397; for playlists, use P4300",
+      "author": "عُثمان",
+      "repair_id_example": "reform_Q1226153_P1651_1713429147",
+      "report_violation_type": "Conflicts with P|31",
+      "changed_constraint_types": "[]",
+      "hash_before": "50050b69da6f8af684b4377d80544ccb5dbb5856",
+      "hash_after": "221b41d9be851911e55266bf4ecb9a6ea0778332",
+      "before_constraint_count": 7,
+      "after_constraint_count": 8
+    },
+    {
+      "property_revision_id": 2317152167,
+      "case_count": 6861,
+      "property": "P640",
+      "property_label": "Léonore ID",
+      "property_description": "identifier of a person in the Léonore database",
+      "author": "Bob08",
+      "repair_id_example": "reform_Q124970155_P640_2317152167",
+      "report_violation_type": "Item P|19",
+      "changed_constraint_types": "[]",
+      "hash_before": "b59dc677f5719e4088c2bfd0b02d669c53b06638",
+      "hash_after": "b3fce829a0d59e3f6b3d66ff8be02ec76d0eb344",
+      "before_constraint_count": 13,
+      "after_constraint_count": 13
+    },
+    {
+      "property_revision_id": 696618524,
+      "case_count": 6793,
+      "property": "P645",
+      "property_label": "genomic end",
+      "property_description": "genomic ending coordinate of the biological sequence (e.g. a gene)",
+      "author": "MisterSynergy",
+      "repair_id_example": "reform_Q23111464_P645_696618524",
+      "report_violation_type": "Unique value",
+      "changed_constraint_types": "[]",
+      "hash_before": "2ec6011b3b97ebbc0aa1aee83187e00bc604b708",
+      "hash_after": "68f5deeea79253a19a40179a82c21dac2748e4cc",
+      "before_constraint_count": 4,
+      "after_constraint_count": 4
+    },
+    {
+      "property_revision_id": 1695570929,
+      "case_count": 6630,
+      "property": "P2440",
+      "property_label": "transliteration or transcription",
+      "property_description": "conversion of text to alternate script (use as a qualifier for monolingual text statements; please use specific property if possible)",
+      "author": "عُثمان",
+      "repair_id_example": "reform_Q18250113_P2440_1695570929",
+      "report_violation_type": "Mandatory Qualifiers",
+      "changed_constraint_types": "[]",
+      "hash_before": "c070f880066096d1b80b62193b70ee20257c2e93",
+      "hash_after": "fb47ab16c6cc776f3f9035247d6ca1a05b92022c",
+      "before_constraint_count": 5,
+      "after_constraint_count": 6
+    },
+    {
+      "property_revision_id": 2356390580,
+      "case_count": 6546,
+      "property": "P400",
+      "property_label": "platform",
+      "property_description": "platform for which a work was developed or released, or the specific platform version of a software product",
+      "author": "Trade",
+      "repair_id_example": "reform_Q134586616_P400_2356390580",
+      "report_violation_type": "None of",
+      "changed_constraint_types": "[]",
+      "hash_before": "2a9a8192bbb1e51c571b94c0ccda6b8a1c18bda9",
+      "hash_after": "4c688d9e9946021f54ff2d42e6a2a03a85f4936d",
+      "before_constraint_count": 27,
+      "after_constraint_count": 27
+    }
+  ],
+  "survival_curve": [
+    {
+      "cap": 1000,
+      "surviving_tbox_repairs": 101438
+    },
+    {
+      "cap": 999,
+      "surviving_tbox_repairs": 101347
+    },
+    {
+      "cap": 998,
+      "surviving_tbox_repairs": 101256
+    },
+    {
+      "cap": 997,
+      "surviving_tbox_repairs": 101165
+    },
+    {
+      "cap": 996,
+      "surviving_tbox_repairs": 101074
+    },
+    {
+      "cap": 995,
+      "surviving_tbox_repairs": 100983
+    },
+    {
+      "cap": 994,
+      "surviving_tbox_repairs": 100892
+    },
+    {
+      "cap": 993,
+      "surviving_tbox_repairs": 100801
+    },
+    {
+      "cap": 992,
+      "surviving_tbox_repairs": 100710
+    },
+    {
+      "cap": 991,
+      "surviving_tbox_repairs": 100619
+    },
+    {
+      "cap": 990,
+      "surviving_tbox_repairs": 100528
+    },
+    {
+      "cap": 989,
+      "surviving_tbox_repairs": 100437
+    },
+    {
+      "cap": 988,
+      "surviving_tbox_repairs": 100346
+    },
+    {
+      "cap": 987,
+      "surviving_tbox_repairs": 100255
+    },
+    {
+      "cap": 986,
+      "surviving_tbox_repairs": 100164
+    },
+    {
+      "cap": 985,
+      "surviving_tbox_repairs": 100073
+    },
+    {
+      "cap": 984,
+      "surviving_tbox_repairs": 99982
+    },
+    {
+      "cap": 983,
+      "surviving_tbox_repairs": 99891
+    },
+    {
+      "cap": 982,
+      "surviving_tbox_repairs": 99800
+    },
+    {
+      "cap": 981,
+      "surviving_tbox_repairs": 99709
+    },
+    {
+      "cap": 980,
+      "surviving_tbox_repairs": 99618
+    },
+    {
+      "cap": 979,
+      "surviving_tbox_repairs": 99527
+    },
+    {
+      "cap": 978,
+      "surviving_tbox_repairs": 99436
+    },
+    {
+      "cap": 977,
+      "surviving_tbox_repairs": 99345
+    },
+    {
+      "cap": 976,
+      "surviving_tbox_repairs": 99254
+    },
+    {
+      "cap": 975,
+      "surviving_tbox_repairs": 99163
+    },
+    {
+      "cap": 974,
+      "surviving_tbox_repairs": 99072
+    },
+    {
+      "cap": 973,
+      "surviving_tbox_repairs": 98981
+    },
+    {
+      "cap": 972,
+      "surviving_tbox_repairs": 98890
+    },
+    {
+      "cap": 971,
+      "surviving_tbox_repairs": 98799
+    },
+    {
+      "cap": 970,
+      "surviving_tbox_repairs": 98708
+    },
+    {
+      "cap": 969,
+      "surviving_tbox_repairs": 98617
+    },
+    {
+      "cap": 968,
+      "surviving_tbox_repairs": 98526
+    },
+    {
+      "cap": 967,
+      "surviving_tbox_repairs": 98435
+    },
+    {
+      "cap": 966,
+      "surviving_tbox_repairs": 98344
+    },
+    {
+      "cap": 965,
+      "surviving_tbox_repairs": 98253
+    },
+    {
+      "cap": 964,
+      "surviving_tbox_repairs": 98162
+    },
+    {
+      "cap": 963,
+      "surviving_tbox_repairs": 98071
+    },
+    {
+      "cap": 962,
+      "surviving_tbox_repairs": 97980
+    },
+    {
+      "cap": 961,
+      "surviving_tbox_repairs": 97889
+    },
+    {
+      "cap": 960,
+      "surviving_tbox_repairs": 97798
+    },
+    {
+      "cap": 959,
+      "surviving_tbox_repairs": 97707
+    },
+    {
+      "cap": 958,
+      "surviving_tbox_repairs": 97616
+    },
+    {
+      "cap": 957,
+      "surviving_tbox_repairs": 97525
+    },
+    {
+      "cap": 956,
+      "surviving_tbox_repairs": 97434
+    },
+    {
+      "cap": 955,
+      "surviving_tbox_repairs": 97342
+    },
+    {
+      "cap": 954,
+      "surviving_tbox_repairs": 97250
+    },
+    {
+      "cap": 953,
+      "surviving_tbox_repairs": 97158
+    },
+    {
+      "cap": 952,
+      "surviving_tbox_repairs": 97066
+    },
+    {
+      "cap": 951,
+      "surviving_tbox_repairs": 96974
+    },
+    {
+      "cap": 950,
+      "surviving_tbox_repairs": 96882
+    },
+    {
+      "cap": 949,
+      "surviving_tbox_repairs": 96790
+    },
+    {
+      "cap": 948,
+      "surviving_tbox_repairs": 96698
+    },
+    {
+      "cap": 947,
+      "surviving_tbox_repairs": 96606
+    },
+    {
+      "cap": 946,
+      "surviving_tbox_repairs": 96514
+    },
+    {
+      "cap": 945,
+      "surviving_tbox_repairs": 96422
+    },
+    {
+      "cap": 944,
+      "surviving_tbox_repairs": 96330
+    },
+    {
+      "cap": 943,
+      "surviving_tbox_repairs": 96238
+    },
+    {
+      "cap": 942,
+      "surviving_tbox_repairs": 96146
+    },
+    {
+      "cap": 941,
+      "surviving_tbox_repairs": 96054
+    },
+    {
+      "cap": 940,
+      "surviving_tbox_repairs": 95962
+    },
+    {
+      "cap": 939,
+      "surviving_tbox_repairs": 95870
+    },
+    {
+      "cap": 938,
+      "surviving_tbox_repairs": 95778
+    },
+    {
+      "cap": 937,
+      "surviving_tbox_repairs": 95686
+    },
+    {
+      "cap": 936,
+      "surviving_tbox_repairs": 95594
+    },
+    {
+      "cap": 935,
+      "surviving_tbox_repairs": 95502
+    },
+    {
+      "cap": 934,
+      "surviving_tbox_repairs": 95410
+    },
+    {
+      "cap": 933,
+      "surviving_tbox_repairs": 95318
+    },
+    {
+      "cap": 932,
+      "surviving_tbox_repairs": 95226
+    },
+    {
+      "cap": 931,
+      "surviving_tbox_repairs": 95134
+    },
+    {
+      "cap": 930,
+      "surviving_tbox_repairs": 95042
+    },
+    {
+      "cap": 929,
+      "surviving_tbox_repairs": 94950
+    },
+    {
+      "cap": 928,
+      "surviving_tbox_repairs": 94858
+    },
+    {
+      "cap": 927,
+      "surviving_tbox_repairs": 94766
+    },
+    {
+      "cap": 926,
+      "surviving_tbox_repairs": 94674
+    },
+    {
+      "cap": 925,
+      "surviving_tbox_repairs": 94582
+    },
+    {
+      "cap": 924,
+      "surviving_tbox_repairs": 94490
+    },
+    {
+      "cap": 923,
+      "surviving_tbox_repairs": 94398
+    },
+    {
+      "cap": 922,
+      "surviving_tbox_repairs": 94306
+    },
+    {
+      "cap": 921,
+      "surviving_tbox_repairs": 94214
+    },
+    {
+      "cap": 920,
+      "surviving_tbox_repairs": 94122
+    },
+    {
+      "cap": 919,
+      "surviving_tbox_repairs": 94030
+    },
+    {
+      "cap": 918,
+      "surviving_tbox_repairs": 93938
+    },
+    {
+      "cap": 917,
+      "surviving_tbox_repairs": 93846
+    },
+    {
+      "cap": 916,
+      "surviving_tbox_repairs": 93754
+    },
+    {
+      "cap": 915,
+      "surviving_tbox_repairs": 93662
+    },
+    {
+      "cap": 914,
+      "surviving_tbox_repairs": 93570
+    },
+    {
+      "cap": 913,
+      "surviving_tbox_repairs": 93478
+    },
+    {
+      "cap": 912,
+      "surviving_tbox_repairs": 93386
+    },
+    {
+      "cap": 911,
+      "surviving_tbox_repairs": 93294
+    },
+    {
+      "cap": 910,
+      "surviving_tbox_repairs": 93202
+    },
+    {
+      "cap": 909,
+      "surviving_tbox_repairs": 93110
+    },
+    {
+      "cap": 908,
+      "surviving_tbox_repairs": 93018
+    },
+    {
+      "cap": 907,
+      "surviving_tbox_repairs": 92926
+    },
+    {
+      "cap": 906,
+      "surviving_tbox_repairs": 92834
+    },
+    {
+      "cap": 905,
+      "surviving_tbox_repairs": 92742
+    },
+    {
+      "cap": 904,
+      "surviving_tbox_repairs": 92650
+    },
+    {
+      "cap": 903,
+      "surviving_tbox_repairs": 92558
+    },
+    {
+      "cap": 902,
+      "surviving_tbox_repairs": 92466
+    },
+    {
+      "cap": 901,
+      "surviving_tbox_repairs": 92374
+    },
+    {
+      "cap": 900,
+      "surviving_tbox_repairs": 92282
+    },
+    {
+      "cap": 899,
+      "surviving_tbox_repairs": 92190
+    },
+    {
+      "cap": 898,
+      "surviving_tbox_repairs": 92098
+    },
+    {
+      "cap": 897,
+      "surviving_tbox_repairs": 92006
+    },
+    {
+      "cap": 896,
+      "surviving_tbox_repairs": 91914
+    },
+    {
+      "cap": 895,
+      "surviving_tbox_repairs": 91822
+    },
+    {
+      "cap": 894,
+      "surviving_tbox_repairs": 91730
+    },
+    {
+      "cap": 893,
+      "surviving_tbox_repairs": 91638
+    },
+    {
+      "cap": 892,
+      "surviving_tbox_repairs": 91546
+    },
+    {
+      "cap": 891,
+      "surviving_tbox_repairs": 91454
+    },
+    {
+      "cap": 890,
+      "surviving_tbox_repairs": 91362
+    },
+    {
+      "cap": 889,
+      "surviving_tbox_repairs": 91270
+    },
+    {
+      "cap": 888,
+      "surviving_tbox_repairs": 91178
+    },
+    {
+      "cap": 887,
+      "surviving_tbox_repairs": 91086
+    },
+    {
+      "cap": 886,
+      "surviving_tbox_repairs": 90994
+    },
+    {
+      "cap": 885,
+      "surviving_tbox_repairs": 90902
+    },
+    {
+      "cap": 884,
+      "surviving_tbox_repairs": 90810
+    },
+    {
+      "cap": 883,
+      "surviving_tbox_repairs": 90718
+    },
+    {
+      "cap": 882,
+      "surviving_tbox_repairs": 90626
+    },
+    {
+      "cap": 881,
+      "surviving_tbox_repairs": 90534
+    },
+    {
+      "cap": 880,
+      "surviving_tbox_repairs": 90442
+    },
+    {
+      "cap": 879,
+      "surviving_tbox_repairs": 90350
+    },
+    {
+      "cap": 878,
+      "surviving_tbox_repairs": 90258
+    },
+    {
+      "cap": 877,
+      "surviving_tbox_repairs": 90166
+    },
+    {
+      "cap": 876,
+      "surviving_tbox_repairs": 90074
+    },
+    {
+      "cap": 875,
+      "surviving_tbox_repairs": 89982
+    },
+    {
+      "cap": 874,
+      "surviving_tbox_repairs": 89890
+    },
+    {
+      "cap": 873,
+      "surviving_tbox_repairs": 89798
+    },
+    {
+      "cap": 872,
+      "surviving_tbox_repairs": 89706
+    },
+    {
+      "cap": 871,
+      "surviving_tbox_repairs": 89614
+    },
+    {
+      "cap": 870,
+      "surviving_tbox_repairs": 89522
+    },
+    {
+      "cap": 869,
+      "surviving_tbox_repairs": 89430
+    },
+    {
+      "cap": 868,
+      "surviving_tbox_repairs": 89338
+    },
+    {
+      "cap": 867,
+      "surviving_tbox_repairs": 89246
+    },
+    {
+      "cap": 866,
+      "surviving_tbox_repairs": 89154
+    },
+    {
+      "cap": 865,
+      "surviving_tbox_repairs": 89062
+    },
+    {
+      "cap": 864,
+      "surviving_tbox_repairs": 88970
+    },
+    {
+      "cap": 863,
+      "surviving_tbox_repairs": 88878
+    },
+    {
+      "cap": 862,
+      "surviving_tbox_repairs": 88786
+    },
+    {
+      "cap": 861,
+      "surviving_tbox_repairs": 88694
+    },
+    {
+      "cap": 860,
+      "surviving_tbox_repairs": 88602
+    },
+    {
+      "cap": 859,
+      "surviving_tbox_repairs": 88510
+    },
+    {
+      "cap": 858,
+      "surviving_tbox_repairs": 88418
+    },
+    {
+      "cap": 857,
+      "surviving_tbox_repairs": 88326
+    },
+    {
+      "cap": 856,
+      "surviving_tbox_repairs": 88234
+    },
+    {
+      "cap": 855,
+      "surviving_tbox_repairs": 88142
+    },
+    {
+      "cap": 854,
+      "surviving_tbox_repairs": 88050
+    },
+    {
+      "cap": 853,
+      "surviving_tbox_repairs": 87958
+    },
+    {
+      "cap": 852,
+      "surviving_tbox_repairs": 87866
+    },
+    {
+      "cap": 851,
+      "surviving_tbox_repairs": 87773
+    },
+    {
+      "cap": 850,
+      "surviving_tbox_repairs": 87680
+    },
+    {
+      "cap": 849,
+      "surviving_tbox_repairs": 87587
+    },
+    {
+      "cap": 848,
+      "surviving_tbox_repairs": 87494
+    },
+    {
+      "cap": 847,
+      "surviving_tbox_repairs": 87401
+    },
+    {
+      "cap": 846,
+      "surviving_tbox_repairs": 87308
+    },
+    {
+      "cap": 845,
+      "surviving_tbox_repairs": 87215
+    },
+    {
+      "cap": 844,
+      "surviving_tbox_repairs": 87122
+    },
+    {
+      "cap": 843,
+      "surviving_tbox_repairs": 87029
+    },
+    {
+      "cap": 842,
+      "surviving_tbox_repairs": 86936
+    },
+    {
+      "cap": 841,
+      "surviving_tbox_repairs": 86843
+    },
+    {
+      "cap": 840,
+      "surviving_tbox_repairs": 86750
+    },
+    {
+      "cap": 839,
+      "surviving_tbox_repairs": 86657
+    },
+    {
+      "cap": 838,
+      "surviving_tbox_repairs": 86564
+    },
+    {
+      "cap": 837,
+      "surviving_tbox_repairs": 86471
+    },
+    {
+      "cap": 836,
+      "surviving_tbox_repairs": 86378
+    },
+    {
+      "cap": 835,
+      "surviving_tbox_repairs": 86285
+    },
+    {
+      "cap": 834,
+      "surviving_tbox_repairs": 86192
+    },
+    {
+      "cap": 833,
+      "surviving_tbox_repairs": 86099
+    },
+    {
+      "cap": 832,
+      "surviving_tbox_repairs": 86006
+    },
+    {
+      "cap": 831,
+      "surviving_tbox_repairs": 85913
+    },
+    {
+      "cap": 830,
+      "surviving_tbox_repairs": 85820
+    },
+    {
+      "cap": 829,
+      "surviving_tbox_repairs": 85727
+    },
+    {
+      "cap": 828,
+      "surviving_tbox_repairs": 85634
+    },
+    {
+      "cap": 827,
+      "surviving_tbox_repairs": 85541
+    },
+    {
+      "cap": 826,
+      "surviving_tbox_repairs": 85448
+    },
+    {
+      "cap": 825,
+      "surviving_tbox_repairs": 85355
+    },
+    {
+      "cap": 824,
+      "surviving_tbox_repairs": 85262
+    },
+    {
+      "cap": 823,
+      "surviving_tbox_repairs": 85169
+    },
+    {
+      "cap": 822,
+      "surviving_tbox_repairs": 85076
+    },
+    {
+      "cap": 821,
+      "surviving_tbox_repairs": 84983
+    },
+    {
+      "cap": 820,
+      "surviving_tbox_repairs": 84890
+    },
+    {
+      "cap": 819,
+      "surviving_tbox_repairs": 84797
+    },
+    {
+      "cap": 818,
+      "surviving_tbox_repairs": 84704
+    },
+    {
+      "cap": 817,
+      "surviving_tbox_repairs": 84611
+    },
+    {
+      "cap": 816,
+      "surviving_tbox_repairs": 84518
+    },
+    {
+      "cap": 815,
+      "surviving_tbox_repairs": 84425
+    },
+    {
+      "cap": 814,
+      "surviving_tbox_repairs": 84332
+    },
+    {
+      "cap": 813,
+      "surviving_tbox_repairs": 84239
+    },
+    {
+      "cap": 812,
+      "surviving_tbox_repairs": 84146
+    },
+    {
+      "cap": 811,
+      "surviving_tbox_repairs": 84053
+    },
+    {
+      "cap": 810,
+      "surviving_tbox_repairs": 83960
+    },
+    {
+      "cap": 809,
+      "surviving_tbox_repairs": 83867
+    },
+    {
+      "cap": 808,
+      "surviving_tbox_repairs": 83774
+    },
+    {
+      "cap": 807,
+      "surviving_tbox_repairs": 83681
+    },
+    {
+      "cap": 806,
+      "surviving_tbox_repairs": 83588
+    },
+    {
+      "cap": 805,
+      "surviving_tbox_repairs": 83495
+    },
+    {
+      "cap": 804,
+      "surviving_tbox_repairs": 83402
+    },
+    {
+      "cap": 803,
+      "surviving_tbox_repairs": 83309
+    },
+    {
+      "cap": 802,
+      "surviving_tbox_repairs": 83216
+    },
+    {
+      "cap": 801,
+      "surviving_tbox_repairs": 83123
+    },
+    {
+      "cap": 800,
+      "surviving_tbox_repairs": 83030
+    },
+    {
+      "cap": 799,
+      "surviving_tbox_repairs": 82937
+    },
+    {
+      "cap": 798,
+      "surviving_tbox_repairs": 82844
+    },
+    {
+      "cap": 797,
+      "surviving_tbox_repairs": 82751
+    },
+    {
+      "cap": 796,
+      "surviving_tbox_repairs": 82658
+    },
+    {
+      "cap": 795,
+      "surviving_tbox_repairs": 82565
+    },
+    {
+      "cap": 794,
+      "surviving_tbox_repairs": 82472
+    },
+    {
+      "cap": 793,
+      "surviving_tbox_repairs": 82379
+    },
+    {
+      "cap": 792,
+      "surviving_tbox_repairs": 82286
+    },
+    {
+      "cap": 791,
+      "surviving_tbox_repairs": 82193
+    },
+    {
+      "cap": 790,
+      "surviving_tbox_repairs": 82100
+    },
+    {
+      "cap": 789,
+      "surviving_tbox_repairs": 82007
+    },
+    {
+      "cap": 788,
+      "surviving_tbox_repairs": 81914
+    },
+    {
+      "cap": 787,
+      "surviving_tbox_repairs": 81821
+    },
+    {
+      "cap": 786,
+      "surviving_tbox_repairs": 81728
+    },
+    {
+      "cap": 785,
+      "surviving_tbox_repairs": 81635
+    },
+    {
+      "cap": 784,
+      "surviving_tbox_repairs": 81542
+    },
+    {
+      "cap": 783,
+      "surviving_tbox_repairs": 81449
+    },
+    {
+      "cap": 782,
+      "surviving_tbox_repairs": 81356
+    },
+    {
+      "cap": 781,
+      "surviving_tbox_repairs": 81263
+    },
+    {
+      "cap": 780,
+      "surviving_tbox_repairs": 81170
+    },
+    {
+      "cap": 779,
+      "surviving_tbox_repairs": 81077
+    },
+    {
+      "cap": 778,
+      "surviving_tbox_repairs": 80984
+    },
+    {
+      "cap": 777,
+      "surviving_tbox_repairs": 80891
+    },
+    {
+      "cap": 776,
+      "surviving_tbox_repairs": 80798
+    },
+    {
+      "cap": 775,
+      "surviving_tbox_repairs": 80705
+    },
+    {
+      "cap": 774,
+      "surviving_tbox_repairs": 80612
+    },
+    {
+      "cap": 773,
+      "surviving_tbox_repairs": 80519
+    },
+    {
+      "cap": 772,
+      "surviving_tbox_repairs": 80426
+    },
+    {
+      "cap": 771,
+      "surviving_tbox_repairs": 80333
+    },
+    {
+      "cap": 770,
+      "surviving_tbox_repairs": 80240
+    },
+    {
+      "cap": 769,
+      "surviving_tbox_repairs": 80147
+    },
+    {
+      "cap": 768,
+      "surviving_tbox_repairs": 80054
+    },
+    {
+      "cap": 767,
+      "surviving_tbox_repairs": 79961
+    },
+    {
+      "cap": 766,
+      "surviving_tbox_repairs": 79868
+    },
+    {
+      "cap": 765,
+      "surviving_tbox_repairs": 79775
+    },
+    {
+      "cap": 764,
+      "surviving_tbox_repairs": 79682
+    },
+    {
+      "cap": 763,
+      "surviving_tbox_repairs": 79589
+    },
+    {
+      "cap": 762,
+      "surviving_tbox_repairs": 79496
+    },
+    {
+      "cap": 761,
+      "surviving_tbox_repairs": 79403
+    },
+    {
+      "cap": 760,
+      "surviving_tbox_repairs": 79310
+    },
+    {
+      "cap": 759,
+      "surviving_tbox_repairs": 79217
+    },
+    {
+      "cap": 758,
+      "surviving_tbox_repairs": 79124
+    },
+    {
+      "cap": 757,
+      "surviving_tbox_repairs": 79031
+    },
+    {
+      "cap": 756,
+      "surviving_tbox_repairs": 78938
+    },
+    {
+      "cap": 755,
+      "surviving_tbox_repairs": 78845
+    },
+    {
+      "cap": 754,
+      "surviving_tbox_repairs": 78752
+    },
+    {
+      "cap": 753,
+      "surviving_tbox_repairs": 78659
+    },
+    {
+      "cap": 752,
+      "surviving_tbox_repairs": 78566
+    },
+    {
+      "cap": 751,
+      "surviving_tbox_repairs": 78473
+    },
+    {
+      "cap": 750,
+      "surviving_tbox_repairs": 78380
+    },
+    {
+      "cap": 749,
+      "surviving_tbox_repairs": 78287
+    },
+    {
+      "cap": 748,
+      "surviving_tbox_repairs": 78194
+    },
+    {
+      "cap": 747,
+      "surviving_tbox_repairs": 78101
+    },
+    {
+      "cap": 746,
+      "surviving_tbox_repairs": 78008
+    },
+    {
+      "cap": 745,
+      "surviving_tbox_repairs": 77915
+    },
+    {
+      "cap": 744,
+      "surviving_tbox_repairs": 77822
+    },
+    {
+      "cap": 743,
+      "surviving_tbox_repairs": 77729
+    },
+    {
+      "cap": 742,
+      "surviving_tbox_repairs": 77636
+    },
+    {
+      "cap": 741,
+      "surviving_tbox_repairs": 77543
+    },
+    {
+      "cap": 740,
+      "surviving_tbox_repairs": 77450
+    },
+    {
+      "cap": 739,
+      "surviving_tbox_repairs": 77357
+    },
+    {
+      "cap": 738,
+      "surviving_tbox_repairs": 77264
+    },
+    {
+      "cap": 737,
+      "surviving_tbox_repairs": 77171
+    },
+    {
+      "cap": 736,
+      "surviving_tbox_repairs": 77078
+    },
+    {
+      "cap": 735,
+      "surviving_tbox_repairs": 76985
+    },
+    {
+      "cap": 734,
+      "surviving_tbox_repairs": 76892
+    },
+    {
+      "cap": 733,
+      "surviving_tbox_repairs": 76799
+    },
+    {
+      "cap": 732,
+      "surviving_tbox_repairs": 76706
+    },
+    {
+      "cap": 731,
+      "surviving_tbox_repairs": 76613
+    },
+    {
+      "cap": 730,
+      "surviving_tbox_repairs": 76520
+    },
+    {
+      "cap": 729,
+      "surviving_tbox_repairs": 76427
+    },
+    {
+      "cap": 728,
+      "surviving_tbox_repairs": 76334
+    },
+    {
+      "cap": 727,
+      "surviving_tbox_repairs": 76241
+    },
+    {
+      "cap": 726,
+      "surviving_tbox_repairs": 76148
+    },
+    {
+      "cap": 725,
+      "surviving_tbox_repairs": 76055
+    },
+    {
+      "cap": 724,
+      "surviving_tbox_repairs": 75962
+    },
+    {
+      "cap": 723,
+      "surviving_tbox_repairs": 75869
+    },
+    {
+      "cap": 722,
+      "surviving_tbox_repairs": 75776
+    },
+    {
+      "cap": 721,
+      "surviving_tbox_repairs": 75683
+    },
+    {
+      "cap": 720,
+      "surviving_tbox_repairs": 75590
+    },
+    {
+      "cap": 719,
+      "surviving_tbox_repairs": 75497
+    },
+    {
+      "cap": 718,
+      "surviving_tbox_repairs": 75404
+    },
+    {
+      "cap": 717,
+      "surviving_tbox_repairs": 75311
+    },
+    {
+      "cap": 716,
+      "surviving_tbox_repairs": 75218
+    },
+    {
+      "cap": 715,
+      "surviving_tbox_repairs": 75125
+    },
+    {
+      "cap": 714,
+      "surviving_tbox_repairs": 75032
+    },
+    {
+      "cap": 713,
+      "surviving_tbox_repairs": 74939
+    },
+    {
+      "cap": 712,
+      "surviving_tbox_repairs": 74846
+    },
+    {
+      "cap": 711,
+      "surviving_tbox_repairs": 74753
+    },
+    {
+      "cap": 710,
+      "surviving_tbox_repairs": 74660
+    },
+    {
+      "cap": 709,
+      "surviving_tbox_repairs": 74567
+    },
+    {
+      "cap": 708,
+      "surviving_tbox_repairs": 74474
+    },
+    {
+      "cap": 707,
+      "surviving_tbox_repairs": 74381
+    },
+    {
+      "cap": 706,
+      "surviving_tbox_repairs": 74288
+    },
+    {
+      "cap": 705,
+      "surviving_tbox_repairs": 74195
+    },
+    {
+      "cap": 704,
+      "surviving_tbox_repairs": 74102
+    },
+    {
+      "cap": 703,
+      "surviving_tbox_repairs": 74009
+    },
+    {
+      "cap": 702,
+      "surviving_tbox_repairs": 73916
+    },
+    {
+      "cap": 701,
+      "surviving_tbox_repairs": 73823
+    },
+    {
+      "cap": 700,
+      "surviving_tbox_repairs": 73730
+    },
+    {
+      "cap": 699,
+      "surviving_tbox_repairs": 73637
+    },
+    {
+      "cap": 698,
+      "surviving_tbox_repairs": 73544
+    },
+    {
+      "cap": 697,
+      "surviving_tbox_repairs": 73451
+    },
+    {
+      "cap": 696,
+      "surviving_tbox_repairs": 73358
+    },
+    {
+      "cap": 695,
+      "surviving_tbox_repairs": 73265
+    },
+    {
+      "cap": 694,
+      "surviving_tbox_repairs": 73172
+    },
+    {
+      "cap": 693,
+      "surviving_tbox_repairs": 73079
+    },
+    {
+      "cap": 692,
+      "surviving_tbox_repairs": 72986
+    },
+    {
+      "cap": 691,
+      "surviving_tbox_repairs": 72893
+    },
+    {
+      "cap": 690,
+      "surviving_tbox_repairs": 72800
+    },
+    {
+      "cap": 689,
+      "surviving_tbox_repairs": 72707
+    },
+    {
+      "cap": 688,
+      "surviving_tbox_repairs": 72614
+    },
+    {
+      "cap": 687,
+      "surviving_tbox_repairs": 72521
+    },
+    {
+      "cap": 686,
+      "surviving_tbox_repairs": 72428
+    },
+    {
+      "cap": 685,
+      "surviving_tbox_repairs": 72335
+    },
+    {
+      "cap": 684,
+      "surviving_tbox_repairs": 72242
+    },
+    {
+      "cap": 683,
+      "surviving_tbox_repairs": 72149
+    },
+    {
+      "cap": 682,
+      "surviving_tbox_repairs": 72056
+    },
+    {
+      "cap": 681,
+      "surviving_tbox_repairs": 71963
+    },
+    {
+      "cap": 680,
+      "surviving_tbox_repairs": 71870
+    },
+    {
+      "cap": 679,
+      "surviving_tbox_repairs": 71777
+    },
+    {
+      "cap": 678,
+      "surviving_tbox_repairs": 71684
+    },
+    {
+      "cap": 677,
+      "surviving_tbox_repairs": 71591
+    },
+    {
+      "cap": 676,
+      "surviving_tbox_repairs": 71498
+    },
+    {
+      "cap": 675,
+      "surviving_tbox_repairs": 71405
+    },
+    {
+      "cap": 674,
+      "surviving_tbox_repairs": 71312
+    },
+    {
+      "cap": 673,
+      "surviving_tbox_repairs": 71219
+    },
+    {
+      "cap": 672,
+      "surviving_tbox_repairs": 71126
+    },
+    {
+      "cap": 671,
+      "surviving_tbox_repairs": 71033
+    },
+    {
+      "cap": 670,
+      "surviving_tbox_repairs": 70940
+    },
+    {
+      "cap": 669,
+      "surviving_tbox_repairs": 70847
+    },
+    {
+      "cap": 668,
+      "surviving_tbox_repairs": 70754
+    },
+    {
+      "cap": 667,
+      "surviving_tbox_repairs": 70661
+    },
+    {
+      "cap": 666,
+      "surviving_tbox_repairs": 70568
+    },
+    {
+      "cap": 665,
+      "surviving_tbox_repairs": 70475
+    },
+    {
+      "cap": 664,
+      "surviving_tbox_repairs": 70382
+    },
+    {
+      "cap": 663,
+      "surviving_tbox_repairs": 70287
+    },
+    {
+      "cap": 662,
+      "surviving_tbox_repairs": 70192
+    },
+    {
+      "cap": 661,
+      "surviving_tbox_repairs": 70097
+    },
+    {
+      "cap": 660,
+      "surviving_tbox_repairs": 70002
+    },
+    {
+      "cap": 659,
+      "surviving_tbox_repairs": 69907
+    },
+    {
+      "cap": 658,
+      "surviving_tbox_repairs": 69812
+    },
+    {
+      "cap": 657,
+      "surviving_tbox_repairs": 69717
+    },
+    {
+      "cap": 656,
+      "surviving_tbox_repairs": 69622
+    },
+    {
+      "cap": 655,
+      "surviving_tbox_repairs": 69527
+    },
+    {
+      "cap": 654,
+      "surviving_tbox_repairs": 69432
+    },
+    {
+      "cap": 653,
+      "surviving_tbox_repairs": 69337
+    },
+    {
+      "cap": 652,
+      "surviving_tbox_repairs": 69242
+    },
+    {
+      "cap": 651,
+      "surviving_tbox_repairs": 69147
+    },
+    {
+      "cap": 650,
+      "surviving_tbox_repairs": 69052
+    },
+    {
+      "cap": 649,
+      "surviving_tbox_repairs": 68957
+    },
+    {
+      "cap": 648,
+      "surviving_tbox_repairs": 68862
+    },
+    {
+      "cap": 647,
+      "surviving_tbox_repairs": 68767
+    },
+    {
+      "cap": 646,
+      "surviving_tbox_repairs": 68672
+    },
+    {
+      "cap": 645,
+      "surviving_tbox_repairs": 68577
+    },
+    {
+      "cap": 644,
+      "surviving_tbox_repairs": 68482
+    },
+    {
+      "cap": 643,
+      "surviving_tbox_repairs": 68387
+    },
+    {
+      "cap": 642,
+      "surviving_tbox_repairs": 68292
+    },
+    {
+      "cap": 641,
+      "surviving_tbox_repairs": 68197
+    },
+    {
+      "cap": 640,
+      "surviving_tbox_repairs": 68102
+    },
+    {
+      "cap": 639,
+      "surviving_tbox_repairs": 68007
+    },
+    {
+      "cap": 638,
+      "surviving_tbox_repairs": 67912
+    },
+    {
+      "cap": 637,
+      "surviving_tbox_repairs": 67817
+    },
+    {
+      "cap": 636,
+      "surviving_tbox_repairs": 67722
+    },
+    {
+      "cap": 635,
+      "surviving_tbox_repairs": 67627
+    },
+    {
+      "cap": 634,
+      "surviving_tbox_repairs": 67532
+    },
+    {
+      "cap": 633,
+      "surviving_tbox_repairs": 67437
+    },
+    {
+      "cap": 632,
+      "surviving_tbox_repairs": 67342
+    },
+    {
+      "cap": 631,
+      "surviving_tbox_repairs": 67247
+    },
+    {
+      "cap": 630,
+      "surviving_tbox_repairs": 67152
+    },
+    {
+      "cap": 629,
+      "surviving_tbox_repairs": 67057
+    },
+    {
+      "cap": 628,
+      "surviving_tbox_repairs": 66962
+    },
+    {
+      "cap": 627,
+      "surviving_tbox_repairs": 66867
+    },
+    {
+      "cap": 626,
+      "surviving_tbox_repairs": 66772
+    },
+    {
+      "cap": 625,
+      "surviving_tbox_repairs": 66677
+    },
+    {
+      "cap": 624,
+      "surviving_tbox_repairs": 66582
+    },
+    {
+      "cap": 623,
+      "surviving_tbox_repairs": 66487
+    },
+    {
+      "cap": 622,
+      "surviving_tbox_repairs": 66392
+    },
+    {
+      "cap": 621,
+      "surviving_tbox_repairs": 66297
+    },
+    {
+      "cap": 620,
+      "surviving_tbox_repairs": 66202
+    },
+    {
+      "cap": 619,
+      "surviving_tbox_repairs": 66107
+    },
+    {
+      "cap": 618,
+      "surviving_tbox_repairs": 66012
+    },
+    {
+      "cap": 617,
+      "surviving_tbox_repairs": 65917
+    },
+    {
+      "cap": 616,
+      "surviving_tbox_repairs": 65822
+    },
+    {
+      "cap": 615,
+      "surviving_tbox_repairs": 65727
+    },
+    {
+      "cap": 614,
+      "surviving_tbox_repairs": 65632
+    },
+    {
+      "cap": 613,
+      "surviving_tbox_repairs": 65537
+    },
+    {
+      "cap": 612,
+      "surviving_tbox_repairs": 65442
+    },
+    {
+      "cap": 611,
+      "surviving_tbox_repairs": 65347
+    },
+    {
+      "cap": 610,
+      "surviving_tbox_repairs": 65252
+    },
+    {
+      "cap": 609,
+      "surviving_tbox_repairs": 65157
+    },
+    {
+      "cap": 608,
+      "surviving_tbox_repairs": 65062
+    },
+    {
+      "cap": 607,
+      "surviving_tbox_repairs": 64967
+    },
+    {
+      "cap": 606,
+      "surviving_tbox_repairs": 64872
+    },
+    {
+      "cap": 605,
+      "surviving_tbox_repairs": 64777
+    },
+    {
+      "cap": 604,
+      "surviving_tbox_repairs": 64682
+    },
+    {
+      "cap": 603,
+      "surviving_tbox_repairs": 64587
+    },
+    {
+      "cap": 602,
+      "surviving_tbox_repairs": 64492
+    },
+    {
+      "cap": 601,
+      "surviving_tbox_repairs": 64397
+    },
+    {
+      "cap": 600,
+      "surviving_tbox_repairs": 64302
+    },
+    {
+      "cap": 599,
+      "surviving_tbox_repairs": 64207
+    },
+    {
+      "cap": 598,
+      "surviving_tbox_repairs": 64112
+    },
+    {
+      "cap": 597,
+      "surviving_tbox_repairs": 64017
+    },
+    {
+      "cap": 596,
+      "surviving_tbox_repairs": 63922
+    },
+    {
+      "cap": 595,
+      "surviving_tbox_repairs": 63827
+    },
+    {
+      "cap": 594,
+      "surviving_tbox_repairs": 63732
+    },
+    {
+      "cap": 593,
+      "surviving_tbox_repairs": 63637
+    },
+    {
+      "cap": 592,
+      "surviving_tbox_repairs": 63541
+    },
+    {
+      "cap": 591,
+      "surviving_tbox_repairs": 63445
+    },
+    {
+      "cap": 590,
+      "surviving_tbox_repairs": 63349
+    },
+    {
+      "cap": 589,
+      "surviving_tbox_repairs": 63253
+    },
+    {
+      "cap": 588,
+      "surviving_tbox_repairs": 63157
+    },
+    {
+      "cap": 587,
+      "surviving_tbox_repairs": 63061
+    },
+    {
+      "cap": 586,
+      "surviving_tbox_repairs": 62965
+    },
+    {
+      "cap": 585,
+      "surviving_tbox_repairs": 62869
+    },
+    {
+      "cap": 584,
+      "surviving_tbox_repairs": 62773
+    },
+    {
+      "cap": 583,
+      "surviving_tbox_repairs": 62677
+    },
+    {
+      "cap": 582,
+      "surviving_tbox_repairs": 62581
+    },
+    {
+      "cap": 581,
+      "surviving_tbox_repairs": 62485
+    },
+    {
+      "cap": 580,
+      "surviving_tbox_repairs": 62389
+    },
+    {
+      "cap": 579,
+      "surviving_tbox_repairs": 62293
+    },
+    {
+      "cap": 578,
+      "surviving_tbox_repairs": 62197
+    },
+    {
+      "cap": 577,
+      "surviving_tbox_repairs": 62101
+    },
+    {
+      "cap": 576,
+      "surviving_tbox_repairs": 62005
+    },
+    {
+      "cap": 575,
+      "surviving_tbox_repairs": 61908
+    },
+    {
+      "cap": 574,
+      "surviving_tbox_repairs": 61811
+    },
+    {
+      "cap": 573,
+      "surviving_tbox_repairs": 61714
+    },
+    {
+      "cap": 572,
+      "surviving_tbox_repairs": 61617
+    },
+    {
+      "cap": 571,
+      "surviving_tbox_repairs": 61520
+    },
+    {
+      "cap": 570,
+      "surviving_tbox_repairs": 61423
+    },
+    {
+      "cap": 569,
+      "surviving_tbox_repairs": 61326
+    },
+    {
+      "cap": 568,
+      "surviving_tbox_repairs": 61229
+    },
+    {
+      "cap": 567,
+      "surviving_tbox_repairs": 61132
+    },
+    {
+      "cap": 566,
+      "surviving_tbox_repairs": 61035
+    },
+    {
+      "cap": 565,
+      "surviving_tbox_repairs": 60938
+    },
+    {
+      "cap": 564,
+      "surviving_tbox_repairs": 60841
+    },
+    {
+      "cap": 563,
+      "surviving_tbox_repairs": 60744
+    },
+    {
+      "cap": 562,
+      "surviving_tbox_repairs": 60647
+    },
+    {
+      "cap": 561,
+      "surviving_tbox_repairs": 60550
+    },
+    {
+      "cap": 560,
+      "surviving_tbox_repairs": 60453
+    },
+    {
+      "cap": 559,
+      "surviving_tbox_repairs": 60356
+    },
+    {
+      "cap": 558,
+      "surviving_tbox_repairs": 60259
+    },
+    {
+      "cap": 557,
+      "surviving_tbox_repairs": 60162
+    },
+    {
+      "cap": 556,
+      "surviving_tbox_repairs": 60065
+    },
+    {
+      "cap": 555,
+      "surviving_tbox_repairs": 59968
+    },
+    {
+      "cap": 554,
+      "surviving_tbox_repairs": 59871
+    },
+    {
+      "cap": 553,
+      "surviving_tbox_repairs": 59774
+    },
+    {
+      "cap": 552,
+      "surviving_tbox_repairs": 59677
+    },
+    {
+      "cap": 551,
+      "surviving_tbox_repairs": 59580
+    },
+    {
+      "cap": 550,
+      "surviving_tbox_repairs": 59483
+    },
+    {
+      "cap": 549,
+      "surviving_tbox_repairs": 59386
+    },
+    {
+      "cap": 548,
+      "surviving_tbox_repairs": 59289
+    },
+    {
+      "cap": 547,
+      "surviving_tbox_repairs": 59192
+    },
+    {
+      "cap": 546,
+      "surviving_tbox_repairs": 59095
+    },
+    {
+      "cap": 545,
+      "surviving_tbox_repairs": 58998
+    },
+    {
+      "cap": 544,
+      "surviving_tbox_repairs": 58901
+    },
+    {
+      "cap": 543,
+      "surviving_tbox_repairs": 58804
+    },
+    {
+      "cap": 542,
+      "surviving_tbox_repairs": 58707
+    },
+    {
+      "cap": 541,
+      "surviving_tbox_repairs": 58610
+    },
+    {
+      "cap": 540,
+      "surviving_tbox_repairs": 58513
+    },
+    {
+      "cap": 539,
+      "surviving_tbox_repairs": 58416
+    },
+    {
+      "cap": 538,
+      "surviving_tbox_repairs": 58319
+    },
+    {
+      "cap": 537,
+      "surviving_tbox_repairs": 58222
+    },
+    {
+      "cap": 536,
+      "surviving_tbox_repairs": 58125
+    },
+    {
+      "cap": 535,
+      "surviving_tbox_repairs": 58028
+    },
+    {
+      "cap": 534,
+      "surviving_tbox_repairs": 57931
+    },
+    {
+      "cap": 533,
+      "surviving_tbox_repairs": 57834
+    },
+    {
+      "cap": 532,
+      "surviving_tbox_repairs": 57737
+    },
+    {
+      "cap": 531,
+      "surviving_tbox_repairs": 57640
+    },
+    {
+      "cap": 530,
+      "surviving_tbox_repairs": 57543
+    },
+    {
+      "cap": 529,
+      "surviving_tbox_repairs": 57446
+    },
+    {
+      "cap": 528,
+      "surviving_tbox_repairs": 57349
+    },
+    {
+      "cap": 527,
+      "surviving_tbox_repairs": 57252
+    },
+    {
+      "cap": 526,
+      "surviving_tbox_repairs": 57155
+    },
+    {
+      "cap": 525,
+      "surviving_tbox_repairs": 57058
+    },
+    {
+      "cap": 524,
+      "surviving_tbox_repairs": 56961
+    },
+    {
+      "cap": 523,
+      "surviving_tbox_repairs": 56864
+    },
+    {
+      "cap": 522,
+      "surviving_tbox_repairs": 56767
+    },
+    {
+      "cap": 521,
+      "surviving_tbox_repairs": 56670
+    },
+    {
+      "cap": 520,
+      "surviving_tbox_repairs": 56573
+    },
+    {
+      "cap": 519,
+      "surviving_tbox_repairs": 56476
+    },
+    {
+      "cap": 518,
+      "surviving_tbox_repairs": 56379
+    },
+    {
+      "cap": 517,
+      "surviving_tbox_repairs": 56282
+    },
+    {
+      "cap": 516,
+      "surviving_tbox_repairs": 56185
+    },
+    {
+      "cap": 515,
+      "surviving_tbox_repairs": 56088
+    },
+    {
+      "cap": 514,
+      "surviving_tbox_repairs": 55991
+    },
+    {
+      "cap": 513,
+      "surviving_tbox_repairs": 55894
+    },
+    {
+      "cap": 512,
+      "surviving_tbox_repairs": 55797
+    },
+    {
+      "cap": 511,
+      "surviving_tbox_repairs": 55700
+    },
+    {
+      "cap": 510,
+      "surviving_tbox_repairs": 55603
+    },
+    {
+      "cap": 509,
+      "surviving_tbox_repairs": 55506
+    },
+    {
+      "cap": 508,
+      "surviving_tbox_repairs": 55409
+    },
+    {
+      "cap": 507,
+      "surviving_tbox_repairs": 55312
+    },
+    {
+      "cap": 506,
+      "surviving_tbox_repairs": 55215
+    },
+    {
+      "cap": 505,
+      "surviving_tbox_repairs": 55118
+    },
+    {
+      "cap": 504,
+      "surviving_tbox_repairs": 55021
+    },
+    {
+      "cap": 503,
+      "surviving_tbox_repairs": 54924
+    },
+    {
+      "cap": 502,
+      "surviving_tbox_repairs": 54827
+    },
+    {
+      "cap": 501,
+      "surviving_tbox_repairs": 54730
+    },
+    {
+      "cap": 500,
+      "surviving_tbox_repairs": 54633
+    },
+    {
+      "cap": 499,
+      "surviving_tbox_repairs": 54536
+    },
+    {
+      "cap": 498,
+      "surviving_tbox_repairs": 54439
+    },
+    {
+      "cap": 497,
+      "surviving_tbox_repairs": 54342
+    },
+    {
+      "cap": 496,
+      "surviving_tbox_repairs": 54245
+    },
+    {
+      "cap": 495,
+      "surviving_tbox_repairs": 54148
+    },
+    {
+      "cap": 494,
+      "surviving_tbox_repairs": 54051
+    },
+    {
+      "cap": 493,
+      "surviving_tbox_repairs": 53954
+    },
+    {
+      "cap": 492,
+      "surviving_tbox_repairs": 53857
+    },
+    {
+      "cap": 491,
+      "surviving_tbox_repairs": 53760
+    },
+    {
+      "cap": 490,
+      "surviving_tbox_repairs": 53663
+    },
+    {
+      "cap": 489,
+      "surviving_tbox_repairs": 53566
+    },
+    {
+      "cap": 488,
+      "surviving_tbox_repairs": 53469
+    },
+    {
+      "cap": 487,
+      "surviving_tbox_repairs": 53372
+    },
+    {
+      "cap": 486,
+      "surviving_tbox_repairs": 53275
+    },
+    {
+      "cap": 485,
+      "surviving_tbox_repairs": 53178
+    },
+    {
+      "cap": 484,
+      "surviving_tbox_repairs": 53081
+    },
+    {
+      "cap": 483,
+      "surviving_tbox_repairs": 52984
+    },
+    {
+      "cap": 482,
+      "surviving_tbox_repairs": 52887
+    },
+    {
+      "cap": 481,
+      "surviving_tbox_repairs": 52790
+    },
+    {
+      "cap": 480,
+      "surviving_tbox_repairs": 52693
+    },
+    {
+      "cap": 479,
+      "surviving_tbox_repairs": 52596
+    },
+    {
+      "cap": 478,
+      "surviving_tbox_repairs": 52499
+    },
+    {
+      "cap": 477,
+      "surviving_tbox_repairs": 52402
+    },
+    {
+      "cap": 476,
+      "surviving_tbox_repairs": 52305
+    },
+    {
+      "cap": 475,
+      "surviving_tbox_repairs": 52208
+    },
+    {
+      "cap": 474,
+      "surviving_tbox_repairs": 52111
+    },
+    {
+      "cap": 473,
+      "surviving_tbox_repairs": 52014
+    },
+    {
+      "cap": 472,
+      "surviving_tbox_repairs": 51917
+    },
+    {
+      "cap": 471,
+      "surviving_tbox_repairs": 51820
+    },
+    {
+      "cap": 470,
+      "surviving_tbox_repairs": 51723
+    },
+    {
+      "cap": 469,
+      "surviving_tbox_repairs": 51626
+    },
+    {
+      "cap": 468,
+      "surviving_tbox_repairs": 51529
+    },
+    {
+      "cap": 467,
+      "surviving_tbox_repairs": 51432
+    },
+    {
+      "cap": 466,
+      "surviving_tbox_repairs": 51335
+    },
+    {
+      "cap": 465,
+      "surviving_tbox_repairs": 51238
+    },
+    {
+      "cap": 464,
+      "surviving_tbox_repairs": 51141
+    },
+    {
+      "cap": 463,
+      "surviving_tbox_repairs": 51044
+    },
+    {
+      "cap": 462,
+      "surviving_tbox_repairs": 50947
+    },
+    {
+      "cap": 461,
+      "surviving_tbox_repairs": 50850
+    },
+    {
+      "cap": 460,
+      "surviving_tbox_repairs": 50753
+    },
+    {
+      "cap": 459,
+      "surviving_tbox_repairs": 50656
+    },
+    {
+      "cap": 458,
+      "surviving_tbox_repairs": 50559
+    },
+    {
+      "cap": 457,
+      "surviving_tbox_repairs": 50462
+    },
+    {
+      "cap": 456,
+      "surviving_tbox_repairs": 50365
+    },
+    {
+      "cap": 455,
+      "surviving_tbox_repairs": 50268
+    },
+    {
+      "cap": 454,
+      "surviving_tbox_repairs": 50171
+    },
+    {
+      "cap": 453,
+      "surviving_tbox_repairs": 50074
+    },
+    {
+      "cap": 452,
+      "surviving_tbox_repairs": 49977
+    },
+    {
+      "cap": 451,
+      "surviving_tbox_repairs": 49880
+    },
+    {
+      "cap": 450,
+      "surviving_tbox_repairs": 49783
+    },
+    {
+      "cap": 449,
+      "surviving_tbox_repairs": 49686
+    },
+    {
+      "cap": 448,
+      "surviving_tbox_repairs": 49589
+    },
+    {
+      "cap": 447,
+      "surviving_tbox_repairs": 49492
+    },
+    {
+      "cap": 446,
+      "surviving_tbox_repairs": 49395
+    },
+    {
+      "cap": 445,
+      "surviving_tbox_repairs": 49298
+    },
+    {
+      "cap": 444,
+      "surviving_tbox_repairs": 49201
+    },
+    {
+      "cap": 443,
+      "surviving_tbox_repairs": 49104
+    },
+    {
+      "cap": 442,
+      "surviving_tbox_repairs": 49007
+    },
+    {
+      "cap": 441,
+      "surviving_tbox_repairs": 48910
+    },
+    {
+      "cap": 440,
+      "surviving_tbox_repairs": 48813
+    },
+    {
+      "cap": 439,
+      "surviving_tbox_repairs": 48716
+    },
+    {
+      "cap": 438,
+      "surviving_tbox_repairs": 48619
+    },
+    {
+      "cap": 437,
+      "surviving_tbox_repairs": 48522
+    },
+    {
+      "cap": 436,
+      "surviving_tbox_repairs": 48425
+    },
+    {
+      "cap": 435,
+      "surviving_tbox_repairs": 48328
+    },
+    {
+      "cap": 434,
+      "surviving_tbox_repairs": 48231
+    },
+    {
+      "cap": 433,
+      "surviving_tbox_repairs": 48134
+    },
+    {
+      "cap": 432,
+      "surviving_tbox_repairs": 48037
+    },
+    {
+      "cap": 431,
+      "surviving_tbox_repairs": 47940
+    },
+    {
+      "cap": 430,
+      "surviving_tbox_repairs": 47843
+    },
+    {
+      "cap": 429,
+      "surviving_tbox_repairs": 47746
+    },
+    {
+      "cap": 428,
+      "surviving_tbox_repairs": 47649
+    },
+    {
+      "cap": 427,
+      "surviving_tbox_repairs": 47552
+    },
+    {
+      "cap": 426,
+      "surviving_tbox_repairs": 47455
+    },
+    {
+      "cap": 425,
+      "surviving_tbox_repairs": 47358
+    },
+    {
+      "cap": 424,
+      "surviving_tbox_repairs": 47261
+    },
+    {
+      "cap": 423,
+      "surviving_tbox_repairs": 47164
+    },
+    {
+      "cap": 422,
+      "surviving_tbox_repairs": 47067
+    },
+    {
+      "cap": 421,
+      "surviving_tbox_repairs": 46970
+    },
+    {
+      "cap": 420,
+      "surviving_tbox_repairs": 46873
+    },
+    {
+      "cap": 419,
+      "surviving_tbox_repairs": 46776
+    },
+    {
+      "cap": 418,
+      "surviving_tbox_repairs": 46679
+    },
+    {
+      "cap": 417,
+      "surviving_tbox_repairs": 46582
+    },
+    {
+      "cap": 416,
+      "surviving_tbox_repairs": 46485
+    },
+    {
+      "cap": 415,
+      "surviving_tbox_repairs": 46388
+    },
+    {
+      "cap": 414,
+      "surviving_tbox_repairs": 46291
+    },
+    {
+      "cap": 413,
+      "surviving_tbox_repairs": 46194
+    },
+    {
+      "cap": 412,
+      "surviving_tbox_repairs": 46097
+    },
+    {
+      "cap": 411,
+      "surviving_tbox_repairs": 46000
+    },
+    {
+      "cap": 410,
+      "surviving_tbox_repairs": 45903
+    },
+    {
+      "cap": 409,
+      "surviving_tbox_repairs": 45806
+    },
+    {
+      "cap": 408,
+      "surviving_tbox_repairs": 45709
+    },
+    {
+      "cap": 407,
+      "surviving_tbox_repairs": 45612
+    },
+    {
+      "cap": 406,
+      "surviving_tbox_repairs": 45515
+    },
+    {
+      "cap": 405,
+      "surviving_tbox_repairs": 45418
+    },
+    {
+      "cap": 404,
+      "surviving_tbox_repairs": 45321
+    },
+    {
+      "cap": 403,
+      "surviving_tbox_repairs": 45224
+    },
+    {
+      "cap": 402,
+      "surviving_tbox_repairs": 45127
+    },
+    {
+      "cap": 401,
+      "surviving_tbox_repairs": 45030
+    },
+    {
+      "cap": 400,
+      "surviving_tbox_repairs": 44933
+    },
+    {
+      "cap": 399,
+      "surviving_tbox_repairs": 44835
+    },
+    {
+      "cap": 398,
+      "surviving_tbox_repairs": 44737
+    },
+    {
+      "cap": 397,
+      "surviving_tbox_repairs": 44639
+    },
+    {
+      "cap": 396,
+      "surviving_tbox_repairs": 44541
+    },
+    {
+      "cap": 395,
+      "surviving_tbox_repairs": 44443
+    },
+    {
+      "cap": 394,
+      "surviving_tbox_repairs": 44345
+    },
+    {
+      "cap": 393,
+      "surviving_tbox_repairs": 44247
+    },
+    {
+      "cap": 392,
+      "surviving_tbox_repairs": 44149
+    },
+    {
+      "cap": 391,
+      "surviving_tbox_repairs": 44051
+    },
+    {
+      "cap": 390,
+      "surviving_tbox_repairs": 43953
+    },
+    {
+      "cap": 389,
+      "surviving_tbox_repairs": 43855
+    },
+    {
+      "cap": 388,
+      "surviving_tbox_repairs": 43757
+    },
+    {
+      "cap": 387,
+      "surviving_tbox_repairs": 43659
+    },
+    {
+      "cap": 386,
+      "surviving_tbox_repairs": 43560
+    },
+    {
+      "cap": 385,
+      "surviving_tbox_repairs": 43461
+    },
+    {
+      "cap": 384,
+      "surviving_tbox_repairs": 43362
+    },
+    {
+      "cap": 383,
+      "surviving_tbox_repairs": 43263
+    },
+    {
+      "cap": 382,
+      "surviving_tbox_repairs": 43164
+    },
+    {
+      "cap": 381,
+      "surviving_tbox_repairs": 43065
+    },
+    {
+      "cap": 380,
+      "surviving_tbox_repairs": 42966
+    },
+    {
+      "cap": 379,
+      "surviving_tbox_repairs": 42867
+    },
+    {
+      "cap": 378,
+      "surviving_tbox_repairs": 42768
+    },
+    {
+      "cap": 377,
+      "surviving_tbox_repairs": 42669
+    },
+    {
+      "cap": 376,
+      "surviving_tbox_repairs": 42570
+    },
+    {
+      "cap": 375,
+      "surviving_tbox_repairs": 42471
+    },
+    {
+      "cap": 374,
+      "surviving_tbox_repairs": 42372
+    },
+    {
+      "cap": 373,
+      "surviving_tbox_repairs": 42272
+    },
+    {
+      "cap": 372,
+      "surviving_tbox_repairs": 42172
+    },
+    {
+      "cap": 371,
+      "surviving_tbox_repairs": 42072
+    },
+    {
+      "cap": 370,
+      "surviving_tbox_repairs": 41972
+    },
+    {
+      "cap": 369,
+      "surviving_tbox_repairs": 41872
+    },
+    {
+      "cap": 368,
+      "surviving_tbox_repairs": 41772
+    },
+    {
+      "cap": 367,
+      "surviving_tbox_repairs": 41672
+    },
+    {
+      "cap": 366,
+      "surviving_tbox_repairs": 41572
+    },
+    {
+      "cap": 365,
+      "surviving_tbox_repairs": 41472
+    },
+    {
+      "cap": 364,
+      "surviving_tbox_repairs": 41372
+    },
+    {
+      "cap": 363,
+      "surviving_tbox_repairs": 41272
+    },
+    {
+      "cap": 362,
+      "surviving_tbox_repairs": 41172
+    },
+    {
+      "cap": 361,
+      "surviving_tbox_repairs": 41072
+    },
+    {
+      "cap": 360,
+      "surviving_tbox_repairs": 40972
+    },
+    {
+      "cap": 359,
+      "surviving_tbox_repairs": 40872
+    },
+    {
+      "cap": 358,
+      "surviving_tbox_repairs": 40772
+    },
+    {
+      "cap": 357,
+      "surviving_tbox_repairs": 40672
+    },
+    {
+      "cap": 356,
+      "surviving_tbox_repairs": 40572
+    },
+    {
+      "cap": 355,
+      "surviving_tbox_repairs": 40472
+    },
+    {
+      "cap": 354,
+      "surviving_tbox_repairs": 40372
+    },
+    {
+      "cap": 353,
+      "surviving_tbox_repairs": 40272
+    },
+    {
+      "cap": 352,
+      "surviving_tbox_repairs": 40172
+    },
+    {
+      "cap": 351,
+      "surviving_tbox_repairs": 40072
+    },
+    {
+      "cap": 350,
+      "surviving_tbox_repairs": 39972
+    },
+    {
+      "cap": 349,
+      "surviving_tbox_repairs": 39872
+    },
+    {
+      "cap": 348,
+      "surviving_tbox_repairs": 39772
+    },
+    {
+      "cap": 347,
+      "surviving_tbox_repairs": 39672
+    },
+    {
+      "cap": 346,
+      "surviving_tbox_repairs": 39572
+    },
+    {
+      "cap": 345,
+      "surviving_tbox_repairs": 39472
+    },
+    {
+      "cap": 344,
+      "surviving_tbox_repairs": 39372
+    },
+    {
+      "cap": 343,
+      "surviving_tbox_repairs": 39272
+    },
+    {
+      "cap": 342,
+      "surviving_tbox_repairs": 39172
+    },
+    {
+      "cap": 341,
+      "surviving_tbox_repairs": 39072
+    },
+    {
+      "cap": 340,
+      "surviving_tbox_repairs": 38972
+    },
+    {
+      "cap": 339,
+      "surviving_tbox_repairs": 38872
+    },
+    {
+      "cap": 338,
+      "surviving_tbox_repairs": 38772
+    },
+    {
+      "cap": 337,
+      "surviving_tbox_repairs": 38672
+    },
+    {
+      "cap": 336,
+      "surviving_tbox_repairs": 38572
+    },
+    {
+      "cap": 335,
+      "surviving_tbox_repairs": 38472
+    },
+    {
+      "cap": 334,
+      "surviving_tbox_repairs": 38372
+    },
+    {
+      "cap": 333,
+      "surviving_tbox_repairs": 38272
+    },
+    {
+      "cap": 332,
+      "surviving_tbox_repairs": 38172
+    },
+    {
+      "cap": 331,
+      "surviving_tbox_repairs": 38072
+    },
+    {
+      "cap": 330,
+      "surviving_tbox_repairs": 37972
+    },
+    {
+      "cap": 329,
+      "surviving_tbox_repairs": 37872
+    },
+    {
+      "cap": 328,
+      "surviving_tbox_repairs": 37772
+    },
+    {
+      "cap": 327,
+      "surviving_tbox_repairs": 37672
+    },
+    {
+      "cap": 326,
+      "surviving_tbox_repairs": 37572
+    },
+    {
+      "cap": 325,
+      "surviving_tbox_repairs": 37472
+    },
+    {
+      "cap": 324,
+      "surviving_tbox_repairs": 37372
+    },
+    {
+      "cap": 323,
+      "surviving_tbox_repairs": 37272
+    },
+    {
+      "cap": 322,
+      "surviving_tbox_repairs": 37172
+    },
+    {
+      "cap": 321,
+      "surviving_tbox_repairs": 37072
+    },
+    {
+      "cap": 320,
+      "surviving_tbox_repairs": 36972
+    },
+    {
+      "cap": 319,
+      "surviving_tbox_repairs": 36872
+    },
+    {
+      "cap": 318,
+      "surviving_tbox_repairs": 36772
+    },
+    {
+      "cap": 317,
+      "surviving_tbox_repairs": 36672
+    },
+    {
+      "cap": 316,
+      "surviving_tbox_repairs": 36572
+    },
+    {
+      "cap": 315,
+      "surviving_tbox_repairs": 36472
+    },
+    {
+      "cap": 314,
+      "surviving_tbox_repairs": 36372
+    },
+    {
+      "cap": 313,
+      "surviving_tbox_repairs": 36272
+    },
+    {
+      "cap": 312,
+      "surviving_tbox_repairs": 36172
+    },
+    {
+      "cap": 311,
+      "surviving_tbox_repairs": 36072
+    },
+    {
+      "cap": 310,
+      "surviving_tbox_repairs": 35972
+    },
+    {
+      "cap": 309,
+      "surviving_tbox_repairs": 35872
+    },
+    {
+      "cap": 308,
+      "surviving_tbox_repairs": 35772
+    },
+    {
+      "cap": 307,
+      "surviving_tbox_repairs": 35672
+    },
+    {
+      "cap": 306,
+      "surviving_tbox_repairs": 35572
+    },
+    {
+      "cap": 305,
+      "surviving_tbox_repairs": 35472
+    },
+    {
+      "cap": 304,
+      "surviving_tbox_repairs": 35372
+    },
+    {
+      "cap": 303,
+      "surviving_tbox_repairs": 35272
+    },
+    {
+      "cap": 302,
+      "surviving_tbox_repairs": 35172
+    },
+    {
+      "cap": 301,
+      "surviving_tbox_repairs": 35072
+    },
+    {
+      "cap": 300,
+      "surviving_tbox_repairs": 34972
+    },
+    {
+      "cap": 299,
+      "surviving_tbox_repairs": 34872
+    },
+    {
+      "cap": 298,
+      "surviving_tbox_repairs": 34772
+    },
+    {
+      "cap": 297,
+      "surviving_tbox_repairs": 34672
+    },
+    {
+      "cap": 296,
+      "surviving_tbox_repairs": 34572
+    },
+    {
+      "cap": 295,
+      "surviving_tbox_repairs": 34472
+    },
+    {
+      "cap": 294,
+      "surviving_tbox_repairs": 34372
+    },
+    {
+      "cap": 293,
+      "surviving_tbox_repairs": 34272
+    },
+    {
+      "cap": 292,
+      "surviving_tbox_repairs": 34172
+    },
+    {
+      "cap": 291,
+      "surviving_tbox_repairs": 34072
+    },
+    {
+      "cap": 290,
+      "surviving_tbox_repairs": 33972
+    },
+    {
+      "cap": 289,
+      "surviving_tbox_repairs": 33872
+    },
+    {
+      "cap": 288,
+      "surviving_tbox_repairs": 33772
+    },
+    {
+      "cap": 287,
+      "surviving_tbox_repairs": 33672
+    },
+    {
+      "cap": 286,
+      "surviving_tbox_repairs": 33572
+    },
+    {
+      "cap": 285,
+      "surviving_tbox_repairs": 33472
+    },
+    {
+      "cap": 284,
+      "surviving_tbox_repairs": 33372
+    },
+    {
+      "cap": 283,
+      "surviving_tbox_repairs": 33272
+    },
+    {
+      "cap": 282,
+      "surviving_tbox_repairs": 33172
+    },
+    {
+      "cap": 281,
+      "surviving_tbox_repairs": 33072
+    },
+    {
+      "cap": 280,
+      "surviving_tbox_repairs": 32972
+    },
+    {
+      "cap": 279,
+      "surviving_tbox_repairs": 32871
+    },
+    {
+      "cap": 278,
+      "surviving_tbox_repairs": 32770
+    },
+    {
+      "cap": 277,
+      "surviving_tbox_repairs": 32669
+    },
+    {
+      "cap": 276,
+      "surviving_tbox_repairs": 32568
+    },
+    {
+      "cap": 275,
+      "surviving_tbox_repairs": 32467
+    },
+    {
+      "cap": 274,
+      "surviving_tbox_repairs": 32365
+    },
+    {
+      "cap": 273,
+      "surviving_tbox_repairs": 32263
+    },
+    {
+      "cap": 272,
+      "surviving_tbox_repairs": 32161
+    },
+    {
+      "cap": 271,
+      "surviving_tbox_repairs": 32059
+    },
+    {
+      "cap": 270,
+      "surviving_tbox_repairs": 31956
+    },
+    {
+      "cap": 269,
+      "surviving_tbox_repairs": 31853
+    },
+    {
+      "cap": 268,
+      "surviving_tbox_repairs": 31750
+    },
+    {
+      "cap": 267,
+      "surviving_tbox_repairs": 31647
+    },
+    {
+      "cap": 266,
+      "surviving_tbox_repairs": 31544
+    },
+    {
+      "cap": 265,
+      "surviving_tbox_repairs": 31441
+    },
+    {
+      "cap": 264,
+      "surviving_tbox_repairs": 31338
+    },
+    {
+      "cap": 263,
+      "surviving_tbox_repairs": 31235
+    },
+    {
+      "cap": 262,
+      "surviving_tbox_repairs": 31132
+    },
+    {
+      "cap": 261,
+      "surviving_tbox_repairs": 31029
+    },
+    {
+      "cap": 260,
+      "surviving_tbox_repairs": 30926
+    },
+    {
+      "cap": 259,
+      "surviving_tbox_repairs": 30823
+    },
+    {
+      "cap": 258,
+      "surviving_tbox_repairs": 30720
+    },
+    {
+      "cap": 257,
+      "surviving_tbox_repairs": 30617
+    },
+    {
+      "cap": 256,
+      "surviving_tbox_repairs": 30514
+    },
+    {
+      "cap": 255,
+      "surviving_tbox_repairs": 30411
+    },
+    {
+      "cap": 254,
+      "surviving_tbox_repairs": 30308
+    },
+    {
+      "cap": 253,
+      "surviving_tbox_repairs": 30205
+    },
+    {
+      "cap": 252,
+      "surviving_tbox_repairs": 30102
+    },
+    {
+      "cap": 251,
+      "surviving_tbox_repairs": 29999
+    },
+    {
+      "cap": 250,
+      "surviving_tbox_repairs": 29896
+    },
+    {
+      "cap": 249,
+      "surviving_tbox_repairs": 29793
+    },
+    {
+      "cap": 248,
+      "surviving_tbox_repairs": 29690
+    },
+    {
+      "cap": 247,
+      "surviving_tbox_repairs": 29587
+    },
+    {
+      "cap": 246,
+      "surviving_tbox_repairs": 29484
+    },
+    {
+      "cap": 245,
+      "surviving_tbox_repairs": 29381
+    },
+    {
+      "cap": 244,
+      "surviving_tbox_repairs": 29278
+    },
+    {
+      "cap": 243,
+      "surviving_tbox_repairs": 29175
+    },
+    {
+      "cap": 242,
+      "surviving_tbox_repairs": 29072
+    },
+    {
+      "cap": 241,
+      "surviving_tbox_repairs": 28969
+    },
+    {
+      "cap": 240,
+      "surviving_tbox_repairs": 28866
+    },
+    {
+      "cap": 239,
+      "surviving_tbox_repairs": 28763
+    },
+    {
+      "cap": 238,
+      "surviving_tbox_repairs": 28659
+    },
+    {
+      "cap": 237,
+      "surviving_tbox_repairs": 28555
+    },
+    {
+      "cap": 236,
+      "surviving_tbox_repairs": 28450
+    },
+    {
+      "cap": 235,
+      "surviving_tbox_repairs": 28345
+    },
+    {
+      "cap": 234,
+      "surviving_tbox_repairs": 28240
+    },
+    {
+      "cap": 233,
+      "surviving_tbox_repairs": 28134
+    },
+    {
+      "cap": 232,
+      "surviving_tbox_repairs": 28028
+    },
+    {
+      "cap": 231,
+      "surviving_tbox_repairs": 27922
+    },
+    {
+      "cap": 230,
+      "surviving_tbox_repairs": 27816
+    },
+    {
+      "cap": 229,
+      "surviving_tbox_repairs": 27710
+    },
+    {
+      "cap": 228,
+      "surviving_tbox_repairs": 27604
+    },
+    {
+      "cap": 227,
+      "surviving_tbox_repairs": 27498
+    },
+    {
+      "cap": 226,
+      "surviving_tbox_repairs": 27392
+    },
+    {
+      "cap": 225,
+      "surviving_tbox_repairs": 27286
+    },
+    {
+      "cap": 224,
+      "surviving_tbox_repairs": 27180
+    },
+    {
+      "cap": 223,
+      "surviving_tbox_repairs": 27074
+    },
+    {
+      "cap": 222,
+      "surviving_tbox_repairs": 26968
+    },
+    {
+      "cap": 221,
+      "surviving_tbox_repairs": 26862
+    },
+    {
+      "cap": 220,
+      "surviving_tbox_repairs": 26755
+    },
+    {
+      "cap": 219,
+      "surviving_tbox_repairs": 26648
+    },
+    {
+      "cap": 218,
+      "surviving_tbox_repairs": 26541
+    },
+    {
+      "cap": 217,
+      "surviving_tbox_repairs": 26434
+    },
+    {
+      "cap": 216,
+      "surviving_tbox_repairs": 26327
+    },
+    {
+      "cap": 215,
+      "surviving_tbox_repairs": 26220
+    },
+    {
+      "cap": 214,
+      "surviving_tbox_repairs": 26113
+    },
+    {
+      "cap": 213,
+      "surviving_tbox_repairs": 26006
+    },
+    {
+      "cap": 212,
+      "surviving_tbox_repairs": 25899
+    },
+    {
+      "cap": 211,
+      "surviving_tbox_repairs": 25792
+    },
+    {
+      "cap": 210,
+      "surviving_tbox_repairs": 25685
+    },
+    {
+      "cap": 209,
+      "surviving_tbox_repairs": 25578
+    },
+    {
+      "cap": 208,
+      "surviving_tbox_repairs": 25471
+    },
+    {
+      "cap": 207,
+      "surviving_tbox_repairs": 25364
+    },
+    {
+      "cap": 206,
+      "surviving_tbox_repairs": 25257
+    },
+    {
+      "cap": 205,
+      "surviving_tbox_repairs": 25150
+    },
+    {
+      "cap": 204,
+      "surviving_tbox_repairs": 25043
+    },
+    {
+      "cap": 203,
+      "surviving_tbox_repairs": 24936
+    },
+    {
+      "cap": 202,
+      "surviving_tbox_repairs": 24829
+    },
+    {
+      "cap": 201,
+      "surviving_tbox_repairs": 24722
+    },
+    {
+      "cap": 200,
+      "surviving_tbox_repairs": 24615
+    },
+    {
+      "cap": 199,
+      "surviving_tbox_repairs": 24508
+    },
+    {
+      "cap": 198,
+      "surviving_tbox_repairs": 24401
+    },
+    {
+      "cap": 197,
+      "surviving_tbox_repairs": 24294
+    },
+    {
+      "cap": 196,
+      "surviving_tbox_repairs": 24187
+    },
+    {
+      "cap": 195,
+      "surviving_tbox_repairs": 24080
+    },
+    {
+      "cap": 194,
+      "surviving_tbox_repairs": 23973
+    },
+    {
+      "cap": 193,
+      "surviving_tbox_repairs": 23866
+    },
+    {
+      "cap": 192,
+      "surviving_tbox_repairs": 23759
+    },
+    {
+      "cap": 191,
+      "surviving_tbox_repairs": 23652
+    },
+    {
+      "cap": 190,
+      "surviving_tbox_repairs": 23545
+    },
+    {
+      "cap": 189,
+      "surviving_tbox_repairs": 23438
+    },
+    {
+      "cap": 188,
+      "surviving_tbox_repairs": 23331
+    },
+    {
+      "cap": 187,
+      "surviving_tbox_repairs": 23224
+    },
+    {
+      "cap": 186,
+      "surviving_tbox_repairs": 23117
+    },
+    {
+      "cap": 185,
+      "surviving_tbox_repairs": 23010
+    },
+    {
+      "cap": 184,
+      "surviving_tbox_repairs": 22903
+    },
+    {
+      "cap": 183,
+      "surviving_tbox_repairs": 22796
+    },
+    {
+      "cap": 182,
+      "surviving_tbox_repairs": 22689
+    },
+    {
+      "cap": 181,
+      "surviving_tbox_repairs": 22582
+    },
+    {
+      "cap": 180,
+      "surviving_tbox_repairs": 22475
+    },
+    {
+      "cap": 179,
+      "surviving_tbox_repairs": 22368
+    },
+    {
+      "cap": 178,
+      "surviving_tbox_repairs": 22261
+    },
+    {
+      "cap": 177,
+      "surviving_tbox_repairs": 22154
+    },
+    {
+      "cap": 176,
+      "surviving_tbox_repairs": 22047
+    },
+    {
+      "cap": 175,
+      "surviving_tbox_repairs": 21940
+    },
+    {
+      "cap": 174,
+      "surviving_tbox_repairs": 21833
+    },
+    {
+      "cap": 173,
+      "surviving_tbox_repairs": 21726
+    },
+    {
+      "cap": 172,
+      "surviving_tbox_repairs": 21618
+    },
+    {
+      "cap": 171,
+      "surviving_tbox_repairs": 21510
+    },
+    {
+      "cap": 170,
+      "surviving_tbox_repairs": 21402
+    },
+    {
+      "cap": 169,
+      "surviving_tbox_repairs": 21294
+    },
+    {
+      "cap": 168,
+      "surviving_tbox_repairs": 21186
+    },
+    {
+      "cap": 167,
+      "surviving_tbox_repairs": 21078
+    },
+    {
+      "cap": 166,
+      "surviving_tbox_repairs": 20970
+    },
+    {
+      "cap": 165,
+      "surviving_tbox_repairs": 20862
+    },
+    {
+      "cap": 164,
+      "surviving_tbox_repairs": 20754
+    },
+    {
+      "cap": 163,
+      "surviving_tbox_repairs": 20646
+    },
+    {
+      "cap": 162,
+      "surviving_tbox_repairs": 20537
+    },
+    {
+      "cap": 161,
+      "surviving_tbox_repairs": 20428
+    },
+    {
+      "cap": 160,
+      "surviving_tbox_repairs": 20319
+    },
+    {
+      "cap": 159,
+      "surviving_tbox_repairs": 20210
+    },
+    {
+      "cap": 158,
+      "surviving_tbox_repairs": 20101
+    },
+    {
+      "cap": 157,
+      "surviving_tbox_repairs": 19992
+    },
+    {
+      "cap": 156,
+      "surviving_tbox_repairs": 19883
+    },
+    {
+      "cap": 155,
+      "surviving_tbox_repairs": 19774
+    },
+    {
+      "cap": 154,
+      "surviving_tbox_repairs": 19665
+    },
+    {
+      "cap": 153,
+      "surviving_tbox_repairs": 19556
+    },
+    {
+      "cap": 152,
+      "surviving_tbox_repairs": 19447
+    },
+    {
+      "cap": 151,
+      "surviving_tbox_repairs": 19338
+    },
+    {
+      "cap": 150,
+      "surviving_tbox_repairs": 19229
+    },
+    {
+      "cap": 149,
+      "surviving_tbox_repairs": 19120
+    },
+    {
+      "cap": 148,
+      "surviving_tbox_repairs": 19011
+    },
+    {
+      "cap": 147,
+      "surviving_tbox_repairs": 18902
+    },
+    {
+      "cap": 146,
+      "surviving_tbox_repairs": 18793
+    },
+    {
+      "cap": 145,
+      "surviving_tbox_repairs": 18684
+    },
+    {
+      "cap": 144,
+      "surviving_tbox_repairs": 18575
+    },
+    {
+      "cap": 143,
+      "surviving_tbox_repairs": 18466
+    },
+    {
+      "cap": 142,
+      "surviving_tbox_repairs": 18356
+    },
+    {
+      "cap": 141,
+      "surviving_tbox_repairs": 18246
+    },
+    {
+      "cap": 140,
+      "surviving_tbox_repairs": 18135
+    },
+    {
+      "cap": 139,
+      "surviving_tbox_repairs": 18024
+    },
+    {
+      "cap": 138,
+      "surviving_tbox_repairs": 17913
+    },
+    {
+      "cap": 137,
+      "surviving_tbox_repairs": 17802
+    },
+    {
+      "cap": 136,
+      "surviving_tbox_repairs": 17691
+    },
+    {
+      "cap": 135,
+      "surviving_tbox_repairs": 17580
+    },
+    {
+      "cap": 134,
+      "surviving_tbox_repairs": 17468
+    },
+    {
+      "cap": 133,
+      "surviving_tbox_repairs": 17356
+    },
+    {
+      "cap": 132,
+      "surviving_tbox_repairs": 17244
+    },
+    {
+      "cap": 131,
+      "surviving_tbox_repairs": 17132
+    },
+    {
+      "cap": 130,
+      "surviving_tbox_repairs": 17020
+    },
+    {
+      "cap": 129,
+      "surviving_tbox_repairs": 16907
+    },
+    {
+      "cap": 128,
+      "surviving_tbox_repairs": 16794
+    },
+    {
+      "cap": 127,
+      "surviving_tbox_repairs": 16681
+    },
+    {
+      "cap": 126,
+      "surviving_tbox_repairs": 16568
+    },
+    {
+      "cap": 125,
+      "surviving_tbox_repairs": 16455
+    },
+    {
+      "cap": 124,
+      "surviving_tbox_repairs": 16342
+    },
+    {
+      "cap": 123,
+      "surviving_tbox_repairs": 16229
+    },
+    {
+      "cap": 122,
+      "surviving_tbox_repairs": 16116
+    },
+    {
+      "cap": 121,
+      "surviving_tbox_repairs": 16003
+    },
+    {
+      "cap": 120,
+      "surviving_tbox_repairs": 15890
+    },
+    {
+      "cap": 119,
+      "surviving_tbox_repairs": 15777
+    },
+    {
+      "cap": 118,
+      "surviving_tbox_repairs": 15664
+    },
+    {
+      "cap": 117,
+      "surviving_tbox_repairs": 15551
+    },
+    {
+      "cap": 116,
+      "surviving_tbox_repairs": 15438
+    },
+    {
+      "cap": 115,
+      "surviving_tbox_repairs": 15325
+    },
+    {
+      "cap": 114,
+      "surviving_tbox_repairs": 15212
+    },
+    {
+      "cap": 113,
+      "surviving_tbox_repairs": 15099
+    },
+    {
+      "cap": 112,
+      "surviving_tbox_repairs": 14985
+    },
+    {
+      "cap": 111,
+      "surviving_tbox_repairs": 14871
+    },
+    {
+      "cap": 110,
+      "surviving_tbox_repairs": 14757
+    },
+    {
+      "cap": 109,
+      "surviving_tbox_repairs": 14643
+    },
+    {
+      "cap": 108,
+      "surviving_tbox_repairs": 14529
+    },
+    {
+      "cap": 107,
+      "surviving_tbox_repairs": 14414
+    },
+    {
+      "cap": 106,
+      "surviving_tbox_repairs": 14299
+    },
+    {
+      "cap": 105,
+      "surviving_tbox_repairs": 14184
+    },
+    {
+      "cap": 104,
+      "surviving_tbox_repairs": 14068
+    },
+    {
+      "cap": 103,
+      "surviving_tbox_repairs": 13951
+    },
+    {
+      "cap": 102,
+      "surviving_tbox_repairs": 13834
+    },
+    {
+      "cap": 101,
+      "surviving_tbox_repairs": 13717
+    },
+    {
+      "cap": 100,
+      "surviving_tbox_repairs": 13600
+    },
+    {
+      "cap": 99,
+      "surviving_tbox_repairs": 13483
+    },
+    {
+      "cap": 98,
+      "surviving_tbox_repairs": 13366
+    },
+    {
+      "cap": 97,
+      "surviving_tbox_repairs": 13249
+    },
+    {
+      "cap": 96,
+      "surviving_tbox_repairs": 13132
+    },
+    {
+      "cap": 95,
+      "surviving_tbox_repairs": 13015
+    },
+    {
+      "cap": 94,
+      "surviving_tbox_repairs": 12897
+    },
+    {
+      "cap": 93,
+      "surviving_tbox_repairs": 12779
+    },
+    {
+      "cap": 92,
+      "surviving_tbox_repairs": 12661
+    },
+    {
+      "cap": 91,
+      "surviving_tbox_repairs": 12542
+    },
+    {
+      "cap": 90,
+      "surviving_tbox_repairs": 12423
+    },
+    {
+      "cap": 89,
+      "surviving_tbox_repairs": 12304
+    },
+    {
+      "cap": 88,
+      "surviving_tbox_repairs": 12185
+    },
+    {
+      "cap": 87,
+      "surviving_tbox_repairs": 12066
+    },
+    {
+      "cap": 86,
+      "surviving_tbox_repairs": 11947
+    },
+    {
+      "cap": 85,
+      "surviving_tbox_repairs": 11828
+    },
+    {
+      "cap": 84,
+      "surviving_tbox_repairs": 11709
+    },
+    {
+      "cap": 83,
+      "surviving_tbox_repairs": 11590
+    },
+    {
+      "cap": 82,
+      "surviving_tbox_repairs": 11471
+    },
+    {
+      "cap": 81,
+      "surviving_tbox_repairs": 11352
+    },
+    {
+      "cap": 80,
+      "surviving_tbox_repairs": 11233
+    },
+    {
+      "cap": 79,
+      "surviving_tbox_repairs": 11113
+    },
+    {
+      "cap": 78,
+      "surviving_tbox_repairs": 10993
+    },
+    {
+      "cap": 77,
+      "surviving_tbox_repairs": 10873
+    },
+    {
+      "cap": 76,
+      "surviving_tbox_repairs": 10753
+    },
+    {
+      "cap": 75,
+      "surviving_tbox_repairs": 10632
+    },
+    {
+      "cap": 74,
+      "surviving_tbox_repairs": 10511
+    },
+    {
+      "cap": 73,
+      "surviving_tbox_repairs": 10390
+    },
+    {
+      "cap": 72,
+      "surviving_tbox_repairs": 10269
+    },
+    {
+      "cap": 71,
+      "surviving_tbox_repairs": 10148
+    },
+    {
+      "cap": 70,
+      "surviving_tbox_repairs": 10027
+    },
+    {
+      "cap": 69,
+      "surviving_tbox_repairs": 9906
+    },
+    {
+      "cap": 68,
+      "surviving_tbox_repairs": 9785
+    },
+    {
+      "cap": 67,
+      "surviving_tbox_repairs": 9663
+    },
+    {
+      "cap": 66,
+      "surviving_tbox_repairs": 9541
+    },
+    {
+      "cap": 65,
+      "surviving_tbox_repairs": 9419
+    },
+    {
+      "cap": 64,
+      "surviving_tbox_repairs": 9297
+    },
+    {
+      "cap": 63,
+      "surviving_tbox_repairs": 9173
+    },
+    {
+      "cap": 62,
+      "surviving_tbox_repairs": 9049
+    },
+    {
+      "cap": 61,
+      "surviving_tbox_repairs": 8925
+    },
+    {
+      "cap": 60,
+      "surviving_tbox_repairs": 8801
+    },
+    {
+      "cap": 59,
+      "surviving_tbox_repairs": 8677
+    },
+    {
+      "cap": 58,
+      "surviving_tbox_repairs": 8553
+    },
+    {
+      "cap": 57,
+      "surviving_tbox_repairs": 8429
+    },
+    {
+      "cap": 56,
+      "surviving_tbox_repairs": 8304
+    },
+    {
+      "cap": 55,
+      "surviving_tbox_repairs": 8179
+    },
+    {
+      "cap": 54,
+      "surviving_tbox_repairs": 8053
+    },
+    {
+      "cap": 53,
+      "surviving_tbox_repairs": 7927
+    },
+    {
+      "cap": 52,
+      "surviving_tbox_repairs": 7801
+    },
+    {
+      "cap": 51,
+      "surviving_tbox_repairs": 7675
+    },
+    {
+      "cap": 50,
+      "surviving_tbox_repairs": 7548
+    },
+    {
+      "cap": 49,
+      "surviving_tbox_repairs": 7420
+    },
+    {
+      "cap": 48,
+      "surviving_tbox_repairs": 7291
+    },
+    {
+      "cap": 47,
+      "surviving_tbox_repairs": 7162
+    },
+    {
+      "cap": 46,
+      "surviving_tbox_repairs": 7033
+    },
+    {
+      "cap": 45,
+      "surviving_tbox_repairs": 6904
+    },
+    {
+      "cap": 44,
+      "surviving_tbox_repairs": 6772
+    },
+    {
+      "cap": 43,
+      "surviving_tbox_repairs": 6640
+    },
+    {
+      "cap": 42,
+      "surviving_tbox_repairs": 6508
+    },
+    {
+      "cap": 41,
+      "surviving_tbox_repairs": 6376
+    },
+    {
+      "cap": 40,
+      "surviving_tbox_repairs": 6242
+    },
+    {
+      "cap": 39,
+      "surviving_tbox_repairs": 6108
+    },
+    {
+      "cap": 38,
+      "surviving_tbox_repairs": 5974
+    },
+    {
+      "cap": 37,
+      "surviving_tbox_repairs": 5840
+    },
+    {
+      "cap": 36,
+      "surviving_tbox_repairs": 5706
+    },
+    {
+      "cap": 35,
+      "surviving_tbox_repairs": 5572
+    },
+    {
+      "cap": 34,
+      "surviving_tbox_repairs": 5438
+    },
+    {
+      "cap": 33,
+      "surviving_tbox_repairs": 5304
+    },
+    {
+      "cap": 32,
+      "surviving_tbox_repairs": 5168
+    },
+    {
+      "cap": 31,
+      "surviving_tbox_repairs": 5032
+    },
+    {
+      "cap": 30,
+      "surviving_tbox_repairs": 4896
+    },
+    {
+      "cap": 29,
+      "surviving_tbox_repairs": 4760
+    },
+    {
+      "cap": 28,
+      "surviving_tbox_repairs": 4622
+    },
+    {
+      "cap": 27,
+      "surviving_tbox_repairs": 4484
+    },
+    {
+      "cap": 26,
+      "surviving_tbox_repairs": 4344
+    },
+    {
+      "cap": 25,
+      "surviving_tbox_repairs": 4204
+    },
+    {
+      "cap": 24,
+      "surviving_tbox_repairs": 4063
+    },
+    {
+      "cap": 23,
+      "surviving_tbox_repairs": 3921
+    },
+    {
+      "cap": 22,
+      "surviving_tbox_repairs": 3778
+    },
+    {
+      "cap": 21,
+      "surviving_tbox_repairs": 3635
+    },
+    {
+      "cap": 20,
+      "surviving_tbox_repairs": 3490
+    },
+    {
+      "cap": 19,
+      "surviving_tbox_repairs": 3344
+    },
+    {
+      "cap": 18,
+      "surviving_tbox_repairs": 3197
+    },
+    {
+      "cap": 17,
+      "surviving_tbox_repairs": 3050
+    },
+    {
+      "cap": 16,
+      "surviving_tbox_repairs": 2901
+    },
+    {
+      "cap": 15,
+      "surviving_tbox_repairs": 2751
+    },
+    {
+      "cap": 14,
+      "surviving_tbox_repairs": 2600
+    },
+    {
+      "cap": 13,
+      "surviving_tbox_repairs": 2446
+    },
+    {
+      "cap": 12,
+      "surviving_tbox_repairs": 2291
+    },
+    {
+      "cap": 11,
+      "surviving_tbox_repairs": 2136
+    },
+    {
+      "cap": 10,
+      "surviving_tbox_repairs": 1978
+    },
+    {
+      "cap": 9,
+      "surviving_tbox_repairs": 1817
+    },
+    {
+      "cap": 8,
+      "surviving_tbox_repairs": 1649
+    },
+    {
+      "cap": 7,
+      "surviving_tbox_repairs": 1478
+    },
+    {
+      "cap": 6,
+      "surviving_tbox_repairs": 1304
+    },
+    {
+      "cap": 5,
+      "surviving_tbox_repairs": 1126
+    },
+    {
+      "cap": 4,
+      "surviving_tbox_repairs": 941
+    },
+    {
+      "cap": 3,
+      "surviving_tbox_repairs": 743
+    },
+    {
+      "cap": 2,
+      "surviving_tbox_repairs": 534
+    },
+    {
+      "cap": 1,
+      "surviving_tbox_repairs": 305
+    },
+    {
+      "cap": 0,
+      "surviving_tbox_repairs": 0
+    }
+  ],
+  "highlighted_caps": {
+    "1000": 101438,
+    "500": 54633,
+    "100": 13600,
+    "50": 7548,
+    "20": 3490,
+    "10": 1978,
+    "5": 1126,
+    "2": 534,
+    "0": 0
+  }
+}
