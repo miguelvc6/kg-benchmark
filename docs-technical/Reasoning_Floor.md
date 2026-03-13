@@ -111,9 +111,9 @@ Batch runs also write provider batch artifacts at the top level of the run direc
 - `batch_request_manifest.jsonl`
 - provider-specific batch job metadata, output JSONL, and error JSONL when available
 
-The run manifest stores per-call token usage, cached prompt tokens when available, elapsed seconds when available, estimated cost when provider token pricing is configured in `.env`, and the prompt template name used for that call.
+The run manifest stores per-call token usage, cached prompt tokens when available, elapsed seconds when available, estimated cost when provider token pricing is configured in `.env`, cost-estimation metadata, and the prompt template name used for that call.
 
-The combined summary stores run-level provider, model, output directory, execution mode, total elapsed time, aggregate prompt/completion/total tokens, aggregate cached tokens, and aggregate estimated cost. Parallel runs also record `run_info.parallel.workers` and its configuration source. Batch runs also record provider batch metadata in `run_info.batch`.
+The combined summary stores run-level provider, model, output directory, execution mode, an explicit `batch_mode_used` flag, total elapsed time, aggregate prompt/completion/total tokens, aggregate cached tokens, aggregate estimated cost, and cost-estimation metadata. For OpenAI batch runs, the runner applies a built-in `0.5` multiplier to estimated costs to reflect batch pricing. Parallel runs also record `run_info.parallel.workers` and its configuration source. Batch runs also record provider batch metadata in `run_info.batch`.
 
 When a selection manifest is used, the run summary records its path under `inputs.selection_manifest`.
 

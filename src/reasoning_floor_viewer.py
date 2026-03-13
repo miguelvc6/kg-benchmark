@@ -234,6 +234,22 @@ def render_run_header(bundle_data: BundleDebugData) -> None:
     detail_cols[1].metric("Calls", format_int(usage.get("call_count")))
     detail_cols[2].metric("Elapsed seconds", format_float(usage.get("elapsed_seconds"), 1))
     detail_cols[3].metric("Estimated cost", format_cost(usage.get("estimated_cost_usd")))
+    st.caption(
+        " | ".join(
+            part
+            for part in (
+                f"Execution mode: {value_or_na(run_info.get('execution_mode'))}",
+                f"Batch mode used: {format_bool(run_info.get('batch_mode_used'))}",
+                (
+                    f"Cost estimate: {usage.get('cost_estimation_mode')} "
+                    f"(x{usage.get('cost_estimation_multiplier')})"
+                    if usage.get("cost_estimation_mode")
+                    else None
+                ),
+            )
+            if part
+        )
+    )
 
     parse_counts = bundle_data.parse_status_counts
     if parse_counts:
@@ -447,6 +463,12 @@ def render_usage_block(usage: Optional[dict[str, Any]]) -> None:
     cols[2].metric("Total tokens", format_int(usage.get("total_tokens")))
     cols[3].metric("Elapsed seconds", format_float(usage.get("elapsed_seconds"), 2))
     cols[4].metric("Estimated cost", format_cost(usage.get("estimated_cost_usd")))
+    if usage.get("cost_estimation_mode"):
+        st.caption(
+            f"Cost estimate mode: {usage.get('cost_estimation_mode')} | "
+            f"Batch pricing applied: {format_bool(usage.get('batch_pricing_applied'))} | "
+            f"Multiplier: {value_or_na(usage.get('cost_estimation_multiplier'))}"
+        )
 
 
 def filter_case_rows(

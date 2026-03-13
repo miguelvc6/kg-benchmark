@@ -9,6 +9,32 @@ from guardian.prompts import get_prompt_template
 from guardian.reasoning import build_prompt_bundle, build_track_diagnosis_prompt_bundle, run_reasoning_floor
 
 
+class CostedStaticOpenAIProvider(StaticResponseProvider):
+    def generate(
+        self,
+        prompt: str,
+        system_prompt: str,
+        response_format: dict[str, Any],
+        metadata: dict[str, Any],
+    ) -> tuple[Any, Any, dict[str, Any]]:
+        raw, parsed, usage = super().generate(prompt, system_prompt, response_format, metadata)
+        usage["estimated_cost_usd"] = 1.0
+        usage["input_cost_per_1m_tokens_usd"] = 2.0
+        usage["output_cost_per_1m_tokens_usd"] = 4.0
+        return raw, parsed, usage
+
+    def parse_batch_result(
+        self,
+        result_record: dict[str, Any],
+        metadata: dict[str, Any],
+    ) -> tuple[Any, Any, dict[str, Any], str | None]:
+        raw, parsed, usage, error = super().parse_batch_result(result_record, metadata)
+        usage["estimated_cost_usd"] = 1.0
+        usage["input_cost_per_1m_tokens_usd"] = 2.0
+        usage["output_cost_per_1m_tokens_usd"] = 4.0
+        return raw, parsed, usage, error
+
+
 class ReasoningFloorTests(unittest.TestCase):
     def _write_jsonl(self, path: Path, rows: list[dict]) -> None:
         with open(path, "w", encoding="utf-8") as fh:
@@ -214,6 +240,24 @@ class ReasoningFloorTests(unittest.TestCase):
         self.assertEqual(summary["run_info"]["execution_mode"], "batch")
         self.assertTrue((run_dir / "batch_input.jsonl").exists())
         self.assertTrue((run_dir / "batch_request_manifest.jsonl").exists())
+
+    def test_reasoning_floor_batch_applies_openai_cost_discount(self) -> None:
+        root, classified_path, world_state_path, selection_manifest_path, resolver = self._make_stub_fixture()
+        summary = run_reasoning_floor(
+            classified_path=classified_path,
+            world_state_path=world_state_path,
+            output_dir=root / "outputs",
+            provider=CostedStaticOpenAIProvider(resolver, provider_name="openai", model="stub-model"),
+            ablation_bundles=["minimal_case"],
+            selection_manifest_path=selection_manifest_path,
+            execution_mode="batch",
+            batch_poll_interval_seconds=0.0,
+        )
+        self.assertTrue(summary["run_info"]["batch_mode_used"])
+        self.assertTrue(summary["usage"]["batch_pricing_applied"])
+        self.assertEqual(summary["usage"]["cost_estimation_mode"], "openai_batch_discount_applied")
+        self.assertEqual(summary["usage"]["cost_estimation_multiplier"], 0.5)
+        self.assertEqual(summary["usage"]["estimated_cost_usd"], 1.0)
 
     def test_prompt_bundles_use_named_templates(self) -> None:
         record = {

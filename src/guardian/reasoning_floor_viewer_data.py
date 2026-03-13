@@ -515,6 +515,9 @@ def _summarize_usage(rows: list[dict[str, Any]]) -> dict[str, Any]:
     has_total = False
     has_cost = False
     has_elapsed = False
+    batch_pricing_flags: set[bool] = set()
+    cost_modes: set[str] = set()
+    cost_multipliers: set[float] = set()
     for row in rows:
         usage = row.get("usage")
         if not isinstance(usage, dict):
@@ -541,6 +544,15 @@ def _summarize_usage(rows: list[dict[str, Any]]) -> dict[str, Any]:
         if isinstance(elapsed_seconds, (int, float)):
             totals["elapsed_seconds"] += float(elapsed_seconds)
             has_elapsed = True
+        batch_pricing_applied = usage.get("batch_pricing_applied")
+        if isinstance(batch_pricing_applied, bool):
+            batch_pricing_flags.add(batch_pricing_applied)
+        cost_estimation_mode = usage.get("cost_estimation_mode")
+        if isinstance(cost_estimation_mode, str) and cost_estimation_mode:
+            cost_modes.add(cost_estimation_mode)
+        cost_estimation_multiplier = usage.get("cost_estimation_multiplier")
+        if isinstance(cost_estimation_multiplier, (int, float)):
+            cost_multipliers.add(float(cost_estimation_multiplier))
     return {
         "prompt_tokens": totals["prompt_tokens"] if has_prompt else None,
         "completion_tokens": totals["completion_tokens"] if has_completion else None,
@@ -548,6 +560,9 @@ def _summarize_usage(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "estimated_cost_usd": round(totals["estimated_cost_usd"], 10) if has_cost else None,
         "elapsed_seconds": round(totals["elapsed_seconds"], 6) if has_elapsed else None,
         "call_count": totals["call_count"],
+        "batch_pricing_applied": next(iter(batch_pricing_flags)) if len(batch_pricing_flags) == 1 else None,
+        "cost_estimation_mode": next(iter(cost_modes)) if len(cost_modes) == 1 else None,
+        "cost_estimation_multiplier": next(iter(cost_multipliers)) if len(cost_multipliers) == 1 else None,
         "mean_total_tokens_per_call": (
             totals["total_tokens"] / totals["token_call_count"] if totals["token_call_count"] else None
         ),

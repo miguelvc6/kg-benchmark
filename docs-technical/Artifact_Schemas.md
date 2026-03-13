@@ -242,9 +242,9 @@ When the runner uses `--execution-mode batch`, the same run directory also inclu
 - `batch_request_manifest.jsonl`
 - provider-specific batch job metadata and downloaded output or error files when the provider exposes them
 
-`run_manifest.jsonl` includes per-call provider, model, token usage, cached token counts when available, elapsed seconds when available, and estimated cost when pricing metadata is configured.
+`run_manifest.jsonl` includes per-call provider, model, token usage, cached token counts when available, elapsed seconds when available, estimated cost when pricing metadata is configured, and cost-estimation metadata including whether batch pricing was applied.
 
-`reasoning_floor_summary.json` includes aggregated run-level token totals, cached token totals when available, estimated cost, elapsed time, provider, model, execution mode, output directory, and input references including the optional selection manifest path. Batch runs also include provider batch metadata under `run_info.batch`.
+`reasoning_floor_summary.json` includes aggregated run-level token totals, cached token totals when available, estimated cost, elapsed time, provider, model, execution mode, an explicit `run_info.batch_mode_used` flag, output directory, cost-estimation metadata, and input references including the optional selection manifest path. OpenAI batch runs apply a built-in `0.5` cost-estimation multiplier. Batch runs also include provider batch metadata under `run_info.batch`.
 
 ## Schema Files in `schemas/`
 

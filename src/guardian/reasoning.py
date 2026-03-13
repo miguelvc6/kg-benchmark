@@ -32,6 +32,7 @@ def _utc_now() -> str:
 
 
 ABLATION_BUNDLES = ("minimal_case", "logic_only", "local_graph")
+OPENAI_BATCH_COST_ESTIMATION_MULTIPLIER = 0.5
 
 
 def _slugify(value: str) -> str:
@@ -49,6 +50,9 @@ def _usage_block(usage: dict[str, Any], elapsed_seconds: float | None) -> dict[s
         "estimated_cost_usd": usage.get("estimated_cost_usd"),
         "input_cost_per_1m_tokens_usd": usage.get("input_cost_per_1m_tokens_usd"),
         "output_cost_per_1m_tokens_usd": usage.get("output_cost_per_1m_tokens_usd"),
+        "batch_pricing_applied": usage.get("batch_pricing_applied"),
+        "cost_estimation_mode": usage.get("cost_estimation_mode"),
+        "cost_estimation_multiplier": usage.get("cost_estimation_multiplier"),
         "elapsed_seconds": round(elapsed_seconds, 6) if isinstance(elapsed_seconds, (int, float)) else None,
     }
 
@@ -110,6 +114,39 @@ def _format_cost(value: float | None) -> str:
     return f"${value:.4f}"
 
 
+def _batch_pricing_applies(*, provider_name: str, execution_mode: str) -> bool:
+    return provider_name.strip().lower() == "openai" and execution_mode == "batch"
+
+
+def _apply_cost_estimation_policy(
+    usage: dict[str, Any],
+    *,
+    provider_name: str,
+    execution_mode: str,
+) -> dict[str, Any]:
+    adjusted = dict(usage)
+    batch_pricing_applied = _batch_pricing_applies(
+        provider_name=provider_name,
+        execution_mode=execution_mode,
+    )
+    multiplier = OPENAI_BATCH_COST_ESTIMATION_MULTIPLIER if batch_pricing_applied else 1.0
+    if batch_pricing_applied:
+        for field in (
+            "estimated_cost_usd",
+            "input_cost_per_1m_tokens_usd",
+            "output_cost_per_1m_tokens_usd",
+        ):
+            value = adjusted.get(field)
+            if isinstance(value, (int, float)):
+                adjusted[field] = round(float(value) * multiplier, 10)
+    adjusted["batch_pricing_applied"] = batch_pricing_applied
+    adjusted["cost_estimation_mode"] = (
+        "openai_batch_discount_applied" if batch_pricing_applied else "provider_default"
+    )
+    adjusted["cost_estimation_multiplier"] = multiplier
+    return adjusted
+
+
 def _env_positive_int(name: str) -> int | None:
     raw = os.getenv(name)
     if raw in (None, ""):
@@ -162,6 +199,9 @@ class RequestExecutionResult:
 def _execute_case_requests(
     provider: ModelProvider,
     requests_to_run: list[tuple[PromptBundle, dict[str, Any]]],
+    *,
+    provider_name: str,
+    execution_mode: str,
 ) -> list[RequestExecutionResult]:
     results: list[RequestExecutionResult] = []
     for prompt_bundle, request_info in requests_to_run:
@@ -171,6 +211,11 @@ def _execute_case_requests(
             prompt_bundle.system_prompt,
             prompt_bundle.response_format,
             request_info,
+        )
+        usage = _apply_cost_estimation_policy(
+            usage,
+            provider_name=provider_name,
+            execution_mode=execution_mode,
         )
         elapsed_seconds = time.perf_counter() - started_at
         results.append(
@@ -625,6 +670,11 @@ def run_reasoning_floor(
                                     diagnosis_bundle.response_format,
                                     diagnosis_metadata,
                                 )
+                                diagnosis_usage = _apply_cost_estimation_policy(
+                                    diagnosis_usage,
+                                    provider_name=selected_provider,
+                                    execution_mode=normalized_execution_mode,
+                                )
                                 diagnosis_elapsed_seconds = time.perf_counter() - diagnosis_started_at
                                 diagnosis_manifest_record = _record_request_result(
                                     request_info=diagnosis_metadata,
@@ -656,6 +706,11 @@ def run_reasoning_floor(
                                     prompt_bundle.system_prompt,
                                     prompt_bundle.response_format,
                                     proposal_metadata,
+                                )
+                                usage = _apply_cost_estimation_policy(
+                                    usage,
+                                    provider_name=selected_provider,
+                                    execution_mode=normalized_execution_mode,
                                 )
                                 proposal_elapsed_seconds = time.perf_counter() - proposal_started_at
                                 proposal_manifest_record = _record_request_result(
@@ -786,7 +841,13 @@ def run_reasoning_floor(
                                             ),
                                         ),
                                     ]
-                                    future = executor.submit(_execute_case_requests, provider, case_requests)
+                                    future = executor.submit(
+                                        _execute_case_requests,
+                                        provider,
+                                        case_requests,
+                                        provider_name=selected_provider,
+                                        execution_mode=normalized_execution_mode,
+                                    )
                                     pending_futures[future] = case_id
                                     if len(pending_futures) >= effective_parallel_workers:
                                         drain_completed_futures(wait_for_all=False)
@@ -949,6 +1010,11 @@ def run_reasoning_floor(
                                 result_row,
                                 request_info,
                             )
+                            usage = _apply_cost_estimation_policy(
+                                usage,
+                                provider_name=selected_provider,
+                                execution_mode=normalized_execution_mode,
+                            )
                             handles = bundle_handles[request_info["ablation_bundle"]]
                             manifest_record = _record_request_result(
                                 request_info=request_info,
@@ -994,7 +1060,11 @@ def run_reasoning_floor(
                     for custom_id in missing_custom_ids:
                         request_info = request_map[custom_id]
                         handles = bundle_handles[request_info["ablation_bundle"]]
-                        usage = _empty_usage_payload(selected_provider, selected_model, request_info)
+                        usage = _apply_cost_estimation_policy(
+                            _empty_usage_payload(selected_provider, selected_model, request_info),
+                            provider_name=selected_provider,
+                            execution_mode=normalized_execution_mode,
+                        )
                         manifest_record = _record_request_result(
                             request_info=request_info,
                             raw_response=None,
@@ -1057,6 +1127,7 @@ def run_reasoning_floor(
             "elapsed_seconds": round(run_elapsed_seconds, 6),
             "generation_elapsed_seconds": run_usage["generation_elapsed_seconds"],
             "execution_mode": normalized_execution_mode,
+            "batch_mode_used": normalized_execution_mode == "batch",
         }
         if normalized_execution_mode == "parallel":
             summary["run_info"]["parallel"] = {
@@ -1071,6 +1142,20 @@ def run_reasoning_floor(
             "total_tokens": run_usage["total_tokens"],
             "cached_tokens": run_usage["cached_tokens"],
             "estimated_cost_usd": run_usage["estimated_cost_usd"],
+            "batch_pricing_applied": _batch_pricing_applies(
+                provider_name=selected_provider,
+                execution_mode=normalized_execution_mode,
+            ),
+            "cost_estimation_mode": (
+                "openai_batch_discount_applied"
+                if _batch_pricing_applies(provider_name=selected_provider, execution_mode=normalized_execution_mode)
+                else "provider_default"
+            ),
+            "cost_estimation_multiplier": (
+                OPENAI_BATCH_COST_ESTIMATION_MULTIPLIER
+                if _batch_pricing_applies(provider_name=selected_provider, execution_mode=normalized_execution_mode)
+                else 1.0
+            ),
         }
         summary["paper_summary"] = {
             "overall_success_by_class": summary.get("by_class"),
