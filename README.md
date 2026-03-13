@@ -22,6 +22,7 @@ Stage 7 - Reasoning floor: run the zero-shot baseline over benchmark cases, incl
 - `src/splitter.py`: deterministic train/dev/test split generation
 - `src/evaluate.py`: benchmark evaluation entry point
 - `src/reasoning_floor.py`: zero-shot baseline runner
+- `src/reasoning_floor_viewer.py`: Streamlit debugger for reasoning-floor runs
 - `src/lib/`: shared pipeline modules
 - `src/guardian/`: proposal validation, evaluation, and reasoning-floor support modules
 - `data/`: generated artifacts (large)
@@ -102,6 +103,13 @@ Show reasoning-floor CLI:
 
 ```bash
 uv run python src/reasoning_floor.py --help
+```
+
+Launch the reasoning-floor viewer:
+
+```bash
+uv sync --extra ui
+uv run streamlit run src/reasoning_floor_viewer.py -- --reports-root reports/reasoning_floor
 ```
 
 Analyze which property-level T-box updates account for the Stage 4 T-box cases:

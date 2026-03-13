@@ -5,9 +5,11 @@ This area contains repository-facing documentation: how the benchmark is built, 
 - [Pipeline Implementation](./Pipeline_Implementation.md): current stage-by-stage workflow, scripts, CLI entry points, caches, and outputs.
 - [Artifact Schemas](./Artifact_Schemas.md): structure of the Stage 2, Stage 3, Stage 4, and Stage 5 artifacts.
 - [Classifier Specification](./Classifier_Specification.md): current classification logic implemented in `src/classifier.py`.
+- [Benchmark Selection](./Benchmark_Selection.md): deterministic paper-subset manifest generation and runtime filtering.
 - [Proposal Validation](./Proposal_Validation.md): A-box and T-box proposal normalization contracts and runtime modules.
 - [Evaluation Harness](./Evaluation_Harness.md): benchmark scoring workflow, outputs, and metric semantics.
 - [Reasoning Floor](./Reasoning_Floor.md): zero-shot baseline runner, ablation bundles, and provider interface.
+- [Reasoning Floor Viewer](./Reasoning_Floor_Viewer.md): Streamlit debugger for browsing runs, prompts, outputs, and evaluation traces.
 - [Track Diagnosis](./Track_Diagnosis.md): separate A-box vs T-box diagnostic task and scoring outputs.
 - [T-BOX Update Analysis](./TBox_Update_Analysis.md): streaming frequency analysis for property-level T-box revisions in Stage 4.
 - [Paper Execution Plan](./Paper_Execution_Plan.md): terminal runbook for building the benchmark and paper artifacts end to end.
