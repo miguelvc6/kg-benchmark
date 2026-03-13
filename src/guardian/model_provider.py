@@ -98,6 +98,7 @@ def _metadata_summary(metadata: dict[str, Any]) -> str:
         "run_id",
         "case_id",
         "ablation_bundle",
+        "prompt_name",
         "track",
         "task_type",
         "model",

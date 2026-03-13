@@ -4,7 +4,8 @@ import unittest
 from pathlib import Path
 
 from guardian.model_provider import StaticResponseProvider
-from guardian.reasoning import run_reasoning_floor
+from guardian.prompts import get_prompt_template
+from guardian.reasoning import build_prompt_bundle, build_track_diagnosis_prompt_bundle, run_reasoning_floor
 
 
 class ReasoningFloorTests(unittest.TestCase):
@@ -133,6 +134,35 @@ class ReasoningFloorTests(unittest.TestCase):
             self.assertEqual(summary["usage"]["prompt_tokens"], 0)
             self.assertEqual(summary["usage"]["completion_tokens"], 0)
             self.assertIn("stub_model", summary["run_info"]["output_dir"])
+
+    def test_prompt_bundles_use_named_templates(self) -> None:
+        record = {
+            "id": "repair_case",
+            "qid": "Q1",
+            "property": "P31",
+            "track": "A_BOX",
+            "classification": {"class": "TypeB"},
+            "labels_en": {},
+            "violation_context": {"value": ["Q2"]},
+            "persistence_check": {},
+        }
+        world_state_entry = {"L4_constraints": {"constraints": []}}
+
+        proposal_bundle = build_prompt_bundle(record, world_state_entry, "logic_only")
+        diagnosis_bundle = build_track_diagnosis_prompt_bundle(record, world_state_entry, "logic_only")
+
+        self.assertEqual(proposal_bundle.prompt_name, "reasoning_floor_a_box_zero_shot")
+        self.assertEqual(
+            proposal_bundle.system_prompt,
+            get_prompt_template("reasoning_floor_a_box_zero_shot").system_prompt,
+        )
+        self.assertEqual(diagnosis_bundle.prompt_name, "reasoning_floor_track_diagnosis_zero_shot")
+        self.assertEqual(
+            diagnosis_bundle.system_prompt,
+            get_prompt_template("reasoning_floor_track_diagnosis_zero_shot").system_prompt,
+        )
+        self.assertEqual(proposal_bundle.response_format, {"type": "json_object"})
+        self.assertIn('"logic_context"', proposal_bundle.prompt)
 
 
 

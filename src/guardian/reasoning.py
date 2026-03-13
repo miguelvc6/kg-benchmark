@@ -16,6 +16,7 @@ from guardian.evaluator import evaluate_benchmark, summarize_trace_iterable, wri
 from guardian.model_provider import ModelProvider, create_model_provider
 from guardian.patch_parser import load_schema as load_a_box_schema
 from guardian.patch_parser import normalize_proposal as normalize_a_box_proposal
+from guardian.prompts import get_prompt_template
 from guardian.track_parser import load_schema as load_track_schema
 from guardian.track_parser import normalize_diagnosis
 from guardian.tbox_parser import load_schema as load_t_box_schema
@@ -98,6 +99,7 @@ def _format_cost(value: float | None) -> str:
 @dataclass
 class PromptBundle:
     ablation_bundle: str
+    prompt_name: str
     prompt: str
     system_prompt: str
     response_format: dict[str, Any]
@@ -130,20 +132,17 @@ def build_prompt_bundle(record: dict[str, Any], world_state_entry: Optional[dict
             "L4_constraints": world_state_entry.get("L4_constraints"),
         }
 
-    if record.get("track") == "T_BOX":
-        system_prompt = (
-            "You are producing a zero-shot T-box reform proposal for a benchmark case. "
-            "Return JSON only. Do not use tools or external retrieval."
-        )
-    else:
-        system_prompt = (
-            "You are producing a zero-shot A-box repair proposal for a benchmark case. "
-            "Return JSON only. Do not use tools or external retrieval."
-        )
-
-    prompt = json.dumps(case_payload, ensure_ascii=False, indent=2, sort_keys=True)
-    response_format = {"type": "json_object"}
-    return PromptBundle(ablation_bundle=bundle, prompt=prompt, system_prompt=system_prompt, response_format=response_format)
+    prompt_template_name = (
+        "reasoning_floor_t_box_zero_shot" if record.get("track") == "T_BOX" else "reasoning_floor_a_box_zero_shot"
+    )
+    prompt_template = get_prompt_template(prompt_template_name)
+    return PromptBundle(
+        ablation_bundle=bundle,
+        prompt_name=prompt_template.name,
+        prompt=prompt_template.render(case_payload),
+        system_prompt=prompt_template.system_prompt,
+        response_format=prompt_template.response_format_copy(),
+    )
 
 
 def build_track_diagnosis_prompt_bundle(
@@ -161,14 +160,14 @@ def build_track_diagnosis_prompt_bundle(
             "L3_neighborhood": world_state_entry.get("L3_neighborhood"),
             "L4_constraints": world_state_entry.get("L4_constraints"),
         }
-    system_prompt = (
-        "You are performing a zero-shot benchmark diagnosis task. "
-        "Decide whether the historical case should be treated as A_BOX, T_BOX, or AMBIGUOUS. "
-        "Return JSON only with case_id, predicted_track, optional confidence, and optional rationale. "
-        "Do not use tools or external retrieval."
+    prompt_template = get_prompt_template("reasoning_floor_track_diagnosis_zero_shot")
+    return PromptBundle(
+        ablation_bundle=bundle,
+        prompt_name=prompt_template.name,
+        prompt=prompt_template.render(case_payload),
+        system_prompt=prompt_template.system_prompt,
+        response_format=prompt_template.response_format_copy(),
     )
-    prompt = json.dumps(case_payload, ensure_ascii=False, indent=2, sort_keys=True)
-    return PromptBundle(ablation_bundle=bundle, prompt=prompt, system_prompt=system_prompt, response_format={"type": "json_object"})
 
 
 def _iter_selected_records(
@@ -336,6 +335,7 @@ def run_reasoning_floor(
                             "run_id": run_id,
                             "case_id": case_id,
                             "ablation_bundle": bundle,
+                            "prompt_name": diagnosis_bundle.prompt_name,
                             "track": record.get("track"),
                             "task_type": "track_diagnosis",
                             "model": getattr(provider, "model", "unknown-model"),
@@ -352,6 +352,7 @@ def run_reasoning_floor(
                             "run_id": run_id,
                             "case_id": case_id,
                             "ablation_bundle": bundle,
+                            "prompt_name": diagnosis_bundle.prompt_name,
                             "track": record.get("track"),
                             "task_type": "track_diagnosis",
                             "provider": diagnosis_usage.get("provider"),
@@ -365,6 +366,7 @@ def run_reasoning_floor(
                                 "run_id": run_id,
                                 "case_id": case_id,
                                 "ablation_bundle": bundle,
+                                "prompt_name": diagnosis_bundle.prompt_name,
                                 "track": record.get("track"),
                                 "task_type": "track_diagnosis",
                                 "raw_response": diagnosis_raw_response,
@@ -387,6 +389,7 @@ def run_reasoning_floor(
                             "run_id": run_id,
                             "case_id": case_id,
                             "ablation_bundle": bundle,
+                            "prompt_name": prompt_bundle.prompt_name,
                             "track": record.get("track"),
                             "task_type": "proposal",
                             "model": getattr(provider, "model", "unknown-model"),
@@ -403,6 +406,7 @@ def run_reasoning_floor(
                             "run_id": run_id,
                             "case_id": case_id,
                             "ablation_bundle": bundle,
+                            "prompt_name": prompt_bundle.prompt_name,
                             "track": record.get("track"),
                             "task_type": "proposal",
                             "provider": usage.get("provider"),
@@ -416,6 +420,7 @@ def run_reasoning_floor(
                                 "run_id": run_id,
                                 "case_id": case_id,
                                 "ablation_bundle": bundle,
+                                "prompt_name": prompt_bundle.prompt_name,
                                 "track": record.get("track"),
                                 "task_type": "proposal",
                                 "raw_response": raw_response,
