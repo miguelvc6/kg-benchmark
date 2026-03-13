@@ -178,6 +178,22 @@ class ReasoningFloorTests(unittest.TestCase):
         self.assertEqual(summary["usage"]["prompt_tokens"], 0)
         self.assertEqual(summary["usage"]["completion_tokens"], 0)
 
+    def test_reasoning_floor_defaults_to_batch_for_openai_provider(self) -> None:
+        root, classified_path, world_state_path, selection_manifest_path, resolver = self._make_stub_fixture()
+        summary = run_reasoning_floor(
+            classified_path=classified_path,
+            world_state_path=world_state_path,
+            output_dir=root / "outputs",
+            provider=StaticResponseProvider(resolver, provider_name="openai", model="stub-model"),
+            ablation_bundles=["minimal_case"],
+            selection_manifest_path=selection_manifest_path,
+            batch_poll_interval_seconds=0.0,
+        )
+        run_dir = Path(summary["run_info"]["output_dir"])
+        self.assertEqual(summary["run_info"]["execution_mode"], "batch")
+        self.assertTrue((run_dir / "batch_input.jsonl").exists())
+        self.assertTrue((run_dir / "batch_request_manifest.jsonl").exists())
+
     def test_prompt_bundles_use_named_templates(self) -> None:
         record = {
             "id": "repair_case",

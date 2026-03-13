@@ -406,7 +406,7 @@ def run_reasoning_floor(
     selection_manifest_path: str | Path | None = None,
     tracks: Optional[Iterable[str]] = None,
     max_cases: Optional[int] = None,
-    execution_mode: str = "sync",
+    execution_mode: str | None = None,
     batch_completion_window: str = "24h",
     batch_poll_interval_seconds: float = 60.0,
 ) -> dict[str, Any]:
@@ -417,7 +417,9 @@ def run_reasoning_floor(
     selected_model = getattr(provider, "model", None) or model_name or "unknown-model"
     selected_provider = getattr(provider, "provider_name", None) or provider.__class__.__name__.replace("ChatProvider", "").lower()
 
-    normalized_execution_mode = execution_mode.strip().lower()
+    normalized_execution_mode = (execution_mode or "").strip().lower()
+    if not normalized_execution_mode:
+        normalized_execution_mode = "batch" if selected_provider == "openai" else "sync"
     if normalized_execution_mode not in {"sync", "batch"}:
         raise ValueError(f"Unsupported execution mode: {execution_mode!r}")
     if normalized_execution_mode == "batch" and not isinstance(provider, BatchModelProvider):

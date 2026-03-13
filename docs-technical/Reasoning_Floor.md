@@ -12,7 +12,7 @@ It also executes a separate diagnostic call that asks the model to classify each
 
 The runner also accepts `--selection-manifest` so paper runs can target a deterministic benchmark subset without creating a second Stage 4 JSONL artifact.
 
-The default execution mode is synchronous. When the selected provider supports it, `src/reasoning_floor.py` can also submit the run through a provider batch API with `--execution-mode batch`.
+The default execution mode is provider-aware. OpenAI runs default to batch mode, while other providers default to synchronous execution. You can still override this with `--execution-mode`.
 
 ## Ablation Bundles
 
@@ -56,6 +56,11 @@ Batch-specific CLI settings:
 - `--execution-mode sync|batch`
 - `--batch-completion-window` (defaults to `24h`)
 - `--batch-poll-interval-seconds` (defaults to `60`)
+
+If `--execution-mode` is omitted:
+
+- `MODEL_PROVIDER=openai` defaults to batch execution
+- other providers default to synchronous execution
 
 The adapter contract is:
 

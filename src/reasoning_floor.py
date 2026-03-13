@@ -14,8 +14,8 @@ def main() -> int:
     parser.add_argument(
         "--execution-mode",
         choices=("sync", "batch"),
-        default="sync",
-        help="Run requests synchronously or through a provider batch API.",
+        default=None,
+        help="Override execution mode. Defaults to batch for the OpenAI provider and sync otherwise.",
     )
     parser.add_argument(
         "--batch-completion-window",
