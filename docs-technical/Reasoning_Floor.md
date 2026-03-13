@@ -129,6 +129,13 @@ After generation completes, the runner shows a second `tqdm` bar for bundle eval
 
 In synchronous mode, the runner streams Stage 4 cases from disk and appends raw responses, manifest rows, normalized proposals, and evaluation traces incrementally. In parallel mode, it keeps the same outputs but executes multiple cases concurrently with bounded in-flight work. In batch mode, it first writes provider batch-input artifacts, then reconstructs the normal reasoning-floor outputs from the completed batch results.
 
+During evaluation, the runner now switches classified-benchmark access strategy by selected-case count:
+
+- for `10,000` selected cases or fewer, it loads the selected Stage 4 records into an in-memory cache once and reuses them across bundle evaluation
+- above `10,000` selected cases, it streams the original Stage 4 benchmark once into a run-local `selected_classified_records.jsonl` artifact and then evaluates bundles by streaming that filtered subset from disk
+
+This keeps small evaluation runs fast without rescanning the full Stage 4 file for every bundle, while avoiding large in-memory record caches on paper-scale selections.
+
 ## Test Coverage
 
 The dry-run integration path is covered by [tests/test_reasoning_floor.py](/home/mvazquez/kg-benchmark/tests/test_reasoning_floor.py).

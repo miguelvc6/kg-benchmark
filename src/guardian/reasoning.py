@@ -33,6 +33,7 @@ def _utc_now() -> str:
 
 ABLATION_BUNDLES = ("minimal_case", "logic_only", "local_graph")
 OPENAI_BATCH_COST_ESTIMATION_MULTIPLIER = 0.5
+EVALUATION_IN_MEMORY_CASE_THRESHOLD = 10_000
 
 
 def _slugify(value: str) -> str:
@@ -355,6 +356,47 @@ def _selected_case_ids(
             max_cases=max_cases,
         )
     ]
+
+
+def _load_selected_records_for_evaluation(
+    classified_path: str | Path,
+    selected_case_ids: Iterable[str],
+) -> list[dict[str, Any]]:
+    case_id_set = {case_id for case_id in selected_case_ids if case_id}
+    if not case_id_set:
+        return []
+    records: list[dict[str, Any]] = []
+    for record in iter_jsonl(classified_path):
+        if not isinstance(record, dict):
+            continue
+        case_id = record.get("id")
+        if not isinstance(case_id, str) or case_id not in case_id_set:
+            continue
+        records.append(record)
+    return records
+
+
+def _write_selected_records_for_evaluation(
+    classified_path: str | Path,
+    selected_case_ids: Iterable[str],
+    destination_path: str | Path,
+) -> int:
+    case_id_set = {case_id for case_id in selected_case_ids if case_id}
+    destination = Path(destination_path)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    written = 0
+    with open(destination, "w", encoding="utf-8") as handle:
+        if not case_id_set:
+            return 0
+        for record in iter_jsonl(classified_path):
+            if not isinstance(record, dict):
+                continue
+            case_id = record.get("id")
+            if not isinstance(case_id, str) or case_id not in case_id_set:
+                continue
+            handle.write(json.dumps(record, ensure_ascii=False) + "\n")
+            written += 1
+    return written
 
 
 def _append_jsonl_record(handle: Any, record: dict[str, Any]) -> None:
@@ -1122,10 +1164,41 @@ def run_reasoning_floor(
                             progress.update(pending_progress)
                             pending_progress = 0
 
+        evaluation_case_count = len(selected_case_ids)
+        evaluation_classified_path = Path(classified_path)
+        evaluation_classified_records: list[dict[str, Any]] | None = None
+        evaluation_strategy = "memory_cache"
+        evaluation_filtered_record_count: int | None = None
+        evaluation_filtered_path: Path | None = None
+        if evaluation_case_count <= EVALUATION_IN_MEMORY_CASE_THRESHOLD:
+            _emit_runtime_status(
+                progress,
+                "Preparing evaluation inputs with in-memory classified-record cache "
+                f"for {evaluation_case_count} selected case(s).",
+            )
+            evaluation_classified_records = _load_selected_records_for_evaluation(
+                classified_path,
+                selected_case_ids,
+            )
+        else:
+            evaluation_strategy = "filtered_subset_stream"
+            evaluation_filtered_path = out_dir / "selected_classified_records.jsonl"
+            _emit_runtime_status(
+                progress,
+                "Preparing evaluation inputs by writing filtered classified records to "
+                f"{evaluation_filtered_path} for {evaluation_case_count} selected case(s).",
+            )
+            evaluation_filtered_record_count = _write_selected_records_for_evaluation(
+                classified_path,
+                selected_case_ids,
+                evaluation_filtered_path,
+            )
+            evaluation_classified_path = evaluation_filtered_path
+
         _emit_runtime_status(
             progress,
             "Generation phase complete. Starting evaluation for "
-            f"{len(bundle_list)} bundle(s) across {len(selected_case_ids)} selected case(s).",
+            f"{len(bundle_list)} bundle(s) across {evaluation_case_count} selected case(s).",
         )
         evaluation_total = len(bundle_list) * len(selected_case_ids)
         evaluation_progress = tqdm(
@@ -1144,7 +1217,7 @@ def run_reasoning_floor(
                     f"Evaluating bundle '{bundle}' ({len(selected_case_ids)} case(s)).",
                 )
                 evaluate_benchmark(
-                    classified_path=classified_path,
+                    classified_path=evaluation_classified_path,
                     world_state_path=world_state_path,
                     a_box_proposals_path=bundle_dir / "a_box_proposals.jsonl",
                     t_box_proposals_path=bundle_dir / "t_box_proposals.jsonl",
@@ -1157,6 +1230,8 @@ def run_reasoning_floor(
                     out_summary_path=bundle_dir / "evaluation_summary.json",
                     collect_traces=False,
                     progress_callback=lambda _trace: evaluation_progress.update(1),
+                    classified_records=evaluation_classified_records,
+                    classified_input_path=classified_path,
                 )
                 _emit_runtime_status(
                     progress,
@@ -1193,6 +1268,13 @@ def run_reasoning_floor(
             "generation_elapsed_seconds": run_usage["generation_elapsed_seconds"],
             "execution_mode": normalized_execution_mode,
             "batch_mode_used": normalized_execution_mode == "batch",
+            "evaluation": {
+                "classified_record_strategy": evaluation_strategy,
+                "selected_case_count": evaluation_case_count,
+                "memory_cache_case_threshold": EVALUATION_IN_MEMORY_CASE_THRESHOLD,
+                "filtered_classified_path": str(evaluation_filtered_path) if evaluation_filtered_path else None,
+                "filtered_record_count": evaluation_filtered_record_count,
+            },
         }
         if normalized_execution_mode == "parallel":
             summary["run_info"]["parallel"] = {

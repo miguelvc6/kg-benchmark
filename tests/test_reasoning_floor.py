@@ -3,6 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from typing import Any, Callable
+from unittest.mock import patch
 
 from guardian.model_provider import StaticResponseProvider
 from guardian.prompts import get_prompt_template
@@ -174,6 +175,31 @@ class ReasoningFloorTests(unittest.TestCase):
         self.assertEqual(summary["usage"]["completion_tokens"], 0)
         self.assertIn("stub_model", summary["run_info"]["output_dir"])
         self.assertEqual(summary["inputs"]["selection_manifest"], str(selection_manifest_path))
+        self.assertEqual(summary["run_info"]["evaluation"]["classified_record_strategy"], "memory_cache")
+        self.assertIsNone(summary["run_info"]["evaluation"]["filtered_classified_path"])
+
+    def test_reasoning_floor_streams_filtered_classified_subset_for_large_eval(self) -> None:
+        root, classified_path, world_state_path, _selection_manifest_path, resolver = self._make_stub_fixture()
+        with patch("guardian.reasoning.EVALUATION_IN_MEMORY_CASE_THRESHOLD", 1):
+            summary = run_reasoning_floor(
+                classified_path=classified_path,
+                world_state_path=world_state_path,
+                output_dir=root / "outputs",
+                provider=StaticResponseProvider(resolver, model="stub-model"),
+                ablation_bundles=["minimal_case"],
+            )
+
+        run_dir = Path(summary["run_info"]["output_dir"])
+        filtered_path = run_dir / "selected_classified_records.jsonl"
+        evaluation_summary = json.loads((run_dir / "minimal_case" / "evaluation_summary.json").read_text(encoding="utf-8"))
+
+        self.assertEqual(summary["run_info"]["evaluation"]["classified_record_strategy"], "filtered_subset_stream")
+        self.assertEqual(summary["run_info"]["evaluation"]["filtered_classified_path"], str(filtered_path))
+        self.assertEqual(summary["run_info"]["evaluation"]["filtered_record_count"], 2)
+        self.assertTrue(filtered_path.exists())
+        filtered_rows = [json.loads(line) for line in filtered_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        self.assertEqual([row["id"] for row in filtered_rows], ["repair_case", "reform_case"])
+        self.assertEqual(evaluation_summary["inputs"]["classified_benchmark"], str(classified_path))
 
     def test_reasoning_floor_batch_stub_run(self) -> None:
         root, classified_path, world_state_path, selection_manifest_path, resolver = self._make_stub_fixture()

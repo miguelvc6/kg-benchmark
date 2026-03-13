@@ -100,8 +100,7 @@ def _derive_popularity_buckets(records: list[dict[str, Any]]) -> dict[str, str]:
     return buckets
 
 
-def _load_records(classified_path: str | Path, case_ids: Optional[set[str]] = None) -> list[dict[str, Any]]:
-    records = []
+def _iter_records(classified_path: str | Path, case_ids: Optional[set[str]] = None) -> Iterable[dict[str, Any]]:
     for record in iter_jsonl(classified_path):
         if not isinstance(record, dict):
             continue
@@ -110,8 +109,42 @@ def _load_records(classified_path: str | Path, case_ids: Optional[set[str]] = No
             continue
         if case_ids is not None and rid not in case_ids:
             continue
-        records.append(record)
-    return records
+        yield record
+
+
+def _load_records(classified_path: str | Path, case_ids: Optional[set[str]] = None) -> list[dict[str, Any]]:
+    return list(_iter_records(classified_path, case_ids))
+
+
+def _derive_popularity_buckets_from_path(
+    classified_path: str | Path,
+    case_ids: Optional[set[str]] = None,
+) -> dict[str, str]:
+    scored: list[tuple[float, str]] = []
+    missing: list[str] = []
+    for record in _iter_records(classified_path, case_ids):
+        rid = record["id"]
+        popularity = record.get("popularity")
+        score = popularity.get("score") if isinstance(popularity, dict) else None
+        if isinstance(score, (int, float)):
+            scored.append((float(score), rid))
+        else:
+            missing.append(rid)
+    scored.sort(key=lambda item: (item[0], item[1]))
+    total = len(scored)
+    tail_cut = int(total * 0.2)
+    head_cut = int(total * 0.2)
+    buckets: dict[str, str] = {}
+    for idx, (_, rid) in enumerate(scored):
+        if idx < tail_cut:
+            buckets[rid] = "tail"
+        elif idx >= total - head_cut:
+            buckets[rid] = "head"
+        else:
+            buckets[rid] = "mid"
+    for rid in missing:
+        buckets[rid] = "unknown"
+    return buckets
 
 
 def _load_a_box_proposals(path: str | Path | None) -> dict[str, Any]:
@@ -698,14 +731,27 @@ def evaluate_benchmark(
     out_summary_path: str | Path | None = None,
     collect_traces: bool = True,
     progress_callback: Callable[[dict[str, Any]], None] | None = None,
+    classified_records: Optional[Iterable[dict[str, Any]]] = None,
+    classified_input_path: str | Path | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     selected_case_ids = resolve_case_id_filter(
         case_ids=case_ids,
         selection_manifest_path=selection_manifest_path,
     )
     selected_case_id_set = set(selected_case_ids) if selected_case_ids is not None else None
-    records = _load_records(classified_path, selected_case_id_set)
-    popularity_buckets = _derive_popularity_buckets(records)
+    if classified_records is not None:
+        records = [
+            record
+            for record in classified_records
+            if isinstance(record, dict)
+            and isinstance(record.get("id"), str)
+            and (selected_case_id_set is None or record["id"] in selected_case_id_set)
+        ]
+        popularity_buckets = _derive_popularity_buckets(records)
+        record_iterable: Iterable[dict[str, Any]] = records
+    else:
+        popularity_buckets = _derive_popularity_buckets_from_path(classified_path, selected_case_id_set)
+        record_iterable = _iter_records(classified_path, selected_case_id_set)
     a_box_proposals = _load_a_box_proposals(a_box_proposals_path)
     t_box_proposals = _load_t_box_proposals(t_box_proposals_path)
     track_diagnoses = _load_track_diagnoses(track_diagnoses_path)
@@ -720,7 +766,7 @@ def evaluate_benchmark(
             trace_path = Path(out_traces_path)
             trace_path.parent.mkdir(parents=True, exist_ok=True)
             trace_writer = open(trace_path, "w", encoding="utf-8")
-        for record in records:
+        for record in record_iterable:
             case_id = record["id"]
             manifest_record = _manifest_record(run_manifest, case_id, ablation_bundle, "proposal")
             diagnosis_manifest_record = _manifest_record(run_manifest, case_id, ablation_bundle, "track_diagnosis")
@@ -761,7 +807,7 @@ def evaluate_benchmark(
         world_state_store.close()
 
     inputs = {
-        "classified_benchmark": str(classified_path),
+        "classified_benchmark": str(classified_input_path or classified_path),
         "world_state": str(world_state_path),
         "a_box_proposals": str(a_box_proposals_path) if a_box_proposals_path else None,
         "t_box_proposals": str(t_box_proposals_path) if t_box_proposals_path else None,
