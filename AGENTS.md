@@ -14,3 +14,11 @@ Use this split consistently:
 - Do not duplicate the same content across both areas. Cross-link instead.
 
 `docs/README.md` exists only as a pointer into the two primary documentation areas and should not become a third place for full documentation.
+
+## Python Command Convention
+
+This environment does not guarantee a `python` executable on `PATH`; `python3` is available, and project commands are already managed through `uv`.
+
+- Prefer `uv run python ...` for repository scripts, tests, and other project-scoped commands.
+- Use bare `python3` only for ad hoc one-off commands that are intentionally outside the project's `uv` environment.
+- Do not assume `python` resolves successfully in this repository.

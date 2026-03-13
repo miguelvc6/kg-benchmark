@@ -45,6 +45,10 @@ export UV_PROJECT_ENVIRONMENT=.venv-wsl
 uv sync
 ```
 
+Command convention: use `uv run python ...` for repo commands. In this environment,
+bare `python` is not guaranteed to exist on `PATH`; use `python3` only for ad hoc
+non-project one-offs.
+
 Run the full pipeline (stages 1-3):
 
 ```bash

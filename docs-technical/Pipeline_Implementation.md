@@ -24,6 +24,14 @@ The repository does not currently provide Guardian multi-turn intervention loops
 - `src/evaluate.py`: benchmark evaluation entry point for normalized proposal artifacts.
 - `src/reasoning_floor.py`: zero-shot baseline runner over Stage 4 benchmark cases.
 
+## Runtime Convention
+
+- Use `uv run python ...` for repository commands so the project-managed interpreter
+  is selected consistently.
+- Do not rely on bare `python` being present on `PATH` in this environment.
+- Use `python3` only for ad hoc commands that intentionally run outside the `uv`
+  environment.
+
 ## Current Pipeline
 
 | Stage | Script | Purpose | Primary outputs |
