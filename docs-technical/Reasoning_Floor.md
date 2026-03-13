@@ -123,7 +123,7 @@ When a selection manifest is used, the run summary records its path under `input
 
 During execution, the runner shows a `tqdm` generation progress bar with elapsed time, ETA, current estimated cost, and estimated total cost. It refreshes in chunks of `min(1000 cases, 10% of total cases)`.
 
-The runner also prints phase-level status lines for run startup, batch submission and polling milestones, bundle evaluation starts, and final summary output. In batch mode, provider status updates are emitted when batch state or request counts change.
+The runner also prints UTC-timestamped phase-level status lines for run startup, batch submission and polling milestones, bundle evaluation start and completion, and final summary output. In batch mode, provider status updates are emitted when batch state or request counts change.
 
 After generation completes, the runner shows a second `tqdm` bar for bundle evaluation so the terminal does not appear idle while per-bundle summaries and traces are still being computed.
 

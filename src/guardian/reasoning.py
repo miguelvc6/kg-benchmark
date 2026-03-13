@@ -115,7 +115,7 @@ def _format_cost(value: float | None) -> str:
 
 
 def _emit_runtime_status(progress_bar: Any, message: str) -> None:
-    formatted = f"[reasoning-floor] {message}"
+    formatted = f"[{_utc_now()}] [reasoning-floor] {message}"
     if progress_bar is not None:
         progress_bar.write(formatted)
         return
@@ -1158,8 +1158,14 @@ def run_reasoning_floor(
                     collect_traces=False,
                     progress_callback=lambda _trace: evaluation_progress.update(1),
                 )
+                _emit_runtime_status(
+                    progress,
+                    f"Finished evaluating bundle '{bundle}'.",
+                )
         finally:
             evaluation_progress.close()
+
+        _emit_runtime_status(progress, "Evaluation phase complete. Building combined run summary.")
 
         summary = summarize_trace_iterable(
             _iter_bundle_traces(out_dir, bundle_list),
