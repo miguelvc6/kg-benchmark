@@ -121,7 +121,11 @@ The combined summary stores run-level provider, model, output directory, executi
 
 When a selection manifest is used, the run summary records its path under `inputs.selection_manifest`.
 
-During execution, the runner shows a `tqdm` progress bar with elapsed time, ETA, current estimated cost, and estimated total cost. It refreshes in chunks of `min(1000 cases, 10% of total cases)`.
+During execution, the runner shows a `tqdm` generation progress bar with elapsed time, ETA, current estimated cost, and estimated total cost. It refreshes in chunks of `min(1000 cases, 10% of total cases)`.
+
+The runner also prints phase-level status lines for run startup, batch submission and polling milestones, bundle evaluation starts, and final summary output. In batch mode, provider status updates are emitted when batch state or request counts change.
+
+After generation completes, the runner shows a second `tqdm` bar for bundle evaluation so the terminal does not appear idle while per-bundle summaries and traces are still being computed.
 
 In synchronous mode, the runner streams Stage 4 cases from disk and appends raw responses, manifest rows, normalized proposals, and evaluation traces incrementally. In parallel mode, it keeps the same outputs but executes multiple cases concurrently with bounded in-flight work. In batch mode, it first writes provider batch-input artifacts, then reconstructs the normal reasoning-floor outputs from the completed batch results.
 

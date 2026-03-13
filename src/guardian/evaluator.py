@@ -5,7 +5,7 @@ import json
 from collections import Counter, defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterable, Optional
+from typing import Any, Callable, Iterable, Optional
 
 from classifier import WorldStateStore
 from lib.benchmark_selection import resolve_case_id_filter
@@ -697,6 +697,7 @@ def evaluate_benchmark(
     out_traces_path: str | Path | None = None,
     out_summary_path: str | Path | None = None,
     collect_traces: bool = True,
+    progress_callback: Callable[[dict[str, Any]], None] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     selected_case_ids = resolve_case_id_filter(
         case_ids=case_ids,
@@ -748,6 +749,8 @@ def evaluate_benchmark(
                 track_diagnoses.get(case_id),
                 diagnosis_manifest_record,
             )
+            if progress_callback is not None:
+                progress_callback(trace)
             if collect_traces:
                 traces.append(trace)
             if trace_writer is not None:

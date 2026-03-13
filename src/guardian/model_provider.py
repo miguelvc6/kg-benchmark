@@ -55,6 +55,7 @@ class BatchModelProvider(Protocol):
         output_dir: Path,
         completion_window: str,
         poll_interval_seconds: float,
+        status_callback: Callable[[str], None] | None = None,
     ) -> BatchExecutionResult:
         ...
 
@@ -429,9 +430,12 @@ class OpenAIChatProvider:
         output_dir: Path,
         completion_window: str,
         poll_interval_seconds: float,
+        status_callback: Callable[[str], None] | None = None,
     ) -> BatchExecutionResult:
         del request_manifest_path
         output_dir.mkdir(parents=True, exist_ok=True)
+        if status_callback is not None:
+            status_callback(f"Uploading batch input file {batch_input_path.name}.")
 
         with open(batch_input_path, "rb") as input_fh:
             upload_response = requests.post(
@@ -447,6 +451,10 @@ class OpenAIChatProvider:
             self._handle_http_error(upload_response, exc, action="batch input upload")
         uploaded_file = upload_response.json()
         _write_json_file(output_dir / "openai_batch_input_file.json", uploaded_file)
+        if status_callback is not None:
+            status_callback(
+                f"Uploaded batch input as {uploaded_file.get('id', 'unknown-file-id')}; creating batch job."
+            )
 
         create_response = requests.post(
             f"{self.base_url}/batches",
@@ -463,8 +471,16 @@ class OpenAIChatProvider:
         except HTTPError as exc:
             self._handle_http_error(create_response, exc, action="batch creation")
         batch = create_response.json()
+        batch_id = batch.get("id", "unknown-batch-id")
+        if status_callback is not None:
+            status_callback(
+                f"Created batch job {batch_id} with status {batch.get('status')!r}; "
+                f"polling every {poll_interval_seconds:g}s."
+            )
 
         terminal_statuses = {"completed", "failed", "expired", "cancelled"}
+        last_status = batch.get("status")
+        last_request_counts = batch.get("request_counts") if isinstance(batch.get("request_counts"), dict) else None
         while batch.get("status") not in terminal_statuses:
             if poll_interval_seconds > 0:
                 time.sleep(poll_interval_seconds)
@@ -478,8 +494,23 @@ class OpenAIChatProvider:
             except HTTPError as exc:
                 self._handle_http_error(status_response, exc, action=f"batch status lookup for {batch['id']}")
             batch = status_response.json()
+            request_counts = batch.get("request_counts") if isinstance(batch.get("request_counts"), dict) else None
+            if status_callback is not None and (
+                batch.get("status") != last_status or request_counts != last_request_counts
+            ):
+                status_callback(
+                    f"Batch {batch.get('id', batch_id)} status {batch.get('status')!r}; "
+                    f"request_counts={request_counts or {}}."
+                )
+            last_status = batch.get("status")
+            last_request_counts = dict(request_counts) if isinstance(request_counts, dict) else request_counts
 
         _write_json_file(output_dir / "openai_batch_job.json", batch)
+        if status_callback is not None:
+            status_callback(
+                f"Batch {batch.get('id', batch_id)} finished with status {batch.get('status')!r}; "
+                "downloading result files."
+            )
 
         output_path = None
         output_file_id = batch.get("output_file_id")
@@ -490,6 +521,12 @@ class OpenAIChatProvider:
         error_file_id = batch.get("error_file_id")
         if isinstance(error_file_id, str) and error_file_id:
             error_path = self._download_file(error_file_id, output_dir / "openai_batch_errors.jsonl")
+        if status_callback is not None:
+            status_callback(
+                "Downloaded batch artifacts: "
+                f"output={'present' if output_path is not None else 'missing'}, "
+                f"errors={'present' if error_path is not None else 'missing'}."
+            )
 
         if output_path is None and error_path is None:
             raise RuntimeError(
@@ -729,9 +766,12 @@ class StaticResponseProvider:
         output_dir: Path,
         completion_window: str,
         poll_interval_seconds: float,
+        status_callback: Callable[[str], None] | None = None,
     ) -> BatchExecutionResult:
         del completion_window, poll_interval_seconds
         output_dir.mkdir(parents=True, exist_ok=True)
+        if status_callback is not None:
+            status_callback(f"Processing static batch input file {batch_input_path.name}.")
         manifest_by_custom_id = {}
         for row in iter_jsonl(request_manifest_path):
             if not isinstance(row, dict):
@@ -826,6 +866,10 @@ class StaticResponseProvider:
             },
         }
         _write_json_file(output_dir / "static_batch_job.json", batch_payload)
+        if status_callback is not None:
+            status_callback(
+                f"Static batch completed with {completed}/{total} successful requests."
+            )
         return BatchExecutionResult(batch=batch_payload, output_path=output_path, error_path=error_path_result)
 
     def parse_batch_result(

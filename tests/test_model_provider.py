@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from guardian.model_provider import OllamaChatProvider, OpenAIChatProvider, create_model_provider
+from guardian.model_provider import OllamaChatProvider, OpenAIChatProvider, StaticResponseProvider, create_model_provider
 
 
 class OpenAIChatProviderTests(unittest.TestCase):
@@ -191,6 +191,45 @@ class OllamaChatProviderTests(unittest.TestCase):
         request_payload = post.call_args.kwargs["json"]
         self.assertEqual(request_payload["keep_alive"], "30m")
         self.assertEqual(request_payload["options"], {"num_ctx": 4096})
+
+
+class StaticResponseProviderBatchTests(unittest.TestCase):
+    def test_execute_batch_emits_status_callbacks(self) -> None:
+        provider = StaticResponseProvider(lambda metadata: {"case_id": metadata["case_id"]})
+        status_messages: list[str] = []
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            batch_input_path = root / "batch_input.jsonl"
+            request_manifest_path = root / "batch_request_manifest.jsonl"
+            output_dir = root / "outputs"
+            batch_input_path.write_text(
+                json.dumps({"custom_id": "rf_000000000", "body": {}}) + "\n",
+                encoding="utf-8",
+            )
+            request_manifest_path.write_text(
+                json.dumps(
+                    {
+                        "custom_id": "rf_000000000",
+                        "metadata": {"case_id": "case-1", "model": "static-model"},
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            provider.execute_batch(
+                batch_input_path,
+                request_manifest_path=request_manifest_path,
+                output_dir=output_dir,
+                completion_window="24h",
+                poll_interval_seconds=0.0,
+                status_callback=status_messages.append,
+            )
+
+        self.assertGreaterEqual(len(status_messages), 2)
+        self.assertIn("Processing static batch input file", status_messages[0])
+        self.assertIn("Static batch completed with 1/1 successful requests.", status_messages[-1])
 
 
 if __name__ == "__main__":

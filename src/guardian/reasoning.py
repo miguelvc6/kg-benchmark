@@ -114,6 +114,14 @@ def _format_cost(value: float | None) -> str:
     return f"${value:.4f}"
 
 
+def _emit_runtime_status(progress_bar: Any, message: str) -> None:
+    formatted = f"[reasoning-floor] {message}"
+    if progress_bar is not None:
+        progress_bar.write(formatted)
+        return
+    print(formatted)
+
+
 def _batch_pricing_applies(*, provider_name: str, execution_mode: str) -> bool:
     return provider_name.strip().lower() == "openai" and execution_mode == "batch"
 
@@ -614,6 +622,14 @@ def run_reasoning_floor(
     has_cost_data = False
     batch_summary: dict[str, Any] | None = None
     try:
+        _emit_runtime_status(
+            progress,
+            "Starting run "
+            f"{run_id} with provider={selected_provider}, model={selected_model}, "
+            f"mode={normalized_execution_mode}, cases={len(selected_case_ids)}, "
+            f"bundles={len(bundle_list)}, requests={total_requests}.",
+        )
+        _emit_runtime_status(progress, f"Writing outputs to {out_dir}.")
         usage_manifest: list[dict[str, Any]] = []
 
         a_box_schema = load_a_box_schema(Path("schemas") / "verified_repair_proposal.schema.json")
@@ -955,6 +971,10 @@ def run_reasoning_floor(
                         "request_manifest_path": str(request_manifest_path),
                     }
                 else:
+                    _emit_runtime_status(
+                        progress,
+                        f"Prepared {request_counter} batch requests; submitting provider batch job.",
+                    )
                     batch_started_at = time.perf_counter()
                     batch_execution = provider.execute_batch(
                         batch_input_path,
@@ -962,6 +982,7 @@ def run_reasoning_floor(
                         output_dir=out_dir,
                         completion_window=batch_completion_window,
                         poll_interval_seconds=batch_poll_interval_seconds,
+                        status_callback=lambda message: _emit_runtime_status(progress, message),
                     )
                     batch_elapsed_seconds = time.perf_counter() - batch_started_at
                     batch_summary = {
@@ -976,6 +997,10 @@ def run_reasoning_floor(
                         "input_path": str(batch_input_path),
                         "request_manifest_path": str(request_manifest_path),
                     }
+                    _emit_runtime_status(
+                        progress,
+                        "Provider batch finished; rebuilding normalized outputs from returned records.",
+                    )
 
                 request_map: dict[str, dict[str, Any]] = {}
                 for row in iter_jsonl(request_manifest_path):
@@ -1097,22 +1122,44 @@ def run_reasoning_floor(
                             progress.update(pending_progress)
                             pending_progress = 0
 
-        for bundle in bundle_list:
-            bundle_dir = out_dir / bundle
-            evaluate_benchmark(
-                classified_path=classified_path,
-                world_state_path=world_state_path,
-                a_box_proposals_path=bundle_dir / "a_box_proposals.jsonl",
-                t_box_proposals_path=bundle_dir / "t_box_proposals.jsonl",
-                track_diagnoses_path=bundle_dir / "track_diagnoses.jsonl",
-                run_manifest_path=manifest_path,
-                ablation_bundle=bundle,
-                case_ids=selected_case_ids,
-                selection_manifest_path=selection_manifest_path,
-                out_traces_path=bundle_dir / "evaluation_traces.jsonl",
-                out_summary_path=bundle_dir / "evaluation_summary.json",
-                collect_traces=False,
-            )
+        _emit_runtime_status(
+            progress,
+            "Generation phase complete. Starting evaluation for "
+            f"{len(bundle_list)} bundle(s) across {len(selected_case_ids)} selected case(s).",
+        )
+        evaluation_total = len(bundle_list) * len(selected_case_ids)
+        evaluation_progress = tqdm(
+            total=evaluation_total,
+            desc="reasoning-floor eval",
+            unit="case",
+            disable=evaluation_total == 0,
+        )
+
+        try:
+            for bundle in bundle_list:
+                bundle_dir = out_dir / bundle
+                evaluation_progress.set_postfix({"bundle": bundle}, refresh=True)
+                _emit_runtime_status(
+                    progress,
+                    f"Evaluating bundle '{bundle}' ({len(selected_case_ids)} case(s)).",
+                )
+                evaluate_benchmark(
+                    classified_path=classified_path,
+                    world_state_path=world_state_path,
+                    a_box_proposals_path=bundle_dir / "a_box_proposals.jsonl",
+                    t_box_proposals_path=bundle_dir / "t_box_proposals.jsonl",
+                    track_diagnoses_path=bundle_dir / "track_diagnoses.jsonl",
+                    run_manifest_path=manifest_path,
+                    ablation_bundle=bundle,
+                    case_ids=selected_case_ids,
+                    selection_manifest_path=selection_manifest_path,
+                    out_traces_path=bundle_dir / "evaluation_traces.jsonl",
+                    out_summary_path=bundle_dir / "evaluation_summary.json",
+                    collect_traces=False,
+                    progress_callback=lambda _trace: evaluation_progress.update(1),
+                )
+        finally:
+            evaluation_progress.close()
 
         summary = summarize_trace_iterable(
             _iter_bundle_traces(out_dir, bundle_list),
@@ -1180,6 +1227,7 @@ def run_reasoning_floor(
             "failure_taxonomy": failure_taxonomy,
         }
         write_json(out_dir / "reasoning_floor_summary.json", summary)
+        _emit_runtime_status(progress, f"Run complete. Summary written to {out_dir / 'reasoning_floor_summary.json'}.")
         return summary
     finally:
         if pending_progress:
