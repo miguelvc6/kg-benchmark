@@ -136,6 +136,48 @@ class PatchParserTests(unittest.TestCase):
         self.assertEqual([op.op for op in normalized.ops], ["REMOVE"])
         self.assertEqual(normalized.ops[0].value, "Q59496158")
 
+    def test_string_provenance_is_coerced(self) -> None:
+        proposal = self._base_proposal()
+        proposal["provenance"] = "historical statement"
+        normalized = normalize_proposal(proposal, schema=self.schema)
+        self.assertEqual(normalized.provenance, [{"kind": "OTHER", "snippet": "historical statement"}])
+
+    def test_object_provenance_infers_kind(self) -> None:
+        proposal = self._base_proposal()
+        proposal["provenance"] = {"url": "https://example.com/source", "summary": "web reference"}
+        normalized = normalize_proposal(proposal, schema=self.schema)
+        self.assertEqual(
+            normalized.provenance,
+            [{"kind": "WEB", "url": "https://example.com/source", "snippet": "web reference"}],
+        )
+
+    def test_list_provenance_infers_kind_for_entries_without_kind(self) -> None:
+        proposal = self._base_proposal()
+        proposal["provenance"] = [{"node_id": "q5", "snippet": "entity link"}]
+        normalized = normalize_proposal(proposal, schema=self.schema)
+        self.assertEqual(
+            normalized.provenance,
+            [{"kind": "KG", "node_id": "Q5", "snippet": "entity link"}],
+        )
+
+    def test_mixed_provenance_entries_are_normalized_without_failing(self) -> None:
+        proposal = self._base_proposal()
+        proposal["provenance"] = [
+            "historical statement",
+            {"revision_id": 123, "description": "old revision"},
+            {"kind": "WEB", "url": "https://example.com/a"},
+            None,
+        ]
+        normalized = normalize_proposal(proposal, schema=self.schema)
+        self.assertEqual(
+            normalized.provenance,
+            [
+                {"kind": "OTHER", "snippet": "historical statement"},
+                {"kind": "HISTORY", "revision_id": 123, "snippet": "old revision"},
+                {"kind": "WEB", "url": "https://example.com/a"},
+            ],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

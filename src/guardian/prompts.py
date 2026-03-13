@@ -26,18 +26,12 @@ PROMPT_TEMPLATES: dict[str, PromptTemplate] = {
         name="reasoning_floor_a_box_zero_shot",
         description="Zero-shot proposal prompt for A-box repair cases in the reasoning floor.",
         system_prompt=(
-            "You are producing a zero-shot A-box repair proposal for a benchmark case. "
-            "Return JSON only."
+            "Produce one A-box repair proposal in the benchmark's canonical JSON shape. Return JSON only."
         ),
-        user_prompt_template="""Return exactly one JSON object that follows this contract.
-
-Required shape:
+        user_prompt_template="""Return exactly one JSON object with this shape:
 {
   "case_id": "<copy input id exactly>",
-  "target": {
-    "qid": "Q...",
-    "pid": "P..."
-  },
+  "target": {"qid": "Q...", "pid": "P..."},
   "ops": [
     {
       "op": "SET" | "ADD" | "REMOVE" | "DELETE_ALL",
@@ -48,34 +42,27 @@ Required shape:
   ]
 }
 
-Optional top-level fields:
-- "rationale"
-- "provenance"
-- "metadata"
+Optional fields: "rationale", "provenance", "metadata".
+If "provenance" is present, it must be an array of objects such as:
+[{"kind":"KG","node_id":"Q5","snippet":"historical target"}]
 
 Rules:
-- Use only the contract fields above. Do not wrap the answer in keys like "proposal_id", "repair_id", "summary", "actions", "patch", "current_state", or "proposal".
 - Copy "case_id" exactly from the input case.
 - Copy the focus entity/property into target.qid and target.pid.
+- Use only the contract fields above. Do not wrap the answer in keys like "proposal_id", "repair_id", "summary", "actions", "patch", "current_state", or "proposal".
 - If the final property value should be empty, use REMOVE or DELETE_ALL.
 - If the final property value should be a single value, prefer SET.
 - Output valid JSON only. No markdown. No code fences.
 
-Canonical example:
+Example:
 {
   "case_id": "repair_case",
-  "target": {
-    "qid": "Q1",
-    "pid": "P31"
-  },
+  "target": {"qid": "Q1", "pid": "P31"},
   "ops": [
-    {
-      "op": "SET",
-      "pid": "P31",
-      "value": "Q5"
-    }
+    {"op": "SET", "pid": "P31", "value": "Q5"}
   ],
-  "rationale": "Replace the invalid type with the historically repaired value."
+  "rationale": "Replace the invalid type with the historical repaired value.",
+  "provenance": [{"kind": "KG", "node_id": "Q5", "snippet": "historical target"}]
 }
 
 Input case:
@@ -86,18 +73,12 @@ Input case:
         name="reasoning_floor_t_box_zero_shot",
         description="Zero-shot proposal prompt for T-box reform cases in the reasoning floor.",
         system_prompt=(
-            "You are producing a zero-shot T-box reform proposal for a benchmark case. "
-            "Return JSON only."
+            "Produce one T-box reform proposal in the benchmark's canonical JSON shape. Return JSON only."
         ),
-        user_prompt_template="""Return exactly one JSON object that follows this contract.
-
-Required shape:
+        user_prompt_template="""Return exactly one JSON object with this shape:
 {
   "case_id": "<copy input id exactly>",
-  "target": {
-    "pid": "P...",
-    "constraint_type_qid": "Q..."
-  },
+  "target": {"pid": "P...", "constraint_type_qid": "Q..."},
   "proposal": {
     "action": "RELAXATION_RANGE_WIDENED" | "RESTRICTION_RANGE_NARROWED" | "RELAXATION_SET_EXPANSION" | "RESTRICTION_SET_CONTRACTION" | "SCHEMA_UPDATE" | "COINCIDENTAL_SCHEMA_CHANGE",
     "signature_after": [
@@ -116,26 +97,22 @@ Required shape:
   }
 }
 
-Optional top-level fields:
-- "rationale"
-- "provenance"
-- "metadata"
+Optional fields: "rationale", "provenance", "metadata".
+If "provenance" is present, it must be an array of objects such as:
+[{"kind":"KG","node_id":"Q21510859","snippet":"current constraint type"}]
 
 Rules:
-- Use only the contract fields above. Do not wrap the answer in keys like "proposal_id", "summary", "changes", "recommended_changes", or "proposed_changes".
 - Copy "case_id" exactly from the input case.
 - Copy the focus property into target.pid.
 - Use the historically relevant constraint type in target.constraint_type_qid.
+- Use only the contract fields above. Do not wrap the answer in keys like "proposal_id", "summary", "changes", "recommended_changes", or "proposed_changes".
 - proposal.action must be one of the listed enum values.
 - Output valid JSON only. No markdown. No code fences.
 
-Canonical example:
+Example:
 {
   "case_id": "reform_case",
-  "target": {
-    "pid": "P31",
-    "constraint_type_qid": "Q21510859"
-  },
+  "target": {"pid": "P31", "constraint_type_qid": "Q21510859"},
   "proposal": {
     "action": "RELAXATION_SET_EXPANSION",
     "signature_after": [
@@ -152,7 +129,8 @@ Canonical example:
       }
     ]
   },
-  "rationale": "Expand the allowed set to include the historically repaired classes."
+  "rationale": "Expand the allowed set to include the historical repaired classes.",
+  "provenance": [{"kind": "KG", "node_id": "Q21510859", "snippet": "current constraint type"}]
 }
 
 Input case:

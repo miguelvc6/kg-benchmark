@@ -416,24 +416,35 @@ def _failure_taxonomy_from_traces(traces: Iterable[dict[str, Any]]) -> dict[str,
     invalid = 0
     non_executable = 0
     diagnosis_errors = 0
+    proposal_parse_errors = 0
+    parser_errors: dict[str, int] = {}
     for trace in traces:
         total += 1
         if not trace.get("proposal_valid"):
             invalid += 1
         if not trace.get("proposal_executable"):
             non_executable += 1
+        if trace.get("parse_status") == "parse_error":
+            proposal_parse_errors += 1
+            parser_error = trace.get("details", {}).get("parser_error")
+            if isinstance(parser_error, str) and parser_error.strip():
+                parser_errors[parser_error.strip()] = parser_errors.get(parser_error.strip(), 0) + 1
         if not (trace.get("track_diagnosis") or {}).get("exact_track_match"):
             diagnosis_errors += 1
     if total == 0:
         return {
             "missing_or_invalid_proposal_rate": 0.0,
             "non_executable_rate": 0.0,
+            "proposal_parse_error_rate": 0.0,
             "track_diagnosis_error_rate": 0.0,
+            "proposal_parse_errors_by_message": {},
         }
     return {
         "missing_or_invalid_proposal_rate": invalid / total,
         "non_executable_rate": non_executable / total,
+        "proposal_parse_error_rate": proposal_parse_errors / total,
         "track_diagnosis_error_rate": diagnosis_errors / total,
+        "proposal_parse_errors_by_message": parser_errors,
     }
 
 

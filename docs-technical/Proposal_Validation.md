@@ -26,6 +26,7 @@ Current runtime behavior:
 - normalizes ops to `SET`, `ADD`, `REMOVE`, or `DELETE_ALL`
 - rewrites `REMOVE` without a value into `DELETE_ALL`
 - validates ISO dates, ids, finite numeric values, and op cardinality
+- coerces common provenance inputs into the canonical list form
 - emits a deterministic `canonical_hash`
 
 ## T-box Contract
@@ -37,7 +38,22 @@ Current runtime behavior:
 - validates `target.pid` and `target.constraint_type_qid`
 - restricts `proposal.action` to the supported first-wave schema-reform families
 - normalizes `proposal.signature_after` into the same canonical shape used by Stage 2 `constraint_delta`
+- coerces common provenance inputs into the canonical list form
 - emits a deterministic `canonical_hash`
+
+## Provenance Compatibility
+
+Normalized output schemas are unchanged: proposals still emit `provenance` only as a list of objects.
+
+The runtime normalizers now accept several common input variants and convert them into that list form:
+
+- string -> `[{"kind":"OTHER","snippet":"..."}]`
+- singleton object with `url` -> inferred `WEB`
+- singleton object with `node_id` or a `source` that looks like a `Q...`/`P...` id -> inferred `KG`
+- singleton object with `revision_id` -> inferred `HISTORY`
+- list entries without `kind` -> inferred from the same signals above
+
+Malformed provenance entries are dropped individually when they cannot be normalized, instead of invalidating an otherwise-correct proposal.
 
 ## Test Coverage
 

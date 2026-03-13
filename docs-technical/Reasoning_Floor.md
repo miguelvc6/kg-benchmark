@@ -91,7 +91,11 @@ Named prompt templates for the reasoning floor now live in [src/guardian/prompts
 
 Those prompts now spell out the exact normalized JSON contract expected by the proposal and diagnosis parsers. The runner still requests JSON objects from providers, but prompt text now explicitly forbids wrapper shapes such as `proposal_id`, `summary`, `actions`, or `proposed_changes` in place of the canonical benchmark schema.
 
+The proposal prompts also state that `provenance` is optional, but when present it must be a JSON array of canonical provenance objects.
+
 As a safety net, the normalization layer also accepts several legacy rich-JSON shapes that appeared in earlier reasoning-floor runs. This compatibility path recovers common aliases such as `proposal_id` or `repair_id`, nested property fields, numeric track-diagnosis confidence values, and common proposal wrappers when they can be mapped back to the public schemas.
+
+Proposal normalization also now coerces common provenance variants into the canonical list form. Plain strings become one-item `OTHER` provenance lists, singleton objects with `url`, `node_id`, or `revision_id` are preserved with inferred `WEB`, `KG`, or `HISTORY` kinds, and mixed provenance lists are normalized entry-by-entry instead of failing the whole proposal.
 
 For the OpenAI adapter, request payloads are encoded locally with strict JSON rules before the HTTP call. Non-finite numeric values or invalid Unicode now fail fast with run and case metadata in the error message instead of surfacing later as a remote `400 Bad Request`.
 
@@ -119,6 +123,15 @@ The run manifest stores per-call token usage, cached prompt tokens when availabl
 
 The combined summary stores run-level provider, model, output directory, execution mode, an explicit `batch_mode_used` flag, total elapsed time, aggregate prompt/completion/total tokens, aggregate cached tokens, aggregate estimated cost, and cost-estimation metadata. For OpenAI batch runs, the runner applies a built-in `0.5` multiplier to estimated costs to reflect batch pricing. Parallel runs also record `run_info.parallel.workers` and its configuration source. Batch runs also record provider batch metadata in `run_info.batch`.
 
+Run and per-bundle summaries now also expose proposal parser visibility directly:
+
+- `parse_errors.proposal_parse_error_count`
+- `parse_errors.proposal_parse_error_rate`
+- `parse_errors.by_message`
+- per-group `proposal_parse_error_count`, `proposal_parse_error_rate`, and `proposal_parse_errors_by_message`
+
+This makes proposal parser regressions diagnosable from the top-level summary JSON without opening traces.
+
 When a selection manifest is used, the run summary records its path under `inputs.selection_manifest`.
 
 During execution, the runner shows a `tqdm` generation progress bar with elapsed time, ETA, current estimated cost, and estimated total cost. It refreshes in chunks of `min(1000 cases, 10% of total cases)`.
@@ -135,6 +148,18 @@ During evaluation, the runner now switches classified-benchmark access strategy 
 - above `10,000` selected cases, it streams the original Stage 4 benchmark once into a run-local `selected_classified_records.jsonl` artifact and then evaluates bundles by streaming that filtered subset from disk
 
 This keeps small evaluation runs fast without rescanning the full Stage 4 file for every bundle, while avoiding large in-memory record caches on paper-scale selections.
+
+## Evaluation Semantics
+
+`A_BOX` acceptance is still based on executable repairs that reproduce the historical repaired value without increasing supported constraint violations.
+
+`T_BOX` evaluation now separates exact and semantic success:
+
+- `accepted` and `functional_success` require an exact `signature_after` match
+- `semantic_success` tracks action-level compatibility separately
+- `comparison.semantic_reform_match` is still preserved in traces, but it no longer drives `accepted`
+
+This prevents summaries from overstating T-box success when a proposal chose the right reform family but not the historical post-repair signature.
 
 ## Test Coverage
 

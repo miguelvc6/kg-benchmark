@@ -80,3 +80,99 @@ def normalize_pid(value: Any) -> str:
         raise PatchValidationError("INVALID_ID", f"Invalid PID: {value!r}")
     return normalized
 
+
+def _normalize_provenance_kind(payload: dict[str, Any]) -> str:
+    kind = payload.get("kind")
+    if isinstance(kind, str) and kind.strip():
+        return kind.strip().upper()
+    url = payload.get("url")
+    if isinstance(url, str) and url.strip():
+        return "WEB"
+    node_id = payload.get("node_id")
+    if isinstance(node_id, str) and node_id.strip():
+        return "KG"
+    revision_id = payload.get("revision_id")
+    if isinstance(revision_id, int) and revision_id > 0:
+        return "HISTORY"
+    source = payload.get("source")
+    if isinstance(source, str):
+        candidate = source.strip().upper()
+        if candidate.startswith(("Q", "P")) and len(candidate) > 1 and candidate[1:].isdigit():
+            return "KG"
+    return "OTHER"
+
+
+def _normalize_provenance_entry(item: Any) -> dict[str, Any] | None:
+    if item is None:
+        return None
+    if isinstance(item, str):
+        text = item.strip()
+        if not text:
+            return None
+        return {"kind": "OTHER", "snippet": text}
+    if isinstance(item, (int, float)) and not isinstance(item, bool):
+        if isinstance(item, float) and not math.isfinite(item):
+            return None
+        return {"kind": "OTHER", "snippet": str(item)}
+    if not isinstance(item, dict):
+        return None
+
+    payload = dict(item)
+    normalized: dict[str, Any] = {"kind": _normalize_provenance_kind(payload)}
+
+    url = payload.get("url")
+    if isinstance(url, str) and url.strip():
+        normalized["url"] = url.strip()
+
+    node_id = payload.get("node_id")
+    if node_id is None and isinstance(payload.get("source"), str):
+        source = payload["source"].strip().upper()
+        if source.startswith(("Q", "P")) and len(source) > 1 and source[1:].isdigit():
+            node_id = source
+    if isinstance(node_id, str) and node_id.strip():
+        normalized["node_id"] = node_id.strip().upper()
+
+    revision_id = payload.get("revision_id")
+    if isinstance(revision_id, int) and revision_id > 0:
+        normalized["revision_id"] = revision_id
+
+    snippet_candidates = (
+        payload.get("snippet"),
+        payload.get("summary"),
+        payload.get("description"),
+        payload.get("evidence"),
+        payload.get("source"),
+    )
+    for candidate in snippet_candidates:
+        if isinstance(candidate, str) and candidate.strip():
+            normalized["snippet"] = candidate.strip()
+            break
+
+    confidence = payload.get("confidence")
+    if isinstance(confidence, (int, float)) and not isinstance(confidence, bool):
+        if math.isfinite(float(confidence)) and 0.0 <= float(confidence) <= 1.0:
+            normalized["confidence"] = float(confidence)
+    elif isinstance(confidence, str):
+        try:
+            parsed = float(confidence.strip())
+        except ValueError:
+            parsed = None
+        if isinstance(parsed, float) and math.isfinite(parsed) and 0.0 <= parsed <= 1.0:
+            normalized["confidence"] = parsed
+
+    return normalized
+
+
+def normalize_provenance_payload(items: Any) -> list[dict[str, Any]]:
+    if items is None:
+        return []
+    if not isinstance(items, list):
+        items = [items]
+
+    normalized: list[dict[str, Any]] = []
+    for item in items:
+        entry = _normalize_provenance_entry(item)
+        if entry is not None:
+            normalized.append(entry)
+    return normalized
+

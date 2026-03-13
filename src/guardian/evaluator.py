@@ -411,6 +411,21 @@ def _provenance_completeness(payload: Any) -> float:
     return complete / len(payload)
 
 
+def _proposal_parse_status(manifest_record: dict[str, Any], proposal_missing: bool) -> str:
+    return manifest_record.get("parse_status") or ("missing" if proposal_missing else "normalized")
+
+
+def _proposal_error_details(manifest_record: dict[str, Any]) -> dict[str, Any]:
+    details: dict[str, Any] = {}
+    parser_error = manifest_record.get("parser_error")
+    if isinstance(parser_error, str) and parser_error.strip():
+        details["parser_error"] = parser_error.strip()
+    provider_error = manifest_record.get("provider_error")
+    if isinstance(provider_error, str) and provider_error.strip():
+        details["provider_error"] = provider_error.strip()
+    return details
+
+
 def evaluate_a_box_case(
     record: dict[str, Any],
     world_state_entry: Optional[dict[str, Any]],
@@ -424,7 +439,7 @@ def evaluate_a_box_case(
     target_qid = record.get("qid")
     valid = proposal is not None
     executable = bool(valid and proposal.target.qid == target_qid and proposal.target.pid == target_pid)
-    parse_status = manifest_record.get("parse_status") or ("missing" if proposal_missing else "normalized")
+    parse_status = _proposal_parse_status(manifest_record, proposal_missing)
 
     exact_action_match = False
     exact_value_match = False
@@ -462,6 +477,7 @@ def evaluate_a_box_case(
     metrics = {
         "functional_success": 1.0 if functional_success else 0.0,
         "exact_historical_agreement": 1.0 if exact_action_match and exact_value_match else 0.0,
+        "semantic_success": None,
         "information_preservation": info_preservation,
         "provenance_completeness": _provenance_completeness(provenance),
         "token_usage": _token_usage(manifest_record),
@@ -480,6 +496,7 @@ def evaluate_a_box_case(
         "proposal_valid": valid,
         "proposal_executable": executable,
         "parse_status": parse_status,
+        "semantic_success": None,
         "accepted": accepted,
         "comparison": {
             "exact_action_match": exact_action_match,
@@ -494,6 +511,7 @@ def evaluate_a_box_case(
             "supported_violations_after": supported_violations_after,
             "historical_action": record.get("repair_target", {}).get("action"),
             "expected_target_values": _expected_target_values(record),
+            **_proposal_error_details(manifest_record),
         },
     }
 
@@ -513,6 +531,7 @@ def evaluate_t_box_case(
     executable = False
     exact_reform_match = False
     semantic_reform_match = False
+    semantic_success = False
     if proposal is not None:
         historical_signature = record.get("repair_target", {}).get("constraint_delta", {}).get("signature_after", [])
         normalized_historical_signature = normalize_signature_after(historical_signature)
@@ -532,10 +551,12 @@ def evaluate_t_box_case(
         executable = proposal.target.pid == target_pid and proposal.target.constraint_type_qid in changed_constraint_types
         exact_reform_match = proposal.proposal.signature_after == normalized_historical_signature
         semantic_reform_match = proposal.proposal.action == record.get("classification", {}).get("subtype")
-    accepted = bool(valid and executable and (exact_reform_match or semantic_reform_match))
+        semantic_success = bool(executable and semantic_reform_match)
+    accepted = bool(valid and executable and exact_reform_match)
     metrics = {
         "functional_success": 1.0 if exact_reform_match else 0.0,
         "exact_historical_agreement": 1.0 if exact_reform_match else 0.0,
+        "semantic_success": 1.0 if semantic_success else 0.0,
         "information_preservation": None,
         "provenance_completeness": _provenance_completeness(proposal.provenance if proposal else []),
         "token_usage": _token_usage(manifest_record),
@@ -553,7 +574,8 @@ def evaluate_t_box_case(
         "proposal_present": not proposal_missing,
         "proposal_valid": valid,
         "proposal_executable": executable,
-        "parse_status": manifest_record.get("parse_status") or ("missing" if proposal_missing else "normalized"),
+        "parse_status": _proposal_parse_status(manifest_record, proposal_missing),
+        "semantic_success": semantic_success,
         "accepted": accepted,
         "comparison": {
             "exact_action_match": None,
@@ -562,7 +584,7 @@ def evaluate_t_box_case(
             "exact_reform_match": exact_reform_match,
         },
         "metrics": metrics,
-        "details": {},
+        "details": _proposal_error_details(manifest_record),
     }
 
 
@@ -623,6 +645,7 @@ def summarize_trace_iterable(
             for field in (
                 "functional_success",
                 "exact_historical_agreement",
+                "semantic_success",
                 "information_preservation",
                 "provenance_completeness",
             ):
@@ -630,6 +653,11 @@ def summarize_trace_iterable(
                 if isinstance(value, (int, float)):
                     self.metric_sums[field] += float(value)
                     self.metric_counts[field] += 1
+            if trace.get("parse_status") == "parse_error":
+                self.metric_sums["proposal_parse_error_count"] += 1.0
+            parser_error = trace.get("details", {}).get("parser_error")
+            if isinstance(parser_error, str) and parser_error:
+                self.metric_counts[f"parser_error::{parser_error}"] += 1
             total_tokens = metrics.get("token_usage", {}).get("total_tokens")
             if isinstance(total_tokens, int):
                 self.token_total_sum += total_tokens
@@ -657,8 +685,16 @@ def summarize_trace_iterable(
                 "accepted_rate": self.accepted / self.count,
                 "functional_success_rate": avg("functional_success"),
                 "exact_historical_agreement_rate": avg("exact_historical_agreement"),
+                "semantic_success_rate": avg("semantic_success"),
                 "information_preservation_mean": avg("information_preservation"),
                 "provenance_completeness_mean": avg("provenance_completeness"),
+                "proposal_parse_error_count": int(self.metric_sums.get("proposal_parse_error_count", 0.0)),
+                "proposal_parse_error_rate": self.metric_sums.get("proposal_parse_error_count", 0.0) / self.count,
+                "proposal_parse_errors_by_message": {
+                    key.removeprefix("parser_error::"): value
+                    for key, value in sorted(self.metric_counts.items())
+                    if key.startswith("parser_error::")
+                },
                 "token_usage_total_mean": (
                     self.token_total_sum / self.token_total_count if self.token_total_count else None
                 ),
@@ -676,6 +712,7 @@ def summarize_trace_iterable(
         "by_popularity_bucket": defaultdict(GroupAccumulator),
     }
     counts = Counter()
+    parse_errors = Counter()
     overall = GroupAccumulator()
     for trace in traces:
         counts["cases"] += 1
@@ -687,6 +724,13 @@ def summarize_trace_iterable(
             counts["proposal_executable"] += 1
         if trace.get("metrics", {}).get("functional_success") == 1.0:
             counts["functional_success"] += 1
+        if trace.get("metrics", {}).get("semantic_success") == 1.0:
+            counts["semantic_success"] += 1
+        if trace.get("parse_status") == "parse_error":
+            counts["proposal_parse_error"] += 1
+            parser_error = trace.get("details", {}).get("parser_error")
+            if isinstance(parser_error, str) and parser_error:
+                parse_errors[parser_error] += 1
         diagnosis = trace.get("track_diagnosis")
         if isinstance(diagnosis, dict):
             if diagnosis.get("present"):
@@ -707,6 +751,13 @@ def summarize_trace_iterable(
         "inputs": inputs,
         "counts": dict(counts),
         "overall_metrics": overall.as_dict(),
+        "parse_errors": {
+            "proposal_parse_error_count": counts.get("proposal_parse_error", 0),
+            "proposal_parse_error_rate": (
+                counts.get("proposal_parse_error", 0) / counts["cases"] if counts.get("cases", 0) else 0.0
+            ),
+            "by_message": dict(parse_errors),
+        },
         "by_class": {str(key): value.as_dict() for key, value in groups["by_class"].items()},
         "by_subtype": {str(key): value.as_dict() for key, value in groups["by_subtype"].items()},
         "by_track": {str(key): value.as_dict() for key, value in groups["by_track"].items()},

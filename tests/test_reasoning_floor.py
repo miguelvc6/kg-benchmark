@@ -177,6 +177,7 @@ class ReasoningFloorTests(unittest.TestCase):
         self.assertEqual(summary["inputs"]["selection_manifest"], str(selection_manifest_path))
         self.assertEqual(summary["run_info"]["evaluation"]["classified_record_strategy"], "memory_cache")
         self.assertIsNone(summary["run_info"]["evaluation"]["filtered_classified_path"])
+        self.assertEqual(summary["parse_errors"]["proposal_parse_error_count"], 0)
 
     def test_reasoning_floor_streams_filtered_classified_subset_for_large_eval(self) -> None:
         root, classified_path, world_state_path, _selection_manifest_path, resolver = self._make_stub_fixture()
@@ -313,6 +314,96 @@ class ReasoningFloorTests(unittest.TestCase):
         )
         self.assertEqual(proposal_bundle.response_format, {"type": "json_object"})
         self.assertIn('"logic_context"', proposal_bundle.prompt)
+
+    def test_t_box_prompt_bundle_preserves_full_local_graph_context(self) -> None:
+        record = {
+            "id": "reform_case",
+            "qid": "Q2",
+            "property": "P31",
+            "track": "T_BOX",
+            "classification": {"class": "T_BOX"},
+            "labels_en": {},
+            "violation_context": {},
+            "persistence_check": {},
+        }
+        world_state_entry = {
+            "L1_ego_node": {
+                "qid": "Q2",
+                "label": "Entity",
+                "description": "desc",
+                "properties": {"P31": ["Q5"], "P279": ["Q35120"]},
+            },
+            "L2_labels": {"Q5": "human"},
+            "L3_neighborhood": {"outgoing_edges": [{"pid": "P279", "target": "Q35120"}]},
+            "L4_constraints": {"constraints": [{"constraint_type": {"qid": "Q21510859"}, "qualifiers": []}]},
+        }
+
+        proposal_bundle = build_prompt_bundle(record, world_state_entry, "local_graph")
+        diagnosis_bundle = build_track_diagnosis_prompt_bundle(record, world_state_entry, "local_graph")
+
+        self.assertIn('"local_context"', proposal_bundle.prompt)
+        self.assertIn('"L4_constraints"', proposal_bundle.prompt)
+        self.assertIn('"L2_labels"', proposal_bundle.prompt)
+        self.assertIn('"L3_neighborhood"', proposal_bundle.prompt)
+        self.assertIn('"P279"', proposal_bundle.prompt)
+        self.assertIn('"L2_labels"', diagnosis_bundle.prompt)
+
+    def test_reasoning_floor_normalizes_non_list_provenance_outputs(self) -> None:
+        root, classified_path, world_state_path, _selection_manifest_path, _resolver = self._make_stub_fixture()
+
+        def resolver(metadata: dict[str, Any]) -> dict[str, Any]:
+            if metadata["task_type"] == "track_diagnosis":
+                return {
+                    "case_id": metadata["case_id"],
+                    "predicted_track": "T_BOX" if metadata["case_id"] == "reform_case" else "A_BOX",
+                    "confidence": "high",
+                }
+            if metadata["case_id"] == "reform_case":
+                return {
+                    "case_id": "reform_case",
+                    "target": {"pid": "P31", "constraint_type_qid": "Q21510859"},
+                    "proposal": {
+                        "action": "RELAXATION_SET_EXPANSION",
+                        "signature_after": [
+                            {
+                                "constraint_qid": "Q21510859",
+                                "snaktype": "VALUE",
+                                "rank": "normal",
+                                "qualifiers": [{"property_id": "P2305", "values": ["Q5", "Q43229"]}],
+                            }
+                        ],
+                    },
+                    "provenance": {"node_id": "Q21510859", "snippet": "constraint"},
+                }
+            return {
+                "case_id": "repair_case",
+                "target": {"qid": "Q1", "pid": "P31"},
+                "ops": [{"op": "SET", "pid": "P31", "value": "Q5"}],
+                "provenance": "historical statement",
+            }
+
+        summary = run_reasoning_floor(
+            classified_path=classified_path,
+            world_state_path=world_state_path,
+            output_dir=root / "outputs",
+            provider=StaticResponseProvider(resolver, model="stub-model"),
+            ablation_bundles=["minimal_case"],
+        )
+
+        run_dir = Path(summary["run_info"]["output_dir"])
+        a_box_rows = [
+            json.loads(line)
+            for line in (run_dir / "minimal_case" / "a_box_proposals.jsonl").read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        t_box_rows = [
+            json.loads(line)
+            for line in (run_dir / "minimal_case" / "t_box_proposals.jsonl").read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        self.assertEqual(summary["parse_errors"]["proposal_parse_error_count"], 0)
+        self.assertEqual(a_box_rows[0]["provenance"], [{"kind": "OTHER", "snippet": "historical statement"}])
+        self.assertEqual(t_box_rows[0]["provenance"], [{"kind": "KG", "node_id": "Q21510859", "snippet": "constraint"}])
 
 
 if __name__ == "__main__":

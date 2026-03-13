@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from guardian.evaluator import evaluate_benchmark
+from guardian.evaluator import evaluate_benchmark, summarize_trace_iterable
 
 
 class EvaluatorTests(unittest.TestCase):
@@ -303,6 +303,142 @@ class EvaluatorTests(unittest.TestCase):
             self.assertEqual(traces[0]["case_id"], "repair_case")
             self.assertEqual(summary["counts"]["cases"], 1)
             self.assertEqual(summary["inputs"]["classified_benchmark"], str(classified_path))
+
+    def test_t_box_semantic_only_match_is_not_accepted(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            classified_path = root / "classified.jsonl"
+            world_state_path = root / "world_state.json"
+            t_box_path = root / "t_box.jsonl"
+            track_path = root / "track.jsonl"
+            manifest_path = root / "manifest.jsonl"
+
+            self._write_jsonl(
+                classified_path,
+                [
+                    {
+                        "id": "reform_case",
+                        "qid": "Q2",
+                        "property": "P31",
+                        "track": "T_BOX",
+                        "labels_en": {},
+                        "violation_context": {},
+                        "repair_target": {
+                            "constraint_delta": {
+                                "changed_constraint_types": ["Q21510859"],
+                                "signature_after": [
+                                    {
+                                        "constraint_qid": "Q21510859",
+                                        "snaktype": "VALUE",
+                                        "rank": "normal",
+                                        "qualifiers": [{"property_id": "P2305", "values": ["Q5", "Q43229"]}],
+                                    }
+                                ],
+                            }
+                        },
+                        "persistence_check": {},
+                        "popularity": {"score": 0.8},
+                        "classification": {"class": "T_BOX", "subtype": "RELAXATION_SET_EXPANSION"},
+                    }
+                ],
+            )
+            world_state_path.write_text(
+                json.dumps({"reform_case": {"L4_constraints": {"constraints": []}}}),
+                encoding="utf-8",
+            )
+            self._write_jsonl(
+                t_box_path,
+                [
+                    {
+                        "case_id": "reform_case",
+                        "target": {"pid": "P31", "constraint_type_qid": "Q21510859"},
+                        "proposal": {
+                            "action": "RELAXATION_SET_EXPANSION",
+                            "signature_after": [
+                                {
+                                    "constraint_qid": "Q21510859",
+                                    "snaktype": "VALUE",
+                                    "rank": "normal",
+                                    "qualifiers": [{"property_id": "P2305", "values": ["Q5"]}],
+                                }
+                            ],
+                        },
+                    }
+                ],
+            )
+            self._write_jsonl(track_path, [{"case_id": "reform_case", "predicted_track": "T_BOX"}])
+            self._write_jsonl(
+                manifest_path,
+                [
+                    {
+                        "case_id": "reform_case",
+                        "ablation_bundle": "minimal_case",
+                        "task_type": "proposal",
+                        "parse_status": "normalized",
+                        "usage": {"total_tokens": 10},
+                    },
+                    {
+                        "case_id": "reform_case",
+                        "ablation_bundle": "minimal_case",
+                        "task_type": "track_diagnosis",
+                        "parse_status": "normalized",
+                        "usage": {"total_tokens": 5},
+                    },
+                ],
+            )
+
+            traces, summary = evaluate_benchmark(
+                classified_path=classified_path,
+                world_state_path=world_state_path,
+                t_box_proposals_path=t_box_path,
+                track_diagnoses_path=track_path,
+                run_manifest_path=manifest_path,
+                ablation_bundle="minimal_case",
+            )
+
+            self.assertEqual(len(traces), 1)
+            trace = traces[0]
+            self.assertFalse(trace["accepted"])
+            self.assertEqual(trace["metrics"]["functional_success"], 0.0)
+            self.assertEqual(trace["metrics"]["semantic_success"], 1.0)
+            self.assertTrue(trace["semantic_success"])
+            self.assertEqual(summary["overall_metrics"]["semantic_success_rate"], 1.0)
+            self.assertEqual(summary["overall_metrics"]["accepted_rate"], 0.0)
+
+    def test_summary_exposes_parse_error_counts(self) -> None:
+        summary = summarize_trace_iterable(
+            [
+                {
+                    "case_id": "repair_case",
+                    "accepted": False,
+                    "proposal_present": False,
+                    "proposal_executable": False,
+                    "parse_status": "parse_error",
+                    "classification_class": "TypeC",
+                    "classification_subtype": "EXTERNAL",
+                    "track": "A_BOX",
+                    "ablation_bundle": "minimal_case",
+                    "popularity_bucket": "mid",
+                    "metrics": {
+                        "functional_success": 0.0,
+                        "exact_historical_agreement": 0.0,
+                        "semantic_success": None,
+                        "information_preservation": 0.0,
+                        "provenance_completeness": 0.0,
+                        "token_usage": {"total_tokens": 30},
+                    },
+                    "details": {"parser_error": "provenance must be a list."},
+                    "track_diagnosis": {"present": True, "exact_track_match": True, "ambiguous_prediction": False},
+                }
+            ],
+            {"classified_benchmark": "stub"},
+        )
+
+        self.assertEqual(summary["counts"]["proposal_parse_error"], 1)
+        self.assertEqual(summary["parse_errors"]["proposal_parse_error_count"], 1)
+        self.assertEqual(summary["parse_errors"]["by_message"]["provenance must be a list."], 1)
+        self.assertEqual(summary["overall_metrics"]["proposal_parse_error_count"], 1)
+        self.assertEqual(summary["overall_metrics"]["proposal_parse_error_rate"], 1.0)
 
 
 if __name__ == "__main__":

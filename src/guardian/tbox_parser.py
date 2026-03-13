@@ -5,7 +5,15 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-from .common import PatchValidationError, canonical_hash, canonicalize, load_schema, normalize_pid, normalize_qid
+from .common import (
+    PatchValidationError,
+    canonical_hash,
+    canonicalize,
+    load_schema,
+    normalize_pid,
+    normalize_provenance_payload,
+    normalize_qid,
+)
 
 SUPPORTED_ACTIONS = {
     "RELAXATION_RANGE_WIDENED",
@@ -328,21 +336,7 @@ def normalize_signature_after(signature_after: Any) -> list[dict[str, Any]]:
 
 
 def _normalize_provenance(items: Any) -> list[dict[str, Any]]:
-    if items is None:
-        return []
-    if not isinstance(items, list):
-        raise PatchValidationError("SCHEMA_VIOLATION", "provenance must be a list.")
-    normalized: list[dict[str, Any]] = []
-    for item in items:
-        if not isinstance(item, dict):
-            raise PatchValidationError("SCHEMA_VIOLATION", "Each provenance entry must be an object.")
-        payload = dict(item)
-        kind = payload.get("kind")
-        if not isinstance(kind, str) or not kind.strip():
-            raise PatchValidationError("SCHEMA_VIOLATION", "Each provenance entry requires a non-empty kind.")
-        payload["kind"] = kind.strip().upper()
-        normalized.append(payload)
-    return normalized
+    return normalize_provenance_payload(items)
 
 
 def _normalize_metadata(metadata: Any) -> dict[str, Any]:

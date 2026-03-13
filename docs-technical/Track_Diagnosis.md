@@ -47,4 +47,6 @@ First-wave outputs include:
 - ambiguous-prediction flag
 - grouped diagnosis accuracy by class, subtype, track, ablation bundle, and popularity bucket
 
+Reasoning-floor summaries now also surface proposal parser failure counts and exact-vs-semantic T-box success alongside diagnosis metrics, so diagnosis quality can be interpreted next to proposal execution quality from the same top-level report.
+
 `AMBIGUOUS` is preserved as a legitimate model output, but it does not count as an exact match against historical `A_BOX` or `T_BOX`.

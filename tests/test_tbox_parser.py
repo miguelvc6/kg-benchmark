@@ -82,6 +82,38 @@ class TBoxParserTests(unittest.TestCase):
         self.assertEqual(normalized.proposal.action, "RELAXATION_SET_EXPANSION")
         self.assertEqual(normalized.proposal.signature_after[0]["constraint_qid"], "Q108139345")
 
+    def test_tbox_string_provenance_is_coerced(self) -> None:
+        proposal = self._base_proposal()
+        proposal["provenance"] = "constraint note"
+        normalized = normalize_proposal(proposal, schema=self.schema)
+        self.assertEqual(normalized.provenance, [{"kind": "OTHER", "snippet": "constraint note"}])
+
+    def test_tbox_object_provenance_infers_kind(self) -> None:
+        proposal = self._base_proposal()
+        proposal["provenance"] = {"revision_id": 987, "source": "revision"}
+        normalized = normalize_proposal(proposal, schema=self.schema)
+        self.assertEqual(
+            normalized.provenance,
+            [{"kind": "HISTORY", "revision_id": 987, "snippet": "revision"}],
+        )
+
+    def test_tbox_mixed_provenance_is_normalized(self) -> None:
+        proposal = self._base_proposal()
+        proposal["provenance"] = [
+            {"node_id": "q21510859", "snippet": "constraint"},
+            {"url": "https://example.com/tbox"},
+            12,
+        ]
+        normalized = normalize_proposal(proposal, schema=self.schema)
+        self.assertEqual(
+            normalized.provenance,
+            [
+                {"kind": "KG", "node_id": "Q21510859", "snippet": "constraint"},
+                {"kind": "WEB", "url": "https://example.com/tbox"},
+                {"kind": "OTHER", "snippet": "12"},
+            ],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
