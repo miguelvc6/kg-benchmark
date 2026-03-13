@@ -102,6 +102,40 @@ class PatchParserTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             canonicalize({"value": math.nan})
 
+    def test_legacy_a_box_payload_is_coerced(self) -> None:
+        normalized = normalize_proposal(
+            {
+                "proposal_id": "repair_Q82111310_2425490931",
+                "type": "A_BOX_REPAIR",
+                "qid": "Q82111310",
+                "property": "P2877",
+                "proposed_value": "3836681",
+                "summary": "Remove the prefix so the identifier matches the format constraint.",
+            },
+            schema=self.schema,
+        )
+        self.assertEqual(normalized.case_id, "repair_Q82111310_2425490931")
+        self.assertEqual(normalized.target.qid, "Q82111310")
+        self.assertEqual(normalized.target.pid, "P2877")
+        self.assertEqual(normalized.ops[0].op, "SET")
+        self.assertEqual(normalized.ops[0].value, "3836681")
+
+    def test_remove_add_payload_is_coerced(self) -> None:
+        normalized = normalize_proposal(
+            {
+                "repair_id": "repair_Q63898560_2333535005_proposal",
+                "qid": "Q63898560",
+                "property": "P7261",
+                "action": "conditional_remove",
+                "remove_values": ["Q59496158"],
+                "add_values": [],
+            },
+            schema=self.schema,
+        )
+        self.assertEqual(normalized.case_id, "repair_Q63898560_2333535005")
+        self.assertEqual([op.op for op in normalized.ops], ["REMOVE"])
+        self.assertEqual(normalized.ops[0].value, "Q59496158")
+
 
 if __name__ == "__main__":
     unittest.main()

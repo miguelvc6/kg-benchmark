@@ -29,6 +29,8 @@ Normalized diagnosis records contain:
 - optional `rationale`
 - `canonical_hash`
 
+`confidence` may be provided as either a descriptive string such as `high` or a numeric score such as `0.9`. The normalizer stores numeric values as strings in the normalized output so downstream consumers keep a single field type.
+
 Supported predictions:
 
 - `A_BOX`

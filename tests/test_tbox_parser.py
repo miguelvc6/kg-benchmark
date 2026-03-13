@@ -59,6 +59,29 @@ class TBoxParserTests(unittest.TestCase):
         right = canonicalize({"a": [2, 1], "b": 1})
         self.assertEqual(left, right)
 
+    def test_legacy_tbox_payload_is_coerced(self) -> None:
+        normalized = normalize_proposal(
+            {
+                "proposal_id": "reform_Q16876630_P3370_2381040789",
+                "track": "T_BOX",
+                "property": "P3370",
+                "reform_type": "RELAXATION_SET_EXPANSION",
+                "proposed_changes": [
+                    {
+                        "constraint_qid": "Q108139345",
+                        "change_type": "adjust_scope",
+                    }
+                ],
+                "summary": "Restrict the constraint to item values only.",
+            },
+            schema=self.schema,
+        )
+        self.assertEqual(normalized.case_id, "reform_Q16876630_P3370_2381040789")
+        self.assertEqual(normalized.target.pid, "P3370")
+        self.assertEqual(normalized.target.constraint_type_qid, "Q108139345")
+        self.assertEqual(normalized.proposal.action, "RELAXATION_SET_EXPANSION")
+        self.assertEqual(normalized.proposal.signature_after[0]["constraint_qid"], "Q108139345")
+
 
 if __name__ == "__main__":
     unittest.main()

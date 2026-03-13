@@ -8,3 +8,4 @@ logs/
 text.md
 script_extractor.py
 src/*.egg-info
+reports/reasoning_floor

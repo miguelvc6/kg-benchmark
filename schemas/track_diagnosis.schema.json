@@ -15,7 +15,10 @@
       "enum": ["A_BOX", "T_BOX", "AMBIGUOUS"]
     },
     "confidence": {
-      "type": "string"
+      "oneOf": [
+        { "type": "string" },
+        { "type": "number" }
+      ]
     },
     "rationale": {
       "type": "string"

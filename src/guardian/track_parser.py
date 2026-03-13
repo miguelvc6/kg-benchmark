@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass
 from typing import Any, Optional
 
@@ -59,6 +60,10 @@ def normalize_diagnosis(raw: Any, schema: Any = None) -> NormalizedTrackDiagnosi
         raise PatchValidationError("SCHEMA_VIOLATION", f"Unsupported predicted track: {predicted_track!r}")
     confidence = raw.get("confidence")
     if confidence is not None:
+        if isinstance(confidence, (int, float)) and not isinstance(confidence, bool):
+            if isinstance(confidence, float) and (math.isnan(confidence) or math.isinf(confidence)):
+                raise PatchValidationError("SCHEMA_VIOLATION", "confidence must be finite when present.")
+            confidence = str(confidence)
         if not isinstance(confidence, str) or not confidence.strip():
             raise PatchValidationError("SCHEMA_VIOLATION", "confidence must be a non-empty string when present.")
         confidence = confidence.strip().lower()

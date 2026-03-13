@@ -441,6 +441,17 @@ def _record_request_result(
     elapsed_seconds: float | None = None,
     error_message: str | None = None,
 ) -> dict[str, Any]:
+    def prepare_payload_for_normalization(raw_payload: Any) -> Any:
+        if not isinstance(raw_payload, dict):
+            return raw_payload
+        payload = dict(raw_payload)
+        case_id = request_info.get("case_id")
+        if (not isinstance(payload.get("case_id"), str) or not payload.get("case_id", "").strip()) and isinstance(
+            case_id, str
+        ):
+            payload["case_id"] = case_id
+        return payload
+
     manifest_record = {
         "run_id": request_info.get("run_id"),
         "case_id": request_info.get("case_id"),
@@ -478,18 +489,19 @@ def _record_request_result(
         return manifest_record
 
     try:
+        normalization_payload = prepare_payload_for_normalization(parsed_payload)
         if request_info.get("task_type") == "track_diagnosis":
-            normalized_diagnosis = normalize_diagnosis(parsed_payload)
+            normalized_diagnosis = normalize_diagnosis(normalization_payload)
             _append_jsonl_record(track_fh, normalized_diagnosis.to_dict())
             manifest_record["parse_status"] = "normalized"
             manifest_record["canonical_hash"] = normalized_diagnosis.canonical_hash
         elif request_info.get("track") == "T_BOX":
-            normalized = normalize_t_box_proposal(parsed_payload)
+            normalized = normalize_t_box_proposal(normalization_payload)
             _append_jsonl_record(t_box_fh, normalized.to_dict())
             manifest_record["parse_status"] = "normalized"
             manifest_record["canonical_hash"] = normalized.canonical_hash
         else:
-            normalized = normalize_a_box_proposal(parsed_payload)
+            normalized = normalize_a_box_proposal(normalization_payload)
             _append_jsonl_record(a_box_fh, normalized.to_dict())
             manifest_record["parse_status"] = "normalized"
             manifest_record["canonical_hash"] = normalized.canonical_hash

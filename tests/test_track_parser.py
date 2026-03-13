@@ -35,6 +35,17 @@ class TrackParserTests(unittest.TestCase):
         right = canonicalize({"a": 2, "b": 1})
         self.assertEqual(left, right)
 
+    def test_numeric_confidence_is_accepted(self) -> None:
+        normalized = normalize_diagnosis(
+            {
+                "case_id": "case-2",
+                "predicted_track": "T_BOX",
+                "confidence": 0.9,
+            },
+            schema=self.schema,
+        )
+        self.assertEqual(normalized.confidence, "0.9")
+
 
 if __name__ == "__main__":
     unittest.main()
