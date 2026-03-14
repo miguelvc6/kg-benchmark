@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any, Iterable, Optional
 
 from .common import (
     PatchValidationError,
@@ -23,6 +23,20 @@ SUPPORTED_ACTIONS = {
     "RESTRICTION_SET_CONTRACTION",
     "SCHEMA_UPDATE",
     "COINCIDENTAL_SCHEMA_CHANGE",
+}
+KNOWN_CONSTRAINT_TYPE_QIDS = {
+    "Q19474404",
+    "Q21502402",
+    "Q21502404",
+    "Q21502410",
+    "Q21503250",
+    "Q21510857",
+    "Q21510859",
+    "Q21510860",
+    "Q21510861",
+    "Q21510865",
+    "Q52004125",
+    "Q53869507",
 }
 CASE_ID_SUFFIX_RE = re.compile(r"(?i)(?:_proposal|_patch|_draft|_fix|_v\d+)+$")
 
@@ -301,7 +315,45 @@ def _normalize_signature_value(value: Any) -> str:
     raise PatchValidationError("INVALID_VALUE", "Unsupported signature value.")
 
 
-def normalize_signature_after(signature_after: Any) -> list[dict[str, Any]]:
+def _normalize_provenance(items: Any) -> list[dict[str, Any]]:
+    return normalize_provenance_payload(items)
+
+
+def _normalize_metadata(metadata: Any) -> dict[str, Any]:
+    if metadata is None:
+        return {}
+    if not isinstance(metadata, dict):
+        raise PatchValidationError("SCHEMA_VIOLATION", "metadata must be an object.")
+    return dict(metadata)
+
+
+def _normalize_constraint_type_qids(constraint_type_qids: Iterable[str] | None) -> set[str] | None:
+    if constraint_type_qids is None:
+        return None
+    normalized: set[str] = set()
+    for value in constraint_type_qids:
+        normalized.add(normalize_qid(value))
+    return normalized
+
+
+def _validate_constraint_family_qid(
+    qid: str,
+    *,
+    allowed_qids: set[str] | None,
+    error_message: str,
+) -> None:
+    if allowed_qids is None:
+        return
+    if qid not in allowed_qids:
+        raise PatchValidationError("SCHEMA_VIOLATION", error_message)
+
+
+def normalize_signature_after(
+    signature_after: Any,
+    *,
+    constraint_type_qids: Iterable[str] | None = None,
+) -> list[dict[str, Any]]:
+    allowed_constraint_qids = _normalize_constraint_type_qids(constraint_type_qids)
     if not isinstance(signature_after, list):
         raise PatchValidationError("SCHEMA_VIOLATION", "proposal.signature_after must be a list.")
     normalized: list[dict[str, Any]] = []
@@ -309,6 +361,11 @@ def normalize_signature_after(signature_after: Any) -> list[dict[str, Any]]:
         if not isinstance(entry, dict):
             raise PatchValidationError("SCHEMA_VIOLATION", "Each signature entry must be an object.")
         constraint_qid = normalize_qid(entry.get("constraint_qid"))
+        _validate_constraint_family_qid(
+            constraint_qid,
+            allowed_qids=allowed_constraint_qids,
+            error_message="invalid signature constraint_qid for T-box proposal",
+        )
         snaktype = _require_non_empty_string(entry.get("snaktype"), "snaktype").upper()
         rank = entry.get("rank")
         if rank is not None:
@@ -346,28 +403,28 @@ def normalize_signature_after(signature_after: Any) -> list[dict[str, Any]]:
     return normalized
 
 
-def _normalize_provenance(items: Any) -> list[dict[str, Any]]:
-    return normalize_provenance_payload(items)
-
-
-def _normalize_metadata(metadata: Any) -> dict[str, Any]:
-    if metadata is None:
-        return {}
-    if not isinstance(metadata, dict):
-        raise PatchValidationError("SCHEMA_VIOLATION", "metadata must be an object.")
-    return dict(metadata)
-
-
-def normalize_proposal(raw: Any, schema: Any = None) -> NormalizedReformProposal:
+def normalize_proposal(
+    raw: Any,
+    schema: Any = None,
+    *,
+    constraint_type_qids: Iterable[str] | None = None,
+) -> NormalizedReformProposal:
     del schema
     payload = _coerce_payload_shape(_load_payload(raw))
+    allowed_constraint_qids = _normalize_constraint_type_qids(constraint_type_qids)
     case_id = _require_non_empty_string(payload.get("case_id"), "case_id")
     target_payload = payload.get("target")
     if not isinstance(target_payload, dict):
         raise PatchValidationError("SCHEMA_VIOLATION", "target must be an object.")
+    target_constraint_type_qid = normalize_qid(target_payload.get("constraint_type_qid"))
+    _validate_constraint_family_qid(
+        target_constraint_type_qid,
+        allowed_qids=allowed_constraint_qids,
+        error_message="invalid constraint_type_qid for T-box proposal",
+    )
     target = ReformTarget(
         pid=normalize_pid(target_payload.get("pid")),
-        constraint_type_qid=normalize_qid(target_payload.get("constraint_type_qid")),
+        constraint_type_qid=target_constraint_type_qid,
     )
 
     proposal_payload = payload.get("proposal")
@@ -376,7 +433,10 @@ def normalize_proposal(raw: Any, schema: Any = None) -> NormalizedReformProposal
     action = _require_non_empty_string(proposal_payload.get("action"), "proposal.action").upper()
     if action not in SUPPORTED_ACTIONS:
         raise PatchValidationError("SCHEMA_VIOLATION", f"Unsupported reform action: {action!r}")
-    signature_after = normalize_signature_after(proposal_payload.get("signature_after"))
+    signature_after = normalize_signature_after(
+        proposal_payload.get("signature_after"),
+        constraint_type_qids=allowed_constraint_qids,
+    )
 
     rationale = payload.get("rationale")
     if rationale is not None:
@@ -417,6 +477,7 @@ def normalize_proposal(raw: Any, schema: Any = None) -> NormalizedReformProposal
 __all__ = [
     "PatchValidationError",
     "NormalizedReformProposal",
+    "KNOWN_CONSTRAINT_TYPE_QIDS",
     "ReformProposal",
     "ReformTarget",
     "SUPPORTED_ACTIONS",

@@ -2,7 +2,13 @@ import unittest
 from pathlib import Path
 
 from guardian.common import PatchValidationError
-from guardian.tbox_parser import canonicalize, load_schema, normalize_proposal, normalize_signature_after
+from guardian.tbox_parser import (
+    KNOWN_CONSTRAINT_TYPE_QIDS,
+    canonicalize,
+    load_schema,
+    normalize_proposal,
+    normalize_signature_after,
+)
 
 
 class TBoxParserTests(unittest.TestCase):
@@ -30,7 +36,11 @@ class TBoxParserTests(unittest.TestCase):
         }
 
     def test_valid_reform_proposal(self) -> None:
-        normalized = normalize_proposal(self._base_proposal(), schema=self.schema)
+        normalized = normalize_proposal(
+            self._base_proposal(),
+            schema=self.schema,
+            constraint_type_qids=KNOWN_CONSTRAINT_TYPE_QIDS,
+        )
         self.assertEqual(normalized.target.pid, "P31")
         self.assertEqual(normalized.target.constraint_type_qid, "Q21510859")
         self.assertEqual(normalized.proposal.signature_after[0]["qualifiers"][0]["values"], ["Q43229", "Q5"])
@@ -40,15 +50,29 @@ class TBoxParserTests(unittest.TestCase):
         proposal = self._base_proposal()
         proposal["proposal"]["action"] = "WRONG"
         with self.assertRaises(PatchValidationError) as ctx:
-            normalize_proposal(proposal, schema=self.schema)
+            normalize_proposal(proposal, schema=self.schema, constraint_type_qids=KNOWN_CONSTRAINT_TYPE_QIDS)
         self.assertEqual(ctx.exception.code, "SCHEMA_VIOLATION")
 
     def test_invalid_constraint_qid(self) -> None:
         proposal = self._base_proposal()
         proposal["target"]["constraint_type_qid"] = "Q0"
         with self.assertRaises(PatchValidationError) as ctx:
-            normalize_proposal(proposal, schema=self.schema)
+            normalize_proposal(proposal, schema=self.schema, constraint_type_qids=KNOWN_CONSTRAINT_TYPE_QIDS)
         self.assertEqual(ctx.exception.code, "INVALID_ID")
+
+    def test_invalid_constraint_type_qid_is_rejected_against_allowlist(self) -> None:
+        proposal = self._base_proposal()
+        proposal["target"]["constraint_type_qid"] = "Q11122"
+        with self.assertRaises(PatchValidationError) as ctx:
+            normalize_proposal(proposal, schema=self.schema, constraint_type_qids={"Q21510859", "Q52004125"})
+        self.assertEqual(str(ctx.exception), "invalid constraint_type_qid for T-box proposal")
+
+    def test_invalid_signature_constraint_qid_is_rejected_against_allowlist(self) -> None:
+        proposal = self._base_proposal()
+        proposal["proposal"]["signature_after"][0]["constraint_qid"] = "Q11122"
+        with self.assertRaises(PatchValidationError) as ctx:
+            normalize_proposal(proposal, schema=self.schema, constraint_type_qids={"Q21510859", "Q52004125"})
+        self.assertEqual(str(ctx.exception), "invalid signature constraint_qid for T-box proposal")
 
     def test_signature_requires_list(self) -> None:
         with self.assertRaises(PatchValidationError):
@@ -75,6 +99,7 @@ class TBoxParserTests(unittest.TestCase):
                 "summary": "Restrict the constraint to item values only.",
             },
             schema=self.schema,
+            constraint_type_qids={"Q108139345"},
         )
         self.assertEqual(normalized.case_id, "reform_Q16876630_P3370_2381040789")
         self.assertEqual(normalized.target.pid, "P3370")
@@ -85,13 +110,13 @@ class TBoxParserTests(unittest.TestCase):
     def test_tbox_string_provenance_is_coerced(self) -> None:
         proposal = self._base_proposal()
         proposal["provenance"] = "constraint note"
-        normalized = normalize_proposal(proposal, schema=self.schema)
+        normalized = normalize_proposal(proposal, schema=self.schema, constraint_type_qids=KNOWN_CONSTRAINT_TYPE_QIDS)
         self.assertEqual(normalized.provenance, [{"kind": "OTHER", "snippet": "constraint note"}])
 
     def test_tbox_object_provenance_infers_kind(self) -> None:
         proposal = self._base_proposal()
         proposal["provenance"] = {"revision_id": 987, "source": "revision"}
-        normalized = normalize_proposal(proposal, schema=self.schema)
+        normalized = normalize_proposal(proposal, schema=self.schema, constraint_type_qids=KNOWN_CONSTRAINT_TYPE_QIDS)
         self.assertEqual(
             normalized.provenance,
             [{"kind": "HISTORY", "revision_id": 987, "snippet": "revision"}],
@@ -104,7 +129,7 @@ class TBoxParserTests(unittest.TestCase):
             {"url": "https://example.com/tbox"},
             12,
         ]
-        normalized = normalize_proposal(proposal, schema=self.schema)
+        normalized = normalize_proposal(proposal, schema=self.schema, constraint_type_qids=KNOWN_CONSTRAINT_TYPE_QIDS)
         self.assertEqual(
             normalized.provenance,
             [
@@ -117,7 +142,7 @@ class TBoxParserTests(unittest.TestCase):
     def test_tbox_uncertainty_object_is_normalized(self) -> None:
         proposal = self._base_proposal()
         proposal["uncertainty"] = {"confidence": 0.1, "notes": "Equivalent signatures may exist"}
-        normalized = normalize_proposal(proposal, schema=self.schema)
+        normalized = normalize_proposal(proposal, schema=self.schema, constraint_type_qids=KNOWN_CONSTRAINT_TYPE_QIDS)
         self.assertEqual(
             normalized.uncertainty,
             {"confidence": 0.1, "notes": "Equivalent signatures may exist"},
@@ -126,7 +151,7 @@ class TBoxParserTests(unittest.TestCase):
     def test_tbox_top_level_confidence_is_coerced_into_uncertainty(self) -> None:
         proposal = self._base_proposal()
         proposal["confidence"] = "medium"
-        normalized = normalize_proposal(proposal, schema=self.schema)
+        normalized = normalize_proposal(proposal, schema=self.schema, constraint_type_qids=KNOWN_CONSTRAINT_TYPE_QIDS)
         self.assertEqual(normalized.uncertainty, {"confidence": 0.5})
 
 

@@ -92,7 +92,7 @@ Input case:
         "qualifiers": [
           {
             "property_id": "P2305",
-            "values": ["Q5", "Q43229"]
+            "values": ["Q...", "Q..."]
           }
         ]
       }
@@ -102,41 +102,70 @@ Input case:
 
 Also include: "rationale", "provenance", and "uncertainty".
 "provenance" must be an array of objects such as:
-[{"kind":"KG","node_id":"Q21510859","snippet":"current constraint type"}]
+[{"kind":"KG","node_id":"Q_CONSTRAINT_FAMILY","snippet":"current constraint family"}]
 "uncertainty" must be an object such as:
 {"confidence": 0.20, "notes": "The exact historical signature may have alternative equivalent forms."}
 
 Rules:
 - Copy "case_id" exactly from the input case.
 - Copy the focus property into target.pid.
-- Use the historically relevant constraint type in target.constraint_type_qid.
+- target.constraint_type_qid and every proposal.signature_after[*].constraint_qid must be constraint-family QIDs from the supplied constraint context, not ordinary entity/type/item QIDs.
+- Use the historically relevant constraint family in target.constraint_type_qid.
+- Keep the target constraint family separate from qualifier values. Qualifier values are the item/type/range/pattern values inside the constraint, not the constraint family itself.
 - Use only the contract fields above. Do not wrap the answer in keys like "proposal_id", "summary", "changes", "recommended_changes", or "proposed_changes".
 - proposal.action must be one of the listed enum values.
+- Do not copy violating entity or type QIDs into constraint_type_qid unless that same QID is explicitly present as a constraint family in the supplied context.
+- If the payload supports a narrower directional reform family, prefer it. Use SCHEMA_UPDATE when the payload shows a schema change but does not justify a narrower family confidently.
 - Output valid JSON only. No markdown. No code fences.
 
-Example:
+Template example 1 (placeholders, not literal ids):
 {
   "case_id": "reform_case",
-  "target": {"pid": "P31", "constraint_type_qid": "Q21510859"},
+  "target": {"pid": "P_TARGET", "constraint_type_qid": "Q_CONSTRAINT_SET"},
   "proposal": {
     "action": "RELAXATION_SET_EXPANSION",
     "signature_after": [
       {
-        "constraint_qid": "Q21510859",
+        "constraint_qid": "Q_CONSTRAINT_SET",
         "snaktype": "VALUE",
         "rank": "normal",
         "qualifiers": [
           {
             "property_id": "P2305",
-            "values": ["Q5", "Q43229"]
+            "values": ["Q_ITEM_A", "Q_ITEM_B"]
           }
         ]
       }
     ]
   },
-  "rationale": "Expand the allowed set to include the historical repaired classes.",
-  "provenance": [{"kind": "KG", "node_id": "Q21510859", "snippet": "current constraint type"}],
+  "rationale": "Expand the allowed set by editing the constraint family, not by changing the violating claim directly.",
+  "provenance": [{"kind": "KG", "node_id": "Q_CONSTRAINT_SET", "snippet": "current constraint family"}],
   "uncertainty": {"confidence": 0.20, "notes": "The exact historical signature may have equivalent reorderings."}
+}
+
+Template example 2 (placeholders, not literal ids):
+{
+  "case_id": "reform_case",
+  "target": {"pid": "P_TARGET", "constraint_type_qid": "Q_CONSTRAINT_ALLOWED_TYPES"},
+  "proposal": {
+    "action": "RESTRICTION_SET_CONTRACTION",
+    "signature_after": [
+      {
+        "constraint_qid": "Q_CONSTRAINT_ALLOWED_TYPES",
+        "snaktype": "VALUE",
+        "rank": "normal",
+        "qualifiers": [
+          {
+            "property_id": "P2305",
+            "values": ["Q_TYPE_ALLOWED"]
+          }
+        ]
+      }
+    ]
+  },
+  "rationale": "Narrow the allowed types encoded by the constraint itself.",
+  "provenance": [{"kind": "KG", "node_id": "Q_CONSTRAINT_ALLOWED_TYPES", "snippet": "constraint family in context"}],
+  "uncertainty": {"confidence": 0.35, "notes": "Another schema-level reform family may also be plausible."}
 }
 
 Input case:
@@ -162,8 +191,18 @@ Input case:
 Rules:
 - Copy "case_id" exactly from the input case.
 - predicted_track must be exactly one of A_BOX, T_BOX, or AMBIGUOUS.
+- A_BOX means the fix should change the claim on the focus entity.
+- T_BOX means the fix should reform the property constraint or schema rule itself.
+- AMBIGUOUS means the visible evidence is insufficient to choose safely between claim repair and schema reform.
+- Allowed-entity-types, property-scope, one-of, range, and similar constraint disputes are T_BOX when the intended fix is to edit the property constraint, even if the report mentions concrete violating items or types.
+- A case is not automatically A_BOX just because the violation report cites item QIDs.
 - If you include confidence, prefer a string such as "high" or "0.90".
 - Output valid JSON only. No markdown. No code fences.
+
+Contrastive examples:
+- If a property currently allows only certain entity types and the fix is to change that allowed-types constraint, predict T_BOX.
+- If a focus entity has the wrong P31/P279/value and the fix is to replace or delete that claim on the entity, predict A_BOX.
+- If the report suggests both a bad claim and a possibly bad constraint but the payload does not support choosing one, predict AMBIGUOUS.
 
 Input case:
 {payload_json}

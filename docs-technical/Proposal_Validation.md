@@ -39,9 +39,18 @@ Current runtime behavior:
 - validates `target.pid` and `target.constraint_type_qid`
 - restricts `proposal.action` to the supported first-wave schema-reform families
 - normalizes `proposal.signature_after` into the same canonical shape used by Stage 2 `constraint_delta`
+- when the caller supplies a case-local constraint-family inventory, rejects `target.constraint_type_qid` and `proposal.signature_after[*].constraint_qid` values that are not valid constraint-family QIDs for that task
 - coerces common provenance inputs into the canonical list form
 - normalizes proposal-level `uncertainty` into `{"confidence": <0.0-1.0>, "notes": ...}` when present
 - emits a deterministic `canonical_hash`
+
+Reasoning-floor runs now pass a strict allowlist assembled from:
+
+- repo-known constraint-family QIDs
+- the case's historical `repair_target.constraint_delta.changed_constraint_types`
+- the property's current world-state constraint inventory
+
+Malformed T-box outputs therefore surface as proposal `parse_error` rows in reasoning-floor manifests instead of being written as normalized T-box proposals.
 
 ## Provenance Compatibility
 

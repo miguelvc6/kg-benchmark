@@ -419,13 +419,18 @@ class EvaluatorTests(unittest.TestCase):
             self.assertFalse(trace["accepted"])
             self.assertEqual(trace["metrics"]["functional_success"], 0.0)
             self.assertEqual(trace["metrics"]["semantic_success"], 1.0)
+            self.assertEqual(trace["metrics"]["semantic_family_success"], 1.0)
             self.assertEqual(trace["comparison"]["exact_action_match"], True)
+            self.assertEqual(trace["comparison"]["literal_action_match"], True)
             self.assertEqual(trace["comparison"]["exact_signature_match"], False)
+            self.assertEqual(trace["comparison"]["semantic_family_match"], True)
             self.assertEqual(trace["comparison"]["changed_constraint_type_hit"], True)
             self.assertTrue(trace["semantic_success"])
             self.assertEqual(summary["overall_metrics"]["semantic_success_rate"], 1.0)
+            self.assertEqual(summary["overall_metrics"]["semantic_family_success_rate"], 1.0)
             self.assertEqual(summary["overall_metrics"]["accepted_rate"], 0.0)
             self.assertEqual(summary["overall_metrics"]["metric_applicability"]["semantic_success"], 1)
+            self.assertEqual(summary["overall_metrics"]["metric_applicability"]["semantic_family_success"], 1)
             self.assertEqual(summary["overall_metrics"]["metric_applicability"]["signature_after_jaccard"], 1)
 
     def test_t_box_exact_signature_without_exact_action_is_not_accepted(self) -> None:
@@ -509,8 +514,108 @@ class EvaluatorTests(unittest.TestCase):
             self.assertFalse(trace["accepted"])
             self.assertEqual(trace["comparison"]["exact_action_match"], False)
             self.assertEqual(trace["comparison"]["exact_signature_match"], True)
+            self.assertEqual(trace["comparison"]["semantic_family_match"], False)
             self.assertEqual(trace["metrics"]["functional_success"], 0.0)
             self.assertEqual(trace["metrics"]["exact_historical_agreement"], 0.0)
+            self.assertEqual(trace["metrics"]["semantic_success"], 0.0)
+            self.assertEqual(trace["metrics"]["semantic_family_success"], 0.0)
+
+    def test_t_box_schema_update_can_score_family_level_semantic_success(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            classified_path = root / "classified.jsonl"
+            world_state_path = root / "world_state.json"
+            t_box_path = root / "t_box.jsonl"
+
+            self._write_jsonl(
+                classified_path,
+                [
+                    {
+                        "id": "reform_case",
+                        "qid": "Q2",
+                        "property": "P31",
+                        "track": "T_BOX",
+                        "labels_en": {},
+                        "violation_context": {"report_violation_type": "One of"},
+                        "repair_target": {
+                            "constraint_delta": {
+                                "changed_constraint_types": ["Q21510859"],
+                                "signature_before": [
+                                    {
+                                        "constraint_qid": "Q21510859",
+                                        "snaktype": "VALUE",
+                                        "rank": "normal",
+                                        "qualifiers": [{"property_id": "P2305", "values": ["Q5"]}],
+                                    }
+                                ],
+                                "signature_after": [
+                                    {
+                                        "constraint_qid": "Q21510859",
+                                        "snaktype": "VALUE",
+                                        "rank": "normal",
+                                        "qualifiers": [{"property_id": "P2305", "values": ["Q5", "Q43229"]}],
+                                    }
+                                ],
+                            }
+                        },
+                        "persistence_check": {},
+                        "popularity": {"score": 0.8},
+                        "classification": {"class": "T_BOX", "subtype": "SCHEMA_UPDATE"},
+                    }
+                ],
+            )
+            world_state_path.write_text(
+                json.dumps(
+                    {
+                        "reform_case": {
+                            "L1_ego_node": {"properties": {"P31": ["Q5"]}},
+                            "L4_constraints": {"constraints": []},
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            self._write_jsonl(
+                t_box_path,
+                [
+                    {
+                        "case_id": "reform_case",
+                        "target": {"pid": "P31", "constraint_type_qid": "Q21510859"},
+                        "proposal": {
+                            "action": "RELAXATION_SET_EXPANSION",
+                            "signature_after": [
+                                {
+                                    "constraint_qid": "Q21510859",
+                                    "snaktype": "VALUE",
+                                    "rank": "normal",
+                                    "qualifiers": [{"property_id": "P2305", "values": ["Q5", "Q43229"]}],
+                                }
+                            ],
+                        },
+                        "rationale": "Use the narrower set-expansion family that matches the historical delta.",
+                        "provenance": [{"kind": "KG", "node_id": "Q21510859"}],
+                        "uncertainty": {"confidence": 0.3},
+                    }
+                ],
+            )
+
+            traces, summary = evaluate_benchmark(
+                classified_path=classified_path,
+                world_state_path=world_state_path,
+                t_box_proposals_path=t_box_path,
+            )
+
+            trace = traces[0]
+            self.assertFalse(trace["accepted"])
+            self.assertEqual(trace["comparison"]["exact_action_match"], False)
+            self.assertEqual(trace["comparison"]["semantic_family_match"], True)
+            self.assertEqual(trace["details"]["historical_semantic_family"], "set_relaxation")
+            self.assertEqual(trace["details"]["proposal_action_family"], "set_relaxation")
+            self.assertEqual(trace["metrics"]["exact_historical_agreement"], 0.0)
+            self.assertEqual(trace["metrics"]["semantic_success"], 1.0)
+            self.assertEqual(trace["metrics"]["semantic_family_success"], 1.0)
+            self.assertEqual(summary["overall_metrics"]["semantic_success_rate"], 1.0)
+            self.assertEqual(summary["overall_metrics"]["accepted_rate"], 0.0)
 
     def test_summary_tracks_t_box_proxy_metric_applicability(self) -> None:
         summary = summarize_trace_iterable(
@@ -530,6 +635,7 @@ class EvaluatorTests(unittest.TestCase):
                         "functional_success": 0.0,
                         "exact_historical_agreement": 0.0,
                         "semantic_success": 1.0,
+                        "semantic_family_success": 1.0,
                         "information_preservation": None,
                         "provenance_completeness": 1.0,
                         "auditability_complete": 1.0,
@@ -552,12 +658,15 @@ class EvaluatorTests(unittest.TestCase):
         self.assertEqual(summary["counts"]["exact_action_match_applicable"], 1)
         self.assertEqual(summary["counts"]["conversion_rate_applicable"], 1)
         self.assertEqual(summary["counts"]["signature_after_jaccard_applicable"], 1)
+        self.assertEqual(summary["counts"]["semantic_family_success_applicable"], 1)
         self.assertEqual(summary["overall_metrics"]["auditability_complete_rate"], 1.0)
         self.assertEqual(summary["overall_metrics"]["conversion_rate"], 0.0)
         self.assertEqual(summary["overall_metrics"]["exact_action_match_rate"], 1.0)
+        self.assertEqual(summary["overall_metrics"]["semantic_family_success_rate"], 1.0)
         self.assertEqual(summary["overall_metrics"]["signature_after_jaccard_mean"], 0.5)
         self.assertEqual(summary["overall_metrics"]["proposal_admits_current_values_rate"], 1.0)
         self.assertEqual(summary["overall_metrics"]["metric_applicability"]["proposal_admits_current_values"], 1)
+        self.assertEqual(summary["overall_metrics"]["metric_applicability"]["semantic_family_success"], 1)
 
     def test_summary_exposes_parse_error_counts(self) -> None:
         summary = summarize_trace_iterable(

@@ -7,17 +7,28 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Callable, Iterable, Optional
 
-from classifier import WorldStateStore
+from classifier import VIOLATION_TO_CONSTRAINT_MAP, WorldStateStore
 from lib.benchmark_selection import resolve_case_id_filter
 from lib.utils import iter_jsonl, normalize_text
 from guardian.patch_parser import normalize_proposal as normalize_a_box_proposal
 from guardian.track_parser import normalize_diagnosis as normalize_track_diagnosis
 from guardian.tbox_parser import normalize_proposal as normalize_t_box_proposal
-from guardian.tbox_parser import normalize_signature_after
+from guardian.tbox_parser import normalize_signature_after as normalize_t_box_signature_after
 
 FORMAT_QIDS = {"Q21502404"}
 ONE_OF_QIDS = {"Q21510859", "Q21502402"}
 RANGE_QIDS = {"Q21510860"}
+TYPE_QIDS = {"Q21503250", "Q21510865", "Q52004125"}
+ACTION_TO_SEMANTIC_FAMILY = {
+    "RELAXATION_SET_EXPANSION": "set_relaxation",
+    "RESTRICTION_SET_CONTRACTION": "set_restriction",
+    "RELAXATION_RANGE_WIDENED": "range_relaxation",
+    "RESTRICTION_RANGE_NARROWED": "range_restriction",
+    "SCHEMA_UPDATE": "schema_update_generic",
+    "COINCIDENTAL_SCHEMA_CHANGE": "incidental",
+}
+RANGE_MIN_QUALIFIER_PIDS = ("P2310", "P2313")
+RANGE_MAX_QUALIFIER_PIDS = ("P2311", "P2312")
 
 
 def _utc_now() -> str:
@@ -512,6 +523,222 @@ def _signature_after_jaccard(left: list[dict[str, Any]], right: list[dict[str, A
     return len(left_set & right_set) / len(left_set | right_set)
 
 
+def _normalized_signature_payload(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    try:
+        return normalize_t_box_signature_after(value)
+    except Exception:
+        return []
+
+
+def _signature_constraint_qids(signature: list[dict[str, Any]]) -> list[str]:
+    qids: list[str] = []
+    for entry in signature:
+        if not isinstance(entry, dict):
+            continue
+        constraint_qid = entry.get("constraint_qid")
+        if isinstance(constraint_qid, str) and constraint_qid not in qids:
+            qids.append(constraint_qid)
+    return qids
+
+
+def _mapped_constraint_qid(record: dict[str, Any]) -> str | None:
+    violation_context = record.get("violation_context")
+    if not isinstance(violation_context, dict):
+        return None
+    violation_name = violation_context.get("report_violation_type_normalized") or violation_context.get("report_violation_type")
+    if not isinstance(violation_name, str):
+        return None
+    normalized_mapping = {normalize_text(key): value for key, value in VIOLATION_TO_CONSTRAINT_MAP.items()}
+    return normalized_mapping.get(normalize_text(violation_name))
+
+
+def _historical_constraint_context(
+    record: dict[str, Any],
+) -> tuple[set[str], list[dict[str, Any]], list[dict[str, Any]], str | None]:
+    constraint_delta = record.get("repair_target", {}).get("constraint_delta", {})
+    if not isinstance(constraint_delta, dict):
+        return set(), [], [], None
+    changed_constraint_types = {
+        value
+        for value in constraint_delta.get("changed_constraint_types", [])
+        if isinstance(value, str) and value
+    }
+    signature_before = _normalized_signature_payload(
+        constraint_delta.get("signature_before") or constraint_delta.get("old_constraints")
+    )
+    signature_after = _normalized_signature_payload(
+        constraint_delta.get("signature_after") or constraint_delta.get("new_constraints")
+    )
+    if not changed_constraint_types:
+        changed_constraint_types = set(_signature_constraint_qids(signature_after) + _signature_constraint_qids(signature_before))
+    mapped_constraint_qid = _mapped_constraint_qid(record)
+    target_constraint_qid = None
+    if isinstance(mapped_constraint_qid, str):
+        candidate_qids = changed_constraint_types | set(_signature_constraint_qids(signature_after)) | set(
+            _signature_constraint_qids(signature_before)
+        )
+        if mapped_constraint_qid in candidate_qids:
+            target_constraint_qid = mapped_constraint_qid
+    if target_constraint_qid is None and changed_constraint_types:
+        target_constraint_qid = next(iter(sorted(changed_constraint_types)))
+    if target_constraint_qid is None:
+        candidate_qids = _signature_constraint_qids(signature_after) or _signature_constraint_qids(signature_before)
+        target_constraint_qid = candidate_qids[0] if candidate_qids else None
+    return changed_constraint_types, signature_before, signature_after, target_constraint_qid
+
+
+def _signature_qualifiers_for_constraint(signature: list[dict[str, Any]], constraint_qid: str | None) -> list[dict[str, Any]]:
+    qualifiers: list[dict[str, Any]] = []
+    if not isinstance(constraint_qid, str) or not constraint_qid:
+        return qualifiers
+    for entry in signature:
+        if not isinstance(entry, dict) or entry.get("constraint_qid") != constraint_qid:
+            continue
+        entry_qualifiers = entry.get("qualifiers")
+        if isinstance(entry_qualifiers, list):
+            qualifiers.extend([qualifier for qualifier in entry_qualifiers if isinstance(qualifier, dict)])
+    return qualifiers
+
+
+def _signature_qualifier_values(
+    qualifiers: list[dict[str, Any]],
+    *,
+    property_ids: Iterable[str] | None = None,
+) -> list[str]:
+    property_filter = set(property_ids or [])
+    values: list[str] = []
+    for qualifier in qualifiers:
+        if not isinstance(qualifier, dict):
+            continue
+        if property_filter and qualifier.get("property_id") not in property_filter:
+            continue
+        qualifier_values = qualifier.get("values")
+        if isinstance(qualifier_values, list):
+            values.extend(_normalize_value_list(qualifier_values))
+    return values
+
+
+def _extract_numeric_bound_from_qualifiers(
+    qualifiers: list[dict[str, Any]],
+    *,
+    property_ids: Iterable[str],
+    prefer: str,
+) -> float | None:
+    numeric_values = [
+        numeric
+        for value in _signature_qualifier_values(qualifiers, property_ids=property_ids)
+        for numeric in [_parse_numeric(value)]
+        if numeric is not None
+    ]
+    if not numeric_values:
+        return None
+    return min(numeric_values) if prefer == "min" else max(numeric_values)
+
+
+def _set_family_from_values(old_values: set[str], new_values: set[str]) -> str | None:
+    if not old_values or not new_values:
+        return None
+    if old_values < new_values:
+        return "set_relaxation"
+    if new_values < old_values:
+        return "set_restriction"
+    return None
+
+
+def _infer_signature_semantic_family(
+    signature_before: list[dict[str, Any]],
+    signature_after: list[dict[str, Any]],
+    constraint_qid: str | None,
+) -> str | None:
+    if not signature_before or not signature_after or not isinstance(constraint_qid, str) or not constraint_qid:
+        return None
+    old_qualifiers = _signature_qualifiers_for_constraint(signature_before, constraint_qid)
+    new_qualifiers = _signature_qualifiers_for_constraint(signature_after, constraint_qid)
+    if not old_qualifiers and not new_qualifiers:
+        return None
+    if constraint_qid in RANGE_QIDS:
+        old_min = _extract_numeric_bound_from_qualifiers(
+            old_qualifiers,
+            property_ids=RANGE_MIN_QUALIFIER_PIDS,
+            prefer="min",
+        )
+        old_max = _extract_numeric_bound_from_qualifiers(
+            old_qualifiers,
+            property_ids=RANGE_MAX_QUALIFIER_PIDS,
+            prefer="max",
+        )
+        new_min = _extract_numeric_bound_from_qualifiers(
+            new_qualifiers,
+            property_ids=RANGE_MIN_QUALIFIER_PIDS,
+            prefer="min",
+        )
+        new_max = _extract_numeric_bound_from_qualifiers(
+            new_qualifiers,
+            property_ids=RANGE_MAX_QUALIFIER_PIDS,
+            prefer="max",
+        )
+        widened = False
+        narrowed = False
+        if old_min is not None and new_min is not None:
+            widened = widened or new_min < old_min
+            narrowed = narrowed or new_min > old_min
+        if old_max is not None and new_max is not None:
+            widened = widened or new_max > old_max
+            narrowed = narrowed or new_max < old_max
+        if widened:
+            return "range_relaxation"
+        if narrowed:
+            return "range_restriction"
+        return "schema_update_generic"
+    if constraint_qid in FORMAT_QIDS:
+        old_patterns = set(_signature_qualifier_values(old_qualifiers, property_ids=("P1793",)))
+        new_patterns = set(_signature_qualifier_values(new_qualifiers, property_ids=("P1793",)))
+        if old_patterns != new_patterns:
+            return "schema_update_generic"
+        return None
+    qualifier_property_ids = ("P2305",) if constraint_qid in (ONE_OF_QIDS | TYPE_QIDS) else None
+    old_values = set(_signature_qualifier_values(old_qualifiers, property_ids=qualifier_property_ids))
+    new_values = set(_signature_qualifier_values(new_qualifiers, property_ids=qualifier_property_ids))
+    set_family = _set_family_from_values(old_values, new_values)
+    if set_family is not None:
+        return set_family
+    if old_values != new_values:
+        return "schema_update_generic"
+    return None
+
+
+def _historical_semantic_family(
+    record: dict[str, Any],
+    *,
+    changed_constraint_types: set[str],
+    signature_before: list[dict[str, Any]],
+    signature_after: list[dict[str, Any]],
+    target_constraint_qid: str | None,
+) -> str | None:
+    subtype = record.get("classification", {}).get("subtype")
+    if isinstance(subtype, str):
+        mapped_family = ACTION_TO_SEMANTIC_FAMILY.get(subtype)
+        if mapped_family is not None and mapped_family != "schema_update_generic":
+            return mapped_family
+        if mapped_family == "incidental":
+            return mapped_family
+    if subtype == "SCHEMA_UPDATE":
+        inferred_family = _infer_signature_semantic_family(signature_before, signature_after, target_constraint_qid)
+        if inferred_family is not None:
+            return inferred_family
+        if changed_constraint_types or signature_before or signature_after:
+            return "schema_update_generic"
+    return ACTION_TO_SEMANTIC_FAMILY.get(subtype) if isinstance(subtype, str) else None
+
+
+def _semantic_family_compatible(proposal_family: str | None, historical_family: str | None) -> bool:
+    if proposal_family is None or historical_family is None:
+        return False
+    return proposal_family == historical_family
+
+
 def _proposal_signature_entries_for_constraint(
     signature_after: list[dict[str, Any]],
     constraint_qid: str | None,
@@ -704,39 +931,62 @@ def evaluate_t_box_case(
     valid = proposal is not None
     target_pid = record.get("property")
     executable = False
+    literal_action_match = False
     exact_action_match = False
     exact_signature_match = False
     changed_constraint_type_hit = False
     exact_reform_match = False
     semantic_reform_match = False
+    semantic_family_match = False
     semantic_success = False
+    semantic_family_success = False
     signature_after_jaccard = 0.0
     proposal_admits_current_values = None
     normalized_historical_signature: list[dict[str, Any]] = []
     changed_constraint_types: set[str] = set()
+    normalized_historical_signature_before: list[dict[str, Any]] = []
+    target_constraint_qid = None
+    historical_semantic_family = None
+    proposal_action_family = None
+    proposal_signature_family = None
     if proposal is not None:
-        historical_signature = record.get("repair_target", {}).get("constraint_delta", {}).get("signature_after", [])
-        normalized_historical_signature = normalize_signature_after(historical_signature)
-        changed_constraint_types = {
-            constraint_qid
-            for constraint_qid in record.get("repair_target", {})
-            .get("constraint_delta", {})
-            .get("changed_constraint_types", [])
-            if isinstance(constraint_qid, str)
-        }
-        if not changed_constraint_types:
-            changed_constraint_types = {
-                entry.get("constraint_qid")
-                for entry in normalized_historical_signature
-                if isinstance(entry, dict) and isinstance(entry.get("constraint_qid"), str)
-            }
+        (
+            changed_constraint_types,
+            normalized_historical_signature_before,
+            normalized_historical_signature,
+            target_constraint_qid,
+        ) = _historical_constraint_context(record)
         changed_constraint_type_hit = proposal.target.constraint_type_qid in changed_constraint_types
         executable = proposal.target.pid == target_pid and changed_constraint_type_hit
-        exact_action_match = proposal.proposal.action == record.get("classification", {}).get("subtype")
+        literal_action_match = proposal.proposal.action == record.get("classification", {}).get("subtype")
+        exact_action_match = literal_action_match
         exact_signature_match = proposal.proposal.signature_after == normalized_historical_signature
         exact_reform_match = exact_action_match and exact_signature_match
-        semantic_reform_match = proposal.proposal.action == record.get("classification", {}).get("subtype")
-        semantic_success = bool(executable and semantic_reform_match)
+        historical_semantic_family = _historical_semantic_family(
+            record,
+            changed_constraint_types=changed_constraint_types,
+            signature_before=normalized_historical_signature_before,
+            signature_after=normalized_historical_signature,
+            target_constraint_qid=target_constraint_qid,
+        )
+        proposal_action_family = ACTION_TO_SEMANTIC_FAMILY.get(proposal.proposal.action)
+        proposal_signature_family = _infer_signature_semantic_family(
+            normalized_historical_signature_before,
+            proposal.proposal.signature_after,
+            proposal.target.constraint_type_qid,
+        )
+        signature_direction_match = (
+            proposal_signature_family is None
+            or _semantic_family_compatible(proposal_signature_family, historical_semantic_family)
+        )
+        semantic_family_match = bool(
+            executable
+            and _semantic_family_compatible(proposal_action_family, historical_semantic_family)
+            and signature_direction_match
+        )
+        semantic_reform_match = semantic_family_match
+        semantic_success = bool(semantic_family_match)
+        semantic_family_success = semantic_success
         signature_after_jaccard = _signature_after_jaccard(
             proposal.proposal.signature_after,
             normalized_historical_signature,
@@ -755,6 +1005,7 @@ def evaluate_t_box_case(
         "functional_success": 1.0 if accepted else 0.0,
         "exact_historical_agreement": 1.0 if exact_reform_match else 0.0,
         "semantic_success": 1.0 if semantic_success else 0.0,
+        "semantic_family_success": 1.0 if semantic_family_success else 0.0,
         "information_preservation": None,
         "provenance_completeness": auditability["provenance_completeness"],
         "auditability_complete": 1.0 if auditability["auditability_complete"] else 0.0,
@@ -789,8 +1040,10 @@ def evaluate_t_box_case(
         "accepted": accepted,
         "comparison": {
             "exact_action_match": exact_action_match,
+            "literal_action_match": literal_action_match,
             "exact_value_match": None,
             "semantic_reform_match": semantic_reform_match,
+            "semantic_family_match": semantic_family_match,
             "exact_reform_match": exact_reform_match,
             "exact_signature_match": exact_signature_match,
             "changed_constraint_type_hit": changed_constraint_type_hit,
@@ -798,6 +1051,10 @@ def evaluate_t_box_case(
         "metrics": metrics,
         "details": {
             "proposal_admits_current_values": proposal_admits_current_values,
+            "historical_semantic_family": historical_semantic_family,
+            "proposal_action_family": proposal_action_family,
+            "proposal_signature_family": proposal_signature_family,
+            "historical_target_constraint_qid": target_constraint_qid,
             "rationale_present": auditability["rationale_present"],
             "provenance_present": auditability["provenance_present"],
             "uncertainty_present": auditability["uncertainty_present"],
@@ -866,6 +1123,7 @@ def summarize_trace_iterable(
                 "functional_success",
                 "exact_historical_agreement",
                 "semantic_success",
+                "semantic_family_success",
                 "information_preservation",
                 "provenance_completeness",
                 "auditability_complete",
@@ -914,6 +1172,7 @@ def summarize_trace_iterable(
                 "functional_success_rate": avg("functional_success"),
                 "exact_historical_agreement_rate": avg("exact_historical_agreement"),
                 "semantic_success_rate": avg("semantic_success"),
+                "semantic_family_success_rate": avg("semantic_family_success"),
                 "information_preservation_mean": avg("information_preservation"),
                 "provenance_completeness_mean": avg("provenance_completeness"),
                 "auditability_complete_rate": avg("auditability_complete"),
@@ -926,6 +1185,7 @@ def summarize_trace_iterable(
                 "proposal_admits_current_values_rate": avg("proposal_admits_current_values"),
                 "metric_applicability": {
                     "semantic_success": self.metric_counts.get("semantic_success", 0),
+                    "semantic_family_success": self.metric_counts.get("semantic_family_success", 0),
                     "information_preservation": self.metric_counts.get("information_preservation", 0),
                     "auditability_complete": self.metric_counts.get("auditability_complete", 0),
                     "conversion_rate": self.metric_counts.get("conversion_rate", 0),
@@ -975,8 +1235,11 @@ def summarize_trace_iterable(
         metrics = trace.get("metrics", {})
         if metrics.get("semantic_success") == 1.0:
             counts["semantic_success"] += 1
+        if metrics.get("semantic_family_success") == 1.0:
+            counts["semantic_family_success"] += 1
         for metric_name in (
             "semantic_success",
+            "semantic_family_success",
             "information_preservation",
             "auditability_complete",
             "conversion_rate",

@@ -48,7 +48,8 @@ The first-wave regression check uses currently supported local constraint famili
 Current T-box scoring:
 
 - compares normalized `signature_after` against the historical `constraint_delta.signature_after`
-- separately scores exact reform match and semantic reform match
+- keeps exact historical agreement strict: exact action match plus exact normalized `signature_after` match
+- derives a family-level semantic signal from the historical T-box delta when possible
 - checks executability against the target property and constraint family
 - requires auditability completeness for acceptance:
   - non-empty rationale
@@ -57,13 +58,20 @@ Current T-box scoring:
 - computes:
   - functional success
   - exact historical agreement
-  - semantic success
+  - semantic success, now defined as family-level T-box compatibility rather than literal action-label equality
+  - semantic-family success as an explicit companion metric
   - provenance completeness
   - auditability completeness
   - conversion rate
   - tokens-to-fix
   - token usage
-  - T-box proxy metrics such as exact action match and signature overlap
+  - T-box proxy metrics such as literal/exact action match, changed-constraint-type hit, signature overlap, and whether the proposal admits current values when applicable
+
+Family-level T-box compatibility requires:
+
+- the proposal targets one of the historical changed constraint families
+- the proposal action maps to the same semantic family as the historical reform
+- the proposed `signature_after` is directionally compatible with that family when the historical `signature_before` makes direction inferable
 
 ## Summary Splits
 

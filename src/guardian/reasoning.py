@@ -21,6 +21,7 @@ from guardian.patch_parser import load_schema as load_a_box_schema
 from guardian.patch_parser import normalize_proposal as normalize_a_box_proposal
 from guardian.prompts import get_prompt_template
 from guardian.tbox_parser import load_schema as load_t_box_schema
+from guardian.tbox_parser import KNOWN_CONSTRAINT_TYPE_QIDS
 from guardian.tbox_parser import normalize_proposal as normalize_t_box_proposal
 from guardian.track_parser import load_schema as load_track_schema
 from guardian.track_parser import normalize_diagnosis
@@ -332,6 +333,61 @@ def _current_target_values(record: dict[str, Any], world_state_entry: Optional[d
     if not isinstance(target_pid, str) or target_pid not in properties:
         return []
     return list(dict.fromkeys(_iter_leaf_strings(properties.get(target_pid))))
+
+
+def _repair_target_constraint_type_qids(record: dict[str, Any]) -> list[str]:
+    repair_target = record.get("repair_target")
+    if not isinstance(repair_target, dict):
+        return []
+    constraint_delta = repair_target.get("constraint_delta")
+    if not isinstance(constraint_delta, dict):
+        return []
+    qids: list[str] = []
+    for value in constraint_delta.get("changed_constraint_types", []):
+        if isinstance(value, str) and value and value not in qids:
+            qids.append(value)
+    for key in ("signature_before", "signature_after", "old_constraints", "new_constraints"):
+        signature = constraint_delta.get(key)
+        if not isinstance(signature, list):
+            continue
+        for entry in signature:
+            if not isinstance(entry, dict):
+                continue
+            constraint_qid = entry.get("constraint_qid")
+            if isinstance(constraint_qid, str) and constraint_qid and constraint_qid not in qids:
+                qids.append(constraint_qid)
+    return qids
+
+
+def _world_state_constraint_type_qids(world_state_entry: Optional[dict[str, Any]]) -> list[str]:
+    if not isinstance(world_state_entry, dict):
+        return []
+    l4_constraints = world_state_entry.get("L4_constraints")
+    if not isinstance(l4_constraints, dict):
+        return []
+    constraints = l4_constraints.get("constraints")
+    if not isinstance(constraints, list):
+        return []
+    qids: list[str] = []
+    for constraint in constraints:
+        constraint_qid = _constraint_type_qid(constraint)
+        if isinstance(constraint_qid, str) and constraint_qid not in qids:
+            qids.append(constraint_qid)
+    return qids
+
+
+def _t_box_constraint_type_qids(record: dict[str, Any], world_state_entry: Optional[dict[str, Any]]) -> list[str]:
+    qids: list[str] = sorted(KNOWN_CONSTRAINT_TYPE_QIDS)
+    mapped_qid = _mapped_constraint_qid(record)
+    if isinstance(mapped_qid, str) and mapped_qid not in qids:
+        qids.append(mapped_qid)
+    for value in _repair_target_constraint_type_qids(record):
+        if value not in qids:
+            qids.append(value)
+    for value in _world_state_constraint_type_qids(world_state_entry):
+        if value not in qids:
+            qids.append(value)
+    return qids
 
 
 def _violation_values(record: dict[str, Any]) -> list[str]:
@@ -840,8 +896,9 @@ def _request_metadata(
     proposal_track_used: str | None = None,
     routing_source: str | None = None,
     context_audit: Optional[dict[str, Any]] = None,
+    t_box_constraint_type_qids: Optional[Iterable[str]] = None,
 ) -> dict[str, Any]:
-    return {
+    payload = {
         "run_id": run_id,
         "case_id": case_id,
         "ablation_bundle": bundle,
@@ -854,6 +911,9 @@ def _request_metadata(
         "routing_source": routing_source,
         "context_audit": dict(context_audit or {}),
     }
+    if t_box_constraint_type_qids is not None:
+        payload["t_box_constraint_type_qids"] = list(t_box_constraint_type_qids)
+    return payload
 
 
 def _empty_usage_payload(provider_name: str, model: str, metadata: dict[str, Any]) -> dict[str, Any]:
@@ -1017,7 +1077,10 @@ def _record_request_result(
             manifest_record["parse_status"] = "normalized"
             manifest_record["canonical_hash"] = normalized_diagnosis.canonical_hash
         elif _proposal_track_for_request(request_info) == "T_BOX":
-            normalized = normalize_t_box_proposal(normalization_payload)
+            normalized = normalize_t_box_proposal(
+                normalization_payload,
+                constraint_type_qids=request_info.get("t_box_constraint_type_qids"),
+            )
             _append_jsonl_record(t_box_fh, normalized.to_dict())
             manifest_record["parse_status"] = "normalized"
             manifest_record["canonical_hash"] = normalized.canonical_hash
@@ -1218,6 +1281,11 @@ def run_reasoning_floor(
                 proposal_track_used=proposal_track_used,
                 routing_source=routing_source,
                 context_audit=proposal_bundle.context_audit,
+                t_box_constraint_type_qids=(
+                    _t_box_constraint_type_qids(record, world_state_entry)
+                    if proposal_track_used == "T_BOX"
+                    else None
+                ),
             )
             return proposal_bundle, proposal_metadata
 

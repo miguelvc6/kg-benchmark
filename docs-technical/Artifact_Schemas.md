@@ -215,6 +215,7 @@ Each trace includes:
 - proposal presence, validity, and executability
 - acceptance decision
 - exact-match and semantic-match comparison fields
+- for T-box traces, family-level semantic fields such as `comparison.semantic_family_match`, `comparison.literal_action_match`, and `metrics.semantic_family_success`
 - track-diagnosis fields including predicted track, historical track, and exact-track-match
 - metric fields including auditability completeness, conversion rate, and tokens-to-fix
 

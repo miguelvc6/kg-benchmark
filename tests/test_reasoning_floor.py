@@ -390,6 +390,19 @@ class ReasoningFloorTests(unittest.TestCase):
         self.assertNotIn('"persistence_check"', proposal_bundle.prompt)
         self.assertIn('"L2_labels"', diagnosis_bundle.prompt)
 
+    def test_t_box_prompt_template_avoids_specific_anchor_example(self) -> None:
+        template = get_prompt_template("reasoning_floor_t_box_zero_shot")
+        self.assertNotIn("Q21510859", template.user_prompt_template)
+        self.assertNotIn("Q43229", template.user_prompt_template)
+        self.assertIn("constraint-family QIDs from the supplied constraint context", template.user_prompt_template)
+        self.assertIn("Do not copy violating entity or type QIDs into constraint_type_qid", template.user_prompt_template)
+
+    def test_track_diagnosis_prompt_template_includes_schema_vs_claim_guidance(self) -> None:
+        template = get_prompt_template("reasoning_floor_track_diagnosis_zero_shot")
+        self.assertIn("Allowed-entity-types, property-scope, one-of, range", template.user_prompt_template)
+        self.assertIn("If a property currently allows only certain entity types", template.user_prompt_template)
+        self.assertIn("predict AMBIGUOUS", template.user_prompt_template)
+
     def test_reasoning_floor_preserves_manifest_order_before_max_cases(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)
@@ -642,6 +655,65 @@ class ReasoningFloorTests(unittest.TestCase):
         self.assertEqual(summary["parse_errors"]["proposal_parse_error_count"], 0)
         self.assertEqual(a_box_rows[0]["provenance"], [{"kind": "OTHER", "snippet": "historical statement"}])
         self.assertEqual(t_box_rows[0]["provenance"], [{"kind": "KG", "node_id": "Q21510859", "snippet": "constraint"}])
+
+    def test_reasoning_floor_rejects_invalid_t_box_constraint_family_qids(self) -> None:
+        root, classified_path, world_state_path, selection_manifest_path, _resolver = self._make_stub_fixture()
+
+        def resolver(metadata: dict[str, Any]) -> dict[str, Any]:
+            if metadata["task_type"] == "track_diagnosis":
+                return {
+                    "case_id": metadata["case_id"],
+                    "predicted_track": "T_BOX" if metadata["case_id"] == "reform_case" else "A_BOX",
+                    "confidence": "high",
+                }
+            if metadata["case_id"] == "reform_case":
+                return {
+                    "case_id": "reform_case",
+                    "target": {"pid": "P31", "constraint_type_qid": "Q11122"},
+                    "proposal": {
+                        "action": "RELAXATION_SET_EXPANSION",
+                        "signature_after": [
+                            {
+                                "constraint_qid": "Q11122",
+                                "snaktype": "VALUE",
+                                "rank": "normal",
+                                "qualifiers": [{"property_id": "P2305", "values": ["Q5", "Q43229"]}],
+                            }
+                        ],
+                    },
+                }
+            return {
+                "case_id": "repair_case",
+                "target": {"qid": "Q1", "pid": "P31"},
+                "ops": [{"op": "SET", "pid": "P31", "value": "Q5"}],
+            }
+
+        summary = run_reasoning_floor(
+            classified_path=classified_path,
+            world_state_path=world_state_path,
+            output_dir=root / "outputs",
+            provider=StaticResponseProvider(resolver, model="stub-model"),
+            ablation_bundles=["minimal_case"],
+            selection_manifest_path=selection_manifest_path,
+        )
+
+        run_dir = Path(summary["run_info"]["output_dir"])
+        manifest_rows = [
+            json.loads(line)
+            for line in (run_dir / "run_manifest.jsonl").read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        proposal_row = next(row for row in manifest_rows if row["case_id"] == "reform_case" and row["task_type"] == "proposal")
+        t_box_rows = [
+            json.loads(line)
+            for line in (run_dir / "minimal_case" / "t_box_proposals.jsonl").read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+
+        self.assertEqual(summary["parse_errors"]["proposal_parse_error_count"], 1)
+        self.assertEqual(proposal_row["parse_status"], "parse_error")
+        self.assertEqual(proposal_row["parser_error"], "invalid constraint_type_qid for T-box proposal")
+        self.assertEqual(t_box_rows, [])
 
 
 if __name__ == "__main__":
