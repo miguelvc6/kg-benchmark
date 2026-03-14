@@ -7,7 +7,12 @@ from unittest.mock import patch
 
 from guardian.model_provider import StaticResponseProvider
 from guardian.prompts import get_prompt_template
-from guardian.reasoning import build_prompt_bundle, build_track_diagnosis_prompt_bundle, run_reasoning_floor
+from guardian.reasoning import (
+    _collect_selected_records_in_order,
+    build_prompt_bundle,
+    build_track_diagnosis_prompt_bundle,
+    run_reasoning_floor,
+)
 
 
 class CostedStaticOpenAIProvider(StaticResponseProvider):
@@ -469,6 +474,31 @@ class ReasoningFloorTests(unittest.TestCase):
             ]
             proposal_case_ids = [row["case_id"] for row in manifest_rows if row["task_type"] == "proposal"]
             self.assertEqual(proposal_case_ids, ["case_c", "case_a"])
+
+    def test_collect_selected_records_limits_manifest_scan_before_reading_tail_records(self) -> None:
+        rows = [
+            {"id": "case_a", "track": "A_BOX"},
+            {"id": "case_c", "track": "A_BOX"},
+            {"id": "tail_1", "track": "A_BOX"},
+            {"id": "tail_2", "track": "A_BOX"},
+            {"id": "case_b", "track": "A_BOX"},
+        ]
+        yielded_ids: list[str] = []
+
+        def fake_iter_jsonl(_path: str | Path) -> Any:
+            for row in rows:
+                yielded_ids.append(row["id"])
+                yield row
+
+        with patch("guardian.reasoning.iter_jsonl", side_effect=fake_iter_jsonl):
+            selected = _collect_selected_records_in_order(
+                "ignored.jsonl",
+                case_ids=["case_c", "case_a", "case_b"],
+                max_cases=2,
+            )
+
+        self.assertEqual([row["id"] for row in selected], ["case_c", "case_a"])
+        self.assertEqual(yielded_ids, ["case_a", "case_c"])
 
     def test_reasoning_floor_diagnosis_routed_skips_ambiguous_proposals(self) -> None:
         root, classified_path, world_state_path, selection_manifest_path, _resolver = self._make_stub_fixture()

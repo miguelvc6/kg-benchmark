@@ -151,6 +151,8 @@ During execution, the runner shows a `tqdm` generation progress bar with elapsed
 
 The runner also prints UTC-timestamped phase-level status lines for run startup, batch submission and polling milestones, bundle evaluation start and completion, and final summary output. In batch mode, provider status updates are emitted when batch state or request counts change.
 
+Startup status now begins before generation-selection materialization and before the world-state index is opened, so long scans over large Stage 4 JSONL inputs no longer appear completely silent at process start.
+
 After generation completes, the runner shows a second `tqdm` bar for bundle evaluation so the terminal does not appear idle while per-bundle summaries and traces are still being computed.
 
 In synchronous mode, the runner appends raw responses, manifest rows, normalized proposals, and evaluation traces incrementally over one stable ordered selected subset. In parallel mode, it keeps the same outputs but executes multiple cases concurrently with bounded in-flight work.
@@ -176,6 +178,8 @@ During evaluation, the runner now switches classified-benchmark access strategy 
 - above `10,000` selected cases, it streams the original Stage 4 benchmark once into a run-local `selected_classified_records.jsonl` artifact and then evaluates bundles by streaming that filtered subset from disk
 
 This keeps small evaluation runs fast without rescanning the full Stage 4 file for every bundle, while avoiding large in-memory record caches on paper-scale selections.
+
+When `--selection-manifest` and `--max-cases` are combined without a track filter, the runner trims the manifest-ordered case-id list before scanning the classified benchmark. This avoids reading the full Stage 4 JSONL when only the first manifest-ordered subset is needed.
 
 ## Evaluation Semantics
 

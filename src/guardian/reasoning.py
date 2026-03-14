@@ -616,6 +616,8 @@ def _collect_selected_records_in_order(
     limit = max(0, max_cases) if max_cases is not None else None
     if limit == 0:
         return []
+    if ordered_case_ids is not None and track_set is None and limit is not None:
+        ordered_case_ids = ordered_case_ids[:limit]
 
     if ordered_case_ids is None:
         selected_records: list[dict[str, Any]] = []
@@ -1096,10 +1098,39 @@ def run_reasoning_floor(
     raw_log_path = out_dir / "raw_model_responses.jsonl"
     manifest_path = out_dir / "run_manifest.jsonl"
 
+    _emit_runtime_status(
+        None,
+        "Preparing run "
+        f"{run_id} with provider={selected_provider}, model={selected_model}, "
+        f"mode={normalized_execution_mode}, proposal_track_mode={normalized_proposal_track_mode}.",
+    )
+
     resolved_case_ids = resolve_case_id_filter(
         case_ids=case_ids,
         selection_manifest_path=selection_manifest_path,
     )
+    if resolved_case_ids is None:
+        _emit_runtime_status(
+            None,
+            f"Materializing generation selection from {classified_path} without an explicit case-id filter.",
+        )
+    else:
+        selected_case_count = len(resolved_case_ids)
+        selection_source = "selection manifest" if selection_manifest_path else "explicit case ids"
+        if max_cases is not None and tracks is None:
+            effective_case_count = min(selected_case_count, max(0, max_cases))
+            _emit_runtime_status(
+                None,
+                "Materializing generation selection from "
+                f"{classified_path} using {effective_case_count} of {selected_case_count} case ids "
+                f"from the {selection_source}.",
+            )
+        else:
+            _emit_runtime_status(
+                None,
+                "Materializing generation selection from "
+                f"{classified_path} using {selected_case_count} case ids from the {selection_source}.",
+            )
     generation_selection = _materialize_generation_selection(
         classified_path,
         case_ids=resolved_case_ids,
@@ -1128,6 +1159,7 @@ def run_reasoning_floor(
     refresh_every = max(1, min(1000, (total_requests + 9) // 10)) if total_requests else 1
 
     world_state_store = WorldStateStore(Path(world_state_path), __import__("logging").getLogger("reasoning_floor"))
+    _emit_runtime_status(None, f"Opening world-state index at {world_state_path}.")
     world_state_store.open()
     progress = tqdm(
         total=total_requests,
