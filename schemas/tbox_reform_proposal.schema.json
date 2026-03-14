@@ -4,7 +4,7 @@
   "title": "TBoxReformProposal",
   "type": "object",
   "additionalProperties": false,
-  "required": ["case_id", "target", "proposal"],
+  "required": ["case_id", "target", "proposal", "rationale", "provenance", "uncertainty"],
   "properties": {
     "case_id": {
       "type": "string",
@@ -50,16 +50,89 @@
       }
     },
     "rationale": {
-      "type": "string"
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
     },
     "provenance": {
       "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
       "items": {
-        "type": "object"
+        "$ref": "#/$defs/provenance_item"
       }
+    },
+    "uncertainty": {
+      "$ref": "#/$defs/uncertainty_assessment"
     },
     "metadata": {
       "type": "object"
+    }
+  },
+  "$defs": {
+    "provenance_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["WEB", "KG", "HISTORY", "OTHER"]
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "maxLength": 2000
+        },
+        "snippet": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "node_id": {
+          "type": "string",
+          "pattern": "^(Q|P)[1-9][0-9]*$"
+        },
+        "revision_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "WEB" } }, "required": ["kind"] },
+          "then": { "required": ["url"] }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "KG" } }, "required": ["kind"] },
+          "then": { "required": ["node_id"] }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "HISTORY" } }, "required": ["kind"] },
+          "then": { "required": ["revision_id"] }
+        }
+      ]
+    },
+    "uncertainty_assessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["confidence"],
+      "properties": {
+        "confidence": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "notes": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        }
+      }
     }
   }
 }

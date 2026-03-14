@@ -14,6 +14,7 @@ from .common import (
     normalize_pid,
     normalize_provenance_payload,
     normalize_qid,
+    normalize_uncertainty_payload,
 )
 
 ALLOWED_OPS = {"SET", "ADD", "REMOVE", "DELETE_ALL"}
@@ -54,6 +55,7 @@ class NormalizedProposal:
     ops: list[ProposalOp]
     rationale: Optional[str] = None
     provenance: list[dict[str, Any]] = field(default_factory=list)
+    uncertainty: dict[str, Any] | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
     canonical_hash: str = ""
 
@@ -68,6 +70,8 @@ class NormalizedProposal:
             payload["rationale"] = self.rationale
         if self.provenance:
             payload["provenance"] = self.provenance
+        if self.uncertainty is not None:
+            payload["uncertainty"] = self.uncertainty
         if self.metadata:
             payload["metadata"] = self.metadata
         return payload
@@ -211,9 +215,6 @@ def _ops_from_patch_edits(payload: dict[str, Any], pid: str) -> list[dict[str, A
 
 
 def _coerce_payload_shape(payload: dict[str, Any]) -> dict[str, Any]:
-    if "case_id" in payload and "target" in payload and "ops" in payload:
-        return payload
-
     case_id = _extract_case_id(payload)
     qid = _extract_qid(payload)
     pid = _extract_pid(payload)
@@ -272,6 +273,16 @@ def _coerce_payload_shape(payload: dict[str, Any]) -> dict[str, Any]:
     provenance = _first_present(payload, ("provenance",), ("references",), ("proposal", "references"))
     if provenance is not None and "provenance" not in coerced:
         coerced["provenance"] = provenance
+    uncertainty = _first_present(
+        payload,
+        ("uncertainty",),
+        ("proposal", "uncertainty"),
+        ("confidence",),
+        ("metadata", "uncertainty"),
+        ("metadata", "confidence"),
+    )
+    if uncertainty is not None and "uncertainty" not in coerced:
+        coerced["uncertainty"] = uncertainty
     metadata = _first_present(payload, ("metadata",), ("meta",), ("evidence",))
     if metadata is not None and "metadata" not in coerced:
         coerced["metadata"] = metadata
@@ -406,6 +417,7 @@ def normalize_proposal(raw: Any, schema: Any = None) -> NormalizedProposal:
             raise PatchValidationError("SCHEMA_VIOLATION", "rationale must be a non-empty string when present.")
         rationale = rationale.strip()
     provenance = _normalize_provenance(payload.get("provenance"))
+    uncertainty = normalize_uncertainty_payload(payload.get("uncertainty"))
     metadata = _normalize_metadata(payload.get("metadata"))
 
     base_payload = {
@@ -417,6 +429,8 @@ def normalize_proposal(raw: Any, schema: Any = None) -> NormalizedProposal:
         base_payload["rationale"] = rationale
     if provenance:
         base_payload["provenance"] = provenance
+    if uncertainty is not None:
+        base_payload["uncertainty"] = uncertainty
     if metadata:
         base_payload["metadata"] = metadata
 
@@ -426,6 +440,7 @@ def normalize_proposal(raw: Any, schema: Any = None) -> NormalizedProposal:
         ops=ops,
         rationale=rationale,
         provenance=provenance,
+        uncertainty=uncertainty,
         metadata=metadata,
         canonical_hash=canonical_hash(base_payload),
     )

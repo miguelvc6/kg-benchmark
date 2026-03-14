@@ -177,7 +177,8 @@ Normalized A-box proposal JSONL records contain:
 - `target.qid`
 - `target.pid`
 - `ops`
-- optional `rationale`, `provenance`, `metadata`
+- required `rationale`, `provenance`, `uncertainty`
+- optional `metadata`
 - `canonical_hash`
 
 Normalized T-box proposal JSONL records contain:
@@ -187,7 +188,8 @@ Normalized T-box proposal JSONL records contain:
 - `target.constraint_type_qid`
 - `proposal.action`
 - `proposal.signature_after`
-- optional `rationale`, `provenance`, `metadata`
+- required `rationale`, `provenance`, `uncertainty`
+- optional `metadata`
 - `canonical_hash`
 
 Normalized track-diagnosis JSONL records contain:
@@ -214,7 +216,7 @@ Each trace includes:
 - acceptance decision
 - exact-match and semantic-match comparison fields
 - track-diagnosis fields including predicted track, historical track, and exact-track-match
-- metric fields including reserved nulls for later multi-turn runs
+- metric fields including auditability completeness, conversion rate, and tokens-to-fix
 
 The summary aggregates results by:
 

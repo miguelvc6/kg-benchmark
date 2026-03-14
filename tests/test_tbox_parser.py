@@ -114,6 +114,21 @@ class TBoxParserTests(unittest.TestCase):
             ],
         )
 
+    def test_tbox_uncertainty_object_is_normalized(self) -> None:
+        proposal = self._base_proposal()
+        proposal["uncertainty"] = {"confidence": 0.1, "notes": "Equivalent signatures may exist"}
+        normalized = normalize_proposal(proposal, schema=self.schema)
+        self.assertEqual(
+            normalized.uncertainty,
+            {"confidence": 0.1, "notes": "Equivalent signatures may exist"},
+        )
+
+    def test_tbox_top_level_confidence_is_coerced_into_uncertainty(self) -> None:
+        proposal = self._base_proposal()
+        proposal["confidence"] = "medium"
+        normalized = normalize_proposal(proposal, schema=self.schema)
+        self.assertEqual(normalized.uncertainty, {"confidence": 0.5})
+
 
 if __name__ == "__main__":
     unittest.main()

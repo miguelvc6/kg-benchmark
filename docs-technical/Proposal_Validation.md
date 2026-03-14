@@ -27,6 +27,7 @@ Current runtime behavior:
 - rewrites `REMOVE` without a value into `DELETE_ALL`
 - validates ISO dates, ids, finite numeric values, and op cardinality
 - coerces common provenance inputs into the canonical list form
+- normalizes proposal-level `uncertainty` into `{"confidence": <0.0-1.0>, "notes": ...}` when present
 - emits a deterministic `canonical_hash`
 
 ## T-box Contract
@@ -39,11 +40,12 @@ Current runtime behavior:
 - restricts `proposal.action` to the supported first-wave schema-reform families
 - normalizes `proposal.signature_after` into the same canonical shape used by Stage 2 `constraint_delta`
 - coerces common provenance inputs into the canonical list form
+- normalizes proposal-level `uncertainty` into `{"confidence": <0.0-1.0>, "notes": ...}` when present
 - emits a deterministic `canonical_hash`
 
 ## Provenance Compatibility
 
-Normalized output schemas are unchanged: proposals still emit `provenance` only as a list of objects.
+Normalized output schemas now also expose a top-level `uncertainty` object in addition to canonical `provenance`.
 
 The runtime normalizers now accept several common input variants and convert them into that list form:
 
@@ -54,6 +56,15 @@ The runtime normalizers now accept several common input variants and convert the
 - list entries without `kind` -> inferred from the same signals above
 
 Malformed provenance entries are dropped individually when they cannot be normalized, instead of invalidating an otherwise-correct proposal.
+
+The uncertainty normalizer also accepts several compatibility forms:
+
+- bare numeric confidence such as `0.2` -> `{"confidence": 0.2}`
+- confidence strings such as `"0.2"` -> `{"confidence": 0.2}`
+- qualitative strings such as `"low"`, `"medium"`, or `"high"` -> deterministic numeric scores
+- objects with `score` or `probability` instead of `confidence`
+
+Legacy proposals that omit `rationale`, `provenance`, or `uncertainty` still normalize so historical artifacts remain inspectable, but evaluator acceptance now requires all three auditability components.
 
 ## Test Coverage
 

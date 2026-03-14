@@ -27,15 +27,19 @@ Current A-box scoring:
 - applies normalized proposal ops in memory
 - checks executability against the benchmark target ids
 - compares the resulting target property against the historical repair target
+- requires auditability completeness for acceptance:
+  - non-empty rationale
+  - usable provenance
+  - proposal-level uncertainty
 - computes:
   - functional success
   - exact historical agreement
   - information preservation
   - provenance completeness
-  - token usage
-- preserves reserved null fields for:
+  - auditability completeness
   - conversion rate
   - tokens-to-fix
+  - token usage
 
 The first-wave regression check uses currently supported local constraint families represented in the stored constraint metadata.
 
@@ -46,11 +50,20 @@ Current T-box scoring:
 - compares normalized `signature_after` against the historical `constraint_delta.signature_after`
 - separately scores exact reform match and semantic reform match
 - checks executability against the target property and constraint family
+- requires auditability completeness for acceptance:
+  - non-empty rationale
+  - usable provenance
+  - proposal-level uncertainty
 - computes:
   - functional success
   - exact historical agreement
+  - semantic success
   - provenance completeness
+  - auditability completeness
+  - conversion rate
+  - tokens-to-fix
   - token usage
+  - T-box proxy metrics such as exact action match and signature overlap
 
 ## Summary Splits
 
@@ -61,6 +74,8 @@ The evaluator aggregates results by:
 - track
 - ablation bundle
 - popularity bucket
+
+Grouped summaries now also expose metric applicability counts so track-specific fields such as `semantic_success`, `conversion_rate`, and `tokens_to_fix` can be interpreted against the right denominator.
 
 ## Track-Diagnosis Evaluation
 

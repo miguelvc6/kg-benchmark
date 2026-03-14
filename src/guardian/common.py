@@ -8,6 +8,13 @@ from pathlib import Path
 from typing import Any
 
 
+CONFIDENCE_LABELS = {
+    "low": 0.25,
+    "medium": 0.5,
+    "high": 0.75,
+}
+
+
 class PatchValidationError(ValueError):
     """Structured validation failure exposed by proposal parsers."""
 
@@ -174,5 +181,59 @@ def normalize_provenance_payload(items: Any) -> list[dict[str, Any]]:
         entry = _normalize_provenance_entry(item)
         if entry is not None:
             normalized.append(entry)
+    return normalized
+
+
+def _normalize_confidence_score(value: Any, field_name: str) -> float:
+    if isinstance(value, bool):
+        raise PatchValidationError("SCHEMA_VIOLATION", f"{field_name} must be a numeric confidence score.")
+    if isinstance(value, (int, float)):
+        score = float(value)
+    elif isinstance(value, str):
+        text = value.strip().lower()
+        if not text:
+            raise PatchValidationError("SCHEMA_VIOLATION", f"{field_name} must be a non-empty confidence score.")
+        if text in CONFIDENCE_LABELS:
+            return CONFIDENCE_LABELS[text]
+        try:
+            score = float(text)
+        except ValueError as exc:
+            raise PatchValidationError("SCHEMA_VIOLATION", f"{field_name} must be a numeric confidence score.") from exc
+    else:
+        raise PatchValidationError("SCHEMA_VIOLATION", f"{field_name} must be a numeric confidence score.")
+    if not math.isfinite(score) or not 0.0 <= score <= 1.0:
+        raise PatchValidationError("SCHEMA_VIOLATION", f"{field_name} must be between 0.0 and 1.0.")
+    return score
+
+
+def normalize_uncertainty_payload(payload: Any) -> dict[str, Any] | None:
+    if payload is None:
+        return None
+    if isinstance(payload, (str, int, float)) and not isinstance(payload, bool):
+        return {"confidence": _normalize_confidence_score(payload, "uncertainty")}
+    if not isinstance(payload, dict):
+        raise PatchValidationError(
+            "SCHEMA_VIOLATION",
+            "uncertainty must be an object or numeric confidence score.",
+        )
+
+    confidence_raw = payload.get("confidence")
+    if confidence_raw is None:
+        confidence_raw = payload.get("score")
+    if confidence_raw is None:
+        confidence_raw = payload.get("probability")
+    if confidence_raw is None:
+        raise PatchValidationError("SCHEMA_VIOLATION", "uncertainty.confidence is required when uncertainty is present.")
+
+    normalized = {"confidence": _normalize_confidence_score(confidence_raw, "uncertainty.confidence")}
+    notes = payload.get("notes")
+    if notes is None:
+        notes = payload.get("summary")
+    if notes is None:
+        notes = payload.get("rationale")
+    if notes is not None:
+        if not isinstance(notes, str) or not notes.strip():
+            raise PatchValidationError("SCHEMA_VIOLATION", "uncertainty.notes must be a non-empty string when present.")
+        normalized["notes"] = notes.strip()
     return normalized
 

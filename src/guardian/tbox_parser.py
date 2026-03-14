@@ -13,6 +13,7 @@ from .common import (
     normalize_pid,
     normalize_provenance_payload,
     normalize_qid,
+    normalize_uncertainty_payload,
 )
 
 SUPPORTED_ACTIONS = {
@@ -51,6 +52,7 @@ class NormalizedReformProposal:
     proposal: ReformProposal
     rationale: Optional[str] = None
     provenance: list[dict[str, Any]] = field(default_factory=list)
+    uncertainty: dict[str, Any] | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
     canonical_hash: str = ""
 
@@ -65,6 +67,8 @@ class NormalizedReformProposal:
             payload["rationale"] = self.rationale
         if self.provenance:
             payload["provenance"] = self.provenance
+        if self.uncertainty is not None:
+            payload["uncertainty"] = self.uncertainty
         if self.metadata:
             payload["metadata"] = self.metadata
         return payload
@@ -188,9 +192,6 @@ def _placeholder_signature_after(constraint_qid: Any) -> list[dict[str, Any]] | 
 
 
 def _coerce_payload_shape(payload: dict[str, Any]) -> dict[str, Any]:
-    if "case_id" in payload and "target" in payload and "proposal" in payload:
-        return payload
-
     coerced = dict(payload)
     case_id = _extract_case_id(payload)
     pid = _extract_pid(payload)
@@ -245,6 +246,16 @@ def _coerce_payload_shape(payload: dict[str, Any]) -> dict[str, Any]:
     provenance = _first_present(payload, ("provenance",), ("references",))
     if provenance is not None and "provenance" not in coerced:
         coerced["provenance"] = provenance
+    uncertainty = _first_present(
+        payload,
+        ("uncertainty",),
+        ("proposal", "uncertainty"),
+        ("confidence",),
+        ("metadata", "uncertainty"),
+        ("metadata", "confidence"),
+    )
+    if uncertainty is not None and "uncertainty" not in coerced:
+        coerced["uncertainty"] = uncertainty
     metadata = _first_present(payload, ("metadata",), ("context",), ("diagnostics",))
     if metadata is not None and "metadata" not in coerced:
         coerced["metadata"] = metadata
@@ -371,6 +382,7 @@ def normalize_proposal(raw: Any, schema: Any = None) -> NormalizedReformProposal
     if rationale is not None:
         rationale = _require_non_empty_string(rationale, "rationale")
     provenance = _normalize_provenance(payload.get("provenance"))
+    uncertainty = normalize_uncertainty_payload(payload.get("uncertainty"))
     metadata = _normalize_metadata(payload.get("metadata"))
 
     base_payload = {
@@ -385,6 +397,8 @@ def normalize_proposal(raw: Any, schema: Any = None) -> NormalizedReformProposal
         base_payload["rationale"] = rationale
     if provenance:
         base_payload["provenance"] = provenance
+    if uncertainty is not None:
+        base_payload["uncertainty"] = uncertainty
     if metadata:
         base_payload["metadata"] = metadata
 
@@ -394,6 +408,7 @@ def normalize_proposal(raw: Any, schema: Any = None) -> NormalizedReformProposal
         proposal=ReformProposal(action=action, signature_after=signature_after),
         rationale=rationale,
         provenance=provenance,
+        uncertainty=uncertainty,
         metadata=metadata,
         canonical_hash=canonical_hash(base_payload),
     )

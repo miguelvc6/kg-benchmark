@@ -104,9 +104,9 @@ Named prompt templates for the reasoning floor now live in [src/guardian/prompts
 
 Those prompts now spell out the exact normalized JSON contract expected by the proposal and diagnosis parsers. The runner still requests JSON objects from providers, but prompt text now explicitly forbids wrapper shapes such as `proposal_id`, `summary`, `actions`, or `proposed_changes` in place of the canonical benchmark schema.
 
-The proposal prompts also state that `provenance` is optional, but when present it must be a JSON array of canonical provenance objects.
+The proposal prompts now require `rationale`, `provenance`, and a proposal-level `uncertainty` object. `provenance` must be a JSON array of canonical provenance objects, and `uncertainty.confidence` must normalize to a numeric `0.0-1.0` score.
 
-As a safety net, the normalization layer also accepts several legacy rich-JSON shapes that appeared in earlier reasoning-floor runs. This compatibility path recovers common aliases such as `proposal_id` or `repair_id`, nested property fields, numeric track-diagnosis confidence values, and common proposal wrappers when they can be mapped back to the public schemas.
+As a safety net, the normalization layer also accepts several legacy rich-JSON shapes that appeared in earlier reasoning-floor runs. This compatibility path recovers common aliases such as `proposal_id` or `repair_id`, nested property fields, numeric track-diagnosis confidence values, proposal-level confidence aliases that can be rewritten into `uncertainty`, and common proposal wrappers when they can be mapped back to the public schemas.
 
 Proposal normalization also now coerces common provenance variants into the canonical list form. Plain strings become one-item `OTHER` provenance lists, singleton objects with `url`, `node_id`, or `revision_id` are preserved with inferred `WEB`, `KG`, or `HISTORY` kinds, and mixed provenance lists are normalized entry-by-entry instead of failing the whole proposal.
 

@@ -379,10 +379,23 @@ def _derived_action(before_values: list[str], after_values: list[str]) -> str:
 
 
 def _token_usage(manifest_record: dict[str, Any]) -> dict[str, Optional[int]]:
-    usage = manifest_record.get("usage")
-    if not isinstance(usage, dict):
-        metadata = manifest_record.get("metadata")
-        usage = metadata.get("token_usage") if isinstance(metadata, dict) else None
+    return _token_usage_from_sources(manifest_record)
+
+
+def _token_usage_from_sources(*sources: Any) -> dict[str, Optional[int]]:
+    usage = None
+    for source in sources:
+        if isinstance(source, dict):
+            usage = source.get("usage")
+            if not isinstance(usage, dict):
+                metadata = source.get("metadata")
+                usage = metadata.get("token_usage") if isinstance(metadata, dict) else None
+        else:
+            metadata = getattr(source, "metadata", None)
+            usage = metadata.get("token_usage") if isinstance(metadata, dict) else None
+        if isinstance(usage, dict):
+            break
+        usage = None
     if not isinstance(usage, dict):
         return {"prompt_tokens": None, "completion_tokens": None, "total_tokens": None}
     return {
@@ -409,6 +422,54 @@ def _provenance_completeness(payload: Any) -> float:
         elif kind not in {"WEB", "KG", "HISTORY"}:
             complete += 1
     return complete / len(payload)
+
+
+def _auditability_status(proposal: Any) -> dict[str, Any]:
+    rationale = getattr(proposal, "rationale", None)
+    rationale_present = isinstance(rationale, str) and bool(rationale.strip())
+    provenance = getattr(proposal, "provenance", None)
+    provenance_present = isinstance(provenance, list) and bool(provenance)
+    provenance_completeness = _provenance_completeness(provenance)
+    uncertainty = getattr(proposal, "uncertainty", None)
+    uncertainty_present = (
+        isinstance(uncertainty, dict)
+        and isinstance(uncertainty.get("confidence"), (int, float))
+    )
+    return {
+        "rationale_present": rationale_present,
+        "provenance_present": provenance_present,
+        "provenance_completeness": provenance_completeness,
+        "uncertainty_present": uncertainty_present,
+        "auditability_complete": bool(
+            rationale_present and provenance_present and provenance_completeness > 0.0 and uncertainty_present
+        ),
+    }
+
+
+def _proposal_attempted(parse_status: str, proposal_present: bool, manifest_record: dict[str, Any]) -> bool:
+    if proposal_present:
+        return True
+    if parse_status in {"missing", "skipped_ambiguous_track"}:
+        return False
+    return bool(manifest_record)
+
+
+def _tokens_to_fix(
+    *,
+    accepted: bool,
+    proposal_usage: dict[str, Optional[int]],
+    diagnosis_usage: dict[str, Optional[int]],
+) -> Optional[int]:
+    if not accepted:
+        return None
+    total = 0
+    have_any = False
+    for usage in (proposal_usage, diagnosis_usage):
+        value = usage.get("total_tokens")
+        if isinstance(value, int):
+            total += value
+            have_any = True
+    return total if have_any else None
 
 
 def _proposal_parse_status(manifest_record: dict[str, Any], proposal_missing: bool) -> str:
@@ -531,6 +592,7 @@ def evaluate_a_box_case(
     world_state_entry: Optional[dict[str, Any]],
     proposal: Any,
     manifest_record: dict[str, Any],
+    diagnosis_manifest_record: dict[str, Any],
     popularity_bucket: str,
     ablation_bundle: Optional[str],
 ) -> dict[str, Any]:
@@ -572,17 +634,25 @@ def evaluate_a_box_case(
         elif historical_action != "DELETE" and not after_target:
             info_preservation = -0.5
     functional_success = bool(executable and exact_value_match)
-    accepted = bool(functional_success and regression_pass)
-    provenance = proposal.provenance if proposal is not None else []
+    auditability = _auditability_status(proposal)
+    accepted = bool(functional_success and regression_pass and auditability["auditability_complete"])
+    proposal_usage = _token_usage_from_sources(manifest_record, proposal)
+    diagnosis_usage = _token_usage(diagnosis_manifest_record)
+    conversion_attempted = _proposal_attempted(parse_status, not proposal_missing, manifest_record)
     metrics = {
         "functional_success": 1.0 if functional_success else 0.0,
         "exact_historical_agreement": 1.0 if exact_action_match and exact_value_match else 0.0,
         "semantic_success": None,
         "information_preservation": info_preservation,
-        "provenance_completeness": _provenance_completeness(provenance),
-        "token_usage": _token_usage(manifest_record),
-        "conversion_rate": None,
-        "tokens_to_fix": None,
+        "provenance_completeness": auditability["provenance_completeness"],
+        "auditability_complete": 1.0 if auditability["auditability_complete"] else 0.0,
+        "token_usage": proposal_usage,
+        "conversion_rate": (1.0 if accepted else 0.0) if conversion_attempted else None,
+        "tokens_to_fix": _tokens_to_fix(
+            accepted=accepted,
+            proposal_usage=proposal_usage,
+            diagnosis_usage=diagnosis_usage,
+        ),
     }
     return {
         "case_id": record["id"],
@@ -611,6 +681,11 @@ def evaluate_a_box_case(
             "supported_violations_after": supported_violations_after,
             "historical_action": record.get("repair_target", {}).get("action"),
             "expected_target_values": _expected_target_values(record),
+            "rationale_present": auditability["rationale_present"],
+            "provenance_present": auditability["provenance_present"],
+            "uncertainty_present": auditability["uncertainty_present"],
+            "proposal_token_usage": proposal_usage,
+            "diagnosis_token_usage": diagnosis_usage,
             **_proposal_error_details(manifest_record),
         },
     }
@@ -621,6 +696,7 @@ def evaluate_t_box_case(
     world_state_entry: Optional[dict[str, Any]],
     proposal: Any,
     manifest_record: dict[str, Any],
+    diagnosis_manifest_record: dict[str, Any],
     popularity_bucket: str,
     ablation_bundle: Optional[str],
 ) -> dict[str, Any]:
@@ -669,16 +745,26 @@ def evaluate_t_box_case(
             proposal=proposal,
             current_values=_world_state_target_values(world_state_entry, target_pid),
         )
-    accepted = bool(valid and executable and exact_reform_match)
+    auditability = _auditability_status(proposal)
+    proposal_usage = _token_usage_from_sources(manifest_record, proposal)
+    diagnosis_usage = _token_usage(diagnosis_manifest_record)
+    parse_status = _proposal_parse_status(manifest_record, proposal_missing)
+    conversion_attempted = _proposal_attempted(parse_status, not proposal_missing, manifest_record)
+    accepted = bool(valid and executable and exact_reform_match and auditability["auditability_complete"])
     metrics = {
         "functional_success": 1.0 if accepted else 0.0,
         "exact_historical_agreement": 1.0 if exact_reform_match else 0.0,
         "semantic_success": 1.0 if semantic_success else 0.0,
         "information_preservation": None,
-        "provenance_completeness": _provenance_completeness(proposal.provenance if proposal else []),
-        "token_usage": _token_usage(manifest_record),
-        "conversion_rate": None,
-        "tokens_to_fix": None,
+        "provenance_completeness": auditability["provenance_completeness"],
+        "auditability_complete": 1.0 if auditability["auditability_complete"] else 0.0,
+        "token_usage": proposal_usage,
+        "conversion_rate": (1.0 if accepted else 0.0) if conversion_attempted else None,
+        "tokens_to_fix": _tokens_to_fix(
+            accepted=accepted,
+            proposal_usage=proposal_usage,
+            diagnosis_usage=diagnosis_usage,
+        ),
         "exact_action_match": 1.0 if exact_action_match else 0.0,
         "exact_signature_match": 1.0 if exact_signature_match else 0.0,
         "changed_constraint_type_hit": 1.0 if changed_constraint_type_hit else 0.0,
@@ -698,7 +784,7 @@ def evaluate_t_box_case(
         "proposal_present": not proposal_missing,
         "proposal_valid": valid,
         "proposal_executable": executable,
-        "parse_status": _proposal_parse_status(manifest_record, proposal_missing),
+        "parse_status": parse_status,
         "semantic_success": semantic_success,
         "accepted": accepted,
         "comparison": {
@@ -712,6 +798,11 @@ def evaluate_t_box_case(
         "metrics": metrics,
         "details": {
             "proposal_admits_current_values": proposal_admits_current_values,
+            "rationale_present": auditability["rationale_present"],
+            "provenance_present": auditability["provenance_present"],
+            "uncertainty_present": auditability["uncertainty_present"],
+            "proposal_token_usage": proposal_usage,
+            "diagnosis_token_usage": diagnosis_usage,
             **_proposal_error_details(manifest_record),
         },
     }
@@ -777,6 +868,9 @@ def summarize_trace_iterable(
                 "semantic_success",
                 "information_preservation",
                 "provenance_completeness",
+                "auditability_complete",
+                "conversion_rate",
+                "tokens_to_fix",
                 "exact_action_match",
                 "exact_signature_match",
                 "changed_constraint_type_hit",
@@ -822,6 +916,9 @@ def summarize_trace_iterable(
                 "semantic_success_rate": avg("semantic_success"),
                 "information_preservation_mean": avg("information_preservation"),
                 "provenance_completeness_mean": avg("provenance_completeness"),
+                "auditability_complete_rate": avg("auditability_complete"),
+                "conversion_rate": avg("conversion_rate"),
+                "tokens_to_fix_mean": avg("tokens_to_fix"),
                 "exact_action_match_rate": avg("exact_action_match"),
                 "exact_signature_match_rate": avg("exact_signature_match"),
                 "changed_constraint_type_hit_rate": avg("changed_constraint_type_hit"),
@@ -830,6 +927,9 @@ def summarize_trace_iterable(
                 "metric_applicability": {
                     "semantic_success": self.metric_counts.get("semantic_success", 0),
                     "information_preservation": self.metric_counts.get("information_preservation", 0),
+                    "auditability_complete": self.metric_counts.get("auditability_complete", 0),
+                    "conversion_rate": self.metric_counts.get("conversion_rate", 0),
+                    "tokens_to_fix": self.metric_counts.get("tokens_to_fix", 0),
                     "exact_action_match": self.metric_counts.get("exact_action_match", 0),
                     "exact_signature_match": self.metric_counts.get("exact_signature_match", 0),
                     "changed_constraint_type_hit": self.metric_counts.get("changed_constraint_type_hit", 0),
@@ -878,6 +978,9 @@ def summarize_trace_iterable(
         for metric_name in (
             "semantic_success",
             "information_preservation",
+            "auditability_complete",
+            "conversion_rate",
+            "tokens_to_fix",
             "exact_action_match",
             "exact_signature_match",
             "changed_constraint_type_hit",
@@ -989,6 +1092,7 @@ def evaluate_benchmark(
                     world_state_entry,
                     t_box_proposals.get(case_id),
                     manifest_record,
+                    diagnosis_manifest_record,
                     popularity_bucket,
                     ablation_bundle,
                 )
@@ -998,6 +1102,7 @@ def evaluate_benchmark(
                     world_state_entry,
                     a_box_proposals.get(case_id),
                     manifest_record,
+                    diagnosis_manifest_record,
                     popularity_bucket,
                     ablation_bundle,
                 )

@@ -100,7 +100,10 @@ class EvaluatorTests(unittest.TestCase):
                     {
                         "case_id": "repair_case",
                         "target": {"qid": "Q1", "pid": "P31"},
-                        "ops": [{"op": "SET", "pid": "P31", "value": "Q5"}]
+                        "ops": [{"op": "SET", "pid": "P31", "value": "Q5"}],
+                        "rationale": "Replace the invalid target value with the historical repair value.",
+                        "provenance": [{"kind": "KG", "node_id": "Q5", "snippet": "historical value"}],
+                        "uncertainty": {"confidence": 0.1, "notes": "Historical target is explicit."},
                     }
                 ],
             )
@@ -120,7 +123,10 @@ class EvaluatorTests(unittest.TestCase):
                                     "qualifiers": [{"property_id": "P2305", "values": ["Q5", "Q43229"]}]
                                 }
                             ]
-                        }
+                        },
+                        "rationale": "Expand the allowed set to match the historical repair.",
+                        "provenance": [{"kind": "KG", "node_id": "Q21510859", "snippet": "historical constraint family"}],
+                        "uncertainty": {"confidence": 0.15, "notes": "Signature order is deterministic after normalization."},
                     }
                 ],
             )
@@ -211,11 +217,17 @@ class EvaluatorTests(unittest.TestCase):
                         "case_id": "repair_case_1",
                         "target": {"qid": "Q1", "pid": "P31"},
                         "ops": [{"op": "SET", "pid": "P31", "value": "Q5"}],
+                        "rationale": "Historical repair value.",
+                        "provenance": [{"kind": "KG", "node_id": "Q5"}],
+                        "uncertainty": {"confidence": 0.1},
                     },
                     {
                         "case_id": "repair_case_2",
                         "target": {"qid": "Q2", "pid": "P31"},
                         "ops": [{"op": "SET", "pid": "P31", "value": "Q6"}],
+                        "rationale": "Historical repair value.",
+                        "provenance": [{"kind": "KG", "node_id": "Q6"}],
+                        "uncertainty": {"confidence": 0.1},
                     },
                 ],
             )
@@ -280,6 +292,9 @@ class EvaluatorTests(unittest.TestCase):
                         "case_id": "repair_case",
                         "target": {"qid": "Q1", "pid": "P31"},
                         "ops": [{"op": "SET", "pid": "P31", "value": "Q5"}],
+                        "rationale": "Historical repair value.",
+                        "provenance": [{"kind": "KG", "node_id": "Q5"}],
+                        "uncertainty": {"confidence": 0.1},
                     }
                 ],
             )
@@ -363,6 +378,9 @@ class EvaluatorTests(unittest.TestCase):
                                 }
                             ],
                         },
+                        "rationale": "Use the same reform family as the historical edit.",
+                        "provenance": [{"kind": "KG", "node_id": "Q21510859"}],
+                        "uncertainty": {"confidence": 0.4},
                     }
                 ],
             )
@@ -474,6 +492,9 @@ class EvaluatorTests(unittest.TestCase):
                                 }
                             ],
                         },
+                        "rationale": "Exact signature but the wrong reform action.",
+                        "provenance": [{"kind": "KG", "node_id": "Q21510859"}],
+                        "uncertainty": {"confidence": 0.3},
                     }
                 ],
             )
@@ -511,7 +532,10 @@ class EvaluatorTests(unittest.TestCase):
                         "semantic_success": 1.0,
                         "information_preservation": None,
                         "provenance_completeness": 1.0,
+                        "auditability_complete": 1.0,
                         "token_usage": {"total_tokens": 30},
+                        "conversion_rate": 0.0,
+                        "tokens_to_fix": None,
                         "exact_action_match": 1.0,
                         "exact_signature_match": 0.0,
                         "changed_constraint_type_hit": 1.0,
@@ -526,7 +550,10 @@ class EvaluatorTests(unittest.TestCase):
         )
 
         self.assertEqual(summary["counts"]["exact_action_match_applicable"], 1)
+        self.assertEqual(summary["counts"]["conversion_rate_applicable"], 1)
         self.assertEqual(summary["counts"]["signature_after_jaccard_applicable"], 1)
+        self.assertEqual(summary["overall_metrics"]["auditability_complete_rate"], 1.0)
+        self.assertEqual(summary["overall_metrics"]["conversion_rate"], 0.0)
         self.assertEqual(summary["overall_metrics"]["exact_action_match_rate"], 1.0)
         self.assertEqual(summary["overall_metrics"]["signature_after_jaccard_mean"], 0.5)
         self.assertEqual(summary["overall_metrics"]["proposal_admits_current_values_rate"], 1.0)
@@ -552,7 +579,10 @@ class EvaluatorTests(unittest.TestCase):
                         "semantic_success": None,
                         "information_preservation": 0.0,
                         "provenance_completeness": 0.0,
+                        "auditability_complete": 0.0,
                         "token_usage": {"total_tokens": 30},
+                        "conversion_rate": 0.0,
+                        "tokens_to_fix": None,
                     },
                     "details": {"parser_error": "provenance must be a list."},
                     "track_diagnosis": {"present": True, "exact_track_match": True, "ambiguous_prediction": False},
@@ -566,6 +596,151 @@ class EvaluatorTests(unittest.TestCase):
         self.assertEqual(summary["parse_errors"]["by_message"]["provenance must be a list."], 1)
         self.assertEqual(summary["overall_metrics"]["proposal_parse_error_count"], 1)
         self.assertEqual(summary["overall_metrics"]["proposal_parse_error_rate"], 1.0)
+
+    def test_a_box_acceptance_requires_auditability_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            classified_path = root / "classified.jsonl"
+            world_state_path = root / "world_state.json"
+            a_box_path = root / "a_box.jsonl"
+
+            self._write_jsonl(
+                classified_path,
+                [
+                    {
+                        "id": "repair_case",
+                        "qid": "Q1",
+                        "property": "P31",
+                        "track": "A_BOX",
+                        "labels_en": {},
+                        "violation_context": {"value": ["Q2"]},
+                        "repair_target": {"action": "UPDATE", "old_value": ["Q2"], "new_value": ["Q5"]},
+                        "persistence_check": {},
+                        "popularity": {"score": 0.5},
+                        "classification": {"class": "TypeB", "subtype": "LOCAL_NEIGHBOR_IDS"},
+                    }
+                ],
+            )
+            world_state_path.write_text(
+                json.dumps(
+                    {
+                        "repair_case": {
+                            "L1_ego_node": {"properties": {"P31": ["Q2"]}},
+                            "L4_constraints": {"constraints": []},
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            self._write_jsonl(
+                a_box_path,
+                [
+                    {
+                        "case_id": "repair_case",
+                        "target": {"qid": "Q1", "pid": "P31"},
+                        "ops": [{"op": "SET", "pid": "P31", "value": "Q5"}],
+                    }
+                ],
+            )
+
+            traces, _summary = evaluate_benchmark(
+                classified_path=classified_path,
+                world_state_path=world_state_path,
+                a_box_proposals_path=a_box_path,
+            )
+
+            trace = traces[0]
+            self.assertFalse(trace["accepted"])
+            self.assertEqual(trace["metrics"]["auditability_complete"], 0.0)
+            self.assertEqual(trace["details"]["rationale_present"], False)
+            self.assertEqual(trace["details"]["provenance_present"], False)
+            self.assertEqual(trace["details"]["uncertainty_present"], False)
+
+    def test_tokens_to_fix_sums_diagnosis_and_proposal_tokens_for_accepted_cases(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            classified_path = root / "classified.jsonl"
+            world_state_path = root / "world_state.json"
+            a_box_path = root / "a_box.jsonl"
+            track_path = root / "track.jsonl"
+            manifest_path = root / "manifest.jsonl"
+
+            self._write_jsonl(
+                classified_path,
+                [
+                    {
+                        "id": "repair_case",
+                        "qid": "Q1",
+                        "property": "P31",
+                        "track": "A_BOX",
+                        "labels_en": {},
+                        "violation_context": {"value": ["Q2"]},
+                        "repair_target": {"action": "UPDATE", "old_value": ["Q2"], "new_value": ["Q5"]},
+                        "persistence_check": {},
+                        "popularity": {"score": 0.5},
+                        "classification": {"class": "TypeB", "subtype": "LOCAL_NEIGHBOR_IDS"},
+                    }
+                ],
+            )
+            world_state_path.write_text(
+                json.dumps(
+                    {
+                        "repair_case": {
+                            "L1_ego_node": {"properties": {"P31": ["Q2"]}},
+                            "L4_constraints": {"constraints": []},
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            self._write_jsonl(
+                a_box_path,
+                [
+                    {
+                        "case_id": "repair_case",
+                        "target": {"qid": "Q1", "pid": "P31"},
+                        "ops": [{"op": "SET", "pid": "P31", "value": "Q5"}],
+                        "rationale": "Historical repair value.",
+                        "provenance": [{"kind": "KG", "node_id": "Q5"}],
+                        "uncertainty": {"confidence": 0.1},
+                    }
+                ],
+            )
+            self._write_jsonl(track_path, [{"case_id": "repair_case", "predicted_track": "A_BOX"}])
+            self._write_jsonl(
+                manifest_path,
+                [
+                    {
+                        "case_id": "repair_case",
+                        "ablation_bundle": "minimal_case",
+                        "task_type": "proposal",
+                        "parse_status": "normalized",
+                        "usage": {"total_tokens": 17},
+                    },
+                    {
+                        "case_id": "repair_case",
+                        "ablation_bundle": "minimal_case",
+                        "task_type": "track_diagnosis",
+                        "parse_status": "normalized",
+                        "usage": {"total_tokens": 5},
+                    },
+                ],
+            )
+
+            traces, summary = evaluate_benchmark(
+                classified_path=classified_path,
+                world_state_path=world_state_path,
+                a_box_proposals_path=a_box_path,
+                track_diagnoses_path=track_path,
+                run_manifest_path=manifest_path,
+                ablation_bundle="minimal_case",
+            )
+
+            trace = traces[0]
+            self.assertEqual(trace["metrics"]["conversion_rate"], 1.0)
+            self.assertEqual(trace["metrics"]["tokens_to_fix"], 22)
+            self.assertEqual(summary["overall_metrics"]["conversion_rate"], 1.0)
+            self.assertEqual(summary["overall_metrics"]["tokens_to_fix_mean"], 22.0)
 
 
 if __name__ == "__main__":

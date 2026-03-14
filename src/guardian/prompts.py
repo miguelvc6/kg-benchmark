@@ -42,9 +42,11 @@ PROMPT_TEMPLATES: dict[str, PromptTemplate] = {
   ]
 }
 
-Optional fields: "rationale", "provenance", "metadata".
-If "provenance" is present, it must be an array of objects such as:
+Also include: "rationale", "provenance", and "uncertainty".
+"provenance" must be an array of objects such as:
 [{"kind":"KG","node_id":"Q5","snippet":"historical target"}]
+"uncertainty" must be an object such as:
+{"confidence": 0.15, "notes": "Low confidence because only local evidence is visible."}
 
 Rules:
 - Copy "case_id" exactly from the input case.
@@ -62,7 +64,8 @@ Example:
     {"op": "SET", "pid": "P31", "value": "Q5"}
   ],
   "rationale": "Replace the invalid type with the historical repaired value.",
-  "provenance": [{"kind": "KG", "node_id": "Q5", "snippet": "historical target"}]
+  "provenance": [{"kind": "KG", "node_id": "Q5", "snippet": "historical target"}],
+  "uncertainty": {"confidence": 0.15, "notes": "The local constraint context is sparse."}
 }
 
 Input case:
@@ -97,9 +100,11 @@ Input case:
   }
 }
 
-Optional fields: "rationale", "provenance", "metadata".
-If "provenance" is present, it must be an array of objects such as:
+Also include: "rationale", "provenance", and "uncertainty".
+"provenance" must be an array of objects such as:
 [{"kind":"KG","node_id":"Q21510859","snippet":"current constraint type"}]
+"uncertainty" must be an object such as:
+{"confidence": 0.20, "notes": "The exact historical signature may have alternative equivalent forms."}
 
 Rules:
 - Copy "case_id" exactly from the input case.
@@ -130,7 +135,8 @@ Example:
     ]
   },
   "rationale": "Expand the allowed set to include the historical repaired classes.",
-  "provenance": [{"kind": "KG", "node_id": "Q21510859", "snippet": "current constraint type"}]
+  "provenance": [{"kind": "KG", "node_id": "Q21510859", "snippet": "current constraint type"}],
+  "uncertainty": {"confidence": 0.20, "notes": "The exact historical signature may have equivalent reorderings."}
 }
 
 Input case:

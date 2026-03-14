@@ -178,6 +178,18 @@ class PatchParserTests(unittest.TestCase):
             ],
         )
 
+    def test_uncertainty_object_is_normalized(self) -> None:
+        proposal = self._base_proposal()
+        proposal["uncertainty"] = {"confidence": "0.2", "notes": "Sparse evidence"}
+        normalized = normalize_proposal(proposal, schema=self.schema)
+        self.assertEqual(normalized.uncertainty, {"confidence": 0.2, "notes": "Sparse evidence"})
+
+    def test_top_level_confidence_is_coerced_into_uncertainty(self) -> None:
+        proposal = self._base_proposal()
+        proposal["confidence"] = "high"
+        normalized = normalize_proposal(proposal, schema=self.schema)
+        self.assertEqual(normalized.uncertainty, {"confidence": 0.75})
+
 
 if __name__ == "__main__":
     unittest.main()
