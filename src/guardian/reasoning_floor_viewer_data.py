@@ -272,7 +272,17 @@ def build_case_prompt_debug(bundle_data: BundleDebugData, case_id: str) -> CaseP
             world_state_entry = store.get(case_id)
 
     try:
-        proposal_prompt = build_prompt_bundle(case_row.record, world_state_entry, bundle_data.bundle_name)
+        proposal_track_used = None
+        if isinstance(case_row.proposal_manifest, dict):
+            manifest_track = case_row.proposal_manifest.get("proposal_track_used")
+            if isinstance(manifest_track, str) and manifest_track in {"A_BOX", "T_BOX"}:
+                proposal_track_used = manifest_track
+        proposal_prompt = build_prompt_bundle(
+            case_row.record,
+            world_state_entry,
+            bundle_data.bundle_name,
+            proposal_track=proposal_track_used,
+        )
         diagnosis_prompt = build_track_diagnosis_prompt_bundle(
             case_row.record,
             world_state_entry,

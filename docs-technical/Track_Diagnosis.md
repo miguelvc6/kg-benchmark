@@ -16,7 +16,7 @@ It answers a higher-level question:
 
 - `guardian.track_parser`: normalization for diagnosis outputs
 - `schemas/track_diagnosis.schema.json`: public diagnosis contract
-- `src/reasoning_floor.py`: generates zero-shot diagnosis outputs
+- `src/reasoning_floor.py`: generates zero-shot diagnosis outputs and can optionally route proposal generation through them
 - `src/evaluate.py`: scores diagnosis outputs against the historical benchmark track
 
 ## Output Contract
@@ -50,3 +50,20 @@ First-wave outputs include:
 Reasoning-floor summaries now also surface proposal parser failure counts and exact-vs-semantic T-box success alongside diagnosis metrics, so diagnosis quality can be interpreted next to proposal execution quality from the same top-level report.
 
 `AMBIGUOUS` is preserved as a legitimate model output, but it does not count as an exact match against historical `A_BOX` or `T_BOX`.
+
+## Proposal Routing
+
+`src/reasoning_floor.py` now exposes:
+
+- `--proposal-track-mode oracle`
+- `--proposal-track-mode diagnosis_routed`
+
+`oracle` keeps proposal prompting on the historical benchmark track.
+
+`diagnosis_routed` runs diagnosis first for every case and bundle, then:
+
+- routes proposal generation to the diagnosed `A_BOX` or `T_BOX` track
+- skips proposal generation when diagnosis returns `AMBIGUOUS`
+- records `historical_track`, `proposal_track_used`, and `routing_source` in raw and manifest artifacts
+
+Skipped routed proposals are still visible in run artifacts with synthetic proposal rows, so downstream evaluation and viewer tooling can distinguish `AMBIGUOUS` routing skips from parser failures or missing provider results.

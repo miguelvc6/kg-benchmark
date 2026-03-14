@@ -6,7 +6,7 @@ The zero-shot baseline runner is [reasoning_floor.py](/home/mvazquez/kg-benchmar
 
 This runner implements the pre-Guardian reasoning floor described in the conceptual docs.
 
-It executes one proposal call and one track-diagnosis call per case per ablation bundle, without tools, rejection sampling, or memory.
+It executes one track-diagnosis call per case per ablation bundle and then generates a proposal either from the historical track or from the diagnosed track, depending on `--proposal-track-mode`.
 
 It also executes a separate diagnostic call that asks the model to classify each case as `A_BOX`, `T_BOX`, or `AMBIGUOUS`.
 
@@ -18,9 +18,21 @@ The default execution mode is provider-aware. OpenAI runs default to batch mode,
 
 The first-wave bundles are:
 
-- `minimal_case`: Stage 4 case metadata only
-- `logic_only`: minimal case plus `L4_constraints`
-- `local_graph`: minimal case plus `L1` through `L4`
+- `minimal_case`: sanitized case-local payload only
+- `logic_only`: sanitized case-local payload plus pruned touched `L4_constraints`
+- `local_graph`: sanitized case-local payload plus pruned touched `L1` through `L4`
+
+Prompt payloads are now hard-sanitized before rendering. Model-visible inputs exclude benchmark-only fields such as:
+
+- `track`
+- `classification`
+- `persistence_check`
+- `repair_target`
+- `build`
+- `popularity`
+- post-hoc `truth_*` and `*_current_2026*` fields
+
+The pruned `logic_only` and `local_graph` bundles keep only constraint and graph context that is directly implicated by the current violation type, the current violating value, or the current target-property values in world state. Manifest rows record pruning audit counts such as `constraint_count_before`, `constraint_count_after`, and for `local_graph` also `edge_count_after` and `label_count_after`.
 
 ## Provider Interface
 
@@ -57,6 +69,7 @@ For provider API keys, use only the raw secret value in `.env`. Do not include t
 Execution CLI settings:
 
 - `--execution-mode sync|parallel|batch`
+- `--proposal-track-mode oracle|diagnosis_routed`
 - `--parallel-workers` for `parallel` mode
 - `--batch-completion-window` (defaults to `24h`)
 - `--batch-poll-interval-seconds` (defaults to `60`)
@@ -140,7 +153,22 @@ The runner also prints UTC-timestamped phase-level status lines for run startup,
 
 After generation completes, the runner shows a second `tqdm` bar for bundle evaluation so the terminal does not appear idle while per-bundle summaries and traces are still being computed.
 
-In synchronous mode, the runner streams Stage 4 cases from disk and appends raw responses, manifest rows, normalized proposals, and evaluation traces incrementally. In parallel mode, it keeps the same outputs but executes multiple cases concurrently with bounded in-flight work. In batch mode, it first writes provider batch-input artifacts, then reconstructs the normal reasoning-floor outputs from the completed batch results.
+In synchronous mode, the runner appends raw responses, manifest rows, normalized proposals, and evaluation traces incrementally over one stable ordered selected subset. In parallel mode, it keeps the same outputs but executes multiple cases concurrently with bounded in-flight work.
+
+In batch mode:
+
+- `--proposal-track-mode oracle` keeps the original one-stage batch flow
+- `--proposal-track-mode diagnosis_routed` uses a two-stage batch flow
+
+The two-stage flow writes:
+
+- `diagnosis_batch_input.jsonl`
+- `diagnosis_batch_request_manifest.jsonl`
+- `proposal_batch_input.jsonl`
+- `proposal_batch_request_manifest.jsonl`
+- provider batch artifacts renamed with `diagnosis_` and `proposal_` prefixes
+
+When `diagnosis_routed` predicts `AMBIGUOUS`, the runner does not submit a proposal request. It still writes synthetic raw/manifest proposal rows with `parse_status="skipped_ambiguous_track"` and `proposal_track_used="AMBIGUOUS"`.
 
 During evaluation, the runner now switches classified-benchmark access strategy by selected-case count:
 
@@ -153,11 +181,13 @@ This keeps small evaluation runs fast without rescanning the full Stage 4 file f
 
 `A_BOX` acceptance is still based on executable repairs that reproduce the historical repaired value without increasing supported constraint violations.
 
-`T_BOX` evaluation now separates exact and semantic success:
+`T_BOX` evaluation now separates exact, semantic, and proxy signals:
 
-- `accepted` and `functional_success` require an exact `signature_after` match
+- `accepted`, `functional_success`, and `exact_historical_agreement` require both exact action match and exact normalized `signature_after` match
 - `semantic_success` tracks action-level compatibility separately
-- `comparison.semantic_reform_match` is still preserved in traces, but it no longer drives `accepted`
+- traces also expose `comparison.exact_action_match`, `comparison.exact_signature_match`, `comparison.changed_constraint_type_hit`, `metrics.signature_after_jaccard`, and `details.proposal_admits_current_values` where applicable
+
+Grouped and overall summaries now expose metric applicability counts so T-box-only metrics can be interpreted with their true denominator.
 
 This prevents summaries from overstating T-box success when a proposal chose the right reform family but not the historical post-repair signature.
 

@@ -79,6 +79,41 @@ class BenchmarkSelectionTests(unittest.TestCase):
             )
             self.assertEqual(resolved, ["case_b"])
 
+    def test_resolve_case_id_filter_preserves_manifest_order(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            manifest_path = root / "selection.json"
+            manifest_path.write_text(
+                json.dumps(
+                    {
+                        "selected_case_ids": ["case_c", "case_a", "case_b"],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            resolved = resolve_case_id_filter(selection_manifest_path=manifest_path)
+            self.assertEqual(resolved, ["case_c", "case_a", "case_b"])
+
+    def test_resolve_case_id_filter_preserves_manifest_relative_order_when_intersecting(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            manifest_path = root / "selection.json"
+            manifest_path.write_text(
+                json.dumps(
+                    {
+                        "selected_case_ids": ["case_c", "case_a", "case_b"],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            resolved = resolve_case_id_filter(
+                case_ids=["case_b", "case_c"],
+                selection_manifest_path=manifest_path,
+            )
+            self.assertEqual(resolved, ["case_c", "case_b"])
+
 
 if __name__ == "__main__":
     unittest.main()

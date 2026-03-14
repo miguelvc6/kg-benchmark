@@ -3,17 +3,18 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import time
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from contextlib import ExitStack
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
 from tqdm import tqdm
 
-from classifier import WorldStateStore
+from classifier import VIOLATION_TO_CONSTRAINT_MAP, WorldStateStore
 from guardian.evaluator import evaluate_benchmark, summarize_trace_iterable, write_json
 from guardian.model_provider import BatchModelProvider, ModelProvider, create_model_provider
 from guardian.patch_parser import load_schema as load_a_box_schema
@@ -24,7 +25,7 @@ from guardian.tbox_parser import normalize_proposal as normalize_t_box_proposal
 from guardian.track_parser import load_schema as load_track_schema
 from guardian.track_parser import normalize_diagnosis
 from lib.benchmark_selection import resolve_case_id_filter
-from lib.utils import iter_jsonl
+from lib.utils import iter_jsonl, normalize_text
 
 
 def _utc_now() -> str:
@@ -34,6 +35,10 @@ def _utc_now() -> str:
 ABLATION_BUNDLES = ("minimal_case", "logic_only", "local_graph")
 OPENAI_BATCH_COST_ESTIMATION_MULTIPLIER = 0.5
 EVALUATION_IN_MEMORY_CASE_THRESHOLD = 10_000
+GENERATION_IN_MEMORY_CASE_THRESHOLD = 10_000
+PROPERTY_SCOPE_CONSTRAINT_QID = "Q53869507"
+ALLOWED_ENTITY_TYPES_CONSTRAINT_QID = "Q52004125"
+UNROUTABLE_TRACK = "UNROUTABLE"
 
 
 def _slugify(value: str) -> str:
@@ -205,6 +210,12 @@ class RequestExecutionResult:
     elapsed_seconds: float
 
 
+@dataclass(frozen=True)
+class CasePipelineOutcome:
+    request_results: list[RequestExecutionResult]
+    skipped_proposals: list[dict[str, Any]]
+
+
 def _execute_case_requests(
     provider: ModelProvider,
     requests_to_run: list[tuple[PromptBundle, dict[str, Any]]],
@@ -246,37 +257,310 @@ class PromptBundle:
     prompt: str
     system_prompt: str
     response_format: dict[str, Any]
+    context_audit: dict[str, Any] = field(default_factory=dict)
 
 
-def _base_case_payload(record: dict[str, Any]) -> dict[str, Any]:
+def _iter_leaf_strings(value: Any) -> Iterable[str]:
+    if value is None:
+        return
+    if isinstance(value, bool):
+        yield "true" if value else "false"
+        return
+    if isinstance(value, (int, float)):
+        yield str(value)
+        return
+    if isinstance(value, str):
+        text = value.strip()
+        if text:
+            yield text
+        return
+    if isinstance(value, list):
+        for item in value:
+            yield from _iter_leaf_strings(item)
+        return
+    if isinstance(value, dict):
+        for key in ("qid", "pid", "property_id", "target_qid", "target_pid", "id", "raw", "value"):
+            if key in value:
+                yield from _iter_leaf_strings(value[key])
+        for item in value.values():
+            yield from _iter_leaf_strings(item)
+
+
+def _sanitized_violation_context(record: dict[str, Any]) -> dict[str, Any]:
+    violation_context = record.get("violation_context")
+    if not isinstance(violation_context, dict):
+        return {}
+    sanitized: dict[str, Any] = {}
+    for key in (
+        "report_violation_type",
+        "report_violation_type_normalized",
+        "report_violation_type_raw",
+        "report_violation_type_qids",
+        "report_page_title",
+        "value",
+        "value_labels_en",
+        "value_descriptions_en",
+    ):
+        value = violation_context.get(key)
+        if value is not None:
+            sanitized[key] = value
+    return sanitized
+
+
+def _constraint_type_qid(constraint: dict[str, Any]) -> str | None:
+    if not isinstance(constraint, dict):
+        return None
+    constraint_type = constraint.get("constraint_type")
+    if not isinstance(constraint_type, dict):
+        return None
+    qid = constraint_type.get("qid")
+    if isinstance(qid, str) and qid:
+        return qid
+    return None
+
+
+def _current_target_values(record: dict[str, Any], world_state_entry: Optional[dict[str, Any]]) -> list[str]:
+    if not isinstance(world_state_entry, dict):
+        return []
+    l1_node = world_state_entry.get("L1_ego_node")
+    if not isinstance(l1_node, dict):
+        return []
+    properties = l1_node.get("properties")
+    if not isinstance(properties, dict):
+        return []
+    target_pid = record.get("property")
+    if not isinstance(target_pid, str) or target_pid not in properties:
+        return []
+    return list(dict.fromkeys(_iter_leaf_strings(properties.get(target_pid))))
+
+
+def _violation_values(record: dict[str, Any]) -> list[str]:
+    return list(dict.fromkeys(_iter_leaf_strings(_sanitized_violation_context(record).get("value"))))
+
+
+def _mapped_constraint_qid(record: dict[str, Any]) -> str | None:
+    violation_context = _sanitized_violation_context(record)
+    raw_value = violation_context.get("report_violation_type_normalized") or violation_context.get("report_violation_type")
+    if not isinstance(raw_value, str):
+        return None
+    normalized_mapping = {normalize_text(key): value for key, value in VIOLATION_TO_CONSTRAINT_MAP.items()}
+    return normalized_mapping.get(normalize_text(raw_value))
+
+
+def _constraint_mentions_tokens(constraint: dict[str, Any], tokens: set[str]) -> bool:
+    if not tokens:
+        return False
+    normalized_tokens = {normalize_text(token) for token in tokens if token}
+    if not normalized_tokens:
+        return False
+    for leaf in _iter_leaf_strings(constraint):
+        normalized_leaf = normalize_text(leaf)
+        if not normalized_leaf:
+            continue
+        if normalized_leaf in normalized_tokens:
+            return True
+        if any(token in normalized_leaf for token in normalized_tokens):
+            return True
+    return False
+
+
+def _fallback_constraints(constraints: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    selected: list[dict[str, Any]] = []
+    seen_qids: set[str] = set()
+    property_scope = next(
+        (
+            constraint
+            for constraint in constraints
+            if _constraint_type_qid(constraint) == PROPERTY_SCOPE_CONSTRAINT_QID
+        ),
+        None,
+    )
+    if property_scope is not None:
+        selected.append(property_scope)
+        seen_qids.add(PROPERTY_SCOPE_CONSTRAINT_QID)
+    for constraint in constraints:
+        qid = _constraint_type_qid(constraint) or f"__fallback_{len(seen_qids)}"
+        if qid in seen_qids:
+            continue
+        selected.append(constraint)
+        seen_qids.add(qid)
+        if len(selected) >= 5:
+            break
+    return selected
+
+
+def _pruned_constraints_payload(
+    record: dict[str, Any],
+    world_state_entry: Optional[dict[str, Any]],
+) -> tuple[Optional[dict[str, Any]], dict[str, Any]]:
+    constraints_payload = {}
+    if isinstance(world_state_entry, dict):
+        raw_payload = world_state_entry.get("L4_constraints")
+        if isinstance(raw_payload, dict):
+            constraints_payload = dict(raw_payload)
+    constraints = constraints_payload.get("constraints")
+    if not isinstance(constraints, list):
+        constraints = []
+    valid_constraints = [constraint for constraint in constraints if isinstance(constraint, dict)]
+    audit = {
+        "constraint_count_before": len(valid_constraints),
+        "constraint_count_after": 0,
+    }
+    if not valid_constraints:
+        if constraints_payload:
+            constraints_payload["constraints"] = []
+            return constraints_payload, audit
+        return None, audit
+
+    mapped_constraint_qid = _mapped_constraint_qid(record)
+    referenced_tokens = set(_violation_values(record)) | set(_current_target_values(record, world_state_entry))
+    kept_constraints: list[dict[str, Any]] = []
+    for constraint in valid_constraints:
+        constraint_qid = _constraint_type_qid(constraint)
+        if mapped_constraint_qid and constraint_qid == mapped_constraint_qid:
+            kept_constraints.append(constraint)
+            continue
+        if constraint_qid in {PROPERTY_SCOPE_CONSTRAINT_QID, ALLOWED_ENTITY_TYPES_CONSTRAINT_QID}:
+            kept_constraints.append(constraint)
+            continue
+        if _constraint_mentions_tokens(constraint, referenced_tokens):
+            kept_constraints.append(constraint)
+
+    if not kept_constraints:
+        kept_constraints = _fallback_constraints(valid_constraints)
+
+    pruned_payload = dict(constraints_payload)
+    pruned_payload["constraints"] = kept_constraints
+    audit["constraint_count_after"] = len(kept_constraints)
+    return pruned_payload, audit
+
+
+def _pruned_l1_ego_node(record: dict[str, Any], world_state_entry: Optional[dict[str, Any]]) -> Optional[dict[str, Any]]:
+    if not isinstance(world_state_entry, dict):
+        return None
+    l1_node = world_state_entry.get("L1_ego_node")
+    if not isinstance(l1_node, dict):
+        return None
+    target_pid = record.get("property")
+    sanitized = {
+        "qid": l1_node.get("qid"),
+        "label": l1_node.get("label"),
+        "description": l1_node.get("description"),
+        "sitelinks_count": l1_node.get("sitelinks_count"),
+    }
+    properties = l1_node.get("properties")
+    if isinstance(properties, dict) and isinstance(target_pid, str) and target_pid in properties:
+        sanitized["properties"] = {target_pid: properties.get(target_pid)}
+    return {key: value for key, value in sanitized.items() if value not in (None, {}, [])}
+
+
+def _collect_reference_ids(value: Any) -> set[str]:
+    return {token for token in _iter_leaf_strings(value) if token.startswith(("Q", "P"))}
+
+
+def _edge_matches_references(edge: dict[str, Any], target_pid: str | None, references: set[str]) -> bool:
+    if not isinstance(edge, dict):
+        return False
+    property_id = edge.get("property_id") or edge.get("pid")
+    if isinstance(target_pid, str) and property_id == target_pid:
+        return True
+    return bool(_collect_reference_ids(edge) & references)
+
+
+def _pruned_l2_labels(labels_payload: Any, references: set[str]) -> tuple[Any, int]:
+    if not isinstance(labels_payload, dict):
+        return labels_payload, 0
+    entities = labels_payload.get("entities")
+    if isinstance(entities, dict):
+        kept = {key: value for key, value in entities.items() if key in references}
+        return {**labels_payload, "entities": kept}, len(kept)
+    kept = {key: value for key, value in labels_payload.items() if key in references}
+    return kept, len(kept)
+
+
+def _pruned_local_context(
+    record: dict[str, Any],
+    world_state_entry: Optional[dict[str, Any]],
+) -> tuple[Optional[dict[str, Any]], dict[str, Any]]:
+    l4_constraints, constraint_audit = _pruned_constraints_payload(record, world_state_entry)
+    if not isinstance(world_state_entry, dict):
+        audit = {
+            **constraint_audit,
+            "edge_count_after": 0,
+            "label_count_after": 0,
+        }
+        return None, audit
+
+    l1_ego_node = _pruned_l1_ego_node(record, world_state_entry)
+    references = _collect_reference_ids(l1_ego_node) | _collect_reference_ids(l4_constraints)
+    references.add(record.get("qid")) if isinstance(record.get("qid"), str) else None
+    if isinstance(record.get("property"), str):
+        references.add(record["property"])
+
+    outgoing_edges = []
+    l3_payload = world_state_entry.get("L3_neighborhood")
+    if isinstance(l3_payload, dict):
+        for edge in l3_payload.get("outgoing_edges", []):
+            if _edge_matches_references(edge, record.get("property"), references):
+                outgoing_edges.append(edge)
+                references.update(_collect_reference_ids(edge))
+
+    l2_payload, label_count_after = _pruned_l2_labels(world_state_entry.get("L2_labels"), references)
+
+    local_context = {
+        "L1_ego_node": l1_ego_node,
+        "L2_labels": l2_payload,
+        "L3_neighborhood": {"outgoing_edges": outgoing_edges},
+        "L4_constraints": l4_constraints,
+    }
+    audit = {
+        **constraint_audit,
+        "edge_count_after": len(outgoing_edges),
+        "label_count_after": label_count_after,
+    }
+    return local_context, audit
+
+
+def _sanitized_case_payload(record: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": record.get("id"),
         "qid": record.get("qid"),
         "property": record.get("property"),
-        "track": record.get("track"),
-        "classification": record.get("classification"),
         "labels_en": record.get("labels_en"),
-        "violation_context": record.get("violation_context"),
-        "persistence_check": record.get("persistence_check"),
+        "violation_context": _sanitized_violation_context(record),
     }
 
 
-def build_prompt_bundle(record: dict[str, Any], world_state_entry: Optional[dict[str, Any]], bundle: str) -> PromptBundle:
+def _bundle_payload_and_audit(
+    record: dict[str, Any],
+    world_state_entry: Optional[dict[str, Any]],
+    bundle: str,
+) -> tuple[dict[str, Any], dict[str, Any]]:
     if bundle not in ABLATION_BUNDLES:
         raise ValueError(f"Unsupported ablation bundle: {bundle}")
-    case_payload = _base_case_payload(record)
-    if bundle == "logic_only" and isinstance(world_state_entry, dict):
-        case_payload["logic_context"] = world_state_entry.get("L4_constraints")
-    elif bundle == "local_graph" and isinstance(world_state_entry, dict):
-        case_payload["local_context"] = {
-            "L1_ego_node": world_state_entry.get("L1_ego_node"),
-            "L2_labels": world_state_entry.get("L2_labels"),
-            "L3_neighborhood": world_state_entry.get("L3_neighborhood"),
-            "L4_constraints": world_state_entry.get("L4_constraints"),
-        }
+    case_payload = _sanitized_case_payload(record)
+    if bundle == "minimal_case":
+        return case_payload, {"constraint_count_before": 0, "constraint_count_after": 0}
+    if bundle == "logic_only":
+        logic_context, audit = _pruned_constraints_payload(record, world_state_entry)
+        case_payload["logic_context"] = logic_context
+        return case_payload, audit
+    local_context, audit = _pruned_local_context(record, world_state_entry)
+    case_payload["local_context"] = local_context
+    return case_payload, audit
 
+
+def build_prompt_bundle(
+    record: dict[str, Any],
+    world_state_entry: Optional[dict[str, Any]],
+    bundle: str,
+    *,
+    proposal_track: str | None = None,
+) -> PromptBundle:
+    case_payload, context_audit = _bundle_payload_and_audit(record, world_state_entry, bundle)
+    effective_track = proposal_track or record.get("track")
     prompt_template_name = (
-        "reasoning_floor_t_box_zero_shot" if record.get("track") == "T_BOX" else "reasoning_floor_a_box_zero_shot"
+        "reasoning_floor_t_box_zero_shot" if effective_track == "T_BOX" else "reasoning_floor_a_box_zero_shot"
     )
     prompt_template = get_prompt_template(prompt_template_name)
     return PromptBundle(
@@ -285,6 +569,7 @@ def build_prompt_bundle(record: dict[str, Any], world_state_entry: Optional[dict
         prompt=prompt_template.render(case_payload),
         system_prompt=prompt_template.system_prompt,
         response_format=prompt_template.response_format_copy(),
+        context_audit=context_audit,
     )
 
 
@@ -293,16 +578,7 @@ def build_track_diagnosis_prompt_bundle(
     world_state_entry: Optional[dict[str, Any]],
     bundle: str,
 ) -> PromptBundle:
-    case_payload = _base_case_payload(record)
-    if bundle == "logic_only" and isinstance(world_state_entry, dict):
-        case_payload["logic_context"] = world_state_entry.get("L4_constraints")
-    elif bundle == "local_graph" and isinstance(world_state_entry, dict):
-        case_payload["local_context"] = {
-            "L1_ego_node": world_state_entry.get("L1_ego_node"),
-            "L2_labels": world_state_entry.get("L2_labels"),
-            "L3_neighborhood": world_state_entry.get("L3_neighborhood"),
-            "L4_constraints": world_state_entry.get("L4_constraints"),
-        }
+    case_payload, context_audit = _bundle_payload_and_audit(record, world_state_entry, bundle)
     prompt_template = get_prompt_template("reasoning_floor_track_diagnosis_zero_shot")
     return PromptBundle(
         ablation_bundle=bundle,
@@ -310,7 +586,71 @@ def build_track_diagnosis_prompt_bundle(
         prompt=prompt_template.render(case_payload),
         system_prompt=prompt_template.system_prompt,
         response_format=prompt_template.response_format_copy(),
+        context_audit=context_audit,
     )
+
+
+@dataclass(frozen=True)
+class MaterializedGenerationSelection:
+    case_ids: list[str]
+    records: list[dict[str, Any]] | None = None
+    records_path: Path | None = None
+    strategy: str = "in_memory"
+
+
+def _track_filter_set(tracks: Optional[Iterable[str]]) -> set[str] | None:
+    if not tracks:
+        return None
+    return {track for track in tracks if isinstance(track, str) and track}
+
+
+def _collect_selected_records_in_order(
+    classified_path: str | Path,
+    *,
+    case_ids: Optional[Iterable[str]] = None,
+    tracks: Optional[Iterable[str]] = None,
+    max_cases: Optional[int] = None,
+) -> list[dict[str, Any]]:
+    ordered_case_ids = [case_id for case_id in case_ids if isinstance(case_id, str) and case_id] if case_ids else None
+    track_set = _track_filter_set(tracks)
+    limit = max(0, max_cases) if max_cases is not None else None
+    if limit == 0:
+        return []
+
+    if ordered_case_ids is None:
+        selected_records: list[dict[str, Any]] = []
+        for record in iter_jsonl(classified_path):
+            if not isinstance(record, dict):
+                continue
+            case_id = record.get("id")
+            if not isinstance(case_id, str) or not case_id:
+                continue
+            if track_set is not None and record.get("track") not in track_set:
+                continue
+            selected_records.append(record)
+            if limit is not None and len(selected_records) >= limit:
+                break
+        return selected_records
+
+    remaining_case_ids = set(ordered_case_ids)
+    matched_records: dict[str, dict[str, Any]] = {}
+    for record in iter_jsonl(classified_path):
+        if not isinstance(record, dict):
+            continue
+        case_id = record.get("id")
+        if not isinstance(case_id, str) or case_id not in remaining_case_ids:
+            continue
+        if track_set is not None and record.get("track") not in track_set:
+            continue
+        matched_records[case_id] = record
+        remaining_case_ids.remove(case_id)
+        if not remaining_case_ids:
+            break
+
+    ordered_records = [matched_records[case_id] for case_id in ordered_case_ids if case_id in matched_records]
+    if limit is not None:
+        ordered_records = ordered_records[:limit]
+    return ordered_records
 
 
 def _iter_selected_records(
@@ -320,24 +660,12 @@ def _iter_selected_records(
     tracks: Optional[Iterable[str]] = None,
     max_cases: Optional[int] = None,
 ) -> Iterable[dict[str, Any]]:
-    case_set = {case_id for case_id in case_ids if case_id} if case_ids else None
-    track_set = {track for track in tracks if track} if tracks else None
-    emitted = 0
-    limit = max(0, max_cases) if max_cases is not None else None
-    for record in iter_jsonl(classified_path):
-        if not isinstance(record, dict):
-            continue
-        case_id = record.get("id")
-        if not isinstance(case_id, str) or not case_id:
-            continue
-        if case_set is not None and case_id not in case_set:
-            continue
-        if track_set is not None and record.get("track") not in track_set:
-            continue
-        yield record
-        emitted += 1
-        if limit is not None and emitted >= limit:
-            break
+    yield from _collect_selected_records_in_order(
+        classified_path,
+        case_ids=case_ids,
+        tracks=tracks,
+        max_cases=max_cases,
+    )
 
 
 def _selected_case_ids(
@@ -349,7 +677,7 @@ def _selected_case_ids(
 ) -> list[str]:
     return [
         record["id"]
-        for record in _iter_selected_records(
+        for record in _collect_selected_records_in_order(
             classified_path,
             case_ids=case_ids,
             tracks=tracks,
@@ -358,22 +686,82 @@ def _selected_case_ids(
     ]
 
 
+def _write_record_subset(path: str | Path, records: Iterable[dict[str, Any]]) -> int:
+    destination = Path(path)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    written = 0
+    with open(destination, "w", encoding="utf-8") as handle:
+        for record in records:
+            handle.write(json.dumps(record, ensure_ascii=False) + "\n")
+            written += 1
+    return written
+
+
+def _materialize_generation_selection(
+    classified_path: str | Path,
+    *,
+    case_ids: Optional[Iterable[str]],
+    tracks: Optional[Iterable[str]],
+    max_cases: Optional[int],
+    output_dir: str | Path,
+) -> MaterializedGenerationSelection:
+    ordered_records = _collect_selected_records_in_order(
+        classified_path,
+        case_ids=case_ids,
+        tracks=tracks,
+        max_cases=max_cases,
+    )
+    ordered_case_ids = [
+        record["id"]
+        for record in ordered_records
+        if isinstance(record, dict) and isinstance(record.get("id"), str)
+    ]
+    if len(ordered_records) <= GENERATION_IN_MEMORY_CASE_THRESHOLD:
+        return MaterializedGenerationSelection(
+            case_ids=ordered_case_ids,
+            records=ordered_records,
+            records_path=None,
+            strategy="in_memory",
+        )
+
+    selected_records_path = Path(output_dir) / "selected_generation_records.jsonl"
+    _write_record_subset(selected_records_path, ordered_records)
+    return MaterializedGenerationSelection(
+        case_ids=ordered_case_ids,
+        records=None,
+        records_path=selected_records_path,
+        strategy="stream_from_file",
+    )
+
+
+def _iter_materialized_generation_records(selection: MaterializedGenerationSelection) -> Iterable[dict[str, Any]]:
+    if selection.records is not None:
+        yield from selection.records
+        return
+    if selection.records_path is None:
+        return
+    for record in iter_jsonl(selection.records_path):
+        if isinstance(record, dict):
+            yield record
+
+
 def _load_selected_records_for_evaluation(
     classified_path: str | Path,
     selected_case_ids: Iterable[str],
 ) -> list[dict[str, Any]]:
-    case_id_set = {case_id for case_id in selected_case_ids if case_id}
-    if not case_id_set:
+    ordered_case_ids = [case_id for case_id in selected_case_ids if isinstance(case_id, str) and case_id]
+    if not ordered_case_ids:
         return []
-    records: list[dict[str, Any]] = []
+    case_id_set = set(ordered_case_ids)
+    records_by_id: dict[str, dict[str, Any]] = {}
     for record in iter_jsonl(classified_path):
         if not isinstance(record, dict):
             continue
         case_id = record.get("id")
         if not isinstance(case_id, str) or case_id not in case_id_set:
             continue
-        records.append(record)
-    return records
+        records_by_id[case_id] = record
+    return [records_by_id[case_id] for case_id in ordered_case_ids if case_id in records_by_id]
 
 
 def _write_selected_records_for_evaluation(
@@ -381,22 +769,8 @@ def _write_selected_records_for_evaluation(
     selected_case_ids: Iterable[str],
     destination_path: str | Path,
 ) -> int:
-    case_id_set = {case_id for case_id in selected_case_ids if case_id}
-    destination = Path(destination_path)
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    written = 0
-    with open(destination, "w", encoding="utf-8") as handle:
-        if not case_id_set:
-            return 0
-        for record in iter_jsonl(classified_path):
-            if not isinstance(record, dict):
-                continue
-            case_id = record.get("id")
-            if not isinstance(case_id, str) or case_id not in case_id_set:
-                continue
-            handle.write(json.dumps(record, ensure_ascii=False) + "\n")
-            written += 1
-    return written
+    records = _load_selected_records_for_evaluation(classified_path, selected_case_ids)
+    return _write_record_subset(destination_path, records)
 
 
 def _append_jsonl_record(handle: Any, record: dict[str, Any]) -> None:
@@ -458,18 +832,25 @@ def _request_metadata(
     case_id: str,
     bundle: str,
     prompt_name: str,
-    track: str | None,
+    historical_track: str | None,
     task_type: str,
     model: str,
+    proposal_track_used: str | None = None,
+    routing_source: str | None = None,
+    context_audit: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     return {
         "run_id": run_id,
         "case_id": case_id,
         "ablation_bundle": bundle,
         "prompt_name": prompt_name,
-        "track": track,
+        "track": historical_track,
+        "historical_track": historical_track,
         "task_type": task_type,
         "model": model,
+        "proposal_track_used": proposal_track_used,
+        "routing_source": routing_source,
+        "context_audit": dict(context_audit or {}),
     }
 
 
@@ -488,6 +869,87 @@ def _empty_usage_payload(provider_name: str, model: str, metadata: dict[str, Any
     }
 
 
+def _prepare_payload_for_case_id(raw_payload: Any, case_id: Any) -> Any:
+    if not isinstance(raw_payload, dict):
+        return raw_payload
+    payload = dict(raw_payload)
+    if (not isinstance(payload.get("case_id"), str) or not payload.get("case_id", "").strip()) and isinstance(
+        case_id, str
+    ):
+        payload["case_id"] = case_id
+    return payload
+
+
+def _proposal_track_for_request(request_info: dict[str, Any]) -> str | None:
+    proposal_track = request_info.get("proposal_track_used")
+    if isinstance(proposal_track, str) and proposal_track:
+        return proposal_track
+    historical_track = request_info.get("historical_track")
+    if isinstance(historical_track, str) and historical_track:
+        return historical_track
+    fallback_track = request_info.get("track")
+    if isinstance(fallback_track, str) and fallback_track:
+        return fallback_track
+    return None
+
+
+def _routed_track_from_diagnosis_payload(parsed_payload: Any, case_id: str) -> str:
+    try:
+        normalized = normalize_diagnosis(_prepare_payload_for_case_id(parsed_payload, case_id))
+    except Exception:
+        return UNROUTABLE_TRACK
+    predicted_track = normalized.predicted_track
+    if predicted_track in {"A_BOX", "T_BOX", "AMBIGUOUS"}:
+        return predicted_track
+    return UNROUTABLE_TRACK
+
+
+def _record_skipped_proposal_result(
+    *,
+    request_info: dict[str, Any],
+    usage: dict[str, Any],
+    raw_log_fh: Any,
+    manifest_fh: Any,
+    parse_status: str,
+    skip_reason: str,
+) -> dict[str, Any]:
+    manifest_record = {
+        "run_id": request_info.get("run_id"),
+        "case_id": request_info.get("case_id"),
+        "ablation_bundle": request_info.get("ablation_bundle"),
+        "prompt_name": request_info.get("prompt_name"),
+        "track": request_info.get("track"),
+        "historical_track": request_info.get("historical_track"),
+        "proposal_track_used": request_info.get("proposal_track_used"),
+        "routing_source": request_info.get("routing_source"),
+        "context_audit": request_info.get("context_audit") or {},
+        "task_type": request_info.get("task_type"),
+        "provider": usage.get("provider"),
+        "model": usage.get("model"),
+        "usage": _usage_block(usage, None),
+        "timestamp_utc": _utc_now(),
+        "parse_status": parse_status,
+        "skip_reason": skip_reason,
+    }
+    raw_record = {
+        "run_id": request_info.get("run_id"),
+        "case_id": request_info.get("case_id"),
+        "ablation_bundle": request_info.get("ablation_bundle"),
+        "prompt_name": request_info.get("prompt_name"),
+        "track": request_info.get("track"),
+        "historical_track": request_info.get("historical_track"),
+        "proposal_track_used": request_info.get("proposal_track_used"),
+        "routing_source": request_info.get("routing_source"),
+        "task_type": request_info.get("task_type"),
+        "raw_response": None,
+        "parsed_payload": None,
+        "skip_reason": skip_reason,
+    }
+    _append_jsonl_record(raw_log_fh, raw_record)
+    _append_jsonl_record(manifest_fh, manifest_record)
+    return manifest_record
+
+
 def _record_request_result(
     *,
     request_info: dict[str, Any],
@@ -502,23 +964,16 @@ def _record_request_result(
     elapsed_seconds: float | None = None,
     error_message: str | None = None,
 ) -> dict[str, Any]:
-    def prepare_payload_for_normalization(raw_payload: Any) -> Any:
-        if not isinstance(raw_payload, dict):
-            return raw_payload
-        payload = dict(raw_payload)
-        case_id = request_info.get("case_id")
-        if (not isinstance(payload.get("case_id"), str) or not payload.get("case_id", "").strip()) and isinstance(
-            case_id, str
-        ):
-            payload["case_id"] = case_id
-        return payload
-
     manifest_record = {
         "run_id": request_info.get("run_id"),
         "case_id": request_info.get("case_id"),
         "ablation_bundle": request_info.get("ablation_bundle"),
         "prompt_name": request_info.get("prompt_name"),
         "track": request_info.get("track"),
+        "historical_track": request_info.get("historical_track"),
+        "proposal_track_used": request_info.get("proposal_track_used"),
+        "routing_source": request_info.get("routing_source"),
+        "context_audit": request_info.get("context_audit") or {},
         "task_type": request_info.get("task_type"),
         "provider": usage.get("provider"),
         "model": usage.get("model"),
@@ -532,6 +987,9 @@ def _record_request_result(
         "ablation_bundle": request_info.get("ablation_bundle"),
         "prompt_name": request_info.get("prompt_name"),
         "track": request_info.get("track"),
+        "historical_track": request_info.get("historical_track"),
+        "proposal_track_used": request_info.get("proposal_track_used"),
+        "routing_source": request_info.get("routing_source"),
         "task_type": request_info.get("task_type"),
         "raw_response": raw_response,
         "parsed_payload": parsed_payload,
@@ -550,13 +1008,13 @@ def _record_request_result(
         return manifest_record
 
     try:
-        normalization_payload = prepare_payload_for_normalization(parsed_payload)
+        normalization_payload = _prepare_payload_for_case_id(parsed_payload, request_info.get("case_id"))
         if request_info.get("task_type") == "track_diagnosis":
             normalized_diagnosis = normalize_diagnosis(normalization_payload)
             _append_jsonl_record(track_fh, normalized_diagnosis.to_dict())
             manifest_record["parse_status"] = "normalized"
             manifest_record["canonical_hash"] = normalized_diagnosis.canonical_hash
-        elif request_info.get("track") == "T_BOX":
+        elif _proposal_track_for_request(request_info) == "T_BOX":
             normalized = normalize_t_box_proposal(normalization_payload)
             _append_jsonl_record(t_box_fh, normalized.to_dict())
             manifest_record["parse_status"] = "normalized"
@@ -605,19 +1063,25 @@ def run_reasoning_floor(
     parallel_workers: int | None = None,
     batch_completion_window: str = "24h",
     batch_poll_interval_seconds: float = 60.0,
+    proposal_track_mode: str = "oracle",
 ) -> dict[str, Any]:
     run_started_utc = _utc_now()
     run_started_at = time.perf_counter()
     if provider is None:
         provider = create_model_provider(model_name)
     selected_model = getattr(provider, "model", None) or model_name or "unknown-model"
-    selected_provider = getattr(provider, "provider_name", None) or provider.__class__.__name__.replace("ChatProvider", "").lower()
+    selected_provider = (
+        getattr(provider, "provider_name", None) or provider.__class__.__name__.replace("ChatProvider", "").lower()
+    )
 
     normalized_execution_mode = (execution_mode or "").strip().lower()
     if not normalized_execution_mode:
         normalized_execution_mode = "batch" if selected_provider == "openai" else "sync"
     if normalized_execution_mode not in {"sync", "parallel", "batch"}:
         raise ValueError(f"Unsupported execution mode: {execution_mode!r}")
+    normalized_proposal_track_mode = (proposal_track_mode or "oracle").strip().lower()
+    if normalized_proposal_track_mode not in {"oracle", "diagnosis_routed"}:
+        raise ValueError(f"Unsupported proposal_track_mode: {proposal_track_mode!r}")
     if normalized_execution_mode == "batch" and not isinstance(provider, BatchModelProvider):
         raise RuntimeError(
             f"Execution mode 'batch' is not supported by provider {provider.__class__.__name__}."
@@ -625,16 +1089,25 @@ def run_reasoning_floor(
     if parallel_workers is not None and parallel_workers < 1:
         raise ValueError("parallel_workers must be at least 1 when provided.")
 
+    run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
+    run_dir_name = f"{run_id}_{_slugify(selected_provider)}_{_slugify(selected_model)}"
+    out_dir = Path(output_dir) / run_dir_name
+    out_dir.mkdir(parents=True, exist_ok=True)
+    raw_log_path = out_dir / "raw_model_responses.jsonl"
+    manifest_path = out_dir / "run_manifest.jsonl"
+
     resolved_case_ids = resolve_case_id_filter(
         case_ids=case_ids,
         selection_manifest_path=selection_manifest_path,
     )
-    selected_case_ids = _selected_case_ids(
+    generation_selection = _materialize_generation_selection(
         classified_path,
         case_ids=resolved_case_ids,
         tracks=tracks,
         max_cases=max_cases,
+        output_dir=out_dir,
     )
+    selected_case_ids = generation_selection.case_ids
     bundle_list = [bundle for bundle in ablation_bundles if bundle in ABLATION_BUNDLES]
     if not bundle_list:
         raise ValueError("At least one supported ablation bundle is required.")
@@ -654,13 +1127,6 @@ def run_reasoning_floor(
         effective_parallel_workers = min(effective_parallel_workers, total_instances) if total_instances else 1
     refresh_every = max(1, min(1000, (total_requests + 9) // 10)) if total_requests else 1
 
-    run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
-    run_dir_name = f"{run_id}_{_slugify(selected_provider)}_{_slugify(selected_model)}"
-    out_dir = Path(output_dir) / run_dir_name
-    out_dir.mkdir(parents=True, exist_ok=True)
-    raw_log_path = out_dir / "raw_model_responses.jsonl"
-    manifest_path = out_dir / "run_manifest.jsonl"
-
     world_state_store = WorldStateStore(Path(world_state_path), __import__("logging").getLogger("reasoning_floor"))
     world_state_store.open()
     progress = tqdm(
@@ -675,14 +1141,346 @@ def run_reasoning_floor(
     has_cost_data = False
     batch_summary: dict[str, Any] | None = None
     try:
+        def build_diagnosis_request(
+            record: dict[str, Any],
+            bundle: str,
+            world_state_entry: Optional[dict[str, Any]],
+        ) -> tuple[PromptBundle, dict[str, Any]]:
+            diagnosis_bundle = build_track_diagnosis_prompt_bundle(record, world_state_entry, bundle)
+            diagnosis_metadata = _request_metadata(
+                run_id=run_id,
+                case_id=record["id"],
+                bundle=bundle,
+                prompt_name=diagnosis_bundle.prompt_name,
+                historical_track=record.get("track"),
+                task_type="track_diagnosis",
+                model=selected_model,
+                proposal_track_used=None,
+                routing_source="diagnosis_only",
+                context_audit=diagnosis_bundle.context_audit,
+            )
+            return diagnosis_bundle, diagnosis_metadata
+
+        def build_proposal_request(
+            record: dict[str, Any],
+            bundle: str,
+            world_state_entry: Optional[dict[str, Any]],
+            *,
+            proposal_track_used: str,
+            routing_source: str,
+        ) -> tuple[PromptBundle, dict[str, Any]]:
+            proposal_bundle = build_prompt_bundle(
+                record,
+                world_state_entry,
+                bundle,
+                proposal_track=proposal_track_used,
+            )
+            proposal_metadata = _request_metadata(
+                run_id=run_id,
+                case_id=record["id"],
+                bundle=bundle,
+                prompt_name=proposal_bundle.prompt_name,
+                historical_track=record.get("track"),
+                task_type="proposal",
+                model=selected_model,
+                proposal_track_used=proposal_track_used,
+                routing_source=routing_source,
+                context_audit=proposal_bundle.context_audit,
+            )
+            return proposal_bundle, proposal_metadata
+
+        def build_skipped_proposal_request(
+            record: dict[str, Any],
+            bundle: str,
+            *,
+            proposal_track_used: str,
+            routing_source: str,
+            context_audit: Optional[dict[str, Any]],
+        ) -> dict[str, Any]:
+            return _request_metadata(
+                run_id=run_id,
+                case_id=record["id"],
+                bundle=bundle,
+                prompt_name="skipped_proposal_no_track",
+                historical_track=record.get("track"),
+                task_type="proposal",
+                model=selected_model,
+                proposal_track_used=proposal_track_used,
+                routing_source=routing_source,
+                context_audit=context_audit,
+            )
+
+        def mark_completed(units: int = 1) -> None:
+            nonlocal completed_work_units
+            nonlocal pending_progress
+            completed_work_units += units
+            pending_progress += units
+            if pending_progress >= refresh_every or completed_work_units == total_requests:
+                flush_progress()
+
+        def flush_progress() -> None:
+            nonlocal pending_progress
+            if pending_progress <= 0:
+                return
+            estimated_total_cost = None
+            if has_cost_data and completed_work_units > 0:
+                estimated_total_cost = (current_estimated_cost_usd / completed_work_units) * total_requests
+            progress.update(pending_progress)
+            progress.set_postfix(
+                {
+                    "current_cost": _format_cost(current_estimated_cost_usd if has_cost_data else None),
+                    "est_total_cost": _format_cost(estimated_total_cost),
+                },
+                refresh=True,
+            )
+            pending_progress = 0
+
+        def record_generation_result(
+            *,
+            request_info: dict[str, Any],
+            raw_response: Any,
+            parsed_payload: Any,
+            usage: dict[str, Any],
+            bundle_handles: dict[str, dict[str, Any]],
+            raw_log_fh: Any,
+            manifest_fh: Any,
+            elapsed_seconds: float | None = None,
+            error_message: str | None = None,
+        ) -> dict[str, Any]:
+            nonlocal current_estimated_cost_usd
+            nonlocal has_cost_data
+            handles = bundle_handles[request_info["ablation_bundle"]]
+            manifest_record = _record_request_result(
+                request_info=request_info,
+                raw_response=raw_response,
+                parsed_payload=parsed_payload,
+                usage=usage,
+                raw_log_fh=raw_log_fh,
+                manifest_fh=manifest_fh,
+                a_box_fh=handles["a_box"],
+                t_box_fh=handles["t_box"],
+                track_fh=handles["track"],
+                elapsed_seconds=elapsed_seconds,
+                error_message=error_message,
+            )
+            usage_manifest.append(manifest_record)
+            current_estimated_cost_usd, has_cost_data = _update_cost_tracking(
+                (usage,),
+                current_estimated_cost_usd,
+                has_cost_data,
+            )
+            return manifest_record
+
+        def record_skipped_proposal(
+            *,
+            request_info: dict[str, Any],
+            parse_status: str,
+            skip_reason: str,
+            raw_log_fh: Any,
+            manifest_fh: Any,
+        ) -> dict[str, Any]:
+            usage = _apply_cost_estimation_policy(
+                _empty_usage_payload(selected_provider, selected_model, request_info),
+                provider_name=selected_provider,
+                execution_mode=normalized_execution_mode,
+            )
+            manifest_record = _record_skipped_proposal_result(
+                request_info=request_info,
+                usage=usage,
+                raw_log_fh=raw_log_fh,
+                manifest_fh=manifest_fh,
+                parse_status=parse_status,
+                skip_reason=skip_reason,
+            )
+            usage_manifest.append(manifest_record)
+            return manifest_record
+
+        def execute_case_pipeline(
+            record: dict[str, Any],
+            bundle: str,
+            world_state_entry: Optional[dict[str, Any]],
+        ) -> CasePipelineOutcome:
+            diagnosis_bundle, diagnosis_metadata = build_diagnosis_request(record, bundle, world_state_entry)
+            if normalized_proposal_track_mode == "oracle":
+                proposal_bundle, proposal_metadata = build_proposal_request(
+                    record,
+                    bundle,
+                    world_state_entry,
+                    proposal_track_used=record.get("track") or "A_BOX",
+                    routing_source="oracle_historical_track",
+                )
+                request_results = _execute_case_requests(
+                    provider,
+                    [(diagnosis_bundle, diagnosis_metadata), (proposal_bundle, proposal_metadata)],
+                    provider_name=selected_provider,
+                    execution_mode=normalized_execution_mode,
+                )
+                return CasePipelineOutcome(request_results=request_results, skipped_proposals=[])
+
+            diagnosis_result = _execute_case_requests(
+                provider,
+                [(diagnosis_bundle, diagnosis_metadata)],
+                provider_name=selected_provider,
+                execution_mode=normalized_execution_mode,
+            )[0]
+            routed_track = _routed_track_from_diagnosis_payload(diagnosis_result.parsed_payload, record["id"])
+            if routed_track == "AMBIGUOUS":
+                skipped_request_info = build_skipped_proposal_request(
+                    record,
+                    bundle,
+                    proposal_track_used="AMBIGUOUS",
+                    routing_source="diagnosis_prediction",
+                    context_audit=diagnosis_bundle.context_audit,
+                )
+                return CasePipelineOutcome(
+                    request_results=[diagnosis_result],
+                    skipped_proposals=[
+                        {
+                            "request_info": skipped_request_info,
+                            "parse_status": "skipped_ambiguous_track",
+                            "skip_reason": "Diagnosis predicted AMBIGUOUS track.",
+                        }
+                    ],
+                )
+            if routed_track not in {"A_BOX", "T_BOX"}:
+                skipped_request_info = build_skipped_proposal_request(
+                    record,
+                    bundle,
+                    proposal_track_used=UNROUTABLE_TRACK,
+                    routing_source="diagnosis_prediction",
+                    context_audit=diagnosis_bundle.context_audit,
+                )
+                return CasePipelineOutcome(
+                    request_results=[diagnosis_result],
+                    skipped_proposals=[
+                        {
+                            "request_info": skipped_request_info,
+                            "parse_status": "skipped_unroutable_track",
+                            "skip_reason": "Diagnosis output could not be routed to A_BOX or T_BOX.",
+                        }
+                    ],
+                )
+
+            proposal_bundle, proposal_metadata = build_proposal_request(
+                record,
+                bundle,
+                world_state_entry,
+                proposal_track_used=routed_track,
+                routing_source="diagnosis_prediction",
+            )
+            proposal_result = _execute_case_requests(
+                provider,
+                [(proposal_bundle, proposal_metadata)],
+                provider_name=selected_provider,
+                execution_mode=normalized_execution_mode,
+            )[0]
+            return CasePipelineOutcome(
+                request_results=[diagnosis_result, proposal_result],
+                skipped_proposals=[],
+            )
+
+        def move_batch_artifact(path: Path | None, prefix: str) -> Path | None:
+            if path is None or not path.exists() or not prefix:
+                return path
+            destination = path.with_name(f"{prefix}{path.name}")
+            if destination.exists():
+                destination.unlink()
+            shutil.move(str(path), str(destination))
+            return destination
+
+        def relocate_batch_phase_artifacts(
+            *,
+            output_path: Path | None,
+            error_path: Path | None,
+            phase_prefix: str,
+        ) -> tuple[Path | None, Path | None, dict[str, str | None]]:
+            relocated_output = move_batch_artifact(output_path, phase_prefix)
+            relocated_error = move_batch_artifact(error_path, phase_prefix)
+            artifact_paths: dict[str, str | None] = {
+                "output_path": str(relocated_output) if relocated_output else None,
+                "error_path": str(relocated_error) if relocated_error else None,
+            }
+            job_path = out_dir / f"{selected_provider}_batch_job.json"
+            relocated_job = move_batch_artifact(job_path, phase_prefix)
+            if relocated_job is not None and relocated_job.exists():
+                artifact_paths["job_path"] = str(relocated_job)
+            return relocated_output, relocated_error, artifact_paths
+
+        def build_batch_phase_summary(
+            *,
+            request_count: int,
+            input_path: Path,
+            request_manifest_path: Path,
+            phase_label: str,
+            execution_result: Any,
+            elapsed_seconds: float,
+            artifact_paths: dict[str, str | None],
+        ) -> dict[str, Any]:
+            if execution_result is None:
+                return {
+                    "id": None,
+                    "status": "skipped_empty",
+                    "completion_window": batch_completion_window,
+                    "poll_interval_seconds": batch_poll_interval_seconds,
+                    "elapsed_seconds": round(elapsed_seconds, 6),
+                    "request_counts": {"total": request_count, "completed": 0, "failed": 0},
+                    "input_path": str(input_path),
+                    "request_manifest_path": str(request_manifest_path),
+                    "output_path": artifact_paths.get("output_path"),
+                    "error_path": artifact_paths.get("error_path"),
+                    "job_path": artifact_paths.get("job_path"),
+                    "phase": phase_label,
+                }
+            return {
+                "id": execution_result.batch.get("id"),
+                "status": execution_result.batch.get("status"),
+                "completion_window": batch_completion_window,
+                "poll_interval_seconds": batch_poll_interval_seconds,
+                "elapsed_seconds": round(elapsed_seconds, 6),
+                "request_counts": execution_result.batch.get("request_counts"),
+                "input_path": str(input_path),
+                "request_manifest_path": str(request_manifest_path),
+                "output_path": artifact_paths.get("output_path"),
+                "error_path": artifact_paths.get("error_path"),
+                "job_path": artifact_paths.get("job_path"),
+                "phase": phase_label,
+            }
+
+        def iter_request_manifest_rows(path: Path) -> dict[str, dict[str, Any]]:
+            request_map: dict[str, dict[str, Any]] = {}
+            for row in iter_jsonl(path):
+                if not isinstance(row, dict):
+                    continue
+                custom_id = row.get("custom_id")
+                metadata = row.get("metadata")
+                if isinstance(custom_id, str) and isinstance(metadata, dict):
+                    request_map[custom_id] = {"custom_id": custom_id, **metadata}
+            return request_map
+
+        def batch_status_from_phases(phases: dict[str, dict[str, Any]]) -> str:
+            statuses = [phase.get("status") for phase in phases.values()]
+            if not statuses:
+                return "skipped_empty"
+            for status in statuses:
+                if status not in {"completed", "skipped_empty"}:
+                    return str(status)
+            if all(status == "skipped_empty" for status in statuses):
+                return "skipped_empty"
+            return "completed"
+
         _emit_runtime_status(
             progress,
             "Starting run "
             f"{run_id} with provider={selected_provider}, model={selected_model}, "
-            f"mode={normalized_execution_mode}, cases={len(selected_case_ids)}, "
-            f"bundles={len(bundle_list)}, requests={total_requests}.",
+            f"mode={normalized_execution_mode}, proposal_track_mode={normalized_proposal_track_mode}, "
+            f"cases={len(selected_case_ids)}, bundles={len(bundle_list)}, requests={total_requests}.",
         )
         _emit_runtime_status(progress, f"Writing outputs to {out_dir}.")
+        _emit_runtime_status(
+            progress,
+            "Materialized generation selection using "
+            f"{generation_selection.strategy} for {len(selected_case_ids)} selected case(s).",
+        )
         usage_manifest: list[dict[str, Any]] = []
 
         a_box_schema = load_a_box_schema(Path("schemas") / "verified_repair_proposal.schema.json")
@@ -699,388 +1497,185 @@ def run_reasoning_floor(
 
         with open(raw_log_path, "w", encoding="utf-8") as raw_log_fh, open(
             manifest_path, "w", encoding="utf-8"
-        ) as manifest_fh:
+        ) as manifest_fh, ExitStack() as stack:
+            bundle_handles = {}
+            for bundle in bundle_list:
+                bundle_dir = out_dir / bundle
+                bundle_handles[bundle] = {
+                    "a_box": stack.enter_context(open(bundle_dir / "a_box_proposals.jsonl", "w", encoding="utf-8")),
+                    "t_box": stack.enter_context(open(bundle_dir / "t_box_proposals.jsonl", "w", encoding="utf-8")),
+                    "track": stack.enter_context(
+                        open(bundle_dir / "track_diagnoses.jsonl", "w", encoding="utf-8")
+                    ),
+                }
             if normalized_execution_mode in {"sync", "parallel"}:
-                def flush_progress() -> None:
-                    nonlocal pending_progress
-                    estimated_total_cost = None
-                    if has_cost_data and completed_work_units > 0:
-                        estimated_total_cost = (current_estimated_cost_usd / completed_work_units) * total_requests
-                    progress.update(pending_progress)
-                    progress.set_postfix(
-                        {
-                            "current_cost": _format_cost(current_estimated_cost_usd if has_cost_data else None),
-                            "est_total_cost": _format_cost(estimated_total_cost),
-                        },
-                        refresh=True,
-                    )
-                    pending_progress = 0
-
                 if normalized_execution_mode == "sync":
                     for bundle in bundle_list:
-                        bundle_dir = out_dir / bundle
-                        a_box_path = bundle_dir / "a_box_proposals.jsonl"
-                        t_box_path = bundle_dir / "t_box_proposals.jsonl"
-                        track_path = bundle_dir / "track_diagnoses.jsonl"
-
-                        with open(a_box_path, "w", encoding="utf-8") as a_box_fh, open(
-                            t_box_path, "w", encoding="utf-8"
-                        ) as t_box_fh, open(track_path, "w", encoding="utf-8") as track_fh:
-                            for record in _iter_selected_records(
-                                classified_path,
-                                case_ids=resolved_case_ids,
-                                tracks=tracks,
-                                max_cases=max_cases,
-                            ):
-                                case_id = record["id"]
-                                world_state_entry = world_state_store.get(case_id)
-                                diagnosis_bundle = build_track_diagnosis_prompt_bundle(record, world_state_entry, bundle)
-                                diagnosis_metadata = _request_metadata(
-                                    run_id=run_id,
-                                    case_id=case_id,
-                                    bundle=bundle,
-                                    prompt_name=diagnosis_bundle.prompt_name,
-                                    track=record.get("track"),
-                                    task_type="track_diagnosis",
-                                    model=getattr(provider, "model", "unknown-model"),
-                                )
-                                diagnosis_started_at = time.perf_counter()
-                                diagnosis_raw_response, diagnosis_payload, diagnosis_usage = provider.generate(
-                                    diagnosis_bundle.prompt,
-                                    diagnosis_bundle.system_prompt,
-                                    diagnosis_bundle.response_format,
-                                    diagnosis_metadata,
-                                )
-                                diagnosis_usage = _apply_cost_estimation_policy(
-                                    diagnosis_usage,
-                                    provider_name=selected_provider,
-                                    execution_mode=normalized_execution_mode,
-                                )
-                                diagnosis_elapsed_seconds = time.perf_counter() - diagnosis_started_at
-                                diagnosis_manifest_record = _record_request_result(
-                                    request_info=diagnosis_metadata,
-                                    raw_response=diagnosis_raw_response,
-                                    parsed_payload=diagnosis_payload,
-                                    usage=diagnosis_usage,
-                                    raw_log_fh=raw_log_fh,
-                                    manifest_fh=manifest_fh,
-                                    a_box_fh=a_box_fh,
-                                    t_box_fh=t_box_fh,
-                                    track_fh=track_fh,
-                                    elapsed_seconds=diagnosis_elapsed_seconds,
-                                )
-                                usage_manifest.append(diagnosis_manifest_record)
-
-                                prompt_bundle = build_prompt_bundle(record, world_state_entry, bundle)
-                                proposal_metadata = _request_metadata(
-                                    run_id=run_id,
-                                    case_id=case_id,
-                                    bundle=bundle,
-                                    prompt_name=prompt_bundle.prompt_name,
-                                    track=record.get("track"),
-                                    task_type="proposal",
-                                    model=getattr(provider, "model", "unknown-model"),
-                                )
-                                proposal_started_at = time.perf_counter()
-                                raw_response, parsed_payload, usage = provider.generate(
-                                    prompt_bundle.prompt,
-                                    prompt_bundle.system_prompt,
-                                    prompt_bundle.response_format,
-                                    proposal_metadata,
-                                )
-                                usage = _apply_cost_estimation_policy(
-                                    usage,
-                                    provider_name=selected_provider,
-                                    execution_mode=normalized_execution_mode,
-                                )
-                                proposal_elapsed_seconds = time.perf_counter() - proposal_started_at
-                                proposal_manifest_record = _record_request_result(
-                                    request_info=proposal_metadata,
-                                    raw_response=raw_response,
-                                    parsed_payload=parsed_payload,
-                                    usage=usage,
-                                    raw_log_fh=raw_log_fh,
-                                    manifest_fh=manifest_fh,
-                                    a_box_fh=a_box_fh,
-                                    t_box_fh=t_box_fh,
-                                    track_fh=track_fh,
-                                    elapsed_seconds=proposal_elapsed_seconds,
-                                )
-                                usage_manifest.append(proposal_manifest_record)
-
-                                current_estimated_cost_usd, has_cost_data = _update_cost_tracking(
-                                    (diagnosis_usage, usage),
-                                    current_estimated_cost_usd,
-                                    has_cost_data,
-                                )
-                                completed_work_units += 1
-                                pending_progress += 1
-                                if pending_progress >= refresh_every or completed_work_units == total_requests:
-                                    flush_progress()
-                else:
-                    with ExitStack() as stack:
-                        bundle_handles = {}
-                        for bundle in bundle_list:
-                            bundle_dir = out_dir / bundle
-                            bundle_handles[bundle] = {
-                                "a_box": stack.enter_context(
-                                    open(bundle_dir / "a_box_proposals.jsonl", "w", encoding="utf-8")
-                                ),
-                                "t_box": stack.enter_context(
-                                    open(bundle_dir / "t_box_proposals.jsonl", "w", encoding="utf-8")
-                                ),
-                                "track": stack.enter_context(
-                                    open(bundle_dir / "track_diagnoses.jsonl", "w", encoding="utf-8")
-                                ),
-                            }
-
-                        with ThreadPoolExecutor(max_workers=effective_parallel_workers) as executor:
-                            pending_futures: dict[Future[list[RequestExecutionResult]], str] = {}
-
-                            def record_future_result(
-                                future: Future[list[RequestExecutionResult]],
-                            ) -> None:
-                                nonlocal current_estimated_cost_usd
-                                nonlocal has_cost_data
-                                nonlocal completed_work_units
-                                nonlocal pending_progress
-                                request_results = future.result()
-                                for request_result in request_results:
-                                    handles = bundle_handles[request_result.request_info["ablation_bundle"]]
-                                    manifest_record = _record_request_result(
-                                        request_info=request_result.request_info,
-                                        raw_response=request_result.raw_response,
-                                        parsed_payload=request_result.parsed_payload,
-                                        usage=request_result.usage,
-                                        raw_log_fh=raw_log_fh,
-                                        manifest_fh=manifest_fh,
-                                        a_box_fh=handles["a_box"],
-                                        t_box_fh=handles["t_box"],
-                                        track_fh=handles["track"],
-                                        elapsed_seconds=request_result.elapsed_seconds,
-                                    )
-                                    usage_manifest.append(manifest_record)
-                                    current_estimated_cost_usd, has_cost_data = _update_cost_tracking(
-                                        (request_result.usage,),
-                                        current_estimated_cost_usd,
-                                        has_cost_data,
-                                    )
-                                completed_work_units += 1
-                                pending_progress += 1
-                                if pending_progress >= refresh_every or completed_work_units == total_requests:
-                                    flush_progress()
-
-                            def drain_completed_futures(*, wait_for_all: bool) -> None:
-                                if not pending_futures:
-                                    return
-                                if not wait_for_all:
-                                    done, _ = wait(tuple(pending_futures), return_when=FIRST_COMPLETED)
-                                else:
-                                    done, _ = wait(tuple(pending_futures))
-                                for future in done:
-                                    pending_futures.pop(future, None)
-                                    record_future_result(future)
-
-                            for bundle in bundle_list:
-                                for record in _iter_selected_records(
-                                    classified_path,
-                                    case_ids=resolved_case_ids,
-                                    tracks=tracks,
-                                    max_cases=max_cases,
-                                ):
-                                    case_id = record["id"]
-                                    world_state_entry = world_state_store.get(case_id)
-                                    diagnosis_bundle = build_track_diagnosis_prompt_bundle(
-                                        record,
-                                        world_state_entry,
-                                        bundle,
-                                    )
-                                    proposal_bundle = build_prompt_bundle(record, world_state_entry, bundle)
-                                    case_requests = [
-                                        (
-                                            diagnosis_bundle,
-                                            _request_metadata(
-                                                run_id=run_id,
-                                                case_id=case_id,
-                                                bundle=bundle,
-                                                prompt_name=diagnosis_bundle.prompt_name,
-                                                track=record.get("track"),
-                                                task_type="track_diagnosis",
-                                                model=getattr(provider, "model", "unknown-model"),
-                                            ),
-                                        ),
-                                        (
-                                            proposal_bundle,
-                                            _request_metadata(
-                                                run_id=run_id,
-                                                case_id=case_id,
-                                                bundle=bundle,
-                                                prompt_name=proposal_bundle.prompt_name,
-                                                track=record.get("track"),
-                                                task_type="proposal",
-                                                model=getattr(provider, "model", "unknown-model"),
-                                            ),
-                                        ),
-                                    ]
-                                    future = executor.submit(
-                                        _execute_case_requests,
-                                        provider,
-                                        case_requests,
-                                        provider_name=selected_provider,
-                                        execution_mode=normalized_execution_mode,
-                                    )
-                                    pending_futures[future] = case_id
-                                    if len(pending_futures) >= effective_parallel_workers:
-                                        drain_completed_futures(wait_for_all=False)
-
-                            while pending_futures:
-                                drain_completed_futures(wait_for_all=True)
-            else:
-                assert isinstance(provider, BatchModelProvider)
-                batch_input_path = out_dir / "batch_input.jsonl"
-                request_manifest_path = out_dir / "batch_request_manifest.jsonl"
-                request_counter = 0
-                with open(batch_input_path, "w", encoding="utf-8") as batch_input_fh, open(
-                    request_manifest_path, "w", encoding="utf-8"
-                ) as request_manifest_fh:
-                    for bundle in bundle_list:
-                        for record in _iter_selected_records(
-                            classified_path,
-                            case_ids=resolved_case_ids,
-                            tracks=tracks,
-                            max_cases=max_cases,
-                        ):
+                        for record in _iter_materialized_generation_records(generation_selection):
                             case_id = record["id"]
                             world_state_entry = world_state_store.get(case_id)
-
-                            diagnosis_bundle = build_track_diagnosis_prompt_bundle(record, world_state_entry, bundle)
-                            diagnosis_metadata = _request_metadata(
-                                run_id=run_id,
-                                case_id=case_id,
-                                bundle=bundle,
-                                prompt_name=diagnosis_bundle.prompt_name,
-                                track=record.get("track"),
-                                task_type="track_diagnosis",
-                                model=getattr(provider, "model", "unknown-model"),
-                            )
-                            diagnosis_custom_id = f"rf_{request_counter:09d}"
-                            request_counter += 1
-                            provider.write_batch_request(
-                                batch_input_fh,
-                                custom_id=diagnosis_custom_id,
-                                prompt=diagnosis_bundle.prompt,
-                                system_prompt=diagnosis_bundle.system_prompt,
-                                response_format=diagnosis_bundle.response_format,
-                                metadata=diagnosis_metadata,
-                            )
-                            _append_jsonl_record(
-                                request_manifest_fh,
-                                {
-                                    "custom_id": diagnosis_custom_id,
-                                    "metadata": diagnosis_metadata,
-                                },
-                            )
-
-                            prompt_bundle = build_prompt_bundle(record, world_state_entry, bundle)
-                            proposal_metadata = _request_metadata(
-                                run_id=run_id,
-                                case_id=case_id,
-                                bundle=bundle,
-                                prompt_name=prompt_bundle.prompt_name,
-                                track=record.get("track"),
-                                task_type="proposal",
-                                model=getattr(provider, "model", "unknown-model"),
-                            )
-                            proposal_custom_id = f"rf_{request_counter:09d}"
-                            request_counter += 1
-                            provider.write_batch_request(
-                                batch_input_fh,
-                                custom_id=proposal_custom_id,
-                                prompt=prompt_bundle.prompt,
-                                system_prompt=prompt_bundle.system_prompt,
-                                response_format=prompt_bundle.response_format,
-                                metadata=proposal_metadata,
-                            )
-                            _append_jsonl_record(
-                                request_manifest_fh,
-                                {
-                                    "custom_id": proposal_custom_id,
-                                    "metadata": proposal_metadata,
-                                },
-                            )
-
-                if request_counter == 0:
-                    batch_execution = None
-                    batch_summary = {
-                        "id": None,
-                        "status": "skipped_empty",
-                        "completion_window": batch_completion_window,
-                        "poll_interval_seconds": batch_poll_interval_seconds,
-                        "elapsed_seconds": 0.0,
-                        "request_counts": {"total": 0, "completed": 0, "failed": 0},
-                        "output_path": None,
-                        "error_path": None,
-                        "input_path": str(batch_input_path),
-                        "request_manifest_path": str(request_manifest_path),
-                    }
+                            outcome = execute_case_pipeline(record, bundle, world_state_entry)
+                            for request_result in outcome.request_results:
+                                record_generation_result(
+                                    request_info=request_result.request_info,
+                                    raw_response=request_result.raw_response,
+                                    parsed_payload=request_result.parsed_payload,
+                                    usage=request_result.usage,
+                                    bundle_handles=bundle_handles,
+                                    raw_log_fh=raw_log_fh,
+                                    manifest_fh=manifest_fh,
+                                    elapsed_seconds=request_result.elapsed_seconds,
+                                )
+                            for skipped in outcome.skipped_proposals:
+                                record_skipped_proposal(
+                                    request_info=skipped["request_info"],
+                                    parse_status=skipped["parse_status"],
+                                    skip_reason=skipped["skip_reason"],
+                                    raw_log_fh=raw_log_fh,
+                                    manifest_fh=manifest_fh,
+                                )
+                            mark_completed()
                 else:
-                    _emit_runtime_status(
-                        progress,
-                        f"Prepared {request_counter} batch requests; submitting provider batch job.",
-                    )
-                    batch_started_at = time.perf_counter()
-                    batch_execution = provider.execute_batch(
-                        batch_input_path,
-                        request_manifest_path=request_manifest_path,
-                        output_dir=out_dir,
-                        completion_window=batch_completion_window,
-                        poll_interval_seconds=batch_poll_interval_seconds,
-                        status_callback=lambda message: _emit_runtime_status(progress, message),
-                    )
-                    batch_elapsed_seconds = time.perf_counter() - batch_started_at
-                    batch_summary = {
-                        "id": batch_execution.batch.get("id"),
-                        "status": batch_execution.batch.get("status"),
-                        "completion_window": batch_completion_window,
-                        "poll_interval_seconds": batch_poll_interval_seconds,
-                        "elapsed_seconds": round(batch_elapsed_seconds, 6),
-                        "request_counts": batch_execution.batch.get("request_counts"),
-                        "output_path": str(batch_execution.output_path) if batch_execution.output_path else None,
-                        "error_path": str(batch_execution.error_path) if batch_execution.error_path else None,
-                        "input_path": str(batch_input_path),
-                        "request_manifest_path": str(request_manifest_path),
-                    }
-                    _emit_runtime_status(
-                        progress,
-                        "Provider batch finished; rebuilding normalized outputs from returned records.",
-                    )
+                    with ThreadPoolExecutor(max_workers=effective_parallel_workers) as executor:
+                        pending_futures: dict[Future[CasePipelineOutcome], str] = {}
 
-                request_map: dict[str, dict[str, Any]] = {}
-                for row in iter_jsonl(request_manifest_path):
-                    if not isinstance(row, dict):
-                        continue
-                    custom_id = row.get("custom_id")
-                    metadata = row.get("metadata")
-                    if isinstance(custom_id, str) and isinstance(metadata, dict):
-                        request_map[custom_id] = {"custom_id": custom_id, **metadata}
+                        def record_future_result(future: Future[CasePipelineOutcome]) -> None:
+                            outcome = future.result()
+                            for request_result in outcome.request_results:
+                                record_generation_result(
+                                    request_info=request_result.request_info,
+                                    raw_response=request_result.raw_response,
+                                    parsed_payload=request_result.parsed_payload,
+                                    usage=request_result.usage,
+                                    bundle_handles=bundle_handles,
+                                    raw_log_fh=raw_log_fh,
+                                    manifest_fh=manifest_fh,
+                                    elapsed_seconds=request_result.elapsed_seconds,
+                                )
+                            for skipped in outcome.skipped_proposals:
+                                record_skipped_proposal(
+                                    request_info=skipped["request_info"],
+                                    parse_status=skipped["parse_status"],
+                                    skip_reason=skipped["skip_reason"],
+                                    raw_log_fh=raw_log_fh,
+                                    manifest_fh=manifest_fh,
+                                )
+                            mark_completed()
 
-                seen_custom_ids: set[str] = set()
-                with ExitStack() as stack:
-                    bundle_handles = {}
-                    for bundle in bundle_list:
-                        bundle_dir = out_dir / bundle
-                        bundle_handles[bundle] = {
-                            "a_box": stack.enter_context(
-                                open(bundle_dir / "a_box_proposals.jsonl", "w", encoding="utf-8")
-                            ),
-                            "t_box": stack.enter_context(
-                                open(bundle_dir / "t_box_proposals.jsonl", "w", encoding="utf-8")
-                            ),
-                            "track": stack.enter_context(
-                                open(bundle_dir / "track_diagnoses.jsonl", "w", encoding="utf-8")
-                            ),
-                        }
+                        def drain_completed_futures(*, wait_for_all: bool) -> None:
+                            if not pending_futures:
+                                return
+                            if not wait_for_all:
+                                done, _ = wait(tuple(pending_futures), return_when=FIRST_COMPLETED)
+                            else:
+                                done, _ = wait(tuple(pending_futures))
+                            for future in done:
+                                pending_futures.pop(future, None)
+                                record_future_result(future)
 
+                        for bundle in bundle_list:
+                            for record in _iter_materialized_generation_records(generation_selection):
+                                case_id = record["id"]
+                                world_state_entry = world_state_store.get(case_id)
+                                future = executor.submit(execute_case_pipeline, record, bundle, world_state_entry)
+                                pending_futures[future] = case_id
+                                if len(pending_futures) >= effective_parallel_workers:
+                                    drain_completed_futures(wait_for_all=False)
+
+                        while pending_futures:
+                            drain_completed_futures(wait_for_all=True)
+            else:
+                assert isinstance(provider, BatchModelProvider)
+                if normalized_proposal_track_mode == "oracle":
+                    batch_input_path = out_dir / "batch_input.jsonl"
+                    request_manifest_path = out_dir / "batch_request_manifest.jsonl"
+                    request_counter = 0
+                    with open(batch_input_path, "w", encoding="utf-8") as batch_input_fh, open(
+                        request_manifest_path, "w", encoding="utf-8"
+                    ) as request_manifest_fh:
+                        for bundle in bundle_list:
+                            for record in _iter_materialized_generation_records(generation_selection):
+                                case_id = record["id"]
+                                world_state_entry = world_state_store.get(case_id)
+                                diagnosis_bundle, diagnosis_metadata = build_diagnosis_request(
+                                    record,
+                                    bundle,
+                                    world_state_entry,
+                                )
+                                diagnosis_custom_id = f"rf_{request_counter:09d}"
+                                request_counter += 1
+                                provider.write_batch_request(
+                                    batch_input_fh,
+                                    custom_id=diagnosis_custom_id,
+                                    prompt=diagnosis_bundle.prompt,
+                                    system_prompt=diagnosis_bundle.system_prompt,
+                                    response_format=diagnosis_bundle.response_format,
+                                    metadata=diagnosis_metadata,
+                                )
+                                _append_jsonl_record(
+                                    request_manifest_fh,
+                                    {"custom_id": diagnosis_custom_id, "metadata": diagnosis_metadata},
+                                )
+
+                                proposal_bundle, proposal_metadata = build_proposal_request(
+                                    record,
+                                    bundle,
+                                    world_state_entry,
+                                    proposal_track_used=record.get("track") or "A_BOX",
+                                    routing_source="oracle_historical_track",
+                                )
+                                proposal_custom_id = f"rf_{request_counter:09d}"
+                                request_counter += 1
+                                provider.write_batch_request(
+                                    batch_input_fh,
+                                    custom_id=proposal_custom_id,
+                                    prompt=proposal_bundle.prompt,
+                                    system_prompt=proposal_bundle.system_prompt,
+                                    response_format=proposal_bundle.response_format,
+                                    metadata=proposal_metadata,
+                                )
+                                _append_jsonl_record(
+                                    request_manifest_fh,
+                                    {"custom_id": proposal_custom_id, "metadata": proposal_metadata},
+                                )
+
+                    batch_execution = None
+                    batch_elapsed_seconds = 0.0
+                    artifact_paths = {"output_path": None, "error_path": None, "job_path": None}
+                    if request_counter == 0:
+                        _emit_runtime_status(progress, "No batch requests were generated; skipping provider batch job.")
+                    else:
+                        _emit_runtime_status(
+                            progress,
+                            f"Prepared {request_counter} batch requests; submitting provider batch job.",
+                        )
+                        batch_started_at = time.perf_counter()
+                        batch_execution = provider.execute_batch(
+                            batch_input_path,
+                            request_manifest_path=request_manifest_path,
+                            output_dir=out_dir,
+                            completion_window=batch_completion_window,
+                            poll_interval_seconds=batch_poll_interval_seconds,
+                            status_callback=lambda message: _emit_runtime_status(progress, message),
+                        )
+                        batch_elapsed_seconds = time.perf_counter() - batch_started_at
+                        relocated_output, relocated_error, artifact_paths = relocate_batch_phase_artifacts(
+                            output_path=batch_execution.output_path,
+                            error_path=batch_execution.error_path,
+                            phase_prefix="",
+                        )
+                        batch_execution = type(batch_execution)(
+                            batch=batch_execution.batch,
+                            output_path=relocated_output,
+                            error_path=relocated_error,
+                        )
+                        _emit_runtime_status(
+                            progress,
+                            "Provider batch finished; rebuilding normalized outputs from returned records.",
+                        )
+
+                    request_map = iter_request_manifest_rows(request_manifest_path)
+                    seen_custom_ids: set[str] = set()
                     result_paths = ()
                     if batch_execution is not None:
                         result_paths = (batch_execution.output_path, batch_execution.error_path)
@@ -1105,75 +1700,403 @@ def run_reasoning_floor(
                                 provider_name=selected_provider,
                                 execution_mode=normalized_execution_mode,
                             )
-                            handles = bundle_handles[request_info["ablation_bundle"]]
-                            manifest_record = _record_request_result(
+                            record_generation_result(
                                 request_info=request_info,
                                 raw_response=raw_response,
                                 parsed_payload=parsed_payload,
                                 usage=usage,
+                                bundle_handles=bundle_handles,
                                 raw_log_fh=raw_log_fh,
                                 manifest_fh=manifest_fh,
-                                a_box_fh=handles["a_box"],
-                                t_box_fh=handles["t_box"],
-                                track_fh=handles["track"],
                                 elapsed_seconds=None,
                                 error_message=error_message,
                             )
-                            usage_manifest.append(manifest_record)
-                            current_estimated_cost_usd, has_cost_data = _update_cost_tracking(
-                                (usage,),
-                                current_estimated_cost_usd,
-                                has_cost_data,
-                            )
                             seen_custom_ids.add(custom_id)
-                            completed_work_units += 1
-                            pending_progress += 1
-                            if pending_progress >= refresh_every or completed_work_units == total_requests:
-                                estimated_total_cost = None
-                                if has_cost_data and completed_work_units > 0:
-                                    estimated_total_cost = (
-                                        current_estimated_cost_usd / completed_work_units
-                                    ) * total_requests
-                                progress.update(pending_progress)
-                                progress.set_postfix(
-                                    {
-                                        "current_cost": _format_cost(
-                                            current_estimated_cost_usd if has_cost_data else None
-                                        ),
-                                        "est_total_cost": _format_cost(estimated_total_cost),
-                                    },
-                                    refresh=True,
-                                )
-                                pending_progress = 0
+                            mark_completed()
 
                     missing_custom_ids = sorted(set(request_map) - seen_custom_ids)
                     for custom_id in missing_custom_ids:
                         request_info = request_map[custom_id]
-                        handles = bundle_handles[request_info["ablation_bundle"]]
                         usage = _apply_cost_estimation_policy(
                             _empty_usage_payload(selected_provider, selected_model, request_info),
                             provider_name=selected_provider,
                             execution_mode=normalized_execution_mode,
                         )
-                        manifest_record = _record_request_result(
+                        record_generation_result(
                             request_info=request_info,
                             raw_response=None,
                             parsed_payload=None,
                             usage=usage,
+                            bundle_handles=bundle_handles,
                             raw_log_fh=raw_log_fh,
                             manifest_fh=manifest_fh,
-                            a_box_fh=handles["a_box"],
-                            t_box_fh=handles["t_box"],
-                            track_fh=handles["track"],
                             elapsed_seconds=None,
                             error_message="Batch result was missing from both output and error files.",
                         )
-                        usage_manifest.append(manifest_record)
-                        completed_work_units += 1
-                        pending_progress += 1
-                        if pending_progress >= refresh_every or completed_work_units == total_requests:
-                            progress.update(pending_progress)
-                            pending_progress = 0
+                        mark_completed()
+
+                    one_stage_phase = build_batch_phase_summary(
+                        request_count=request_counter,
+                        input_path=batch_input_path,
+                        request_manifest_path=request_manifest_path,
+                        phase_label="combined",
+                        execution_result=batch_execution,
+                        elapsed_seconds=batch_elapsed_seconds,
+                        artifact_paths=artifact_paths,
+                    )
+                    batch_summary = {
+                        "mode": "one_stage",
+                        "status": one_stage_phase.get("status"),
+                        "overall_status": one_stage_phase.get("status"),
+                        "elapsed_seconds": one_stage_phase.get("elapsed_seconds"),
+                        "phases": {"combined": one_stage_phase},
+                    }
+                else:
+                    phase_summaries: dict[str, dict[str, Any]] = {}
+                    routed_tracks: dict[tuple[str, str], dict[str, Any]] = {}
+
+                    diagnosis_input_path = out_dir / "diagnosis_batch_input.jsonl"
+                    diagnosis_manifest_path = out_dir / "diagnosis_batch_request_manifest.jsonl"
+                    diagnosis_request_count = 0
+                    with open(diagnosis_input_path, "w", encoding="utf-8") as batch_input_fh, open(
+                        diagnosis_manifest_path, "w", encoding="utf-8"
+                    ) as request_manifest_fh:
+                        for bundle in bundle_list:
+                            for record in _iter_materialized_generation_records(generation_selection):
+                                case_id = record["id"]
+                                world_state_entry = world_state_store.get(case_id)
+                                diagnosis_bundle, diagnosis_metadata = build_diagnosis_request(
+                                    record,
+                                    bundle,
+                                    world_state_entry,
+                                )
+                                diagnosis_custom_id = f"rf_diag_{diagnosis_request_count:09d}"
+                                diagnosis_request_count += 1
+                                provider.write_batch_request(
+                                    batch_input_fh,
+                                    custom_id=diagnosis_custom_id,
+                                    prompt=diagnosis_bundle.prompt,
+                                    system_prompt=diagnosis_bundle.system_prompt,
+                                    response_format=diagnosis_bundle.response_format,
+                                    metadata=diagnosis_metadata,
+                                )
+                                _append_jsonl_record(
+                                    request_manifest_fh,
+                                    {"custom_id": diagnosis_custom_id, "metadata": diagnosis_metadata},
+                                )
+
+                    diagnosis_execution = None
+                    diagnosis_elapsed_seconds = 0.0
+                    diagnosis_artifacts = {"output_path": None, "error_path": None, "job_path": None}
+                    if diagnosis_request_count > 0:
+                        _emit_runtime_status(
+                            progress,
+                            f"Prepared {diagnosis_request_count} diagnosis batch requests; submitting provider batch job.",
+                        )
+                        batch_started_at = time.perf_counter()
+                        diagnosis_execution = provider.execute_batch(
+                            diagnosis_input_path,
+                            request_manifest_path=diagnosis_manifest_path,
+                            output_dir=out_dir,
+                            completion_window=batch_completion_window,
+                            poll_interval_seconds=batch_poll_interval_seconds,
+                            status_callback=lambda message: _emit_runtime_status(progress, message),
+                        )
+                        diagnosis_elapsed_seconds = time.perf_counter() - batch_started_at
+                        relocated_output, relocated_error, diagnosis_artifacts = relocate_batch_phase_artifacts(
+                            output_path=diagnosis_execution.output_path,
+                            error_path=diagnosis_execution.error_path,
+                            phase_prefix="diagnosis_",
+                        )
+                        diagnosis_execution = type(diagnosis_execution)(
+                            batch=diagnosis_execution.batch,
+                            output_path=relocated_output,
+                            error_path=relocated_error,
+                        )
+                        _emit_runtime_status(
+                            progress,
+                            "Diagnosis batch finished; rebuilding normalized diagnosis outputs and routing table.",
+                        )
+
+                    diagnosis_request_map = iter_request_manifest_rows(diagnosis_manifest_path)
+                    diagnosis_seen_custom_ids: set[str] = set()
+                    diagnosis_result_paths = ()
+                    if diagnosis_execution is not None:
+                        diagnosis_result_paths = (diagnosis_execution.output_path, diagnosis_execution.error_path)
+                    for result_path in diagnosis_result_paths:
+                        if result_path is None:
+                            continue
+                        for result_row in iter_jsonl(result_path):
+                            if not isinstance(result_row, dict):
+                                continue
+                            custom_id = result_row.get("custom_id")
+                            if not isinstance(custom_id, str) or custom_id in diagnosis_seen_custom_ids:
+                                continue
+                            request_info = diagnosis_request_map.get(custom_id)
+                            if not isinstance(request_info, dict):
+                                continue
+                            raw_response, parsed_payload, usage, error_message = provider.parse_batch_result(
+                                result_row,
+                                request_info,
+                            )
+                            usage = _apply_cost_estimation_policy(
+                                usage,
+                                provider_name=selected_provider,
+                                execution_mode=normalized_execution_mode,
+                            )
+                            record_generation_result(
+                                request_info=request_info,
+                                raw_response=raw_response,
+                                parsed_payload=parsed_payload,
+                                usage=usage,
+                                bundle_handles=bundle_handles,
+                                raw_log_fh=raw_log_fh,
+                                manifest_fh=manifest_fh,
+                                elapsed_seconds=None,
+                                error_message=error_message,
+                            )
+                            if error_message:
+                                routed_track = UNROUTABLE_TRACK
+                            else:
+                                routed_track = _routed_track_from_diagnosis_payload(
+                                    parsed_payload,
+                                    str(request_info.get("case_id")),
+                                )
+                            routed_tracks[(request_info["ablation_bundle"], request_info["case_id"])] = {
+                                "proposal_track_used": routed_track,
+                                "routing_source": "diagnosis_prediction",
+                                "context_audit": request_info.get("context_audit") or {},
+                            }
+                            diagnosis_seen_custom_ids.add(custom_id)
+                            mark_completed()
+
+                    missing_diagnosis_custom_ids = sorted(set(diagnosis_request_map) - diagnosis_seen_custom_ids)
+                    for custom_id in missing_diagnosis_custom_ids:
+                        request_info = diagnosis_request_map[custom_id]
+                        usage = _apply_cost_estimation_policy(
+                            _empty_usage_payload(selected_provider, selected_model, request_info),
+                            provider_name=selected_provider,
+                            execution_mode=normalized_execution_mode,
+                        )
+                        record_generation_result(
+                            request_info=request_info,
+                            raw_response=None,
+                            parsed_payload=None,
+                            usage=usage,
+                            bundle_handles=bundle_handles,
+                            raw_log_fh=raw_log_fh,
+                            manifest_fh=manifest_fh,
+                            elapsed_seconds=None,
+                            error_message="Batch result was missing from both output and error files.",
+                        )
+                        routed_tracks[(request_info["ablation_bundle"], request_info["case_id"])] = {
+                            "proposal_track_used": UNROUTABLE_TRACK,
+                            "routing_source": "diagnosis_prediction",
+                            "context_audit": request_info.get("context_audit") or {},
+                        }
+                        mark_completed()
+
+                    phase_summaries["diagnosis"] = build_batch_phase_summary(
+                        request_count=diagnosis_request_count,
+                        input_path=diagnosis_input_path,
+                        request_manifest_path=diagnosis_manifest_path,
+                        phase_label="diagnosis",
+                        execution_result=diagnosis_execution,
+                        elapsed_seconds=diagnosis_elapsed_seconds,
+                        artifact_paths=diagnosis_artifacts,
+                    )
+
+                    proposal_input_path = out_dir / "proposal_batch_input.jsonl"
+                    proposal_manifest_path = out_dir / "proposal_batch_request_manifest.jsonl"
+                    proposal_request_count = 0
+                    with open(proposal_input_path, "w", encoding="utf-8") as batch_input_fh, open(
+                        proposal_manifest_path, "w", encoding="utf-8"
+                    ) as request_manifest_fh:
+                        for bundle in bundle_list:
+                            for record in _iter_materialized_generation_records(generation_selection):
+                                routing_info = routed_tracks.get((bundle, record["id"]))
+                                if not isinstance(routing_info, dict):
+                                    routing_info = {
+                                        "proposal_track_used": UNROUTABLE_TRACK,
+                                        "routing_source": "diagnosis_prediction",
+                                        "context_audit": {},
+                                    }
+                                proposal_track_used = routing_info.get("proposal_track_used")
+                                if proposal_track_used == "AMBIGUOUS":
+                                    skipped_request_info = build_skipped_proposal_request(
+                                        record,
+                                        bundle,
+                                        proposal_track_used="AMBIGUOUS",
+                                        routing_source="diagnosis_prediction",
+                                        context_audit=routing_info.get("context_audit"),
+                                    )
+                                    record_skipped_proposal(
+                                        request_info=skipped_request_info,
+                                        parse_status="skipped_ambiguous_track",
+                                        skip_reason="Diagnosis predicted AMBIGUOUS track.",
+                                        raw_log_fh=raw_log_fh,
+                                        manifest_fh=manifest_fh,
+                                    )
+                                    mark_completed()
+                                    continue
+                                if proposal_track_used not in {"A_BOX", "T_BOX"}:
+                                    skipped_request_info = build_skipped_proposal_request(
+                                        record,
+                                        bundle,
+                                        proposal_track_used=UNROUTABLE_TRACK,
+                                        routing_source="diagnosis_prediction",
+                                        context_audit=routing_info.get("context_audit"),
+                                    )
+                                    record_skipped_proposal(
+                                        request_info=skipped_request_info,
+                                        parse_status="skipped_unroutable_track",
+                                        skip_reason="Diagnosis output could not be routed to A_BOX or T_BOX.",
+                                        raw_log_fh=raw_log_fh,
+                                        manifest_fh=manifest_fh,
+                                    )
+                                    mark_completed()
+                                    continue
+
+                                world_state_entry = world_state_store.get(record["id"])
+                                proposal_bundle, proposal_metadata = build_proposal_request(
+                                    record,
+                                    bundle,
+                                    world_state_entry,
+                                    proposal_track_used=proposal_track_used,
+                                    routing_source="diagnosis_prediction",
+                                )
+                                proposal_custom_id = f"rf_prop_{proposal_request_count:09d}"
+                                proposal_request_count += 1
+                                provider.write_batch_request(
+                                    batch_input_fh,
+                                    custom_id=proposal_custom_id,
+                                    prompt=proposal_bundle.prompt,
+                                    system_prompt=proposal_bundle.system_prompt,
+                                    response_format=proposal_bundle.response_format,
+                                    metadata=proposal_metadata,
+                                )
+                                _append_jsonl_record(
+                                    request_manifest_fh,
+                                    {"custom_id": proposal_custom_id, "metadata": proposal_metadata},
+                                )
+
+                    proposal_execution = None
+                    proposal_elapsed_seconds = 0.0
+                    proposal_artifacts = {"output_path": None, "error_path": None, "job_path": None}
+                    if proposal_request_count > 0:
+                        _emit_runtime_status(
+                            progress,
+                            f"Prepared {proposal_request_count} routed proposal batch requests; submitting provider batch job.",
+                        )
+                        batch_started_at = time.perf_counter()
+                        proposal_execution = provider.execute_batch(
+                            proposal_input_path,
+                            request_manifest_path=proposal_manifest_path,
+                            output_dir=out_dir,
+                            completion_window=batch_completion_window,
+                            poll_interval_seconds=batch_poll_interval_seconds,
+                            status_callback=lambda message: _emit_runtime_status(progress, message),
+                        )
+                        proposal_elapsed_seconds = time.perf_counter() - batch_started_at
+                        relocated_output, relocated_error, proposal_artifacts = relocate_batch_phase_artifacts(
+                            output_path=proposal_execution.output_path,
+                            error_path=proposal_execution.error_path,
+                            phase_prefix="proposal_",
+                        )
+                        proposal_execution = type(proposal_execution)(
+                            batch=proposal_execution.batch,
+                            output_path=relocated_output,
+                            error_path=relocated_error,
+                        )
+                        _emit_runtime_status(
+                            progress,
+                            "Proposal batch finished; rebuilding normalized proposal outputs.",
+                        )
+
+                    proposal_request_map = iter_request_manifest_rows(proposal_manifest_path)
+                    proposal_seen_custom_ids: set[str] = set()
+                    proposal_result_paths = ()
+                    if proposal_execution is not None:
+                        proposal_result_paths = (proposal_execution.output_path, proposal_execution.error_path)
+                    for result_path in proposal_result_paths:
+                        if result_path is None:
+                            continue
+                        for result_row in iter_jsonl(result_path):
+                            if not isinstance(result_row, dict):
+                                continue
+                            custom_id = result_row.get("custom_id")
+                            if not isinstance(custom_id, str) or custom_id in proposal_seen_custom_ids:
+                                continue
+                            request_info = proposal_request_map.get(custom_id)
+                            if not isinstance(request_info, dict):
+                                continue
+                            raw_response, parsed_payload, usage, error_message = provider.parse_batch_result(
+                                result_row,
+                                request_info,
+                            )
+                            usage = _apply_cost_estimation_policy(
+                                usage,
+                                provider_name=selected_provider,
+                                execution_mode=normalized_execution_mode,
+                            )
+                            record_generation_result(
+                                request_info=request_info,
+                                raw_response=raw_response,
+                                parsed_payload=parsed_payload,
+                                usage=usage,
+                                bundle_handles=bundle_handles,
+                                raw_log_fh=raw_log_fh,
+                                manifest_fh=manifest_fh,
+                                elapsed_seconds=None,
+                                error_message=error_message,
+                            )
+                            proposal_seen_custom_ids.add(custom_id)
+                            mark_completed()
+
+                    missing_proposal_custom_ids = sorted(set(proposal_request_map) - proposal_seen_custom_ids)
+                    for custom_id in missing_proposal_custom_ids:
+                        request_info = proposal_request_map[custom_id]
+                        usage = _apply_cost_estimation_policy(
+                            _empty_usage_payload(selected_provider, selected_model, request_info),
+                            provider_name=selected_provider,
+                            execution_mode=normalized_execution_mode,
+                        )
+                        record_generation_result(
+                            request_info=request_info,
+                            raw_response=None,
+                            parsed_payload=None,
+                            usage=usage,
+                            bundle_handles=bundle_handles,
+                            raw_log_fh=raw_log_fh,
+                            manifest_fh=manifest_fh,
+                            elapsed_seconds=None,
+                            error_message="Batch result was missing from both output and error files.",
+                        )
+                        mark_completed()
+
+                    phase_summaries["proposal"] = build_batch_phase_summary(
+                        request_count=proposal_request_count,
+                        input_path=proposal_input_path,
+                        request_manifest_path=proposal_manifest_path,
+                        phase_label="proposal",
+                        execution_result=proposal_execution,
+                        elapsed_seconds=proposal_elapsed_seconds,
+                        artifact_paths=proposal_artifacts,
+                    )
+                    batch_summary = {
+                        "mode": "two_stage",
+                        "status": batch_status_from_phases(phase_summaries),
+                        "overall_status": batch_status_from_phases(phase_summaries),
+                        "elapsed_seconds": round(
+                            sum(
+                                phase.get("elapsed_seconds", 0.0)
+                                for phase in phase_summaries.values()
+                                if isinstance(phase.get("elapsed_seconds"), (int, float))
+                            ),
+                            6,
+                        ),
+                        "phases": phase_summaries,
+                    }
 
         evaluation_case_count = len(selected_case_ids)
         evaluation_classified_path = Path(classified_path)
@@ -1286,6 +2209,15 @@ def run_reasoning_floor(
                 "filtered_classified_path": str(evaluation_filtered_path) if evaluation_filtered_path else None,
                 "filtered_record_count": evaluation_filtered_record_count,
             },
+            "generation": {
+                "classified_record_strategy": generation_selection.strategy,
+                "selected_generation_records_path": (
+                    str(generation_selection.records_path) if generation_selection.records_path else None
+                ),
+                "selected_case_count": len(selected_case_ids),
+                "memory_cache_case_threshold": GENERATION_IN_MEMORY_CASE_THRESHOLD,
+            },
+            "proposal_track_mode": normalized_proposal_track_mode,
         }
         if normalized_execution_mode == "parallel":
             summary["run_info"]["parallel"] = {

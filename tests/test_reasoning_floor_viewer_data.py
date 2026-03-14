@@ -278,6 +278,29 @@ class ReasoningFloorViewerDataTests(unittest.TestCase):
         ]
         self._write_jsonl(run_dir / "run_manifest.jsonl", manifest_rows)
         self._write_jsonl(run_dir / "raw_model_responses.jsonl", raw_rows)
+        self._write_json(
+            run_dir / "reasoning_floor_summary.json",
+            {
+                "run_info": {
+                    "run_id": "run_001",
+                    "provider": "openai",
+                    "model": "stub-model",
+                    "output_dir": str(run_dir),
+                    "execution_mode": "batch",
+                    "batch_mode_used": True,
+                    "proposal_track_mode": "diagnosis_routed",
+                    "batch": {
+                        "mode": "two_stage",
+                        "overall_status": "completed",
+                        "elapsed_seconds": 3.5,
+                        "phases": {
+                            "diagnosis": {"status": "completed", "request_counts": {"total": 3}},
+                            "proposal": {"status": "completed", "request_counts": {"total": 2}},
+                        },
+                    },
+                }
+            },
+        )
 
         if with_evaluation_artifacts:
             traces, summary = evaluate_benchmark(
@@ -344,6 +367,8 @@ class ReasoningFloorViewerDataTests(unittest.TestCase):
         self.assertEqual(bundle_data.summary_source, "artifact")
         self.assertEqual(bundle_data.bundle_summary["counts"]["cases"], 3)
         self.assertEqual(bundle_data.usage_summary["call_count"], 6)
+        self.assertEqual(bundle_data.run_info["proposal_track_mode"], "diagnosis_routed")
+        self.assertEqual(bundle_data.run_info["batch"]["mode"], "two_stage")
 
     def test_build_case_prompt_debug_reconstructs_case_inputs(self) -> None:
         root, reports_root, run_dir, _ = self._build_fixture(with_evaluation_artifacts=False)
@@ -361,6 +386,31 @@ class ReasoningFloorViewerDataTests(unittest.TestCase):
         self.assertEqual(prompt_debug.proposal_prompt.prompt_name, "reasoning_floor_a_box_zero_shot")
         self.assertEqual(prompt_debug.diagnosis_prompt.prompt_name, "reasoning_floor_track_diagnosis_zero_shot")
         self.assertIn('"id": "repair_case"', prompt_debug.proposal_prompt.prompt)
+
+    def test_build_case_prompt_debug_uses_routed_proposal_track_when_present(self) -> None:
+        root, reports_root, run_dir, _ = self._build_fixture(with_evaluation_artifacts=False)
+        manifest_path = run_dir / "run_manifest.jsonl"
+        manifest_rows = [
+            json.loads(line)
+            for line in manifest_path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        for row in manifest_rows:
+            if row["case_id"] == "repair_case" and row["task_type"] == "proposal":
+                row["proposal_track_used"] = "T_BOX"
+        self._write_jsonl(manifest_path, manifest_rows)
+
+        bundle_data = load_bundle_debug_data(
+            reports_root=reports_root,
+            run_dir=run_dir,
+            bundle_name="minimal_case",
+            classified_benchmark=root / "data" / "04_classified_benchmark.jsonl",
+            world_state=root / "data" / "03_world_state.json",
+        )
+        prompt_debug = build_case_prompt_debug(bundle_data, "repair_case")
+
+        self.assertIsNone(prompt_debug.error)
+        self.assertEqual(prompt_debug.proposal_prompt.prompt_name, "reasoning_floor_t_box_zero_shot")
 
 
 if __name__ == "__main__":

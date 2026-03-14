@@ -187,6 +187,7 @@ def main() -> None:
 
 def render_run_header(bundle_data: BundleDebugData) -> None:
     run_info = bundle_data.run_info or {}
+    batch_info = run_info.get("batch") if isinstance(run_info.get("batch"), dict) else {}
     left, right = st.columns([3, 2])
     with left:
         st.subheader(bundle_data.run_dir.name)
@@ -239,7 +240,14 @@ def render_run_header(bundle_data: BundleDebugData) -> None:
             part
             for part in (
                 f"Execution mode: {value_or_na(run_info.get('execution_mode'))}",
+                f"Proposal track mode: {value_or_na(run_info.get('proposal_track_mode'))}",
                 f"Batch mode used: {format_bool(run_info.get('batch_mode_used'))}",
+                (
+                    f"Batch detail: {value_or_na(batch_info.get('mode'))} / "
+                    f"{value_or_na(batch_info.get('overall_status') or batch_info.get('status'))}"
+                    if batch_info
+                    else None
+                ),
                 (
                     f"Cost estimate: {usage.get('cost_estimation_mode')} "
                     f"(x{usage.get('cost_estimation_multiplier')})"

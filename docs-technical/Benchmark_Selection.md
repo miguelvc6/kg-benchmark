@@ -59,6 +59,8 @@ When a selection manifest is supplied:
 - the runner generates only those cases
 - the evaluator scores only those cases
 - explicit `--case-ids` are intersected with the manifest rather than replacing it
+- manifest order is preserved end-to-end
+- `--max-cases` truncates after manifest ordering is resolved, not after a file-order scan of the benchmark
 
 ## Why This Is a Manifest, Not a Second Benchmark Artifact
 
@@ -70,3 +72,12 @@ The manifest approach preserves:
 - the ability to derive multiple frozen subsets from the same benchmark later
 
 This also keeps the benchmark core independent from protocol-specific runtime choices.
+
+## Ordered Materialization
+
+The reasoning-floor runner now materializes the final selected generation subset once per run.
+
+- small selections stay in memory
+- larger selections are written to `selected_generation_records.jsonl` in the run directory and then streamed from that ordered subset
+
+This guarantees that every ablation bundle sees the same ordered case subset and that later evaluation artifacts can be traced back to the exact generated selection.

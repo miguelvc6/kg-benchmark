@@ -34,6 +34,12 @@ def main() -> int:
         default=60.0,
         help="Polling interval in seconds while waiting for a batch job to finish.",
     )
+    parser.add_argument(
+        "--proposal-track-mode",
+        choices=("oracle", "diagnosis_routed"),
+        default="oracle",
+        help="Use the historical track directly or route proposal generation through track diagnosis.",
+    )
     parser.add_argument("--max-cases", type=int, default=None)
     parser.add_argument("--case-ids", default=None, help="Comma-separated case ids to include.")
     parser.add_argument(
@@ -55,6 +61,7 @@ def main() -> int:
         output_dir=args.output_dir,
         model_name=args.model,
         execution_mode=args.execution_mode,
+        proposal_track_mode=args.proposal_track_mode,
         parallel_workers=args.parallel_workers,
         batch_completion_window=args.batch_completion_window,
         batch_poll_interval_seconds=args.batch_poll_interval_seconds,
@@ -69,4 +76,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

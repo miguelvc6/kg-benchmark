@@ -223,7 +223,9 @@ class ReasoningFloorTests(unittest.TestCase):
         self.assertEqual(summary["counts"]["cases"], 1)
         self.assertEqual(summary["counts"]["track_diagnosis_exact_match"], 1)
         self.assertEqual(summary["run_info"]["execution_mode"], "batch")
-        self.assertEqual(summary["run_info"]["batch"]["status"], "completed")
+        self.assertEqual(summary["run_info"]["batch"]["mode"], "one_stage")
+        self.assertEqual(summary["run_info"]["batch"]["overall_status"], "completed")
+        self.assertEqual(summary["run_info"]["batch"]["phases"]["combined"]["status"], "completed")
         self.assertTrue((run_dir / "batch_input.jsonl").exists())
         self.assertTrue((run_dir / "batch_request_manifest.jsonl").exists())
         self.assertTrue((run_dir / "static_batch_output.jsonl").exists())
@@ -314,8 +316,12 @@ class ReasoningFloorTests(unittest.TestCase):
         )
         self.assertEqual(proposal_bundle.response_format, {"type": "json_object"})
         self.assertIn('"logic_context"', proposal_bundle.prompt)
+        self.assertNotIn('"classification"', proposal_bundle.prompt)
+        self.assertNotIn('"persistence_check"', proposal_bundle.prompt)
+        self.assertNotIn('"repair_target"', proposal_bundle.prompt)
+        self.assertNotIn('"track":', proposal_bundle.prompt)
 
-    def test_t_box_prompt_bundle_preserves_full_local_graph_context(self) -> None:
+    def test_t_box_prompt_bundle_prunes_local_graph_context(self) -> None:
         record = {
             "id": "reform_case",
             "qid": "Q2",
@@ -323,8 +329,12 @@ class ReasoningFloorTests(unittest.TestCase):
             "track": "T_BOX",
             "classification": {"class": "T_BOX"},
             "labels_en": {},
-            "violation_context": {},
-            "persistence_check": {},
+            "violation_context": {
+                "report_violation_type": "one-of",
+                "report_violation_type_normalized": "one-of",
+                "value": ["Q5"],
+            },
+            "persistence_check": {"truth_tokens": ["leak"]},
         }
         world_state_entry = {
             "L1_ego_node": {
@@ -333,9 +343,33 @@ class ReasoningFloorTests(unittest.TestCase):
                 "description": "desc",
                 "properties": {"P31": ["Q5"], "P279": ["Q35120"]},
             },
-            "L2_labels": {"Q5": "human"},
-            "L3_neighborhood": {"outgoing_edges": [{"pid": "P279", "target": "Q35120"}]},
-            "L4_constraints": {"constraints": [{"constraint_type": {"qid": "Q21510859"}, "qualifiers": []}]},
+            "L2_labels": {
+                "entities": {
+                    "Q2": {"label": "Entity"},
+                    "Q5": {"label": "human"},
+                    "Q35120": {"label": "entity"},
+                    "Q999": {"label": "unrelated"},
+                }
+            },
+            "L3_neighborhood": {
+                "outgoing_edges": [
+                    {"pid": "P279", "target": "Q35120"},
+                    {"pid": "P31", "target": "Q5"},
+                    {"pid": "P999", "target": "Q999"},
+                ]
+            },
+            "L4_constraints": {
+                "constraints": [
+                    {
+                        "constraint_type": {"qid": "Q21510859"},
+                        "qualifiers": [{"property_id": "P2305", "values": ["Q5"]}],
+                    },
+                    {
+                        "constraint_type": {"qid": "Q21503250"},
+                        "qualifiers": [{"property_id": "P2305", "values": ["Q999"]}],
+                    },
+                ]
+            },
         }
 
         proposal_bundle = build_prompt_bundle(record, world_state_entry, "local_graph")
@@ -345,8 +379,182 @@ class ReasoningFloorTests(unittest.TestCase):
         self.assertIn('"L4_constraints"', proposal_bundle.prompt)
         self.assertIn('"L2_labels"', proposal_bundle.prompt)
         self.assertIn('"L3_neighborhood"', proposal_bundle.prompt)
-        self.assertIn('"P279"', proposal_bundle.prompt)
+        self.assertIn('"P31"', proposal_bundle.prompt)
+        self.assertNotIn('"P999"', proposal_bundle.prompt)
+        self.assertNotIn('"Q999"', proposal_bundle.prompt)
+        self.assertNotIn('"persistence_check"', proposal_bundle.prompt)
         self.assertIn('"L2_labels"', diagnosis_bundle.prompt)
+
+    def test_reasoning_floor_preserves_manifest_order_before_max_cases(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            classified_path = root / "classified.jsonl"
+            world_state_path = root / "world_state.json"
+            selection_manifest_path = root / "selection.json"
+
+            classified_rows = [
+                {
+                    "id": "case_a",
+                    "qid": "Q1",
+                    "property": "P31",
+                    "track": "A_BOX",
+                    "labels_en": {},
+                    "violation_context": {"value": ["Q2"]},
+                    "repair_target": {"action": "UPDATE", "old_value": ["Q2"], "new_value": ["Q3"]},
+                    "classification": {"class": "TypeA", "subtype": "DIRECT_VALUE"},
+                },
+                {
+                    "id": "case_b",
+                    "qid": "Q2",
+                    "property": "P31",
+                    "track": "A_BOX",
+                    "labels_en": {},
+                    "violation_context": {"value": ["Q4"]},
+                    "repair_target": {"action": "UPDATE", "old_value": ["Q4"], "new_value": ["Q5"]},
+                    "classification": {"class": "TypeA", "subtype": "DIRECT_VALUE"},
+                },
+                {
+                    "id": "case_c",
+                    "qid": "Q3",
+                    "property": "P31",
+                    "track": "A_BOX",
+                    "labels_en": {},
+                    "violation_context": {"value": ["Q6"]},
+                    "repair_target": {"action": "UPDATE", "old_value": ["Q6"], "new_value": ["Q7"]},
+                    "classification": {"class": "TypeA", "subtype": "DIRECT_VALUE"},
+                },
+            ]
+            self._write_jsonl(classified_path, classified_rows)
+            world_state_path.write_text(
+                json.dumps(
+                    {
+                        row["id"]: {
+                            "L1_ego_node": {"qid": row["qid"], "properties": {"P31": row["violation_context"]["value"]}},
+                            "L4_constraints": {"constraints": []},
+                        }
+                        for row in classified_rows
+                    }
+                ),
+                encoding="utf-8",
+            )
+            selection_manifest_path.write_text(
+                json.dumps({"selected_case_ids": ["case_c", "case_a", "case_b"]}),
+                encoding="utf-8",
+            )
+
+            def resolver(metadata: dict[str, Any]) -> dict[str, Any]:
+                if metadata["task_type"] == "track_diagnosis":
+                    return {"case_id": metadata["case_id"], "predicted_track": "A_BOX", "confidence": "high"}
+                return {
+                    "case_id": metadata["case_id"],
+                    "target": {"qid": {"case_a": "Q1", "case_b": "Q2", "case_c": "Q3"}[metadata["case_id"]], "pid": "P31"},
+                    "ops": [{"op": "SET", "pid": "P31", "value": {"case_a": "Q3", "case_b": "Q5", "case_c": "Q7"}[metadata["case_id"]]}],
+                }
+
+            summary = run_reasoning_floor(
+                classified_path=classified_path,
+                world_state_path=world_state_path,
+                output_dir=root / "outputs",
+                provider=StaticResponseProvider(resolver, model="stub-model"),
+                ablation_bundles=["minimal_case"],
+                selection_manifest_path=selection_manifest_path,
+                max_cases=2,
+            )
+
+            run_dir = Path(summary["run_info"]["output_dir"])
+            manifest_rows = [
+                json.loads(line)
+                for line in (run_dir / "run_manifest.jsonl").read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+            proposal_case_ids = [row["case_id"] for row in manifest_rows if row["task_type"] == "proposal"]
+            self.assertEqual(proposal_case_ids, ["case_c", "case_a"])
+
+    def test_reasoning_floor_diagnosis_routed_skips_ambiguous_proposals(self) -> None:
+        root, classified_path, world_state_path, selection_manifest_path, _resolver = self._make_stub_fixture()
+
+        def resolver(metadata: dict[str, Any]) -> dict[str, Any]:
+            if metadata["task_type"] == "track_diagnosis":
+                return {
+                    "case_id": metadata["case_id"],
+                    "predicted_track": "AMBIGUOUS" if metadata["case_id"] == "reform_case" else "A_BOX",
+                    "confidence": "medium",
+                }
+            return {
+                "case_id": metadata["case_id"],
+                "target": {"qid": "Q1", "pid": "P31"},
+                "ops": [{"op": "SET", "pid": "P31", "value": "Q5"}],
+            }
+
+        summary = run_reasoning_floor(
+            classified_path=classified_path,
+            world_state_path=world_state_path,
+            output_dir=root / "outputs",
+            provider=StaticResponseProvider(resolver, model="stub-model"),
+            ablation_bundles=["minimal_case"],
+            selection_manifest_path=selection_manifest_path,
+            proposal_track_mode="diagnosis_routed",
+        )
+
+        run_dir = Path(summary["run_info"]["output_dir"])
+        manifest_rows = [
+            json.loads(line)
+            for line in (run_dir / "run_manifest.jsonl").read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        proposal_row = next(row for row in manifest_rows if row["case_id"] == "reform_case" and row["task_type"] == "proposal")
+        self.assertEqual(summary["run_info"]["proposal_track_mode"], "diagnosis_routed")
+        self.assertEqual(proposal_row["parse_status"], "skipped_ambiguous_track")
+        self.assertEqual(proposal_row["proposal_track_used"], "AMBIGUOUS")
+        t_box_rows = [
+            json.loads(line)
+            for line in (run_dir / "minimal_case" / "t_box_proposals.jsonl").read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        self.assertEqual(t_box_rows, [])
+
+    def test_reasoning_floor_diagnosis_routed_parallel_stub_run(self) -> None:
+        root, classified_path, world_state_path, selection_manifest_path, resolver = self._make_stub_fixture()
+        summary = run_reasoning_floor(
+            classified_path=classified_path,
+            world_state_path=world_state_path,
+            output_dir=root / "outputs",
+            provider=StaticResponseProvider(resolver, model="stub-model"),
+            ablation_bundles=["minimal_case"],
+            selection_manifest_path=selection_manifest_path,
+            execution_mode="parallel",
+            parallel_workers=2,
+            proposal_track_mode="diagnosis_routed",
+        )
+
+        self.assertEqual(summary["counts"]["cases"], 1)
+        self.assertEqual(summary["run_info"]["execution_mode"], "parallel")
+        self.assertEqual(summary["run_info"]["proposal_track_mode"], "diagnosis_routed")
+        self.assertEqual(summary["counts"]["track_diagnosis_exact_match"], 1)
+
+    def test_reasoning_floor_diagnosis_routed_batch_uses_two_stage_artifacts(self) -> None:
+        root, classified_path, world_state_path, selection_manifest_path, resolver = self._make_stub_fixture()
+        summary = run_reasoning_floor(
+            classified_path=classified_path,
+            world_state_path=world_state_path,
+            output_dir=root / "outputs",
+            provider=StaticResponseProvider(resolver, model="stub-model"),
+            ablation_bundles=["minimal_case"],
+            selection_manifest_path=selection_manifest_path,
+            execution_mode="batch",
+            batch_poll_interval_seconds=0.0,
+            proposal_track_mode="diagnosis_routed",
+        )
+
+        run_dir = Path(summary["run_info"]["output_dir"])
+        self.assertEqual(summary["run_info"]["batch"]["mode"], "two_stage")
+        self.assertEqual(summary["run_info"]["batch"]["overall_status"], "completed")
+        self.assertIn("diagnosis", summary["run_info"]["batch"]["phases"])
+        self.assertIn("proposal", summary["run_info"]["batch"]["phases"])
+        self.assertTrue((run_dir / "diagnosis_batch_input.jsonl").exists())
+        self.assertTrue((run_dir / "proposal_batch_input.jsonl").exists())
+        self.assertTrue((run_dir / "diagnosis_static_batch_output.jsonl").exists())
+        self.assertTrue((run_dir / "proposal_static_batch_output.jsonl").exists())
 
     def test_reasoning_floor_normalizes_non_list_provenance_outputs(self) -> None:
         root, classified_path, world_state_path, _selection_manifest_path, _resolver = self._make_stub_fixture()

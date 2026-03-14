@@ -426,6 +426,106 @@ def _proposal_error_details(manifest_record: dict[str, Any]) -> dict[str, Any]:
     return details
 
 
+def _world_state_target_values(
+    world_state_entry: Optional[dict[str, Any]],
+    property_id: str | None,
+) -> list[str]:
+    if not isinstance(world_state_entry, dict) or not isinstance(property_id, str) or not property_id:
+        return []
+    l1_node = world_state_entry.get("L1_ego_node")
+    if not isinstance(l1_node, dict):
+        return []
+    properties = l1_node.get("properties")
+    if not isinstance(properties, dict):
+        return []
+    return _normalize_value_list(properties.get(property_id))
+
+
+def _signature_after_jaccard(left: list[dict[str, Any]], right: list[dict[str, Any]]) -> float:
+    left_set = {json.dumps(entry, sort_keys=True, ensure_ascii=False) for entry in left if isinstance(entry, dict)}
+    right_set = {json.dumps(entry, sort_keys=True, ensure_ascii=False) for entry in right if isinstance(entry, dict)}
+    if not left_set and not right_set:
+        return 1.0
+    if not left_set or not right_set:
+        return 0.0
+    return len(left_set & right_set) / len(left_set | right_set)
+
+
+def _proposal_signature_entries_for_constraint(
+    signature_after: list[dict[str, Any]],
+    constraint_qid: str | None,
+) -> list[dict[str, Any]]:
+    if not isinstance(constraint_qid, str) or not constraint_qid:
+        return [entry for entry in signature_after if isinstance(entry, dict)]
+    matching_entries = [
+        entry
+        for entry in signature_after
+        if isinstance(entry, dict) and entry.get("constraint_qid") == constraint_qid
+    ]
+    if matching_entries:
+        return matching_entries
+    return [entry for entry in signature_after if isinstance(entry, dict)]
+
+
+def _proposal_admits_current_values(
+    *,
+    proposal: Any,
+    current_values: list[str],
+) -> Optional[bool]:
+    if proposal is None:
+        return None
+    constraint_qid = getattr(proposal.target, "constraint_type_qid", None)
+    signature_after = getattr(proposal.proposal, "signature_after", None)
+    if not isinstance(signature_after, list):
+        return None
+    relevant_entries = _proposal_signature_entries_for_constraint(signature_after, constraint_qid)
+    if constraint_qid in ONE_OF_QIDS:
+        allowed_values = {
+            value
+            for entry in relevant_entries
+            for value in _qualifier_values(entry, "P2305")
+        }
+        if not allowed_values:
+            return None
+        return all(value in allowed_values for value in current_values)
+    if constraint_qid in RANGE_QIDS:
+        mins = [
+            numeric
+            for entry in relevant_entries
+            for numeric in (_parse_numeric(value) for value in _qualifier_values(entry, "P2310"))
+            if numeric is not None
+        ]
+        maxs = [
+            numeric
+            for entry in relevant_entries
+            for numeric in (_parse_numeric(value) for value in _qualifier_values(entry, "P2311"))
+            if numeric is not None
+        ]
+        if not mins and not maxs:
+            return None
+        for raw_value in current_values:
+            numeric_value = _parse_numeric(raw_value)
+            if numeric_value is None:
+                return False
+            if mins and numeric_value < min(mins):
+                return False
+            if maxs and numeric_value > max(maxs):
+                return False
+        return True
+    if constraint_qid in FORMAT_QIDS:
+        patterns = [
+            pattern
+            for entry in relevant_entries
+            for pattern in _qualifier_values(entry, "P1793")
+        ]
+        if not patterns:
+            return None
+        import re
+
+        return all(any(re.fullmatch(pattern, value) for pattern in patterns) for value in current_values)
+    return None
+
+
 def evaluate_a_box_case(
     record: dict[str, Any],
     world_state_entry: Optional[dict[str, Any]],
@@ -524,14 +624,20 @@ def evaluate_t_box_case(
     popularity_bucket: str,
     ablation_bundle: Optional[str],
 ) -> dict[str, Any]:
-    del world_state_entry
     proposal_missing = proposal is None
     valid = proposal is not None
     target_pid = record.get("property")
     executable = False
+    exact_action_match = False
+    exact_signature_match = False
+    changed_constraint_type_hit = False
     exact_reform_match = False
     semantic_reform_match = False
     semantic_success = False
+    signature_after_jaccard = 0.0
+    proposal_admits_current_values = None
+    normalized_historical_signature: list[dict[str, Any]] = []
+    changed_constraint_types: set[str] = set()
     if proposal is not None:
         historical_signature = record.get("repair_target", {}).get("constraint_delta", {}).get("signature_after", [])
         normalized_historical_signature = normalize_signature_after(historical_signature)
@@ -548,13 +654,24 @@ def evaluate_t_box_case(
                 for entry in normalized_historical_signature
                 if isinstance(entry, dict) and isinstance(entry.get("constraint_qid"), str)
             }
-        executable = proposal.target.pid == target_pid and proposal.target.constraint_type_qid in changed_constraint_types
-        exact_reform_match = proposal.proposal.signature_after == normalized_historical_signature
+        changed_constraint_type_hit = proposal.target.constraint_type_qid in changed_constraint_types
+        executable = proposal.target.pid == target_pid and changed_constraint_type_hit
+        exact_action_match = proposal.proposal.action == record.get("classification", {}).get("subtype")
+        exact_signature_match = proposal.proposal.signature_after == normalized_historical_signature
+        exact_reform_match = exact_action_match and exact_signature_match
         semantic_reform_match = proposal.proposal.action == record.get("classification", {}).get("subtype")
         semantic_success = bool(executable and semantic_reform_match)
+        signature_after_jaccard = _signature_after_jaccard(
+            proposal.proposal.signature_after,
+            normalized_historical_signature,
+        )
+        proposal_admits_current_values = _proposal_admits_current_values(
+            proposal=proposal,
+            current_values=_world_state_target_values(world_state_entry, target_pid),
+        )
     accepted = bool(valid and executable and exact_reform_match)
     metrics = {
-        "functional_success": 1.0 if exact_reform_match else 0.0,
+        "functional_success": 1.0 if accepted else 0.0,
         "exact_historical_agreement": 1.0 if exact_reform_match else 0.0,
         "semantic_success": 1.0 if semantic_success else 0.0,
         "information_preservation": None,
@@ -562,6 +679,13 @@ def evaluate_t_box_case(
         "token_usage": _token_usage(manifest_record),
         "conversion_rate": None,
         "tokens_to_fix": None,
+        "exact_action_match": 1.0 if exact_action_match else 0.0,
+        "exact_signature_match": 1.0 if exact_signature_match else 0.0,
+        "changed_constraint_type_hit": 1.0 if changed_constraint_type_hit else 0.0,
+        "signature_after_jaccard": signature_after_jaccard,
+        "proposal_admits_current_values": (
+            None if proposal_admits_current_values is None else (1.0 if proposal_admits_current_values else 0.0)
+        ),
     }
     return {
         "case_id": record["id"],
@@ -578,13 +702,18 @@ def evaluate_t_box_case(
         "semantic_success": semantic_success,
         "accepted": accepted,
         "comparison": {
-            "exact_action_match": None,
+            "exact_action_match": exact_action_match,
             "exact_value_match": None,
             "semantic_reform_match": semantic_reform_match,
             "exact_reform_match": exact_reform_match,
+            "exact_signature_match": exact_signature_match,
+            "changed_constraint_type_hit": changed_constraint_type_hit,
         },
         "metrics": metrics,
-        "details": _proposal_error_details(manifest_record),
+        "details": {
+            "proposal_admits_current_values": proposal_admits_current_values,
+            **_proposal_error_details(manifest_record),
+        },
     }
 
 
@@ -648,6 +777,11 @@ def summarize_trace_iterable(
                 "semantic_success",
                 "information_preservation",
                 "provenance_completeness",
+                "exact_action_match",
+                "exact_signature_match",
+                "changed_constraint_type_hit",
+                "signature_after_jaccard",
+                "proposal_admits_current_values",
             ):
                 value = metrics.get(field)
                 if isinstance(value, (int, float)):
@@ -688,6 +822,20 @@ def summarize_trace_iterable(
                 "semantic_success_rate": avg("semantic_success"),
                 "information_preservation_mean": avg("information_preservation"),
                 "provenance_completeness_mean": avg("provenance_completeness"),
+                "exact_action_match_rate": avg("exact_action_match"),
+                "exact_signature_match_rate": avg("exact_signature_match"),
+                "changed_constraint_type_hit_rate": avg("changed_constraint_type_hit"),
+                "signature_after_jaccard_mean": avg("signature_after_jaccard"),
+                "proposal_admits_current_values_rate": avg("proposal_admits_current_values"),
+                "metric_applicability": {
+                    "semantic_success": self.metric_counts.get("semantic_success", 0),
+                    "information_preservation": self.metric_counts.get("information_preservation", 0),
+                    "exact_action_match": self.metric_counts.get("exact_action_match", 0),
+                    "exact_signature_match": self.metric_counts.get("exact_signature_match", 0),
+                    "changed_constraint_type_hit": self.metric_counts.get("changed_constraint_type_hit", 0),
+                    "signature_after_jaccard": self.metric_counts.get("signature_after_jaccard", 0),
+                    "proposal_admits_current_values": self.metric_counts.get("proposal_admits_current_values", 0),
+                },
                 "proposal_parse_error_count": int(self.metric_sums.get("proposal_parse_error_count", 0.0)),
                 "proposal_parse_error_rate": self.metric_sums.get("proposal_parse_error_count", 0.0) / self.count,
                 "proposal_parse_errors_by_message": {
@@ -724,8 +872,20 @@ def summarize_trace_iterable(
             counts["proposal_executable"] += 1
         if trace.get("metrics", {}).get("functional_success") == 1.0:
             counts["functional_success"] += 1
-        if trace.get("metrics", {}).get("semantic_success") == 1.0:
+        metrics = trace.get("metrics", {})
+        if metrics.get("semantic_success") == 1.0:
             counts["semantic_success"] += 1
+        for metric_name in (
+            "semantic_success",
+            "information_preservation",
+            "exact_action_match",
+            "exact_signature_match",
+            "changed_constraint_type_hit",
+            "signature_after_jaccard",
+            "proposal_admits_current_values",
+        ):
+            if isinstance(metrics.get(metric_name), (int, float)):
+                counts[f"{metric_name}_applicable"] += 1
         if trace.get("parse_status") == "parse_error":
             counts["proposal_parse_error"] += 1
             parser_error = trace.get("details", {}).get("parser_error")

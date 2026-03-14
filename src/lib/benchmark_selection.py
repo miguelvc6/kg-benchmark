@@ -20,6 +20,19 @@ def _normalized_case_ids(case_ids: Optional[Iterable[str]]) -> Optional[set[str]
     return {case_id for case_id in case_ids if isinstance(case_id, str) and case_id}
 
 
+def _ordered_unique_case_ids(case_ids: Optional[Iterable[str]]) -> list[str]:
+    if not case_ids:
+        return []
+    ordered: list[str] = []
+    seen: set[str] = set()
+    for case_id in case_ids:
+        if not isinstance(case_id, str) or not case_id or case_id in seen:
+            continue
+        seen.add(case_id)
+        ordered.append(case_id)
+    return ordered
+
+
 def _stable_rank(case_id: str, property_revision_id: int, seed: int) -> str:
     payload = f"{seed}|{property_revision_id}|{case_id}".encode("utf-8")
     return hashlib.sha1(payload).hexdigest()
@@ -143,16 +156,17 @@ def resolve_case_id_filter(
     case_ids: Optional[Iterable[str]] = None,
     selection_manifest_path: str | Path | None = None,
 ) -> Optional[list[str]]:
-    explicit_ids = _normalized_case_ids(case_ids)
-    manifest_ids = None
+    explicit_ids = _ordered_unique_case_ids(case_ids)
+    explicit_id_set = set(explicit_ids)
+    manifest_ids: list[str] | None = None
     if selection_manifest_path:
         manifest = load_selection_manifest(selection_manifest_path)
-        manifest_ids = _normalized_case_ids(manifest.get("selected_case_ids"))
+        manifest_ids = _ordered_unique_case_ids(manifest.get("selected_case_ids"))
 
-    if explicit_ids is None and manifest_ids is None:
+    if not explicit_ids and manifest_ids is None:
         return None
-    if explicit_ids is None:
-        return sorted(manifest_ids or set())
+    if not explicit_ids:
+        return list(manifest_ids or [])
     if manifest_ids is None:
-        return sorted(explicit_ids)
-    return sorted(explicit_ids & manifest_ids)
+        return explicit_ids
+    return [case_id for case_id in manifest_ids if case_id in explicit_id_set]
