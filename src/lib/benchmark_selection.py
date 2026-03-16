@@ -9,6 +9,8 @@ from typing import Any, Iterable, Optional
 
 DEFAULT_TBOX_CAP_PER_UPDATE = 100
 DEFAULT_SELECTION_SEED = 13
+DEFAULT_SELECTED_CASE_ORDER = "sorted"
+SUPPORTED_SELECTED_CASE_ORDERS = {"sorted", "shuffled"}
 TRACK_TBOX_MARKER = '"track": "T_BOX"'
 CASE_ID_RE = re.compile(r'"id"\s*:\s*"([^"]+)"')
 PROPERTY_REVISION_RE = re.compile(r'"property_revision_id"\s*:\s*(\d+)')
@@ -38,15 +40,27 @@ def _stable_rank(case_id: str, property_revision_id: int, seed: int) -> str:
     return hashlib.sha1(payload).hexdigest()
 
 
+def _selected_case_sort_key(case_id: str, seed: int, selected_case_order: str) -> tuple[str, str] | str:
+    if selected_case_order == "sorted":
+        return case_id
+    payload = f"{seed}|selected_case_ids|{case_id}".encode("utf-8")
+    return (hashlib.sha1(payload).hexdigest(), case_id)
+
+
 def build_selection_manifest(
     classified_path: str | Path,
     *,
     tbox_cap_per_update: int = DEFAULT_TBOX_CAP_PER_UPDATE,
     seed: int = DEFAULT_SELECTION_SEED,
+    selected_case_order: str = DEFAULT_SELECTED_CASE_ORDER,
     progress_every: int = 0,
 ) -> dict[str, Any]:
     if tbox_cap_per_update < 0:
         raise ValueError("tbox_cap_per_update must be non-negative.")
+    if selected_case_order not in SUPPORTED_SELECTED_CASE_ORDERS:
+        raise ValueError(
+            f"selected_case_order must be one of {sorted(SUPPORTED_SELECTED_CASE_ORDERS)!r}."
+        )
 
     selected_a_box_ids: list[str] = []
     tbox_candidates: dict[int, list[tuple[str, str]]] = {}
@@ -100,7 +114,10 @@ def build_selection_manifest(
             }
         )
 
-    selected_case_ids = sorted(selected_a_box_ids + selected_t_box_ids)
+    selected_case_ids = sorted(
+        selected_a_box_ids + selected_t_box_ids,
+        key=lambda case_id: _selected_case_sort_key(case_id, seed, selected_case_order),
+    )
     selected_t_box = len(selected_t_box_ids)
 
     return {
@@ -116,6 +133,12 @@ def build_selection_manifest(
             "tbox_cap_per_update": tbox_cap_per_update,
             "seed": seed,
             "stable_ordering": "sha1(seed|property_revision_id|case_id) ascending",
+            "selected_case_ids_ordering": (
+                "case_id ascending"
+                if selected_case_order == "sorted"
+                else "sha1(seed|selected_case_ids|case_id) ascending"
+            ),
+            "selected_case_order": selected_case_order,
         },
         "counts": {
             "total_records": total_records,

@@ -70,6 +70,7 @@ Current T-box scoring:
 Family-level T-box compatibility requires:
 
 - the proposal targets one of the historical changed constraint families
+- when the evaluator can identify a specific historical target constraint family, the proposal must target that same family
 - the proposal action maps to the same semantic family as the historical reform
 - the proposed `signature_after` is directionally compatible with that family when the historical `signature_before` makes direction inferable
 

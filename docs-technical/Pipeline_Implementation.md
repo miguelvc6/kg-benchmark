@@ -181,6 +181,8 @@ Current paper policy:
 - keep all `A_BOX` cases
 - cap `T_BOX` cases at `100` per `repair_target.property_revision_id`
 
+The selector can write `selected_case_ids` either in global case-id order or in a deterministic seeded shuffled order for mixed small-sample runs.
+
 The selector does not emit a second benchmark JSONL. It writes case ids plus policy metadata so downstream generation and evaluation can reuse the canonical Stage 4 artifact.
 
 ## Stage 6: Evaluation

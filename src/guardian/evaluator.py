@@ -739,6 +739,15 @@ def _semantic_family_compatible(proposal_family: str | None, historical_family: 
     return proposal_family == historical_family
 
 
+def _target_constraint_match(
+    proposal_constraint_qid: str | None,
+    historical_target_constraint_qid: str | None,
+) -> bool:
+    if not isinstance(historical_target_constraint_qid, str) or not historical_target_constraint_qid:
+        return True
+    return proposal_constraint_qid == historical_target_constraint_qid
+
+
 def _proposal_signature_entries_for_constraint(
     signature_after: list[dict[str, Any]],
     constraint_qid: str | None,
@@ -938,6 +947,7 @@ def evaluate_t_box_case(
     exact_reform_match = False
     semantic_reform_match = False
     semantic_family_match = False
+    target_constraint_match = False
     semantic_success = False
     semantic_family_success = False
     signature_after_jaccard = 0.0
@@ -975,12 +985,17 @@ def evaluate_t_box_case(
             proposal.proposal.signature_after,
             proposal.target.constraint_type_qid,
         )
+        target_constraint_match = _target_constraint_match(
+            proposal.target.constraint_type_qid,
+            target_constraint_qid,
+        )
         signature_direction_match = (
             proposal_signature_family is None
             or _semantic_family_compatible(proposal_signature_family, historical_semantic_family)
         )
         semantic_family_match = bool(
             executable
+            and target_constraint_match
             and _semantic_family_compatible(proposal_action_family, historical_semantic_family)
             and signature_direction_match
         )
@@ -1044,6 +1059,7 @@ def evaluate_t_box_case(
             "exact_value_match": None,
             "semantic_reform_match": semantic_reform_match,
             "semantic_family_match": semantic_family_match,
+            "target_constraint_match": target_constraint_match,
             "exact_reform_match": exact_reform_match,
             "exact_signature_match": exact_signature_match,
             "changed_constraint_type_hit": changed_constraint_type_hit,

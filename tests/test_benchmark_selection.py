@@ -1,9 +1,14 @@
 import json
+import hashlib
 import tempfile
 import unittest
 from pathlib import Path
 
-from lib.benchmark_selection import build_selection_manifest, load_selection_manifest, resolve_case_id_filter
+from lib.benchmark_selection import (
+    build_selection_manifest,
+    load_selection_manifest,
+    resolve_case_id_filter,
+)
 
 
 class BenchmarkSelectionTests(unittest.TestCase):
@@ -56,6 +61,49 @@ class BenchmarkSelectionTests(unittest.TestCase):
             }
             self.assertEqual(len(selected_101), 1)
             self.assertIn("tbox_c", manifest["selected_case_ids"])
+
+    def test_build_selection_manifest_can_shuffle_selected_case_ids_deterministically(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            classified_path = root / "classified.jsonl"
+            rows = [
+                {"id": "repair_alpha", "track": "A_BOX"},
+                {"id": "repair_beta", "track": "A_BOX"},
+                {"id": "repair_gamma", "track": "A_BOX"},
+                {
+                    "id": "reform_delta",
+                    "track": "T_BOX",
+                    "repair_target": {"property_revision_id": 101},
+                },
+                {
+                    "id": "reform_epsilon",
+                    "track": "T_BOX",
+                    "repair_target": {"property_revision_id": 202},
+                },
+            ]
+            self._write_jsonl(classified_path, rows)
+
+            manifest = build_selection_manifest(
+                classified_path,
+                tbox_cap_per_update=1,
+                seed=13,
+                selected_case_order="shuffled",
+            )
+
+            expected_order = sorted(
+                [row["id"] for row in rows],
+                key=lambda case_id: (
+                    hashlib.sha1(f"13|selected_case_ids|{case_id}".encode("utf-8")).hexdigest(),
+                    case_id,
+                ),
+            )
+
+            self.assertEqual(manifest["selected_case_ids"], expected_order)
+            self.assertEqual(manifest["policy"]["selected_case_order"], "shuffled")
+            self.assertEqual(
+                manifest["policy"]["selected_case_ids_ordering"],
+                "sha1(seed|selected_case_ids|case_id) ascending",
+            )
 
     def test_resolve_case_id_filter_intersects_manifest_and_explicit_ids(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:

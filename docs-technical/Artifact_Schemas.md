@@ -159,6 +159,8 @@ Current manifest fields include:
 - `policy.tbox_cap_per_update`
 - `policy.seed`
 - `policy.stable_ordering`
+- `policy.selected_case_order`
+- `policy.selected_case_ids_ordering`
 - aggregate `counts`
 - `t_box_selected_counts_by_revision`
 - `selected_case_ids`
@@ -215,7 +217,7 @@ Each trace includes:
 - proposal presence, validity, and executability
 - acceptance decision
 - exact-match and semantic-match comparison fields
-- for T-box traces, family-level semantic fields such as `comparison.semantic_family_match`, `comparison.literal_action_match`, and `metrics.semantic_family_success`
+- for T-box traces, family-level semantic fields such as `comparison.semantic_family_match`, `comparison.target_constraint_match`, `comparison.literal_action_match`, and `metrics.semantic_family_success`
 - track-diagnosis fields including predicted track, historical track, and exact-track-match
 - metric fields including auditability completeness, conversion rate, and tokens-to-fix
 

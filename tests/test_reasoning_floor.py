@@ -1,4 +1,5 @@
 import json
+import importlib.util
 import tempfile
 import unittest
 from pathlib import Path
@@ -394,6 +395,8 @@ class ReasoningFloorTests(unittest.TestCase):
         template = get_prompt_template("reasoning_floor_t_box_zero_shot")
         self.assertNotIn("Q21510859", template.user_prompt_template)
         self.assertNotIn("Q43229", template.user_prompt_template)
+        self.assertNotIn("Q_CONSTRAINT_", template.user_prompt_template)
+        self.assertNotIn("Q_ITEM_", template.user_prompt_template)
         self.assertIn("constraint-family QIDs from the supplied constraint context", template.user_prompt_template)
         self.assertIn("Do not copy violating entity or type QIDs into constraint_type_qid", template.user_prompt_template)
 
@@ -402,6 +405,15 @@ class ReasoningFloorTests(unittest.TestCase):
         self.assertIn("Allowed-entity-types, property-scope, one-of, range", template.user_prompt_template)
         self.assertIn("If a property currently allows only certain entity types", template.user_prompt_template)
         self.assertIn("predict AMBIGUOUS", template.user_prompt_template)
+
+    def test_cli_defaults_skip_minimal_case(self) -> None:
+        module_path = Path(__file__).resolve().parents[1] / "src" / "reasoning_floor.py"
+        spec = importlib.util.spec_from_file_location("reasoning_floor_cli_under_test", module_path)
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        self.assertEqual(module.DEFAULT_ABLATION_BUNDLES, ("logic_only", "local_graph"))
 
     def test_reasoning_floor_preserves_manifest_order_before_max_cases(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:

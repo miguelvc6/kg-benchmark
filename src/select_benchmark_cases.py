@@ -6,7 +6,9 @@ from pathlib import Path
 
 from lib.benchmark_selection import (
     DEFAULT_SELECTION_SEED,
+    DEFAULT_SELECTED_CASE_ORDER,
     DEFAULT_TBOX_CAP_PER_UPDATE,
+    SUPPORTED_SELECTED_CASE_ORDERS,
     build_selection_manifest,
 )
 
@@ -37,6 +39,16 @@ def main() -> int:
         help="Seed used in the stable hash ordering for within-update case selection.",
     )
     parser.add_argument(
+        "--selected-case-order",
+        choices=sorted(SUPPORTED_SELECTED_CASE_ORDERS),
+        default=DEFAULT_SELECTED_CASE_ORDER,
+        help=(
+            "Ordering to write into selected_case_ids. "
+            "'sorted' keeps global case-id ordering; 'shuffled' applies a deterministic "
+            "seeded hash order so small --max-cases runs can mix tracks."
+        ),
+    )
+    parser.add_argument(
         "--progress-every",
         type=int,
         default=100000,
@@ -48,6 +60,7 @@ def main() -> int:
         args.classified_benchmark,
         tbox_cap_per_update=args.tbox_cap_per_update,
         seed=args.seed,
+        selected_case_order=args.selected_case_order,
         progress_every=args.progress_every,
     )
     out_path = Path(args.output)
@@ -60,6 +73,7 @@ def main() -> int:
     print(f"[done] selected_a_box_cases={counts['selected_a_box_cases']:,}")
     print(f"[done] selected_t_box_cases={counts['selected_t_box_cases']:,}")
     print(f"[done] distinct_t_box_updates={counts['distinct_t_box_updates']:,}")
+    print(f"[done] selected_case_order={manifest['policy']['selected_case_order']}")
     return 0
 
 

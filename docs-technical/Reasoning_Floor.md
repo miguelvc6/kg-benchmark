@@ -22,6 +22,8 @@ The first-wave bundles are:
 - `logic_only`: sanitized case-local payload plus pruned touched `L4_constraints`
 - `local_graph`: sanitized case-local payload plus pruned touched `L1` through `L4`
 
+`minimal_case` remains supported, but the CLI in [reasoning_floor.py](/mnt/c/Code/kg-benchmark/src/reasoning_floor.py) now defaults to `logic_only,local_graph`. Include `minimal_case` explicitly with `--ablation-bundles` when you want to run the no-context bundle.
+
 Prompt payloads are now hard-sanitized before rendering. Model-visible inputs exclude benchmark-only fields such as:
 
 - `track`
@@ -112,6 +114,8 @@ The T-box prompt now uses placeholder-only contrastive examples rather than a si
 - violating item/type QIDs must not be copied into those constraint-family fields unless they actually appear as constraint families
 - `SCHEMA_UPDATE` is the fallback when the payload shows a schema change but does not support a narrower directional reform family confidently
 
+Those placeholders no longer mimic Wikidata `Q...` ids, so copied template tokens are less likely to be misread as valid-but-wrong constraint-family guesses.
+
 The track-diagnosis prompt now includes explicit contrastive guidance for schema-vs-claim confusion cases such as allowed-entity-types and property-scope disputes.
 
 As a safety net, the normalization layer also accepts several legacy rich-JSON shapes that appeared in earlier reasoning-floor runs. This compatibility path recovers common aliases such as `proposal_id` or `repair_id`, nested property fields, numeric track-diagnosis confidence values, proposal-level confidence aliases that can be rewritten into `uncertainty`, and common proposal wrappers when they can be mapped back to the public schemas.
@@ -197,13 +201,13 @@ When `--selection-manifest` and `--max-cases` are combined without a track filte
 
 - `accepted`, `functional_success`, and `exact_historical_agreement` require both exact action match and exact normalized `signature_after` match
 - `semantic_success` now reports family-level compatibility, not literal action-label equality
-- traces also expose `comparison.literal_action_match`, `comparison.semantic_family_match`, `comparison.exact_action_match`, `comparison.exact_signature_match`, `comparison.changed_constraint_type_hit`, `metrics.semantic_family_success`, `metrics.signature_after_jaccard`, and `details.proposal_admits_current_values` where applicable
+- traces also expose `comparison.literal_action_match`, `comparison.semantic_family_match`, `comparison.target_constraint_match`, `comparison.exact_action_match`, `comparison.exact_signature_match`, `comparison.changed_constraint_type_hit`, `metrics.semantic_family_success`, `metrics.signature_after_jaccard`, and `details.proposal_admits_current_values` where applicable
 
 For new reasoning-floor runs, T-box normalization is also strict about constraint-family IDs. The runner passes a case-local allowlist into the T-box parser, so malformed outputs such as entity/type QIDs used in `constraint_type_qid` become proposal `parse_error` rows and are omitted from normalized T-box proposal JSONL artifacts.
 
 Grouped and overall summaries now expose metric applicability counts so T-box-only metrics can be interpreted with their true denominator.
 
-This prevents summaries from collapsing plausible narrower T-box reforms to zero when the historical label is coarse `SCHEMA_UPDATE`, while still keeping exact historical agreement strict.
+This prevents summaries from collapsing plausible narrower T-box reforms to zero when the historical label is coarse `SCHEMA_UPDATE`, while still keeping exact historical agreement strict and avoiding credit for editing the wrong changed constraint family.
 
 ## Test Coverage
 

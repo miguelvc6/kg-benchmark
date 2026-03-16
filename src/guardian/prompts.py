@@ -102,7 +102,7 @@ Input case:
 
 Also include: "rationale", "provenance", and "uncertainty".
 "provenance" must be an array of objects such as:
-[{"kind":"KG","node_id":"Q_CONSTRAINT_FAMILY","snippet":"current constraint family"}]
+[{"kind":"KG","node_id":"<constraint family qid from input>","snippet":"current constraint family"}]
 "uncertainty" must be an object such as:
 {"confidence": 0.20, "notes": "The exact historical signature may have alternative equivalent forms."}
 
@@ -121,50 +121,50 @@ Rules:
 Template example 1 (placeholders, not literal ids):
 {
   "case_id": "reform_case",
-  "target": {"pid": "P_TARGET", "constraint_type_qid": "Q_CONSTRAINT_SET"},
+  "target": {"pid": "P_TARGET", "constraint_type_qid": "<constraint family qid from input>"},
   "proposal": {
     "action": "RELAXATION_SET_EXPANSION",
     "signature_after": [
       {
-        "constraint_qid": "Q_CONSTRAINT_SET",
+        "constraint_qid": "<same constraint family qid>",
         "snaktype": "VALUE",
         "rank": "normal",
         "qualifiers": [
           {
             "property_id": "P2305",
-            "values": ["Q_ITEM_A", "Q_ITEM_B"]
+            "values": ["<item qid a>", "<item qid b>"]
           }
         ]
       }
     ]
   },
   "rationale": "Expand the allowed set by editing the constraint family, not by changing the violating claim directly.",
-  "provenance": [{"kind": "KG", "node_id": "Q_CONSTRAINT_SET", "snippet": "current constraint family"}],
+  "provenance": [{"kind": "KG", "node_id": "<constraint family qid from input>", "snippet": "current constraint family"}],
   "uncertainty": {"confidence": 0.20, "notes": "The exact historical signature may have equivalent reorderings."}
 }
 
 Template example 2 (placeholders, not literal ids):
 {
   "case_id": "reform_case",
-  "target": {"pid": "P_TARGET", "constraint_type_qid": "Q_CONSTRAINT_ALLOWED_TYPES"},
+  "target": {"pid": "P_TARGET", "constraint_type_qid": "<constraint family qid from input>"},
   "proposal": {
     "action": "RESTRICTION_SET_CONTRACTION",
     "signature_after": [
       {
-        "constraint_qid": "Q_CONSTRAINT_ALLOWED_TYPES",
+        "constraint_qid": "<same constraint family qid>",
         "snaktype": "VALUE",
         "rank": "normal",
         "qualifiers": [
           {
             "property_id": "P2305",
-            "values": ["Q_TYPE_ALLOWED"]
+            "values": ["<allowed type qid>"]
           }
         ]
       }
     ]
   },
   "rationale": "Narrow the allowed types encoded by the constraint itself.",
-  "provenance": [{"kind": "KG", "node_id": "Q_CONSTRAINT_ALLOWED_TYPES", "snippet": "constraint family in context"}],
+  "provenance": [{"kind": "KG", "node_id": "<constraint family qid from input>", "snippet": "constraint family in context"}],
   "uncertainty": {"confidence": 0.35, "notes": "Another schema-level reform family may also be plausible."}
 }
 

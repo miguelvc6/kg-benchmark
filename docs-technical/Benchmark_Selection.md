@@ -47,6 +47,22 @@ The output JSON includes:
 - per-update selected-count summaries for T-box groups
 - `selected_case_ids`
 
+`selected_case_ids` ordering is configurable:
+
+- `sorted` keeps the current global `case_id` ordering
+- `shuffled` applies a deterministic seeded hash order across the final selected ids
+
+Example mixed-order manifest:
+
+```bash
+uv run python src/select_benchmark_cases.py \
+  --classified-benchmark data/04_classified_benchmark.jsonl \
+  --output reports/benchmark_selection/paper_eval_mixed_cap_100_seed_13.json \
+  --tbox-cap-per-update 100 \
+  --seed 13 \
+  --selected-case-order shuffled
+```
+
 ## Runtime Integration
 
 Both runtime entry points accept the manifest directly:
@@ -61,6 +77,8 @@ When a selection manifest is supplied:
 - explicit `--case-ids` are intersected with the manifest rather than replacing it
 - manifest order is preserved end-to-end
 - `--max-cases` truncates after manifest ordering is resolved, not after a file-order scan of the benchmark
+
+This means a shuffled manifest is the easiest way to make small `--max-cases` runs mix `A_BOX` and `T_BOX` cases without changing `src/reasoning_floor.py`.
 
 ## Why This Is a Manifest, Not a Second Benchmark Artifact
 

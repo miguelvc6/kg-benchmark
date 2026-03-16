@@ -617,6 +617,112 @@ class EvaluatorTests(unittest.TestCase):
             self.assertEqual(summary["overall_metrics"]["semantic_success_rate"], 1.0)
             self.assertEqual(summary["overall_metrics"]["accepted_rate"], 0.0)
 
+    def test_t_box_semantic_success_requires_historical_target_constraint_match(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            classified_path = root / "classified.jsonl"
+            world_state_path = root / "world_state.json"
+            t_box_path = root / "t_box.jsonl"
+
+            self._write_jsonl(
+                classified_path,
+                [
+                    {
+                        "id": "reform_case",
+                        "qid": "Q2",
+                        "property": "P31",
+                        "track": "T_BOX",
+                        "labels_en": {},
+                        "violation_context": {"report_violation_type": "One of"},
+                        "repair_target": {
+                            "constraint_delta": {
+                                "changed_constraint_types": ["Q21510859", "Q52004125"],
+                                "signature_before": [
+                                    {
+                                        "constraint_qid": "Q21510859",
+                                        "snaktype": "VALUE",
+                                        "rank": "normal",
+                                        "qualifiers": [{"property_id": "P2305", "values": ["Q5"]}],
+                                    },
+                                    {
+                                        "constraint_qid": "Q52004125",
+                                        "snaktype": "VALUE",
+                                        "rank": "normal",
+                                        "qualifiers": [{"property_id": "P2305", "values": ["Q29934200"]}],
+                                    },
+                                ],
+                                "signature_after": [
+                                    {
+                                        "constraint_qid": "Q21510859",
+                                        "snaktype": "VALUE",
+                                        "rank": "normal",
+                                        "qualifiers": [{"property_id": "P2305", "values": ["Q5", "Q43229"]}],
+                                    },
+                                    {
+                                        "constraint_qid": "Q52004125",
+                                        "snaktype": "VALUE",
+                                        "rank": "normal",
+                                        "qualifiers": [{"property_id": "P2305", "values": ["Q29934200"]}],
+                                    },
+                                ],
+                            }
+                        },
+                        "persistence_check": {},
+                        "popularity": {"score": 0.8},
+                        "classification": {"class": "T_BOX", "subtype": "SCHEMA_UPDATE"},
+                    }
+                ],
+            )
+            world_state_path.write_text(
+                json.dumps(
+                    {
+                        "reform_case": {
+                            "L1_ego_node": {"properties": {"P31": ["Q5"]}},
+                            "L4_constraints": {"constraints": []},
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            self._write_jsonl(
+                t_box_path,
+                [
+                    {
+                        "case_id": "reform_case",
+                        "target": {"pid": "P31", "constraint_type_qid": "Q52004125"},
+                        "proposal": {
+                            "action": "SCHEMA_UPDATE",
+                            "signature_after": [
+                                {
+                                    "constraint_qid": "Q52004125",
+                                    "snaktype": "VALUE",
+                                    "rank": "normal",
+                                    "qualifiers": [{"property_id": "P2305", "values": ["Q29934200"]}],
+                                }
+                            ],
+                        },
+                        "rationale": "Edits a different changed constraint family than the historical target.",
+                        "provenance": [{"kind": "KG", "node_id": "Q52004125"}],
+                        "uncertainty": {"confidence": 0.3},
+                    }
+                ],
+            )
+
+            traces, summary = evaluate_benchmark(
+                classified_path=classified_path,
+                world_state_path=world_state_path,
+                t_box_proposals_path=t_box_path,
+            )
+
+            trace = traces[0]
+            self.assertTrue(trace["comparison"]["changed_constraint_type_hit"])
+            self.assertFalse(trace["comparison"]["target_constraint_match"])
+            self.assertFalse(trace["comparison"]["semantic_family_match"])
+            self.assertEqual(trace["details"]["historical_target_constraint_qid"], "Q21510859")
+            self.assertEqual(trace["metrics"]["semantic_success"], 0.0)
+            self.assertEqual(trace["metrics"]["semantic_family_success"], 0.0)
+            self.assertEqual(summary["overall_metrics"]["semantic_success_rate"], 0.0)
+
     def test_summary_tracks_t_box_proxy_metric_applicability(self) -> None:
         summary = summarize_trace_iterable(
             [

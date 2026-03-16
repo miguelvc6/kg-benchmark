@@ -4,6 +4,8 @@ import argparse
 
 from guardian.reasoning import ABLATION_BUNDLES, run_reasoning_floor
 
+DEFAULT_ABLATION_BUNDLES = tuple(bundle for bundle in ABLATION_BUNDLES if bundle != "minimal_case")
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run the zero-shot reasoning-floor baseline.")
@@ -50,8 +52,11 @@ def main() -> int:
     parser.add_argument("--tracks", default=None, help="Comma-separated track filter, e.g. A_BOX,T_BOX.")
     parser.add_argument(
         "--ablation-bundles",
-        default=",".join(ABLATION_BUNDLES),
-        help="Comma-separated bundle names.",
+        default=",".join(DEFAULT_ABLATION_BUNDLES),
+        help=(
+            "Comma-separated bundle names. Defaults to logic_only,local_graph. "
+            "Include minimal_case explicitly if you want to run the no-context bundle."
+        ),
     )
     args = parser.parse_args()
 

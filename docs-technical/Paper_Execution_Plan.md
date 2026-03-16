@@ -274,11 +274,16 @@ uv run python src/reasoning_floor.py \
   --parallel-workers 2
 ```
 
-This runs all three ablation bundles by default:
+This now runs the paper-default ablation bundles:
 
-- `minimal_case`
 - `logic_only`
 - `local_graph`
+
+If you also want the no-context bundle, add:
+
+```bash
+--ablation-bundles minimal_case,logic_only,local_graph
+```
 
 It also performs:
 
