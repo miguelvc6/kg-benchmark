@@ -9,6 +9,7 @@ from unittest.mock import patch
 from guardian.model_provider import BatchExecutionResult, StaticResponseProvider
 from guardian.prompts import get_prompt_template
 from guardian.reasoning import (
+    _disable_generation_progress,
     _collect_selected_records_in_order,
     build_prompt_bundle,
     build_track_diagnosis_prompt_bundle,
@@ -46,6 +47,13 @@ class CostedStaticOpenAIProvider(StaticResponseProvider):
         usage["input_cost_per_1m_tokens_usd"] = 2.0
         usage["output_cost_per_1m_tokens_usd"] = 4.0
         return raw, parsed, usage, error
+
+
+class ReasoningFloorHelperTests(unittest.TestCase):
+    def test_batch_generation_progress_is_disabled(self) -> None:
+        self.assertTrue(_disable_generation_progress(execution_mode="batch", total_requests=1))
+        self.assertFalse(_disable_generation_progress(execution_mode="sync", total_requests=1))
+        self.assertTrue(_disable_generation_progress(execution_mode="parallel", total_requests=0))
 
 
 class RetryableBatchFailureOpenAIProvider(CostedStaticOpenAIProvider):

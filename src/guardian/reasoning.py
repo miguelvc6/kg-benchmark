@@ -327,6 +327,10 @@ def _emit_runtime_status(progress_bar: Any, message: str) -> None:
     print(formatted)
 
 
+def _disable_generation_progress(*, execution_mode: str, total_requests: int) -> bool:
+    return total_requests == 0 or execution_mode == "batch"
+
+
 def _batch_pricing_applies(*, provider_name: str, execution_mode: str) -> bool:
     return provider_name.strip().lower() == "openai" and execution_mode == "batch"
 
@@ -1595,7 +1599,10 @@ def run_reasoning_floor(
         total=total_requests,
         desc="reasoning-floor",
         unit="request" if normalized_execution_mode == "batch" else "case",
-        disable=total_requests == 0,
+        disable=_disable_generation_progress(
+            execution_mode=normalized_execution_mode,
+            total_requests=total_requests,
+        ),
     )
     pending_progress = 0
     current_estimated_cost_usd, has_cost_data = _update_cost_tracking(

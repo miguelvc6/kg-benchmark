@@ -297,6 +297,70 @@ def _write_json_file(path: Path, payload: dict[str, Any]) -> None:
         json.dump(payload, fh, ensure_ascii=False, indent=2)
 
 
+def _format_duration_compact(seconds: float | None) -> str:
+    if seconds is None or seconds < 0:
+        return "n/a"
+    rounded_seconds = max(0, int(round(seconds)))
+    days, remainder = divmod(rounded_seconds, 86_400)
+    hours, remainder = divmod(remainder, 3_600)
+    minutes, secs = divmod(remainder, 60)
+    if days:
+        return f"{days}d{hours:02d}h"
+    if hours:
+        return f"{hours}h{minutes:02d}m"
+    if minutes:
+        return f"{minutes}m{secs:02d}s"
+    return f"{secs}s"
+
+
+def _batch_progress_counts(request_counts: dict[str, Any] | None) -> tuple[int | None, int | None]:
+    if not isinstance(request_counts, dict):
+        return None, None
+    total = request_counts.get("total")
+    completed = request_counts.get("completed")
+    failed = request_counts.get("failed")
+    if not isinstance(total, int) or total <= 0:
+        return None, None
+    done = 0
+    if isinstance(completed, int) and completed > 0:
+        done += completed
+    if isinstance(failed, int) and failed > 0:
+        done += failed
+    return min(done, total), total
+
+
+def _estimate_batch_eta_seconds(
+    request_counts: dict[str, Any] | None,
+    *,
+    elapsed_seconds: float | None,
+) -> float | None:
+    done, total = _batch_progress_counts(request_counts)
+    if done is None or total is None:
+        return None
+    if done >= total:
+        return 0.0
+    if elapsed_seconds is None or elapsed_seconds <= 0 or done <= 0:
+        return None
+    remaining = total - done
+    return (elapsed_seconds / done) * remaining
+
+
+def _format_batch_progress(
+    request_counts: dict[str, Any] | None,
+    *,
+    elapsed_seconds: float | None,
+) -> str:
+    done, total = _batch_progress_counts(request_counts)
+    progress_text = f"{done}/{total}" if done is not None and total is not None else "n/a"
+    eta_text = _format_duration_compact(
+        _estimate_batch_eta_seconds(
+            request_counts,
+            elapsed_seconds=elapsed_seconds,
+        )
+    )
+    return f"progress={progress_text}; eta={eta_text}; request_counts={request_counts or {}}."
+
+
 @dataclass
 class OpenAIChatProvider:
     api_key: str | None = None
@@ -472,6 +536,7 @@ class OpenAIChatProvider:
             self._handle_http_error(create_response, exc, action="batch creation")
         batch = create_response.json()
         batch_id = batch.get("id", "unknown-batch-id")
+        batch_started_at = time.perf_counter()
         if status_callback is not None:
             status_callback(
                 f"Created batch job {batch_id} with status {batch.get('status')!r}; "
@@ -498,9 +563,13 @@ class OpenAIChatProvider:
             if status_callback is not None and (
                 batch.get("status") != last_status or request_counts != last_request_counts
             ):
+                elapsed_seconds = time.perf_counter() - batch_started_at
                 status_callback(
                     f"Batch {batch.get('id', batch_id)} status {batch.get('status')!r}; "
-                    f"request_counts={request_counts or {}}."
+                    + _format_batch_progress(
+                        request_counts,
+                        elapsed_seconds=elapsed_seconds,
+                    )
                 )
             last_status = batch.get("status")
             last_request_counts = dict(request_counts) if isinstance(request_counts, dict) else request_counts

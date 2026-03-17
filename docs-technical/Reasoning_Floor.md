@@ -179,9 +179,9 @@ Run and per-bundle summaries also expose request-level transport failures direct
 
 When a selection manifest is used, the run summary records its path under `inputs.selection_manifest`.
 
-During execution, the runner shows a `tqdm` generation progress bar with elapsed time, ETA, current estimated cost, and estimated total cost. It refreshes in chunks of `min(1000 cases, 10% of total cases)`.
+During execution, synchronous and parallel runs show a `tqdm` generation progress bar with elapsed time, ETA, current estimated cost, and estimated total cost. It refreshes in chunks of `min(1000 cases, 10% of total cases)`. Batch runs suppress that generation bar because provider work completes remotely rather than incrementally in-process.
 
-The runner also prints UTC-timestamped phase-level status lines for run startup, batch submission and polling milestones, bundle evaluation start and completion, and final summary output. In batch mode, provider status updates are emitted when batch state or request counts change.
+The runner also prints UTC-timestamped phase-level status lines for run startup, batch submission and polling milestones, bundle evaluation start and completion, and final summary output. In batch mode, provider status updates are emitted when batch state or request counts change, and those progress lines now include a request-based ETA whenever the provider has reported enough completed work to estimate one.
 
 Startup status now begins before generation-selection materialization and before the world-state index is opened, so long scans over large Stage 4 JSONL inputs no longer appear completely silent at process start.
 

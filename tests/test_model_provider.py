@@ -5,10 +5,93 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from guardian.model_provider import OllamaChatProvider, OpenAIChatProvider, StaticResponseProvider, create_model_provider
+from guardian.model_provider import (
+    OllamaChatProvider,
+    OpenAIChatProvider,
+    StaticResponseProvider,
+    _format_batch_progress,
+    create_model_provider,
+)
 
 
 class OpenAIChatProviderTests(unittest.TestCase):
+    def test_formats_batch_progress_with_eta(self) -> None:
+        formatted = _format_batch_progress(
+            {"total": 10, "completed": 4, "failed": 1},
+            elapsed_seconds=20.0,
+        )
+
+        self.assertIn("progress=5/10", formatted)
+        self.assertIn("eta=20s", formatted)
+        self.assertIn("'completed': 4", formatted)
+
+    def test_execute_batch_status_callback_includes_eta(self) -> None:
+        upload_response = MagicMock()
+        upload_response.raise_for_status.return_value = None
+        upload_response.json.return_value = {"id": "file-input-1"}
+
+        create_response = MagicMock()
+        create_response.raise_for_status.return_value = None
+        create_response.json.return_value = {
+            "id": "batch-1",
+            "status": "validating",
+            "request_counts": {"total": 10, "completed": 0, "failed": 0},
+        }
+
+        status_response_1 = MagicMock()
+        status_response_1.raise_for_status.return_value = None
+        status_response_1.json.return_value = {
+            "id": "batch-1",
+            "status": "in_progress",
+            "request_counts": {"total": 10, "completed": 4, "failed": 1},
+        }
+
+        status_response_2 = MagicMock()
+        status_response_2.raise_for_status.return_value = None
+        status_response_2.json.return_value = {
+            "id": "batch-1",
+            "status": "completed",
+            "request_counts": {"total": 10, "completed": 9, "failed": 1},
+            "output_file_id": "file-output-1",
+        }
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            output_dir = Path(tmp_dir) / "outputs"
+            batch_input_path = Path(tmp_dir) / "batch_input.jsonl"
+            batch_input_path.write_text("{}", encoding="utf-8")
+            status_messages: list[str] = []
+            provider = OpenAIChatProvider(api_key="test-key", model="test-model")
+
+            with (
+                patch(
+                    "guardian.model_provider.requests.post",
+                    side_effect=[upload_response, create_response],
+                ),
+                patch(
+                    "guardian.model_provider.requests.get",
+                    side_effect=[status_response_1, status_response_2],
+                ),
+                patch(
+                    "guardian.model_provider.time.perf_counter",
+                    side_effect=[100.0, 120.0, 140.0],
+                ),
+                patch.object(
+                    provider,
+                    "_download_file",
+                    return_value=output_dir / "openai_batch_output.jsonl",
+                ),
+            ):
+                provider.execute_batch(
+                    batch_input_path,
+                    request_manifest_path=Path(tmp_dir) / "batch_request_manifest.jsonl",
+                    output_dir=output_dir,
+                    completion_window="24h",
+                    poll_interval_seconds=0.0,
+                    status_callback=status_messages.append,
+                )
+
+        self.assertTrue(any("eta=20s" in message for message in status_messages))
+
     def test_loads_api_settings_from_dotenv(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)
