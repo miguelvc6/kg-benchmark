@@ -752,6 +752,7 @@ class EvaluatorTests(unittest.TestCase):
                         "exact_signature_match": 0.0,
                         "changed_constraint_type_hit": 1.0,
                         "signature_after_jaccard": 0.5,
+                        "t_box_target_constraint_match": 1.0,
                         "proposal_admits_current_values": 1.0,
                     },
                     "details": {"proposal_admits_current_values": True},
@@ -765,14 +766,62 @@ class EvaluatorTests(unittest.TestCase):
         self.assertEqual(summary["counts"]["conversion_rate_applicable"], 1)
         self.assertEqual(summary["counts"]["signature_after_jaccard_applicable"], 1)
         self.assertEqual(summary["counts"]["semantic_family_success_applicable"], 1)
+        self.assertEqual(summary["counts"]["t_box_target_constraint_match_applicable"], 1)
         self.assertEqual(summary["overall_metrics"]["auditability_complete_rate"], 1.0)
         self.assertEqual(summary["overall_metrics"]["conversion_rate"], 0.0)
         self.assertEqual(summary["overall_metrics"]["exact_action_match_rate"], 1.0)
         self.assertEqual(summary["overall_metrics"]["semantic_family_success_rate"], 1.0)
         self.assertEqual(summary["overall_metrics"]["signature_after_jaccard_mean"], 0.5)
+        self.assertEqual(summary["overall_metrics"]["t_box_target_constraint_match_rate"], 1.0)
         self.assertEqual(summary["overall_metrics"]["proposal_admits_current_values_rate"], 1.0)
         self.assertEqual(summary["overall_metrics"]["metric_applicability"]["proposal_admits_current_values"], 1)
         self.assertEqual(summary["overall_metrics"]["metric_applicability"]["semantic_family_success"], 1)
+        self.assertEqual(summary["overall_metrics"]["metric_applicability"]["t_box_target_constraint_match"], 1)
+
+    def test_summary_tracks_a_box_proxy_metric_applicability(self) -> None:
+        summary = summarize_trace_iterable(
+            [
+                {
+                    "case_id": "repair_case",
+                    "accepted": False,
+                    "proposal_present": True,
+                    "proposal_executable": True,
+                    "parse_status": "normalized",
+                    "classification_class": "TypeB",
+                    "classification_subtype": "LOCAL_NEIGHBOR_IDS",
+                    "track": "A_BOX",
+                    "ablation_bundle": "minimal_case",
+                    "popularity_bucket": "mid",
+                    "metrics": {
+                        "functional_success": 1.0,
+                        "exact_historical_agreement": 0.0,
+                        "semantic_success": None,
+                        "information_preservation": 1.0,
+                        "provenance_completeness": 1.0,
+                        "auditability_complete": 1.0,
+                        "token_usage": {"total_tokens": 18},
+                        "conversion_rate": 0.0,
+                        "tokens_to_fix": 18.0,
+                        "a_box_exact_action_match": 1.0,
+                        "a_box_exact_value_match": 0.0,
+                        "a_box_regression_pass": 1.0,
+                    },
+                    "details": {},
+                    "track_diagnosis": {"present": True, "exact_track_match": True, "ambiguous_prediction": False},
+                }
+            ],
+            {"classified_benchmark": "stub"},
+        )
+
+        self.assertEqual(summary["counts"]["a_box_exact_action_match_applicable"], 1)
+        self.assertEqual(summary["counts"]["a_box_exact_value_match_applicable"], 1)
+        self.assertEqual(summary["counts"]["a_box_regression_pass_applicable"], 1)
+        self.assertEqual(summary["overall_metrics"]["a_box_exact_action_match_rate"], 1.0)
+        self.assertEqual(summary["overall_metrics"]["a_box_exact_value_match_rate"], 0.0)
+        self.assertEqual(summary["overall_metrics"]["a_box_regression_pass_rate"], 1.0)
+        self.assertEqual(summary["overall_metrics"]["metric_applicability"]["a_box_exact_action_match"], 1)
+        self.assertEqual(summary["overall_metrics"]["metric_applicability"]["a_box_exact_value_match"], 1)
+        self.assertEqual(summary["overall_metrics"]["metric_applicability"]["a_box_regression_pass"], 1)
 
     def test_summary_exposes_parse_error_counts(self) -> None:
         summary = summarize_trace_iterable(
@@ -811,6 +860,53 @@ class EvaluatorTests(unittest.TestCase):
         self.assertEqual(summary["parse_errors"]["by_message"]["provenance must be a list."], 1)
         self.assertEqual(summary["overall_metrics"]["proposal_parse_error_count"], 1)
         self.assertEqual(summary["overall_metrics"]["proposal_parse_error_rate"], 1.0)
+
+    def test_summary_exposes_request_error_counts(self) -> None:
+        summary = summarize_trace_iterable(
+            [
+                {
+                    "case_id": "repair_case",
+                    "accepted": False,
+                    "proposal_present": False,
+                    "proposal_executable": False,
+                    "parse_status": "request_error",
+                    "classification_class": "TypeC",
+                    "classification_subtype": "EXTERNAL",
+                    "track": "A_BOX",
+                    "ablation_bundle": "minimal_case",
+                    "popularity_bucket": "mid",
+                    "metrics": {
+                        "functional_success": 0.0,
+                        "exact_historical_agreement": 0.0,
+                        "semantic_success": None,
+                        "information_preservation": 0.0,
+                        "provenance_completeness": 0.0,
+                        "auditability_complete": 0.0,
+                        "token_usage": {"total_tokens": 30},
+                        "conversion_rate": None,
+                        "tokens_to_fix": None,
+                    },
+                    "details": {"provider_error": "OpenAI batch request failed (500)."},
+                    "track_diagnosis": {
+                        "present": False,
+                        "exact_track_match": False,
+                        "ambiguous_prediction": False,
+                        "parse_status": "request_error",
+                        "provider_error": "OpenAI diagnosis request failed (500).",
+                    },
+                }
+            ],
+            {"classified_benchmark": "stub"},
+        )
+
+        self.assertEqual(summary["counts"]["proposal_request_error"], 1)
+        self.assertEqual(summary["counts"]["track_diagnosis_request_error"], 1)
+        self.assertEqual(summary["request_errors"]["proposal_request_error_count"], 1)
+        self.assertEqual(summary["request_errors"]["track_diagnosis_request_error_count"], 1)
+        self.assertEqual(summary["overall_metrics"]["proposal_request_error_count"], 1)
+        self.assertEqual(summary["overall_metrics"]["proposal_request_error_rate"], 1.0)
+        self.assertEqual(summary["overall_metrics"]["track_diagnosis_request_error_count"], 1)
+        self.assertEqual(summary["overall_metrics"]["track_diagnosis_request_error_rate"], 1.0)
 
     def test_a_box_acceptance_requires_auditability_fields(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:

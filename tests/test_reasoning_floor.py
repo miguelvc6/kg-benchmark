@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Callable
 from unittest.mock import patch
 
-from guardian.model_provider import StaticResponseProvider
+from guardian.model_provider import BatchExecutionResult, StaticResponseProvider
 from guardian.prompts import get_prompt_template
 from guardian.reasoning import (
     _collect_selected_records_in_order,
@@ -40,6 +40,148 @@ class CostedStaticOpenAIProvider(StaticResponseProvider):
         usage["input_cost_per_1m_tokens_usd"] = 2.0
         usage["output_cost_per_1m_tokens_usd"] = 4.0
         return raw, parsed, usage, error
+
+
+class RetryableBatchFailureOpenAIProvider(CostedStaticOpenAIProvider):
+    def _iter_jsonl_rows(self, path: Path) -> list[dict[str, Any]]:
+        return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+    def _usage_payload(self, metadata: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "prompt_tokens": metadata.get("prompt_tokens", 0),
+            "completion_tokens": metadata.get("completion_tokens", 0),
+            "total_tokens": metadata.get("total_tokens", 0),
+            "cached_tokens": metadata.get("cached_tokens"),
+            "estimated_cost_usd": 1.0,
+            "input_cost_per_1m_tokens_usd": 2.0,
+            "output_cost_per_1m_tokens_usd": 4.0,
+            "model": metadata.get("model", self.model),
+            "provider": self.provider_name,
+            "request_metadata": metadata,
+        }
+
+    def execute_batch(
+        self,
+        batch_input_path: Path,
+        *,
+        request_manifest_path: Path,
+        output_dir: Path,
+        completion_window: str,
+        poll_interval_seconds: float,
+        status_callback: Callable[[str], None] | None = None,
+    ) -> BatchExecutionResult:
+        del completion_window, poll_interval_seconds
+        if not hasattr(self, "_failed_batch_custom_ids"):
+            self._failed_batch_custom_ids: set[str] = set()
+        output_dir.mkdir(parents=True, exist_ok=True)
+        if status_callback is not None:
+            status_callback(f"Processing retry-test batch input file {batch_input_path.name}.")
+
+        manifest_by_custom_id = {
+            row["custom_id"]: row
+            for row in self._iter_jsonl_rows(request_manifest_path)
+            if isinstance(row.get("custom_id"), str)
+        }
+        output_path = output_dir / "static_batch_output.jsonl"
+        error_path = output_dir / "static_batch_errors.jsonl"
+        completed = 0
+        total = 0
+        has_errors = False
+
+        with open(output_path, "w", encoding="utf-8") as output_fh, open(error_path, "w", encoding="utf-8") as error_fh:
+            for request_row in self._iter_jsonl_rows(batch_input_path):
+                total += 1
+                custom_id = request_row.get("custom_id")
+                metadata = dict((manifest_by_custom_id.get(custom_id) or {}).get("metadata") or {})
+                if (
+                    isinstance(custom_id, str)
+                    and metadata.get("task_type") == "proposal"
+                    and custom_id not in self._failed_batch_custom_ids
+                ):
+                    self._failed_batch_custom_ids.add(custom_id)
+                    has_errors = True
+                    error_fh.write(
+                        json.dumps(
+                            {
+                                "custom_id": custom_id,
+                                "response": {
+                                    "status_code": 500,
+                                    "body": {
+                                        "error": {
+                                            "message": "The server had an error while processing your request. Sorry about that!"
+                                        }
+                                    },
+                                },
+                                "error": None,
+                            }
+                        )
+                        + "\n"
+                    )
+                    continue
+
+                payload = self.resolver(dict(metadata))
+                response_body = {
+                    "id": f"chatcmpl-{custom_id}",
+                    "object": "chat.completion",
+                    "model": metadata.get("model", self.model),
+                    "choices": [
+                        {
+                            "index": 0,
+                            "message": {"role": "assistant", "content": json.dumps(payload)},
+                            "finish_reason": "stop",
+                        }
+                    ],
+                    "usage": {
+                        "prompt_tokens": metadata.get("prompt_tokens", 0),
+                        "completion_tokens": metadata.get("completion_tokens", 0),
+                        "total_tokens": metadata.get("total_tokens", 0),
+                    },
+                }
+                output_fh.write(
+                    json.dumps(
+                        {
+                            "custom_id": custom_id,
+                            "response": {"status_code": 200, "body": response_body},
+                            "error": None,
+                        }
+                    )
+                    + "\n"
+                )
+                completed += 1
+
+        if not has_errors:
+            error_path.unlink()
+            error_path_result = None
+        else:
+            error_path_result = error_path
+
+        batch_payload = {
+            "id": "retry-test-batch",
+            "status": "completed",
+            "request_counts": {"total": total, "completed": completed, "failed": total - completed},
+        }
+        (output_dir / "static_batch_job.json").write_text(json.dumps(batch_payload, indent=2), encoding="utf-8")
+        if status_callback is not None:
+            status_callback(f"Retry-test batch completed with {completed}/{total} successful requests.")
+        return BatchExecutionResult(batch=batch_payload, output_path=output_path, error_path=error_path_result)
+
+    def parse_batch_result(
+        self,
+        result_record: dict[str, Any],
+        metadata: dict[str, Any],
+    ) -> tuple[Any, Any, dict[str, Any], str | None]:
+        response_block = result_record.get("response")
+        response_body = response_block.get("body") if isinstance(response_block, dict) else None
+        status_code = response_block.get("status_code") if isinstance(response_block, dict) else None
+        if isinstance(status_code, int) and status_code >= 400:
+            body_error = ((response_body.get("error") or {}).get("message")) if isinstance(response_body, dict) else None
+            return (
+                response_body if isinstance(response_body, dict) else result_record,
+                None,
+                self._usage_payload(metadata),
+                body_error or f"Batch request failed with status {status_code}.",
+            )
+        return super().parse_batch_result(result_record, metadata)
 
 
 class ReasoningFloorTests(unittest.TestCase):
@@ -293,6 +435,50 @@ class ReasoningFloorTests(unittest.TestCase):
         self.assertEqual(summary["usage"]["cost_estimation_mode"], "openai_batch_discount_applied")
         self.assertEqual(summary["usage"]["cost_estimation_multiplier"], 0.5)
         self.assertEqual(summary["usage"]["estimated_cost_usd"], 1.0)
+
+    def test_reasoning_floor_batch_retries_retryable_openai_errors_synchronously(self) -> None:
+        root, classified_path, world_state_path, selection_manifest_path, resolver = self._make_stub_fixture()
+        summary = run_reasoning_floor(
+            classified_path=classified_path,
+            world_state_path=world_state_path,
+            output_dir=root / "outputs",
+            provider=RetryableBatchFailureOpenAIProvider(resolver, provider_name="openai", model="stub-model"),
+            ablation_bundles=["minimal_case"],
+            selection_manifest_path=selection_manifest_path,
+            execution_mode="batch",
+            batch_poll_interval_seconds=0.0,
+        )
+        run_dir = Path(summary["run_info"]["output_dir"])
+        manifest_rows = [
+            json.loads(line)
+            for line in (run_dir / "run_manifest.jsonl").read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        proposal_row = next(row for row in manifest_rows if row.get("task_type") == "proposal")
+
+        self.assertEqual(summary["run_info"]["batch"]["sync_retry_fallback"]["eligible"], 1)
+        self.assertEqual(summary["run_info"]["batch"]["sync_retry_fallback"]["attempted"], 1)
+        self.assertEqual(summary["run_info"]["batch"]["sync_retry_fallback"]["succeeded"], 1)
+        self.assertEqual(summary["run_info"]["batch"]["sync_retry_fallback"]["failed"], 0)
+        self.assertEqual(summary["run_info"]["batch"]["phases"]["combined"]["sync_retry_fallback"]["eligible"], 1)
+        self.assertFalse(any(row.get("parse_status") == "request_error" for row in manifest_rows))
+        self.assertEqual(proposal_row["parse_status"], "normalized")
+        self.assertEqual(proposal_row["recovery"]["type"], "sync_retry_after_batch_error")
+        self.assertEqual(proposal_row["recovery"]["phase"], "combined")
+        self.assertEqual(proposal_row["recovery"]["batch_status_code"], 500)
+        self.assertTrue(proposal_row["recovery"]["attempted"])
+        self.assertTrue(proposal_row["recovery"]["succeeded"])
+        self.assertEqual(summary["request_errors"]["proposal_request_error_count"], 0)
+        self.assertEqual(summary["overall_metrics"]["proposal_request_error_count"], 0)
+        self.assertEqual(summary["usage"]["estimated_cost_usd"], 1.5)
+        self.assertTrue(summary["usage"]["batch_pricing_applied"])
+        self.assertEqual(summary["usage"]["cost_estimation_mode"], "mixed")
+        self.assertEqual(
+            summary["usage"]["per_call_cost_estimation_modes"],
+            ["openai_batch_discount_applied", "provider_default"],
+        )
+        self.assertEqual(summary["usage"]["per_call_cost_estimation_multipliers"], [0.5, 1.0])
+        self.assertIsNone(summary["usage"]["cost_estimation_multiplier"])
 
     def test_prompt_bundles_use_named_templates(self) -> None:
         record = {

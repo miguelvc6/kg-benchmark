@@ -246,10 +246,20 @@ When the runner uses `--execution-mode batch`, the same run directory also inclu
 - `batch_input.jsonl`
 - `batch_request_manifest.jsonl`
 - provider-specific batch job metadata and downloaded output or error files when the provider exposes them
+- per-phase batch artifacts such as `diagnosis_*` and `proposal_*` when `--proposal-track-mode diagnosis_routed` is used
 
-`run_manifest.jsonl` includes per-call provider, model, token usage, cached token counts when available, elapsed seconds when available, estimated cost when pricing metadata is configured, and cost-estimation metadata including whether batch pricing was applied.
+`run_manifest.jsonl` includes per-call provider, model, token usage, cached token counts when available, elapsed seconds when available, estimated cost when pricing metadata is configured, and cost-estimation metadata including whether batch pricing was applied. Recovered batch rows may also include a `recovery` object describing a synchronous retry after a retryable batch failure.
 
-`reasoning_floor_summary.json` includes aggregated run-level token totals, cached token totals when available, estimated cost, elapsed time, provider, model, execution mode, an explicit `run_info.batch_mode_used` flag, output directory, cost-estimation metadata, and input references including the optional selection manifest path. OpenAI batch runs apply a built-in `0.5` cost-estimation multiplier. Batch runs also include provider batch metadata under `run_info.batch`.
+`reasoning_floor_summary.json` includes aggregated run-level token totals, cached token totals when available, estimated cost, elapsed time, provider, model, execution mode, an explicit `run_info.batch_mode_used` flag, output directory, cost-estimation metadata, and input references including the optional selection manifest path. OpenAI batch calls apply a built-in `0.5` cost-estimation multiplier. If some batch failures are retried synchronously, the summary reports `usage.cost_estimation_mode: "mixed"` and includes both `usage.per_call_cost_estimation_modes` and `usage.per_call_cost_estimation_multipliers`. Batch runs also include provider batch metadata under `run_info.batch`, including `run_info.batch.sync_retry_fallback` and per-phase `run_info.batch.phases[*].sync_retry_fallback`.
+
+The combined and per-bundle evaluation summaries now also expose:
+
+- `request_errors.proposal_request_error_count`
+- `request_errors.proposal_request_error_rate`
+- `request_errors.track_diagnosis_request_error_count`
+- `request_errors.track_diagnosis_request_error_rate`
+- A-box diagnostic rates such as `a_box_exact_action_match_rate`, `a_box_exact_value_match_rate`, and `a_box_regression_pass_rate`
+- T-box proxy rates such as `t_box_target_constraint_match_rate`
 
 ## Schema Files in `schemas/`
 

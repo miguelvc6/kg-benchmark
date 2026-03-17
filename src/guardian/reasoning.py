@@ -40,6 +40,7 @@ GENERATION_IN_MEMORY_CASE_THRESHOLD = 10_000
 PROPERTY_SCOPE_CONSTRAINT_QID = "Q53869507"
 ALLOWED_ENTITY_TYPES_CONSTRAINT_QID = "Q52004125"
 UNROUTABLE_TRACK = "UNROUTABLE"
+RETRYABLE_BATCH_STATUS_CODES = {408, 409, 429}
 
 
 def _slugify(value: str) -> str:
@@ -215,6 +216,72 @@ class RequestExecutionResult:
 class CasePipelineOutcome:
     request_results: list[RequestExecutionResult]
     skipped_proposals: list[dict[str, Any]]
+
+
+def _batch_requests_by_custom_id(path: Path) -> dict[str, dict[str, Any]]:
+    request_map: dict[str, dict[str, Any]] = {}
+    for row in iter_jsonl(path):
+        if not isinstance(row, dict):
+            continue
+        custom_id = row.get("custom_id")
+        if isinstance(custom_id, str) and custom_id:
+            request_map[custom_id] = row
+    return request_map
+
+
+def _message_content_text(content: Any) -> str:
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts: list[str] = []
+        for item in content:
+            if isinstance(item, dict):
+                text = item.get("text")
+                if isinstance(text, str):
+                    parts.append(text)
+        return "".join(parts)
+    return ""
+
+
+def _batch_request_prompt_components(request_row: dict[str, Any]) -> tuple[str, str, dict[str, Any]] | None:
+    body = request_row.get("body")
+    if not isinstance(body, dict):
+        return None
+    messages = body.get("messages")
+    if not isinstance(messages, list):
+        return None
+    system_prompt = ""
+    prompt = ""
+    for message in messages:
+        if not isinstance(message, dict):
+            continue
+        role = message.get("role")
+        content = _message_content_text(message.get("content"))
+        if role == "system" and not system_prompt:
+            system_prompt = content
+        elif role == "user" and not prompt:
+            prompt = content
+    response_format = body.get("response_format")
+    if not isinstance(response_format, dict):
+        response_format = {}
+    return prompt, system_prompt, dict(response_format)
+
+
+def _batch_result_status_code(result_row: dict[str, Any] | None) -> int | None:
+    if not isinstance(result_row, dict):
+        return None
+    response = result_row.get("response")
+    status_code = response.get("status_code") if isinstance(response, dict) else None
+    return status_code if isinstance(status_code, int) else None
+
+
+def _is_retryable_batch_error(result_row: dict[str, Any] | None, error_message: str | None) -> bool:
+    if not isinstance(error_message, str) or not error_message.strip():
+        return False
+    status_code = _batch_result_status_code(result_row)
+    if status_code is None:
+        return False
+    return status_code in RETRYABLE_BATCH_STATUS_CODES or status_code >= 500
 
 
 def _execute_case_requests(
@@ -849,6 +916,8 @@ def _failure_taxonomy_from_traces(traces: Iterable[dict[str, Any]]) -> dict[str,
     non_executable = 0
     diagnosis_errors = 0
     proposal_parse_errors = 0
+    proposal_request_errors = 0
+    diagnosis_request_errors = 0
     parser_errors: dict[str, int] = {}
     for trace in traces:
         total += 1
@@ -861,6 +930,11 @@ def _failure_taxonomy_from_traces(traces: Iterable[dict[str, Any]]) -> dict[str,
             parser_error = trace.get("details", {}).get("parser_error")
             if isinstance(parser_error, str) and parser_error.strip():
                 parser_errors[parser_error.strip()] = parser_errors.get(parser_error.strip(), 0) + 1
+        if trace.get("parse_status") == "request_error":
+            proposal_request_errors += 1
+        diagnosis = trace.get("track_diagnosis") or {}
+        if diagnosis.get("parse_status") == "request_error":
+            diagnosis_request_errors += 1
         if not (trace.get("track_diagnosis") or {}).get("exact_track_match"):
             diagnosis_errors += 1
     if total == 0:
@@ -868,6 +942,8 @@ def _failure_taxonomy_from_traces(traces: Iterable[dict[str, Any]]) -> dict[str,
             "missing_or_invalid_proposal_rate": 0.0,
             "non_executable_rate": 0.0,
             "proposal_parse_error_rate": 0.0,
+            "proposal_request_error_rate": 0.0,
+            "track_diagnosis_request_error_rate": 0.0,
             "track_diagnosis_error_rate": 0.0,
             "proposal_parse_errors_by_message": {},
         }
@@ -875,6 +951,8 @@ def _failure_taxonomy_from_traces(traces: Iterable[dict[str, Any]]) -> dict[str,
         "missing_or_invalid_proposal_rate": invalid / total,
         "non_executable_rate": non_executable / total,
         "proposal_parse_error_rate": proposal_parse_errors / total,
+        "proposal_request_error_rate": proposal_request_errors / total,
+        "track_diagnosis_request_error_rate": diagnosis_request_errors / total,
         "track_diagnosis_error_rate": diagnosis_errors / total,
         "proposal_parse_errors_by_message": parser_errors,
     }
@@ -1025,6 +1103,7 @@ def _record_request_result(
     track_fh: Any,
     elapsed_seconds: float | None = None,
     error_message: str | None = None,
+    recovery_details: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     manifest_record = {
         "run_id": request_info.get("run_id"),
@@ -1059,6 +1138,9 @@ def _record_request_result(
     if isinstance(custom_id, str):
         raw_record["custom_id"] = custom_id
         manifest_record["custom_id"] = custom_id
+    if isinstance(recovery_details, dict) and recovery_details:
+        raw_record["recovery"] = dict(recovery_details)
+        manifest_record["recovery"] = dict(recovery_details)
     if error_message:
         raw_record["error"] = error_message
     _append_jsonl_record(raw_log_fh, raw_record)
@@ -1346,6 +1428,7 @@ def run_reasoning_floor(
             manifest_fh: Any,
             elapsed_seconds: float | None = None,
             error_message: str | None = None,
+            recovery_details: dict[str, Any] | None = None,
         ) -> dict[str, Any]:
             nonlocal current_estimated_cost_usd
             nonlocal has_cost_data
@@ -1362,6 +1445,7 @@ def run_reasoning_floor(
                 track_fh=handles["track"],
                 elapsed_seconds=elapsed_seconds,
                 error_message=error_message,
+                recovery_details=recovery_details,
             )
             usage_manifest.append(manifest_record)
             current_estimated_cost_usd, has_cost_data = _update_cost_tracking(
@@ -1515,7 +1599,18 @@ def run_reasoning_floor(
             execution_result: Any,
             elapsed_seconds: float,
             artifact_paths: dict[str, str | None],
+            sync_retry_fallback: dict[str, int] | None = None,
         ) -> dict[str, Any]:
+            retry_summary = dict(
+                sync_retry_fallback
+                or {
+                    "eligible": 0,
+                    "attempted": 0,
+                    "succeeded": 0,
+                    "failed": 0,
+                    "unrecoverable": 0,
+                }
+            )
             if execution_result is None:
                 return {
                     "id": None,
@@ -1529,6 +1624,7 @@ def run_reasoning_floor(
                     "output_path": artifact_paths.get("output_path"),
                     "error_path": artifact_paths.get("error_path"),
                     "job_path": artifact_paths.get("job_path"),
+                    "sync_retry_fallback": retry_summary,
                     "phase": phase_label,
                 }
             return {
@@ -1543,6 +1639,7 @@ def run_reasoning_floor(
                 "output_path": artifact_paths.get("output_path"),
                 "error_path": artifact_paths.get("error_path"),
                 "job_path": artifact_paths.get("job_path"),
+                "sync_retry_fallback": retry_summary,
                 "phase": phase_label,
             }
 
@@ -1567,6 +1664,221 @@ def run_reasoning_floor(
             if all(status == "skipped_empty" for status in statuses):
                 return "skipped_empty"
             return "completed"
+
+        def aggregate_sync_retry_fallback(phases: dict[str, dict[str, Any]]) -> dict[str, int]:
+            totals = {"eligible": 0, "attempted": 0, "succeeded": 0, "failed": 0, "unrecoverable": 0}
+            for phase in phases.values():
+                retry_summary = phase.get("sync_retry_fallback")
+                if not isinstance(retry_summary, dict):
+                    continue
+                for key in totals:
+                    value = retry_summary.get(key)
+                    if isinstance(value, int):
+                        totals[key] += value
+            return totals
+
+        def rebuild_batch_phase_results(
+            *,
+            phase_label: str,
+            batch_execution: Any,
+            batch_input_path: Path,
+            request_manifest_path: Path,
+            bundle_handles: dict[str, dict[str, Any]],
+            raw_log_fh: Any,
+            manifest_fh: Any,
+            on_result: Callable[[dict[str, Any], Any, str | None], None] | None = None,
+        ) -> dict[str, int]:
+            request_map = iter_request_manifest_rows(request_manifest_path)
+            batch_request_map = _batch_requests_by_custom_id(batch_input_path)
+            finalized_custom_ids: set[str] = set()
+            pending_retries: dict[str, dict[str, Any]] = {}
+            result_paths = ()
+            if batch_execution is not None:
+                result_paths = (batch_execution.output_path, batch_execution.error_path)
+
+            def finalize_result(
+                *,
+                request_info: dict[str, Any],
+                raw_response: Any,
+                parsed_payload: Any,
+                usage: dict[str, Any],
+                error_message: str | None,
+                elapsed_seconds: float | None,
+                recovery_details: dict[str, Any] | None = None,
+            ) -> None:
+                record_generation_result(
+                    request_info=request_info,
+                    raw_response=raw_response,
+                    parsed_payload=parsed_payload,
+                    usage=usage,
+                    bundle_handles=bundle_handles,
+                    raw_log_fh=raw_log_fh,
+                    manifest_fh=manifest_fh,
+                    elapsed_seconds=elapsed_seconds,
+                    error_message=error_message,
+                    recovery_details=recovery_details,
+                )
+                if on_result is not None:
+                    on_result(request_info, parsed_payload, error_message)
+
+            for result_path in result_paths:
+                if result_path is None:
+                    continue
+                for result_row in iter_jsonl(result_path):
+                    if not isinstance(result_row, dict):
+                        continue
+                    custom_id = result_row.get("custom_id")
+                    if (
+                        not isinstance(custom_id, str)
+                        or custom_id in finalized_custom_ids
+                        or custom_id in pending_retries
+                    ):
+                        continue
+                    request_info = request_map.get(custom_id)
+                    if not isinstance(request_info, dict):
+                        continue
+                    raw_response, parsed_payload, usage, error_message = provider.parse_batch_result(
+                        result_row,
+                        request_info,
+                    )
+                    if _is_retryable_batch_error(result_row, error_message):
+                        pending_retries[custom_id] = {
+                            "request_info": request_info,
+                            "batch_request": batch_request_map.get(custom_id),
+                            "error_message": error_message,
+                            "status_code": _batch_result_status_code(result_row),
+                        }
+                        continue
+                    usage = _apply_cost_estimation_policy(
+                        usage,
+                        provider_name=selected_provider,
+                        execution_mode=normalized_execution_mode,
+                    )
+                    finalize_result(
+                        request_info=request_info,
+                        raw_response=raw_response,
+                        parsed_payload=parsed_payload,
+                        usage=usage,
+                        error_message=error_message,
+                        elapsed_seconds=None,
+                    )
+                    finalized_custom_ids.add(custom_id)
+                    mark_completed()
+
+            missing_custom_ids = sorted(set(request_map) - finalized_custom_ids - set(pending_retries))
+            for custom_id in missing_custom_ids:
+                request_info = request_map[custom_id]
+                batch_request = batch_request_map.get(custom_id)
+                if isinstance(batch_request, dict):
+                    pending_retries[custom_id] = {
+                        "request_info": request_info,
+                        "batch_request": batch_request,
+                        "error_message": "Batch result was missing from both output and error files.",
+                        "status_code": None,
+                    }
+                    continue
+                usage = _apply_cost_estimation_policy(
+                    _empty_usage_payload(selected_provider, selected_model, request_info),
+                    provider_name=selected_provider,
+                    execution_mode=normalized_execution_mode,
+                )
+                finalize_result(
+                    request_info=request_info,
+                    raw_response=None,
+                    parsed_payload=None,
+                    usage=usage,
+                    error_message="Batch result was missing from both output and error files.",
+                    elapsed_seconds=None,
+                )
+                finalized_custom_ids.add(custom_id)
+                mark_completed()
+
+            retry_summary = {"eligible": len(pending_retries), "attempted": 0, "succeeded": 0, "failed": 0, "unrecoverable": 0}
+            if pending_retries:
+                _emit_runtime_status(
+                    progress,
+                    f"Retrying {len(pending_retries)} {phase_label} request(s) synchronously after batch failure.",
+                )
+            for custom_id in sorted(pending_retries):
+                retry_entry = pending_retries[custom_id]
+                request_info = retry_entry["request_info"]
+                original_error = retry_entry.get("error_message")
+                status_code = retry_entry.get("status_code")
+                recovery_details = {
+                    "type": "sync_retry_after_batch_error",
+                    "phase": phase_label,
+                    "batch_status_code": status_code,
+                    "batch_error": original_error,
+                }
+                request_components = _batch_request_prompt_components(retry_entry.get("batch_request") or {})
+                if request_components is None:
+                    retry_summary["unrecoverable"] += 1
+                    usage = _apply_cost_estimation_policy(
+                        _empty_usage_payload(selected_provider, selected_model, request_info),
+                        provider_name=selected_provider,
+                        execution_mode=normalized_execution_mode,
+                    )
+                    finalize_result(
+                        request_info=request_info,
+                        raw_response=None,
+                        parsed_payload=None,
+                        usage=usage,
+                        error_message=(
+                            original_error
+                            or "Retryable batch failure could not be reconstructed for synchronous retry."
+                        ),
+                        elapsed_seconds=None,
+                        recovery_details={**recovery_details, "attempted": False, "succeeded": False},
+                    )
+                    finalized_custom_ids.add(custom_id)
+                    mark_completed()
+                    continue
+                retry_summary["attempted"] += 1
+                prompt, system_prompt, response_format = request_components
+                try:
+                    retry_started_at = time.perf_counter()
+                    raw_response, parsed_payload, usage = provider.generate(
+                        prompt,
+                        system_prompt,
+                        response_format,
+                        request_info,
+                    )
+                    elapsed_seconds = time.perf_counter() - retry_started_at
+                    usage = _apply_cost_estimation_policy(
+                        usage,
+                        provider_name=selected_provider,
+                        execution_mode="sync",
+                    )
+                    error_message = None
+                    retry_summary["succeeded"] += 1
+                except Exception as exc:
+                    raw_response = None
+                    parsed_payload = None
+                    elapsed_seconds = None
+                    usage = _apply_cost_estimation_policy(
+                        _empty_usage_payload(selected_provider, selected_model, request_info),
+                        provider_name=selected_provider,
+                        execution_mode="sync",
+                    )
+                    retry_error = str(exc).strip() or exc.__class__.__name__
+                    error_message = (
+                        f"{original_error} Sync retry failed: {retry_error}"
+                        if original_error
+                        else f"Sync retry failed: {retry_error}"
+                    )
+                    retry_summary["failed"] += 1
+                finalize_result(
+                    request_info=request_info,
+                    raw_response=raw_response,
+                    parsed_payload=parsed_payload,
+                    usage=usage,
+                    error_message=error_message,
+                    elapsed_seconds=elapsed_seconds,
+                    recovery_details={**recovery_details, "attempted": True, "succeeded": error_message is None},
+                )
+                finalized_custom_ids.add(custom_id)
+                mark_completed()
+            return retry_summary
 
         _emit_runtime_status(
             progress,
@@ -1774,66 +2086,15 @@ def run_reasoning_floor(
                             "Provider batch finished; rebuilding normalized outputs from returned records.",
                         )
 
-                    request_map = iter_request_manifest_rows(request_manifest_path)
-                    seen_custom_ids: set[str] = set()
-                    result_paths = ()
-                    if batch_execution is not None:
-                        result_paths = (batch_execution.output_path, batch_execution.error_path)
-                    for result_path in result_paths:
-                        if result_path is None:
-                            continue
-                        for result_row in iter_jsonl(result_path):
-                            if not isinstance(result_row, dict):
-                                continue
-                            custom_id = result_row.get("custom_id")
-                            if not isinstance(custom_id, str) or custom_id in seen_custom_ids:
-                                continue
-                            request_info = request_map.get(custom_id)
-                            if not isinstance(request_info, dict):
-                                continue
-                            raw_response, parsed_payload, usage, error_message = provider.parse_batch_result(
-                                result_row,
-                                request_info,
-                            )
-                            usage = _apply_cost_estimation_policy(
-                                usage,
-                                provider_name=selected_provider,
-                                execution_mode=normalized_execution_mode,
-                            )
-                            record_generation_result(
-                                request_info=request_info,
-                                raw_response=raw_response,
-                                parsed_payload=parsed_payload,
-                                usage=usage,
-                                bundle_handles=bundle_handles,
-                                raw_log_fh=raw_log_fh,
-                                manifest_fh=manifest_fh,
-                                elapsed_seconds=None,
-                                error_message=error_message,
-                            )
-                            seen_custom_ids.add(custom_id)
-                            mark_completed()
-
-                    missing_custom_ids = sorted(set(request_map) - seen_custom_ids)
-                    for custom_id in missing_custom_ids:
-                        request_info = request_map[custom_id]
-                        usage = _apply_cost_estimation_policy(
-                            _empty_usage_payload(selected_provider, selected_model, request_info),
-                            provider_name=selected_provider,
-                            execution_mode=normalized_execution_mode,
-                        )
-                        record_generation_result(
-                            request_info=request_info,
-                            raw_response=None,
-                            parsed_payload=None,
-                            usage=usage,
-                            bundle_handles=bundle_handles,
-                            raw_log_fh=raw_log_fh,
-                            manifest_fh=manifest_fh,
-                            elapsed_seconds=None,
-                            error_message="Batch result was missing from both output and error files.",
-                        )
-                        mark_completed()
+                    one_stage_retry_summary = rebuild_batch_phase_results(
+                        phase_label="combined",
+                        batch_execution=batch_execution,
+                        batch_input_path=batch_input_path,
+                        request_manifest_path=request_manifest_path,
+                        bundle_handles=bundle_handles,
+                        raw_log_fh=raw_log_fh,
+                        manifest_fh=manifest_fh,
+                    )
 
                     one_stage_phase = build_batch_phase_summary(
                         request_count=request_counter,
@@ -1843,12 +2104,14 @@ def run_reasoning_floor(
                         execution_result=batch_execution,
                         elapsed_seconds=batch_elapsed_seconds,
                         artifact_paths=artifact_paths,
+                        sync_retry_fallback=one_stage_retry_summary,
                     )
                     batch_summary = {
                         "mode": "one_stage",
                         "status": one_stage_phase.get("status"),
                         "overall_status": one_stage_phase.get("status"),
                         "elapsed_seconds": one_stage_phase.get("elapsed_seconds"),
+                        "sync_retry_fallback": dict(one_stage_phase.get("sync_retry_fallback") or {}),
                         "phases": {"combined": one_stage_phase},
                     }
                 else:
@@ -1918,83 +2181,30 @@ def run_reasoning_floor(
                             "Diagnosis batch finished; rebuilding normalized diagnosis outputs and routing table.",
                         )
 
-                    diagnosis_request_map = iter_request_manifest_rows(diagnosis_manifest_path)
-                    diagnosis_seen_custom_ids: set[str] = set()
-                    diagnosis_result_paths = ()
-                    if diagnosis_execution is not None:
-                        diagnosis_result_paths = (diagnosis_execution.output_path, diagnosis_execution.error_path)
-                    for result_path in diagnosis_result_paths:
-                        if result_path is None:
-                            continue
-                        for result_row in iter_jsonl(result_path):
-                            if not isinstance(result_row, dict):
-                                continue
-                            custom_id = result_row.get("custom_id")
-                            if not isinstance(custom_id, str) or custom_id in diagnosis_seen_custom_ids:
-                                continue
-                            request_info = diagnosis_request_map.get(custom_id)
-                            if not isinstance(request_info, dict):
-                                continue
-                            raw_response, parsed_payload, usage, error_message = provider.parse_batch_result(
-                                result_row,
-                                request_info,
-                            )
-                            usage = _apply_cost_estimation_policy(
-                                usage,
-                                provider_name=selected_provider,
-                                execution_mode=normalized_execution_mode,
-                            )
-                            record_generation_result(
-                                request_info=request_info,
-                                raw_response=raw_response,
-                                parsed_payload=parsed_payload,
-                                usage=usage,
-                                bundle_handles=bundle_handles,
-                                raw_log_fh=raw_log_fh,
-                                manifest_fh=manifest_fh,
-                                elapsed_seconds=None,
-                                error_message=error_message,
-                            )
-                            if error_message:
-                                routed_track = UNROUTABLE_TRACK
-                            else:
-                                routed_track = _routed_track_from_diagnosis_payload(
-                                    parsed_payload,
-                                    str(request_info.get("case_id")),
-                                )
-                            routed_tracks[(request_info["ablation_bundle"], request_info["case_id"])] = {
-                                "proposal_track_used": routed_track,
+                    diagnosis_retry_summary = rebuild_batch_phase_results(
+                        phase_label="diagnosis",
+                        batch_execution=diagnosis_execution,
+                        batch_input_path=diagnosis_input_path,
+                        request_manifest_path=diagnosis_manifest_path,
+                        bundle_handles=bundle_handles,
+                        raw_log_fh=raw_log_fh,
+                        manifest_fh=manifest_fh,
+                        on_result=lambda request_info, parsed_payload, error_message: routed_tracks.__setitem__(
+                            (request_info["ablation_bundle"], request_info["case_id"]),
+                            {
+                                "proposal_track_used": (
+                                    UNROUTABLE_TRACK
+                                    if error_message
+                                    else _routed_track_from_diagnosis_payload(
+                                        parsed_payload,
+                                        str(request_info.get("case_id")),
+                                    )
+                                ),
                                 "routing_source": "diagnosis_prediction",
                                 "context_audit": request_info.get("context_audit") or {},
-                            }
-                            diagnosis_seen_custom_ids.add(custom_id)
-                            mark_completed()
-
-                    missing_diagnosis_custom_ids = sorted(set(diagnosis_request_map) - diagnosis_seen_custom_ids)
-                    for custom_id in missing_diagnosis_custom_ids:
-                        request_info = diagnosis_request_map[custom_id]
-                        usage = _apply_cost_estimation_policy(
-                            _empty_usage_payload(selected_provider, selected_model, request_info),
-                            provider_name=selected_provider,
-                            execution_mode=normalized_execution_mode,
-                        )
-                        record_generation_result(
-                            request_info=request_info,
-                            raw_response=None,
-                            parsed_payload=None,
-                            usage=usage,
-                            bundle_handles=bundle_handles,
-                            raw_log_fh=raw_log_fh,
-                            manifest_fh=manifest_fh,
-                            elapsed_seconds=None,
-                            error_message="Batch result was missing from both output and error files.",
-                        )
-                        routed_tracks[(request_info["ablation_bundle"], request_info["case_id"])] = {
-                            "proposal_track_used": UNROUTABLE_TRACK,
-                            "routing_source": "diagnosis_prediction",
-                            "context_audit": request_info.get("context_audit") or {},
-                        }
-                        mark_completed()
+                            },
+                        ),
+                    )
 
                     phase_summaries["diagnosis"] = build_batch_phase_summary(
                         request_count=diagnosis_request_count,
@@ -2004,6 +2214,7 @@ def run_reasoning_floor(
                         execution_result=diagnosis_execution,
                         elapsed_seconds=diagnosis_elapsed_seconds,
                         artifact_paths=diagnosis_artifacts,
+                        sync_retry_fallback=diagnosis_retry_summary,
                     )
 
                     proposal_input_path = out_dir / "proposal_batch_input.jsonl"
@@ -2113,66 +2324,15 @@ def run_reasoning_floor(
                             "Proposal batch finished; rebuilding normalized proposal outputs.",
                         )
 
-                    proposal_request_map = iter_request_manifest_rows(proposal_manifest_path)
-                    proposal_seen_custom_ids: set[str] = set()
-                    proposal_result_paths = ()
-                    if proposal_execution is not None:
-                        proposal_result_paths = (proposal_execution.output_path, proposal_execution.error_path)
-                    for result_path in proposal_result_paths:
-                        if result_path is None:
-                            continue
-                        for result_row in iter_jsonl(result_path):
-                            if not isinstance(result_row, dict):
-                                continue
-                            custom_id = result_row.get("custom_id")
-                            if not isinstance(custom_id, str) or custom_id in proposal_seen_custom_ids:
-                                continue
-                            request_info = proposal_request_map.get(custom_id)
-                            if not isinstance(request_info, dict):
-                                continue
-                            raw_response, parsed_payload, usage, error_message = provider.parse_batch_result(
-                                result_row,
-                                request_info,
-                            )
-                            usage = _apply_cost_estimation_policy(
-                                usage,
-                                provider_name=selected_provider,
-                                execution_mode=normalized_execution_mode,
-                            )
-                            record_generation_result(
-                                request_info=request_info,
-                                raw_response=raw_response,
-                                parsed_payload=parsed_payload,
-                                usage=usage,
-                                bundle_handles=bundle_handles,
-                                raw_log_fh=raw_log_fh,
-                                manifest_fh=manifest_fh,
-                                elapsed_seconds=None,
-                                error_message=error_message,
-                            )
-                            proposal_seen_custom_ids.add(custom_id)
-                            mark_completed()
-
-                    missing_proposal_custom_ids = sorted(set(proposal_request_map) - proposal_seen_custom_ids)
-                    for custom_id in missing_proposal_custom_ids:
-                        request_info = proposal_request_map[custom_id]
-                        usage = _apply_cost_estimation_policy(
-                            _empty_usage_payload(selected_provider, selected_model, request_info),
-                            provider_name=selected_provider,
-                            execution_mode=normalized_execution_mode,
-                        )
-                        record_generation_result(
-                            request_info=request_info,
-                            raw_response=None,
-                            parsed_payload=None,
-                            usage=usage,
-                            bundle_handles=bundle_handles,
-                            raw_log_fh=raw_log_fh,
-                            manifest_fh=manifest_fh,
-                            elapsed_seconds=None,
-                            error_message="Batch result was missing from both output and error files.",
-                        )
-                        mark_completed()
+                    proposal_retry_summary = rebuild_batch_phase_results(
+                        phase_label="proposal",
+                        batch_execution=proposal_execution,
+                        batch_input_path=proposal_input_path,
+                        request_manifest_path=proposal_manifest_path,
+                        bundle_handles=bundle_handles,
+                        raw_log_fh=raw_log_fh,
+                        manifest_fh=manifest_fh,
+                    )
 
                     phase_summaries["proposal"] = build_batch_phase_summary(
                         request_count=proposal_request_count,
@@ -2182,6 +2342,7 @@ def run_reasoning_floor(
                         execution_result=proposal_execution,
                         elapsed_seconds=proposal_elapsed_seconds,
                         artifact_paths=proposal_artifacts,
+                        sync_retry_fallback=proposal_retry_summary,
                     )
                     batch_summary = {
                         "mode": "two_stage",
@@ -2195,6 +2356,7 @@ def run_reasoning_floor(
                             ),
                             6,
                         ),
+                        "sync_retry_fallback": aggregate_sync_retry_fallback(phase_summaries),
                         "phases": phase_summaries,
                     }
 
@@ -2292,6 +2454,23 @@ def run_reasoning_floor(
         failure_taxonomy = _failure_taxonomy_from_traces(_iter_bundle_traces(out_dir, bundle_list))
         run_elapsed_seconds = time.perf_counter() - run_started_at
         run_usage = _aggregate_run_usage(usage_manifest)
+        cost_estimation_modes = sorted(
+            {
+                mode
+                for record in usage_manifest
+                for mode in [((record.get("usage") or {}).get("cost_estimation_mode"))]
+                if isinstance(mode, str) and mode
+            }
+        )
+        cost_estimation_multipliers = sorted(
+            {
+                round(float(multiplier), 10)
+                for record in usage_manifest
+                for multiplier in [((record.get("usage") or {}).get("cost_estimation_multiplier"))]
+                if isinstance(multiplier, (int, float))
+            }
+        )
+        batch_pricing_applied = any(bool((record.get("usage") or {}).get("batch_pricing_applied")) for record in usage_manifest)
         summary["run_info"] = {
             "run_id": run_id,
             "provider": selected_provider,
@@ -2332,19 +2511,16 @@ def run_reasoning_floor(
             "total_tokens": run_usage["total_tokens"],
             "cached_tokens": run_usage["cached_tokens"],
             "estimated_cost_usd": run_usage["estimated_cost_usd"],
-            "batch_pricing_applied": _batch_pricing_applies(
-                provider_name=selected_provider,
-                execution_mode=normalized_execution_mode,
-            ),
+            "batch_pricing_applied": batch_pricing_applied,
             "cost_estimation_mode": (
-                "openai_batch_discount_applied"
-                if _batch_pricing_applies(provider_name=selected_provider, execution_mode=normalized_execution_mode)
-                else "provider_default"
+                cost_estimation_modes[0]
+                if len(cost_estimation_modes) == 1
+                else ("mixed" if cost_estimation_modes else None)
             ),
+            "per_call_cost_estimation_modes": cost_estimation_modes,
+            "per_call_cost_estimation_multipliers": cost_estimation_multipliers,
             "cost_estimation_multiplier": (
-                OPENAI_BATCH_COST_ESTIMATION_MULTIPLIER
-                if _batch_pricing_applies(provider_name=selected_provider, execution_mode=normalized_execution_mode)
-                else 1.0
+                cost_estimation_multipliers[0] if len(cost_estimation_multipliers) == 1 else None
             ),
         }
         summary["paper_summary"] = {

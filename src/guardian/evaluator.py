@@ -889,6 +889,9 @@ def evaluate_a_box_case(
             proposal_usage=proposal_usage,
             diagnosis_usage=diagnosis_usage,
         ),
+        "a_box_exact_action_match": 1.0 if exact_action_match else 0.0,
+        "a_box_exact_value_match": 1.0 if exact_value_match else 0.0,
+        "a_box_regression_pass": 1.0 if regression_pass else 0.0,
     }
     return {
         "case_id": record["id"],
@@ -1035,6 +1038,7 @@ def evaluate_t_box_case(
         "exact_signature_match": 1.0 if exact_signature_match else 0.0,
         "changed_constraint_type_hit": 1.0 if changed_constraint_type_hit else 0.0,
         "signature_after_jaccard": signature_after_jaccard,
+        "t_box_target_constraint_match": 1.0 if target_constraint_match else 0.0,
         "proposal_admits_current_values": (
             None if proposal_admits_current_values is None else (1.0 if proposal_admits_current_values else 0.0)
         ),
@@ -1093,6 +1097,7 @@ def evaluate_track_diagnosis(
     ambiguous_prediction = bool(predicted_track == "AMBIGUOUS")
     confidence = diagnosis.confidence if diagnosis is not None else None
     rationale = diagnosis.rationale if diagnosis is not None else None
+    provider_error = manifest_record.get("provider_error")
     return {
         "valid": diagnosis is not None,
         "present": not diagnosis_missing,
@@ -1103,6 +1108,7 @@ def evaluate_track_diagnosis(
         "ambiguous_prediction": ambiguous_prediction,
         "confidence": confidence,
         "rationale": rationale,
+        "provider_error": provider_error.strip() if isinstance(provider_error, str) and provider_error.strip() else None,
         "token_usage": _token_usage(manifest_record),
     }
 
@@ -1145,10 +1151,14 @@ def summarize_trace_iterable(
                 "auditability_complete",
                 "conversion_rate",
                 "tokens_to_fix",
+                "a_box_exact_action_match",
+                "a_box_exact_value_match",
+                "a_box_regression_pass",
                 "exact_action_match",
                 "exact_signature_match",
                 "changed_constraint_type_hit",
                 "signature_after_jaccard",
+                "t_box_target_constraint_match",
                 "proposal_admits_current_values",
             ):
                 value = metrics.get(field)
@@ -1157,6 +1167,8 @@ def summarize_trace_iterable(
                     self.metric_counts[field] += 1
             if trace.get("parse_status") == "parse_error":
                 self.metric_sums["proposal_parse_error_count"] += 1.0
+            if trace.get("parse_status") == "request_error":
+                self.metric_sums["proposal_request_error_count"] += 1.0
             parser_error = trace.get("details", {}).get("parser_error")
             if isinstance(parser_error, str) and parser_error:
                 self.metric_counts[f"parser_error::{parser_error}"] += 1
@@ -1171,6 +1183,8 @@ def summarize_trace_iterable(
                     self.diagnosis_exact += 1
                 if diagnosis.get("present"):
                     self.diagnosis_present += 1
+                if diagnosis.get("parse_status") == "request_error":
+                    self.metric_sums["track_diagnosis_request_error_count"] += 1.0
 
         def as_dict(self) -> dict[str, Any]:
             if self.count == 0:
@@ -1194,10 +1208,14 @@ def summarize_trace_iterable(
                 "auditability_complete_rate": avg("auditability_complete"),
                 "conversion_rate": avg("conversion_rate"),
                 "tokens_to_fix_mean": avg("tokens_to_fix"),
+                "a_box_exact_action_match_rate": avg("a_box_exact_action_match"),
+                "a_box_exact_value_match_rate": avg("a_box_exact_value_match"),
+                "a_box_regression_pass_rate": avg("a_box_regression_pass"),
                 "exact_action_match_rate": avg("exact_action_match"),
                 "exact_signature_match_rate": avg("exact_signature_match"),
                 "changed_constraint_type_hit_rate": avg("changed_constraint_type_hit"),
                 "signature_after_jaccard_mean": avg("signature_after_jaccard"),
+                "t_box_target_constraint_match_rate": avg("t_box_target_constraint_match"),
                 "proposal_admits_current_values_rate": avg("proposal_admits_current_values"),
                 "metric_applicability": {
                     "semantic_success": self.metric_counts.get("semantic_success", 0),
@@ -1206,19 +1224,31 @@ def summarize_trace_iterable(
                     "auditability_complete": self.metric_counts.get("auditability_complete", 0),
                     "conversion_rate": self.metric_counts.get("conversion_rate", 0),
                     "tokens_to_fix": self.metric_counts.get("tokens_to_fix", 0),
+                    "a_box_exact_action_match": self.metric_counts.get("a_box_exact_action_match", 0),
+                    "a_box_exact_value_match": self.metric_counts.get("a_box_exact_value_match", 0),
+                    "a_box_regression_pass": self.metric_counts.get("a_box_regression_pass", 0),
                     "exact_action_match": self.metric_counts.get("exact_action_match", 0),
                     "exact_signature_match": self.metric_counts.get("exact_signature_match", 0),
                     "changed_constraint_type_hit": self.metric_counts.get("changed_constraint_type_hit", 0),
                     "signature_after_jaccard": self.metric_counts.get("signature_after_jaccard", 0),
+                    "t_box_target_constraint_match": self.metric_counts.get("t_box_target_constraint_match", 0),
                     "proposal_admits_current_values": self.metric_counts.get("proposal_admits_current_values", 0),
                 },
                 "proposal_parse_error_count": int(self.metric_sums.get("proposal_parse_error_count", 0.0)),
                 "proposal_parse_error_rate": self.metric_sums.get("proposal_parse_error_count", 0.0) / self.count,
+                "proposal_request_error_count": int(self.metric_sums.get("proposal_request_error_count", 0.0)),
+                "proposal_request_error_rate": self.metric_sums.get("proposal_request_error_count", 0.0) / self.count,
                 "proposal_parse_errors_by_message": {
                     key.removeprefix("parser_error::"): value
                     for key, value in sorted(self.metric_counts.items())
                     if key.startswith("parser_error::")
                 },
+                "track_diagnosis_request_error_count": int(
+                    self.metric_sums.get("track_diagnosis_request_error_count", 0.0)
+                ),
+                "track_diagnosis_request_error_rate": (
+                    self.metric_sums.get("track_diagnosis_request_error_count", 0.0) / self.count
+                ),
                 "token_usage_total_mean": (
                     self.token_total_sum / self.token_total_count if self.token_total_count else None
                 ),
@@ -1260,10 +1290,14 @@ def summarize_trace_iterable(
             "auditability_complete",
             "conversion_rate",
             "tokens_to_fix",
+            "a_box_exact_action_match",
+            "a_box_exact_value_match",
+            "a_box_regression_pass",
             "exact_action_match",
             "exact_signature_match",
             "changed_constraint_type_hit",
             "signature_after_jaccard",
+            "t_box_target_constraint_match",
             "proposal_admits_current_values",
         ):
             if isinstance(metrics.get(metric_name), (int, float)):
@@ -1273,6 +1307,8 @@ def summarize_trace_iterable(
             parser_error = trace.get("details", {}).get("parser_error")
             if isinstance(parser_error, str) and parser_error:
                 parse_errors[parser_error] += 1
+        if trace.get("parse_status") == "request_error":
+            counts["proposal_request_error"] += 1
         diagnosis = trace.get("track_diagnosis")
         if isinstance(diagnosis, dict):
             if diagnosis.get("present"):
@@ -1281,6 +1317,8 @@ def summarize_trace_iterable(
                 counts["track_diagnosis_exact_match"] += 1
             if diagnosis.get("ambiguous_prediction"):
                 counts["track_diagnosis_ambiguous"] += 1
+            if diagnosis.get("parse_status") == "request_error":
+                counts["track_diagnosis_request_error"] += 1
         overall.add(trace)
         groups["by_class"][trace.get("classification_class")].add(trace)
         groups["by_subtype"][trace.get("classification_subtype")].add(trace)
@@ -1299,6 +1337,16 @@ def summarize_trace_iterable(
                 counts.get("proposal_parse_error", 0) / counts["cases"] if counts.get("cases", 0) else 0.0
             ),
             "by_message": dict(parse_errors),
+        },
+        "request_errors": {
+            "proposal_request_error_count": counts.get("proposal_request_error", 0),
+            "proposal_request_error_rate": (
+                counts.get("proposal_request_error", 0) / counts["cases"] if counts.get("cases", 0) else 0.0
+            ),
+            "track_diagnosis_request_error_count": counts.get("track_diagnosis_request_error", 0),
+            "track_diagnosis_request_error_rate": (
+                counts.get("track_diagnosis_request_error", 0) / counts["cases"] if counts.get("cases", 0) else 0.0
+            ),
         },
         "by_class": {str(key): value.as_dict() for key, value in groups["by_class"].items()},
         "by_subtype": {str(key): value.as_dict() for key, value in groups["by_subtype"].items()},

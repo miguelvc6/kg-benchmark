@@ -144,9 +144,9 @@ Batch runs also write provider batch artifacts at the top level of the run direc
 - `batch_request_manifest.jsonl`
 - provider-specific batch job metadata, output JSONL, and error JSONL when available
 
-The run manifest stores per-call token usage, cached prompt tokens when available, elapsed seconds when available, estimated cost when provider token pricing is configured in `.env`, cost-estimation metadata, and the prompt template name used for that call.
+The run manifest stores per-call token usage, cached prompt tokens when available, elapsed seconds when available, estimated cost when provider token pricing is configured in `.env`, cost-estimation metadata, and the prompt template name used for that call. When a retryable batch failure is recovered by a synchronous retry, the recovered raw and manifest rows also carry a `recovery` block describing the fallback path.
 
-The combined summary stores run-level provider, model, output directory, execution mode, an explicit `batch_mode_used` flag, total elapsed time, aggregate prompt/completion/total tokens, aggregate cached tokens, aggregate estimated cost, and cost-estimation metadata. For OpenAI batch runs, the runner applies a built-in `0.5` multiplier to estimated costs to reflect batch pricing. Parallel runs also record `run_info.parallel.workers` and its configuration source. Batch runs also record provider batch metadata in `run_info.batch`.
+The combined summary stores run-level provider, model, output directory, execution mode, an explicit `batch_mode_used` flag, total elapsed time, aggregate prompt/completion/total tokens, aggregate cached tokens, aggregate estimated cost, and cost-estimation metadata. For OpenAI batch calls, the runner applies a built-in `0.5` multiplier to estimated costs to reflect batch pricing. When a batch run includes synchronous retry fallbacks, the summary marks `usage.cost_estimation_mode` as `mixed` and also records `usage.per_call_cost_estimation_modes` and `usage.per_call_cost_estimation_multipliers`. Parallel runs also record `run_info.parallel.workers` and its configuration source. Batch runs also record provider batch metadata in `run_info.batch`.
 
 Run and per-bundle summaries now also expose proposal parser visibility directly:
 
@@ -156,6 +156,14 @@ Run and per-bundle summaries now also expose proposal parser visibility directly
 - per-group `proposal_parse_error_count`, `proposal_parse_error_rate`, and `proposal_parse_errors_by_message`
 
 This makes proposal parser regressions diagnosable from the top-level summary JSON without opening traces.
+
+Run and per-bundle summaries also expose request-level transport failures directly:
+
+- `request_errors.proposal_request_error_count`
+- `request_errors.proposal_request_error_rate`
+- `request_errors.track_diagnosis_request_error_count`
+- `request_errors.track_diagnosis_request_error_rate`
+- per-group `proposal_request_error_count`, `proposal_request_error_rate`, `track_diagnosis_request_error_count`, and `track_diagnosis_request_error_rate`
 
 When a selection manifest is used, the run summary records its path under `inputs.selection_manifest`.
 
@@ -182,6 +190,8 @@ The two-stage flow writes:
 - `proposal_batch_request_manifest.jsonl`
 - provider batch artifacts renamed with `diagnosis_` and `proposal_` prefixes
 
+When a provider batch artifact contains retryable `408`, `409`, `429`, or `5xx` request failures, the runner reconstructs the original prompt from the batch input artifact and retries that request synchronously. Each batch phase summary records the fallback outcome under `run_info.batch.phases[*].sync_retry_fallback`, and the top-level batch summary also carries an aggregated `sync_retry_fallback` block.
+
 When `diagnosis_routed` predicts `AMBIGUOUS`, the runner does not submit a proposal request. It still writes synthetic raw/manifest proposal rows with `parse_status="skipped_ambiguous_track"` and `proposal_track_used="AMBIGUOUS"`.
 
 During evaluation, the runner now switches classified-benchmark access strategy by selected-case count:
@@ -197,11 +207,13 @@ When `--selection-manifest` and `--max-cases` are combined without a track filte
 
 `A_BOX` acceptance is still based on executable repairs that reproduce the historical repaired value without increasing supported constraint violations.
 
+To make A-box evaluation easier to debug, grouped and overall summaries now also expose `a_box_exact_action_match_rate`, `a_box_exact_value_match_rate`, and `a_box_regression_pass_rate` instead of forcing all A-box diagnosis through `accepted` or `exact_historical_agreement` alone.
+
 `T_BOX` evaluation now separates exact, family-level semantic, and proxy signals:
 
 - `accepted`, `functional_success`, and `exact_historical_agreement` require both exact action match and exact normalized `signature_after` match
 - `semantic_success` now reports family-level compatibility, not literal action-label equality
-- traces also expose `comparison.literal_action_match`, `comparison.semantic_family_match`, `comparison.target_constraint_match`, `comparison.exact_action_match`, `comparison.exact_signature_match`, `comparison.changed_constraint_type_hit`, `metrics.semantic_family_success`, `metrics.signature_after_jaccard`, and `details.proposal_admits_current_values` where applicable
+- traces also expose `comparison.literal_action_match`, `comparison.semantic_family_match`, `comparison.target_constraint_match`, `comparison.exact_action_match`, `comparison.exact_signature_match`, `comparison.changed_constraint_type_hit`, `metrics.semantic_family_success`, `metrics.signature_after_jaccard`, `metrics.t_box_target_constraint_match`, and `details.proposal_admits_current_values` where applicable
 
 For new reasoning-floor runs, T-box normalization is also strict about constraint-family IDs. The runner passes a case-local allowlist into the T-box parser, so malformed outputs such as entity/type QIDs used in `constraint_type_qid` become proposal `parse_error` rows and are omitted from normalized T-box proposal JSONL artifacts.
 
