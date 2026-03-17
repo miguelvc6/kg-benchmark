@@ -28,6 +28,8 @@ class CaseDebugRecord:
     historical_track: Optional[str]
     proposal_type: Optional[str]
     record: Optional[dict[str, Any]]
+    proposal_request: Optional[dict[str, Any]]
+    diagnosis_request: Optional[dict[str, Any]]
     proposal_manifest: Optional[dict[str, Any]]
     diagnosis_manifest: Optional[dict[str, Any]]
     proposal_raw: Optional[dict[str, Any]]
@@ -115,6 +117,7 @@ def load_bundle_debug_data(
     bundle_name: str,
     classified_benchmark: str | Path | None = None,
     world_state: str | Path | None = None,
+    include_case_records: bool = True,
 ) -> BundleDebugData:
     reports_root = Path(reports_root)
     run_dir = Path(run_dir)
@@ -131,8 +134,12 @@ def load_bundle_debug_data(
     )
     manifest_path = run_dir / "run_manifest.jsonl"
     raw_path = run_dir / "raw_model_responses.jsonl"
+    batch_request_manifest_path = run_dir / "batch_request_manifest.jsonl"
+    batch_input_path = run_dir / "batch_input.jsonl"
     manifest_rows = _iter_jsonl_if_exists(manifest_path)
     raw_rows = _iter_jsonl_if_exists(raw_path)
+    batch_request_manifest_rows = _iter_jsonl_if_exists(batch_request_manifest_path)
+    batch_input_rows = _iter_jsonl_if_exists(batch_input_path)
     bundle_manifest_rows = [
         row for row in manifest_rows if (row.get("ablation_bundle") or None) == bundle_name
     ]
@@ -169,14 +176,22 @@ def load_bundle_debug_data(
         bundle_summary = _load_optional_json(evaluation_summary_path)
         summary_source = "artifact"
 
-    record_map = _load_case_records(
-        input_paths.get("classified_benchmark"),
-        _case_ids_from_summary_or_rows(traces, bundle_manifest_rows),
-    )
+    record_map: dict[str, dict[str, Any]] = {}
+    if include_case_records:
+        record_map = _load_case_records(
+            input_paths.get("classified_benchmark"),
+            _case_ids_from_summary_or_rows(traces, bundle_manifest_rows),
+        )
     trace_map = {row["case_id"]: row for row in traces if isinstance(row, dict) and isinstance(row.get("case_id"), str)}
     diagnosis_map = {row["case_id"]: row for row in diagnosis_rows if isinstance(row.get("case_id"), str)}
     a_box_map = {row["case_id"]: row for row in a_box_rows if isinstance(row.get("case_id"), str)}
     t_box_map = {row["case_id"]: row for row in t_box_rows if isinstance(row.get("case_id"), str)}
+    batch_request_metadata_map = {
+        row.get("custom_id"): row.get("metadata")
+        for row in batch_request_manifest_rows
+        if isinstance(row.get("custom_id"), str) and isinstance(row.get("metadata"), dict)
+    }
+    request_input_map = _build_request_input_map(batch_input_rows, batch_request_metadata_map, bundle_name)
     manifest_map = {
         (row.get("case_id"), row.get("task_type") or "proposal"): row
         for row in bundle_manifest_rows
@@ -214,6 +229,8 @@ def load_bundle_debug_data(
                 historical_track=historical_track,
                 proposal_type=proposal_type,
                 record=record,
+                proposal_request=request_input_map.get((case_id, "proposal")),
+                diagnosis_request=request_input_map.get((case_id, "track_diagnosis")),
                 proposal_manifest=proposal_manifest,
                 diagnosis_manifest=diagnosis_manifest,
                 proposal_raw=raw_map.get((case_id, "proposal")),
@@ -508,6 +525,31 @@ def _parse_status_counts(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         {"task_type": task_type, "parse_status": parse_status, "count": count}
         for (task_type, parse_status), count in sorted(counts.items())
     ]
+
+
+def _build_request_input_map(
+    rows: list[dict[str, Any]],
+    metadata_by_custom_id: dict[str, dict[str, Any]],
+    bundle_name: str,
+) -> dict[tuple[str, str], dict[str, Any]]:
+    request_map: dict[tuple[str, str], dict[str, Any]] = {}
+    for row in rows:
+        custom_id = row.get("custom_id")
+        if not isinstance(custom_id, str):
+            continue
+        metadata = metadata_by_custom_id.get(custom_id)
+        if not isinstance(metadata, dict):
+            continue
+        if (metadata.get("ablation_bundle") or None) != bundle_name:
+            continue
+        case_id = metadata.get("case_id")
+        if not isinstance(case_id, str) or not case_id:
+            continue
+        task_type = metadata.get("task_type")
+        if not isinstance(task_type, str) or not task_type:
+            task_type = "proposal"
+        request_map[(case_id, task_type)] = row
+    return request_map
 
 
 def _summarize_usage(rows: list[dict[str, Any]]) -> dict[str, Any]:

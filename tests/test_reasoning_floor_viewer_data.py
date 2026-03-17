@@ -2,6 +2,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from guardian.evaluator import evaluate_benchmark, write_json, write_jsonl
 from guardian.reasoning_floor_viewer_data import build_case_prompt_debug, load_bundle_debug_data
@@ -276,8 +277,54 @@ class ReasoningFloorViewerDataTests(unittest.TestCase):
                 '{"id":"broken_case","ops":[]}',
             ),
         ]
+        batch_request_manifest_rows = [
+            {
+                "custom_id": "req_diag_repair",
+                "metadata": {
+                    "run_id": "run_001",
+                    "case_id": "repair_case",
+                    "ablation_bundle": "minimal_case",
+                    "task_type": "track_diagnosis",
+                },
+            },
+            {
+                "custom_id": "req_prop_repair",
+                "metadata": {
+                    "run_id": "run_001",
+                    "case_id": "repair_case",
+                    "ablation_bundle": "minimal_case",
+                    "task_type": "proposal",
+                },
+            },
+        ]
+        batch_input_rows = [
+            {
+                "custom_id": "req_diag_repair",
+                "body": {
+                    "model": "stub-model",
+                    "messages": [
+                        {"role": "system", "content": "diagnosis system prompt"},
+                        {"role": "user", "content": '{"id":"repair_case","mode":"diagnosis"}'},
+                    ],
+                    "response_format": {"type": "json_object"},
+                },
+            },
+            {
+                "custom_id": "req_prop_repair",
+                "body": {
+                    "model": "stub-model",
+                    "messages": [
+                        {"role": "system", "content": "proposal system prompt"},
+                        {"role": "user", "content": '{"id":"repair_case","mode":"proposal"}'},
+                    ],
+                    "response_format": {"type": "json_object"},
+                },
+            },
+        ]
         self._write_jsonl(run_dir / "run_manifest.jsonl", manifest_rows)
         self._write_jsonl(run_dir / "raw_model_responses.jsonl", raw_rows)
+        self._write_jsonl(run_dir / "batch_request_manifest.jsonl", batch_request_manifest_rows)
+        self._write_jsonl(run_dir / "batch_input.jsonl", batch_input_rows)
         self._write_json(
             run_dir / "reasoning_floor_summary.json",
             {
@@ -411,6 +458,25 @@ class ReasoningFloorViewerDataTests(unittest.TestCase):
 
         self.assertIsNone(prompt_debug.error)
         self.assertEqual(prompt_debug.proposal_prompt.prompt_name, "reasoning_floor_t_box_zero_shot")
+
+    def test_load_bundle_debug_data_can_skip_eager_case_record_loading(self) -> None:
+        root, reports_root, run_dir, _ = self._build_fixture(with_evaluation_artifacts=True)
+
+        with mock.patch("guardian.reasoning_floor_viewer_data._load_case_records") as mocked_loader:
+            mocked_loader.side_effect = AssertionError("_load_case_records should not be called")
+            bundle_data = load_bundle_debug_data(
+                reports_root=reports_root,
+                run_dir=run_dir,
+                bundle_name="minimal_case",
+                classified_benchmark=root / "data" / "04_classified_benchmark.jsonl",
+                world_state=root / "data" / "03_world_state.json",
+                include_case_records=False,
+            )
+
+        repair_case = next(row for row in bundle_data.case_rows if row.case_id == "repair_case")
+        self.assertIsNone(repair_case.record)
+        self.assertEqual(repair_case.diagnosis_request["body"]["messages"][0]["content"], "diagnosis system prompt")
+        self.assertEqual(repair_case.proposal_request["body"]["messages"][0]["content"], "proposal system prompt")
 
 
 if __name__ == "__main__":

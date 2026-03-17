@@ -44,6 +44,7 @@ def load_bundle_data_cached(
         bundle_name=bundle_name,
         classified_benchmark=classified_benchmark,
         world_state=world_state,
+        include_case_records=False,
     )
 
 
@@ -165,7 +166,11 @@ def main() -> None:
         )
 
     selected_case = next(row for row in filtered_cases if row.case_id == selected_case_id)
-    prompt_debug = build_case_prompt_debug(bundle_data, selected_case_id)
+    prompt_debug = None
+    prompt_debug_key = f"prompt_debug_enabled::{selected_run_name}::{selected_bundle}::{selected_case_id}"
+    prompt_debug_requested = st.session_state.get(prompt_debug_key, False)
+    if prompt_debug_requested:
+        prompt_debug = build_case_prompt_debug(bundle_data, selected_case_id)
 
     with st.expander("Filtered cases", expanded=False):
         st.dataframe([case_table_row(row) for row in filtered_cases], use_container_width=True, hide_index=True)
@@ -174,7 +179,14 @@ def main() -> None:
     with tabs[0]:
         render_overview_tab(bundle_data, selected_case)
     with tabs[1]:
-        render_inputs_tab(prompt_debug)
+        if st.button(
+            "Reconstruct prompts from source inputs",
+            key=f"reconstruct_prompts_button::{selected_run_name}::{selected_bundle}::{selected_case_id}",
+            use_container_width=False,
+        ):
+            st.session_state[prompt_debug_key] = True
+            st.rerun()
+        render_inputs_tab(selected_case, prompt_debug)
     with tabs[2]:
         render_track_prediction_tab(selected_case)
     with tabs[3]:
@@ -305,19 +317,24 @@ def render_overview_tab(bundle_data: BundleDebugData, case: CaseDebugRecord) -> 
     )
 
 
-def render_inputs_tab(prompt_debug: Any) -> None:
-    if prompt_debug.error:
+def render_inputs_tab(case: CaseDebugRecord, prompt_debug: Any) -> None:
+    if prompt_debug and prompt_debug.error:
         st.warning(prompt_debug.error)
+    elif prompt_debug is None:
+        st.info(
+            "Showing original request artifacts when available. Prompt reconstruction is optional because "
+            "it may require reading large benchmark or world-state inputs."
+        )
     prompt_cols = st.columns(2)
     with prompt_cols[0]:
         st.markdown("#### Track diagnosis input")
-        render_prompt_bundle(prompt_debug.diagnosis_prompt)
+        render_prompt_source(case.diagnosis_request, None if prompt_debug is None else prompt_debug.diagnosis_prompt)
     with prompt_cols[1]:
         st.markdown("#### Repair proposal input")
-        render_prompt_bundle(prompt_debug.proposal_prompt)
+        render_prompt_source(case.proposal_request, None if prompt_debug is None else prompt_debug.proposal_prompt)
 
     with st.expander("World-state entry", expanded=False):
-        if prompt_debug.world_state_entry is None:
+        if prompt_debug is None or prompt_debug.world_state_entry is None:
             st.info("No world-state entry was required or available for this bundle.")
         else:
             st.json(prompt_debug.world_state_entry, expanded=False)
@@ -428,6 +445,8 @@ def render_evaluation_tab(case: CaseDebugRecord) -> None:
 def render_raw_json_tab(bundle_data: BundleDebugData, case: CaseDebugRecord, prompt_debug: Any) -> None:
     sections = [
         ("Classified record", case.record),
+        ("Proposal request", case.proposal_request),
+        ("Diagnosis request", case.diagnosis_request),
         ("Proposal manifest", case.proposal_manifest),
         ("Diagnosis manifest", case.diagnosis_manifest),
         ("Proposal raw record", case.proposal_raw),
@@ -435,11 +454,16 @@ def render_raw_json_tab(bundle_data: BundleDebugData, case: CaseDebugRecord, pro
         ("Normalized proposal", case.proposal_normalized),
         ("Normalized diagnosis", case.diagnosis_normalized),
         ("Evaluation trace", case.trace),
-        ("Prompt reconstruction", {
-            "proposal_prompt": prompt_bundle_to_dict(prompt_debug.proposal_prompt),
-            "diagnosis_prompt": prompt_bundle_to_dict(prompt_debug.diagnosis_prompt),
-            "error": prompt_debug.error,
-        }),
+        (
+            "Prompt reconstruction",
+            None
+            if prompt_debug is None
+            else {
+                "proposal_prompt": prompt_bundle_to_dict(prompt_debug.proposal_prompt),
+                "diagnosis_prompt": prompt_bundle_to_dict(prompt_debug.diagnosis_prompt),
+                "error": prompt_debug.error,
+            },
+        ),
         ("Run summary", bundle_data.run_summary),
     ]
     for title, payload in sections:
@@ -461,6 +485,32 @@ def render_prompt_bundle(prompt_bundle: Optional[PromptBundle]) -> None:
     st.json(prompt_bundle.response_format, expanded=False)
     st.markdown("**User prompt**")
     render_text_or_json(prompt_bundle.prompt)
+
+
+def render_prompt_source(request_entry: Optional[dict[str, Any]], prompt_bundle: Optional[PromptBundle]) -> None:
+    if request_entry:
+        body = request_entry.get("body") if isinstance(request_entry.get("body"), dict) else {}
+        messages = body.get("messages") if isinstance(body.get("messages"), list) else []
+        system_prompt = _message_content(messages, "system")
+        user_prompt = _message_content(messages, "user")
+        st.caption("Source: original request artifact")
+        if system_prompt:
+            st.markdown("**System prompt**")
+            st.code(system_prompt, language="text")
+        if body.get("response_format") is not None:
+            st.markdown("**Response format**")
+            st.json(body.get("response_format"), expanded=False)
+        if user_prompt:
+            st.markdown("**User prompt**")
+            render_text_or_json(user_prompt)
+        else:
+            st.info("The request artifact did not include a user prompt.")
+        return
+    if prompt_bundle is not None:
+        st.caption("Source: reconstructed from benchmark inputs")
+        render_prompt_bundle(prompt_bundle)
+        return
+    st.info("No request artifact or reconstructed prompt is available.")
 
 
 def render_usage_block(usage: Optional[dict[str, Any]]) -> None:
@@ -541,6 +591,18 @@ def render_text_or_json(value: str) -> None:
         st.code(value, language="text")
         return
     st.json(parsed, expanded=False)
+
+
+def _message_content(messages: list[Any], role: str) -> Optional[str]:
+    for message in messages:
+        if not isinstance(message, dict):
+            continue
+        if message.get("role") != role:
+            continue
+        content = message.get("content")
+        if isinstance(content, str):
+            return content
+    return None
 
 
 def format_ratio(value: Any) -> str:
