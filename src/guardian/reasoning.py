@@ -42,6 +42,7 @@ PROPERTY_SCOPE_CONSTRAINT_QID = "Q53869507"
 ALLOWED_ENTITY_TYPES_CONSTRAINT_QID = "Q52004125"
 UNROUTABLE_TRACK = "UNROUTABLE"
 RETRYABLE_BATCH_STATUS_CODES = {408, 409, 429}
+RUN_CONFIG_FILENAME = "run_config.json"
 
 
 def _slugify(value: str) -> str:
@@ -121,6 +122,201 @@ def _format_cost(value: float | None) -> str:
     if value is None:
         return "n/a"
     return f"${value:.4f}"
+
+
+def _resolved_path_str(path_value: str | Path | None) -> str | None:
+    if path_value in (None, ""):
+        return None
+    return str(Path(path_value).resolve())
+
+
+def _load_optional_json(path: str | Path | None) -> dict[str, Any] | None:
+    if not path:
+        return None
+    file_path = Path(path)
+    if not file_path.exists():
+        return None
+    with open(file_path, "r", encoding="utf-8") as handle:
+        payload = json.load(handle)
+    return payload if isinstance(payload, dict) else None
+
+
+def _normalize_string_list(values: Iterable[str] | None) -> list[str] | None:
+    if values is None:
+        return None
+    normalized = [value for value in values if isinstance(value, str) and value]
+    return normalized or []
+
+
+def _build_run_config_payload(
+    *,
+    run_id: str,
+    out_dir: Path,
+    provider_name: str,
+    model_name: str,
+    execution_mode: str,
+    proposal_track_mode: str,
+    classified_path: str | Path,
+    world_state_path: str | Path,
+    selection_manifest_path: str | Path | None,
+    tracks: Iterable[str] | None,
+    max_cases: int | None,
+    ablation_bundles: Iterable[str],
+    selected_case_ids: Iterable[str],
+    generation_strategy: str,
+    selected_generation_records_path: Path | None,
+    started_at_utc: str,
+) -> dict[str, Any]:
+    normalized_case_ids = [case_id for case_id in selected_case_ids if isinstance(case_id, str) and case_id]
+    return {
+        "run_id": run_id,
+        "output_dir": str(out_dir.resolve()),
+        "provider": provider_name,
+        "model": model_name,
+        "execution_mode": execution_mode,
+        "proposal_track_mode": proposal_track_mode,
+        "classified_benchmark": _resolved_path_str(classified_path),
+        "world_state": _resolved_path_str(world_state_path),
+        "selection_manifest": _resolved_path_str(selection_manifest_path),
+        "tracks": sorted(_normalize_string_list(tracks) or []),
+        "max_cases": max_cases,
+        "ablation_bundles": [bundle for bundle in ablation_bundles if isinstance(bundle, str) and bundle],
+        "selected_case_ids": normalized_case_ids,
+        "selected_case_count": len(normalized_case_ids),
+        "generation_strategy": generation_strategy,
+        "selected_generation_records_path": (
+            str(selected_generation_records_path.resolve()) if isinstance(selected_generation_records_path, Path) else None
+        ),
+        "started_at_utc": started_at_utc,
+    }
+
+
+def _validate_resume_run_config(
+    existing_config: dict[str, Any] | None,
+    expected_config: dict[str, Any],
+) -> None:
+    if not isinstance(existing_config, dict):
+        return
+    mismatches: list[str] = []
+    for key in (
+        "provider",
+        "model",
+        "execution_mode",
+        "proposal_track_mode",
+        "classified_benchmark",
+        "world_state",
+        "selection_manifest",
+        "tracks",
+        "max_cases",
+        "ablation_bundles",
+        "selected_case_ids",
+    ):
+        if existing_config.get(key) != expected_config.get(key):
+            mismatches.append(key)
+    if mismatches:
+        details = ", ".join(mismatches)
+        raise ValueError(
+            "Resume run configuration does not match the existing run directory. "
+            f"Mismatched fields: {details}."
+        )
+
+
+def _load_existing_manifest_rows(path: str | Path | None) -> list[dict[str, Any]]:
+    if not path:
+        return []
+    manifest_path = Path(path)
+    if not manifest_path.exists():
+        return []
+    rows: list[dict[str, Any]] = []
+    for row in iter_jsonl(manifest_path):
+        if isinstance(row, dict):
+            rows.append(row)
+    return rows
+
+
+def _manifest_rows_by_key(rows: Iterable[dict[str, Any]]) -> dict[tuple[str | None, str, str], dict[str, Any]]:
+    lookup: dict[tuple[str | None, str, str], dict[str, Any]] = {}
+    for row in rows:
+        case_id = row.get("case_id")
+        if not isinstance(case_id, str) or not case_id:
+            continue
+        bundle = row.get("ablation_bundle")
+        bundle_key = bundle if isinstance(bundle, str) and bundle else None
+        task_type = row.get("task_type")
+        task_key = task_type if isinstance(task_type, str) and task_type else "proposal"
+        lookup[(bundle_key, case_id, task_key)] = row
+    return lookup
+
+
+def _manifest_row_for_task(
+    manifest_lookup: dict[tuple[str | None, str, str], dict[str, Any]],
+    *,
+    bundle: str,
+    case_id: str,
+    task_type: str,
+) -> dict[str, Any] | None:
+    return manifest_lookup.get((bundle, case_id, task_type))
+
+
+def _load_existing_track_diagnosis_rows(
+    out_dir: Path,
+    bundle_list: Iterable[str],
+) -> dict[tuple[str, str], dict[str, Any]]:
+    rows_by_key: dict[tuple[str, str], dict[str, Any]] = {}
+    for bundle in bundle_list:
+        diagnosis_path = out_dir / bundle / "track_diagnoses.jsonl"
+        if not diagnosis_path.exists():
+            continue
+        for row in iter_jsonl(diagnosis_path):
+            case_id = row.get("case_id") if isinstance(row, dict) else None
+            if isinstance(case_id, str) and case_id:
+                rows_by_key[(bundle, case_id)] = row
+    return rows_by_key
+
+
+def _completed_case_units(
+    manifest_lookup: dict[tuple[str | None, str, str], dict[str, Any]],
+    *,
+    bundle_list: Iterable[str],
+    selected_case_ids: Iterable[str],
+) -> int:
+    completed = 0
+    for bundle in bundle_list:
+        for case_id in selected_case_ids:
+            if (
+                _manifest_row_for_task(manifest_lookup, bundle=bundle, case_id=case_id, task_type="track_diagnosis")
+                is not None
+                and _manifest_row_for_task(manifest_lookup, bundle=bundle, case_id=case_id, task_type="proposal")
+                is not None
+            ):
+                completed += 1
+    return completed
+
+
+def _routing_info_from_existing_diagnosis(
+    *,
+    diagnosis_manifest_row: dict[str, Any],
+    diagnosis_row: dict[str, Any] | None,
+) -> dict[str, Any]:
+    context_audit = diagnosis_manifest_row.get("context_audit") or {}
+    if diagnosis_manifest_row.get("parse_status") != "normalized":
+        return {
+            "proposal_track_used": UNROUTABLE_TRACK,
+            "routing_source": "diagnosis_prediction",
+            "context_audit": context_audit,
+        }
+    if not isinstance(diagnosis_row, dict):
+        raise RuntimeError(
+            "Cannot resume diagnosis-routed proposal generation because an existing normalized diagnosis row is missing."
+        )
+    predicted_track = diagnosis_row.get("predicted_track")
+    if predicted_track not in {"A_BOX", "T_BOX", "AMBIGUOUS"}:
+        predicted_track = UNROUTABLE_TRACK
+    return {
+        "proposal_track_used": predicted_track,
+        "routing_source": "diagnosis_prediction",
+        "context_audit": context_audit,
+    }
 
 
 def _emit_runtime_status(progress_bar: Any, message: str) -> None:
@@ -1222,6 +1418,7 @@ def run_reasoning_floor(
     classified_path: str | Path,
     world_state_path: str | Path,
     output_dir: str | Path,
+    resume_run_dir: str | Path | None = None,
     provider: Optional[ModelProvider] = None,
     model_name: str | None = None,
     ablation_bundles: Iterable[str] = ABLATION_BUNDLES,
@@ -1259,18 +1456,36 @@ def run_reasoning_floor(
     if parallel_workers is not None and parallel_workers < 1:
         raise ValueError("parallel_workers must be at least 1 when provided.")
 
-    run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
-    run_dir_name = f"{run_id}_{_slugify(selected_provider)}_{_slugify(selected_model)}"
-    out_dir = Path(output_dir) / run_dir_name
+    resume_requested = resume_run_dir is not None
+    existing_run_config: dict[str, Any] | None = None
+    if resume_requested:
+        out_dir = Path(resume_run_dir).resolve()
+        out_dir.mkdir(parents=True, exist_ok=True)
+        existing_run_config = _load_optional_json(out_dir / RUN_CONFIG_FILENAME)
+        run_id = (
+            existing_run_config.get("run_id")
+            if isinstance(existing_run_config, dict) and isinstance(existing_run_config.get("run_id"), str)
+            else out_dir.name.split("_", 1)[0]
+        )
+    else:
+        run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
+        run_dir_name = f"{run_id}_{_slugify(selected_provider)}_{_slugify(selected_model)}"
+        out_dir = Path(output_dir) / run_dir_name
     out_dir.mkdir(parents=True, exist_ok=True)
     raw_log_path = out_dir / "raw_model_responses.jsonl"
     manifest_path = out_dir / "run_manifest.jsonl"
+    run_config_path = out_dir / RUN_CONFIG_FILENAME
 
     _emit_runtime_status(
         None,
-        "Preparing run "
-        f"{run_id} with provider={selected_provider}, model={selected_model}, "
-        f"mode={normalized_execution_mode}, proposal_track_mode={normalized_proposal_track_mode}.",
+        (
+            "Preparing resumed run "
+            if resume_requested
+            else "Preparing run "
+        )
+        + f"{run_id} with provider={selected_provider}, model={selected_model}, "
+        + f"mode={normalized_execution_mode}, proposal_track_mode={normalized_proposal_track_mode}."
+        + (f" Resume directory: {out_dir}." if resume_requested else ""),
     )
 
     resolved_case_ids = resolve_case_id_filter(
@@ -1310,8 +1525,55 @@ def run_reasoning_floor(
     bundle_list = [bundle for bundle in ablation_bundles if bundle in ABLATION_BUNDLES]
     if not bundle_list:
         raise ValueError("At least one supported ablation bundle is required.")
+    expected_run_config = _build_run_config_payload(
+        run_id=run_id,
+        out_dir=out_dir,
+        provider_name=selected_provider,
+        model_name=selected_model,
+        execution_mode=normalized_execution_mode,
+        proposal_track_mode=normalized_proposal_track_mode,
+        classified_path=classified_path,
+        world_state_path=world_state_path,
+        selection_manifest_path=selection_manifest_path,
+        tracks=tracks,
+        max_cases=max_cases,
+        ablation_bundles=bundle_list,
+        selected_case_ids=selected_case_ids,
+        generation_strategy=generation_selection.strategy,
+        selected_generation_records_path=generation_selection.records_path,
+        started_at_utc=run_started_utc,
+    )
+    if resume_requested:
+        _validate_resume_run_config(existing_run_config, expected_run_config)
+        if isinstance(existing_run_config, dict) and isinstance(existing_run_config.get("started_at_utc"), str):
+            expected_run_config["started_at_utc"] = existing_run_config["started_at_utc"]
+        expected_run_config["last_resumed_at_utc"] = run_started_utc
+        if existing_run_config is None:
+            _emit_runtime_status(
+                None,
+                f"No existing {RUN_CONFIG_FILENAME} was found under {out_dir}; resuming in best-effort mode.",
+            )
+    write_json(run_config_path, expected_run_config)
+
+    existing_manifest_rows = _load_existing_manifest_rows(manifest_path) if resume_requested else []
+    existing_manifest_lookup = _manifest_rows_by_key(existing_manifest_rows)
+    existing_diagnosis_rows = (
+        _load_existing_track_diagnosis_rows(out_dir, bundle_list)
+        if resume_requested and normalized_proposal_track_mode == "diagnosis_routed"
+        else {}
+    )
     total_instances = len(selected_case_ids) * len(bundle_list)
     total_requests = total_instances * 2 if normalized_execution_mode == "batch" else total_instances
+    existing_completed_work_units = (
+        len(existing_manifest_rows)
+        if normalized_execution_mode == "batch"
+        else _completed_case_units(
+            existing_manifest_lookup,
+            bundle_list=bundle_list,
+            selected_case_ids=selected_case_ids,
+        )
+    )
+    completed_work_units = existing_completed_work_units
     effective_parallel_workers = 1
     parallel_worker_source = "disabled"
     if normalized_execution_mode == "parallel":
@@ -1336,9 +1598,24 @@ def run_reasoning_floor(
         disable=total_requests == 0,
     )
     pending_progress = 0
-    completed_work_units = 0
-    current_estimated_cost_usd = 0.0
-    has_cost_data = False
+    current_estimated_cost_usd, has_cost_data = _update_cost_tracking(
+        (
+            row.get("usage")
+            for row in existing_manifest_rows
+            if isinstance(row.get("usage"), dict)
+        ),
+        0.0,
+        False,
+    )
+    if completed_work_units:
+        progress.update(min(completed_work_units, total_requests))
+        progress.set_postfix(
+            {
+                "current_cost": _format_cost(current_estimated_cost_usd if has_cost_data else None),
+                "est_total_cost": _format_cost(current_estimated_cost_usd if has_cost_data else None),
+            },
+            refresh=True,
+        )
     batch_summary: dict[str, Any] | None = None
     try:
         def build_diagnosis_request(
@@ -1476,6 +1753,11 @@ def run_reasoning_floor(
                 current_estimated_cost_usd,
                 has_cost_data,
             )
+            bundle_key = request_info.get("ablation_bundle")
+            case_id = request_info.get("case_id")
+            task_type = request_info.get("task_type")
+            if isinstance(bundle_key, str) and isinstance(case_id, str) and isinstance(task_type, str):
+                existing_manifest_lookup[(bundle_key, case_id, task_type)] = manifest_record
             return manifest_record
 
         def record_skipped_proposal(
@@ -1500,15 +1782,65 @@ def run_reasoning_floor(
                 skip_reason=skip_reason,
             )
             usage_manifest.append(manifest_record)
+            bundle_key = request_info.get("ablation_bundle")
+            case_id = request_info.get("case_id")
+            if isinstance(bundle_key, str) and isinstance(case_id, str):
+                existing_manifest_lookup[(bundle_key, case_id, "proposal")] = manifest_record
             return manifest_record
+
+        def routing_info_for_existing_case(
+            *,
+            bundle: str,
+            case_id: str,
+        ) -> dict[str, Any] | None:
+            diagnosis_manifest_row = _manifest_row_for_task(
+                existing_manifest_lookup,
+                bundle=bundle,
+                case_id=case_id,
+                task_type="track_diagnosis",
+            )
+            if diagnosis_manifest_row is None:
+                return None
+            return _routing_info_from_existing_diagnosis(
+                diagnosis_manifest_row=diagnosis_manifest_row,
+                diagnosis_row=existing_diagnosis_rows.get((bundle, case_id)),
+            )
 
         def execute_case_pipeline(
             record: dict[str, Any],
             bundle: str,
             world_state_entry: Optional[dict[str, Any]],
+            *,
+            existing_diagnosis_manifest: dict[str, Any] | None = None,
+            existing_proposal_manifest: dict[str, Any] | None = None,
         ) -> CasePipelineOutcome:
-            diagnosis_bundle, diagnosis_metadata = build_diagnosis_request(record, bundle, world_state_entry)
+            request_results: list[RequestExecutionResult] = []
+            skipped_proposals: list[dict[str, Any]] = []
+            routing_info: dict[str, Any] | None = None
+
+            if existing_diagnosis_manifest is None:
+                diagnosis_bundle, diagnosis_metadata = build_diagnosis_request(record, bundle, world_state_entry)
+                diagnosis_result = _execute_case_requests(
+                    provider,
+                    [(diagnosis_bundle, diagnosis_metadata)],
+                    provider_name=selected_provider,
+                    execution_mode=normalized_execution_mode,
+                )[0]
+                request_results.append(diagnosis_result)
+                routing_info = {
+                    "proposal_track_used": _routed_track_from_diagnosis_payload(
+                        diagnosis_result.parsed_payload,
+                        record["id"],
+                    ),
+                    "routing_source": "diagnosis_prediction",
+                    "context_audit": diagnosis_metadata.get("context_audit") or {},
+                }
+            else:
+                routing_info = routing_info_for_existing_case(bundle=bundle, case_id=record["id"])
+
             if normalized_proposal_track_mode == "oracle":
+                if existing_proposal_manifest is not None:
+                    return CasePipelineOutcome(request_results=request_results, skipped_proposals=skipped_proposals)
                 proposal_bundle, proposal_metadata = build_proposal_request(
                     record,
                     bundle,
@@ -1516,75 +1848,74 @@ def run_reasoning_floor(
                     proposal_track_used=record.get("track") or "A_BOX",
                     routing_source="oracle_historical_track",
                 )
-                request_results = _execute_case_requests(
-                    provider,
-                    [(diagnosis_bundle, diagnosis_metadata), (proposal_bundle, proposal_metadata)],
-                    provider_name=selected_provider,
-                    execution_mode=normalized_execution_mode,
+                request_results.extend(
+                    _execute_case_requests(
+                        provider,
+                        [(proposal_bundle, proposal_metadata)],
+                        provider_name=selected_provider,
+                        execution_mode=normalized_execution_mode,
+                    )
                 )
-                return CasePipelineOutcome(request_results=request_results, skipped_proposals=[])
+                return CasePipelineOutcome(request_results=request_results, skipped_proposals=skipped_proposals)
 
-            diagnosis_result = _execute_case_requests(
-                provider,
-                [(diagnosis_bundle, diagnosis_metadata)],
-                provider_name=selected_provider,
-                execution_mode=normalized_execution_mode,
-            )[0]
-            routed_track = _routed_track_from_diagnosis_payload(diagnosis_result.parsed_payload, record["id"])
+            if existing_proposal_manifest is not None:
+                return CasePipelineOutcome(request_results=request_results, skipped_proposals=skipped_proposals)
+
+            if routing_info is None:
+                raise RuntimeError(
+                    f"Cannot resume case {record['id']} in bundle {bundle}: routing information is unavailable."
+                )
+            routed_track = routing_info.get("proposal_track_used")
+            context_audit = routing_info.get("context_audit")
             if routed_track == "AMBIGUOUS":
                 skipped_request_info = build_skipped_proposal_request(
                     record,
                     bundle,
                     proposal_track_used="AMBIGUOUS",
                     routing_source="diagnosis_prediction",
-                    context_audit=diagnosis_bundle.context_audit,
+                    context_audit=context_audit,
                 )
-                return CasePipelineOutcome(
-                    request_results=[diagnosis_result],
-                    skipped_proposals=[
-                        {
-                            "request_info": skipped_request_info,
-                            "parse_status": "skipped_ambiguous_track",
-                            "skip_reason": "Diagnosis predicted AMBIGUOUS track.",
-                        }
-                    ],
+                skipped_proposals.append(
+                    {
+                        "request_info": skipped_request_info,
+                        "parse_status": "skipped_ambiguous_track",
+                        "skip_reason": "Diagnosis predicted AMBIGUOUS track.",
+                    }
                 )
+                return CasePipelineOutcome(request_results=request_results, skipped_proposals=skipped_proposals)
             if routed_track not in {"A_BOX", "T_BOX"}:
                 skipped_request_info = build_skipped_proposal_request(
                     record,
                     bundle,
                     proposal_track_used=UNROUTABLE_TRACK,
                     routing_source="diagnosis_prediction",
-                    context_audit=diagnosis_bundle.context_audit,
+                    context_audit=context_audit,
                 )
-                return CasePipelineOutcome(
-                    request_results=[diagnosis_result],
-                    skipped_proposals=[
-                        {
-                            "request_info": skipped_request_info,
-                            "parse_status": "skipped_unroutable_track",
-                            "skip_reason": "Diagnosis output could not be routed to A_BOX or T_BOX.",
-                        }
-                    ],
+                skipped_proposals.append(
+                    {
+                        "request_info": skipped_request_info,
+                        "parse_status": "skipped_unroutable_track",
+                        "skip_reason": "Diagnosis output could not be routed to A_BOX or T_BOX.",
+                    }
                 )
+                return CasePipelineOutcome(request_results=request_results, skipped_proposals=skipped_proposals)
 
             proposal_bundle, proposal_metadata = build_proposal_request(
                 record,
                 bundle,
                 world_state_entry,
-                proposal_track_used=routed_track,
+                proposal_track_used=str(routed_track),
                 routing_source="diagnosis_prediction",
             )
-            proposal_result = _execute_case_requests(
-                provider,
-                [(proposal_bundle, proposal_metadata)],
-                provider_name=selected_provider,
-                execution_mode=normalized_execution_mode,
-            )[0]
-            return CasePipelineOutcome(
-                request_results=[diagnosis_result, proposal_result],
-                skipped_proposals=[],
+            request_results.extend(
+                _execute_case_requests(
+                    provider,
+                    [(proposal_bundle, proposal_metadata)],
+                    provider_name=selected_provider,
+                    execution_mode=normalized_execution_mode,
+                )
             )
+            return CasePipelineOutcome(request_results=request_results, skipped_proposals=skipped_proposals)
 
         def move_batch_artifact(path: Path | None, prefix: str) -> Path | None:
             if path is None or not path.exists() or not prefix:
@@ -1905,9 +2236,9 @@ def run_reasoning_floor(
 
         _emit_runtime_status(
             progress,
-            "Starting run "
-            f"{run_id} with provider={selected_provider}, model={selected_model}, "
-            f"mode={normalized_execution_mode}, proposal_track_mode={normalized_proposal_track_mode}, "
+            ("Starting resumed run " if resume_requested else "Starting run ")
+            + f"{run_id} with provider={selected_provider}, model={selected_model}, "
+            + f"mode={normalized_execution_mode}, proposal_track_mode={normalized_proposal_track_mode}, "
             f"cases={len(selected_case_ids)}, bundles={len(bundle_list)}, requests={total_requests}.",
         )
         _emit_runtime_status(progress, f"Writing outputs to {out_dir}.")
@@ -1916,7 +2247,14 @@ def run_reasoning_floor(
             "Materialized generation selection using "
             f"{generation_selection.strategy} for {len(selected_case_ids)} selected case(s).",
         )
-        usage_manifest: list[dict[str, Any]] = []
+        if resume_requested:
+            _emit_runtime_status(
+                progress,
+                "Loaded existing generation state from "
+                f"{manifest_path}: {len(existing_manifest_rows)} request row(s), "
+                f"{completed_work_units}/{total_requests} completed work unit(s).",
+            )
+        usage_manifest: list[dict[str, Any]] = list(existing_manifest_rows)
 
         a_box_schema = load_a_box_schema(Path("schemas") / "verified_repair_proposal.schema.json")
         t_box_schema = load_t_box_schema(Path("schemas") / "tbox_reform_proposal.schema.json")
@@ -1926,21 +2264,27 @@ def run_reasoning_floor(
         for bundle in bundle_list:
             bundle_dir = out_dir / bundle
             bundle_dir.mkdir(parents=True, exist_ok=True)
-            (bundle_dir / "a_box_proposals.jsonl").touch()
-            (bundle_dir / "t_box_proposals.jsonl").touch()
-            (bundle_dir / "track_diagnoses.jsonl").touch()
+            if not resume_requested:
+                (bundle_dir / "a_box_proposals.jsonl").touch()
+                (bundle_dir / "t_box_proposals.jsonl").touch()
+                (bundle_dir / "track_diagnoses.jsonl").touch()
 
-        with open(raw_log_path, "w", encoding="utf-8") as raw_log_fh, open(
-            manifest_path, "w", encoding="utf-8"
+        output_file_mode = "a" if resume_requested else "w"
+        with open(raw_log_path, output_file_mode, encoding="utf-8") as raw_log_fh, open(
+            manifest_path, output_file_mode, encoding="utf-8"
         ) as manifest_fh, ExitStack() as stack:
             bundle_handles = {}
             for bundle in bundle_list:
                 bundle_dir = out_dir / bundle
                 bundle_handles[bundle] = {
-                    "a_box": stack.enter_context(open(bundle_dir / "a_box_proposals.jsonl", "w", encoding="utf-8")),
-                    "t_box": stack.enter_context(open(bundle_dir / "t_box_proposals.jsonl", "w", encoding="utf-8")),
+                    "a_box": stack.enter_context(
+                        open(bundle_dir / "a_box_proposals.jsonl", output_file_mode, encoding="utf-8")
+                    ),
+                    "t_box": stack.enter_context(
+                        open(bundle_dir / "t_box_proposals.jsonl", output_file_mode, encoding="utf-8")
+                    ),
                     "track": stack.enter_context(
-                        open(bundle_dir / "track_diagnoses.jsonl", "w", encoding="utf-8")
+                        open(bundle_dir / "track_diagnoses.jsonl", output_file_mode, encoding="utf-8")
                     ),
                 }
             if normalized_execution_mode in {"sync", "parallel"}:
@@ -1948,8 +2292,28 @@ def run_reasoning_floor(
                     for bundle in bundle_list:
                         for record in _iter_materialized_generation_records(generation_selection):
                             case_id = record["id"]
+                            existing_diagnosis_manifest = _manifest_row_for_task(
+                                existing_manifest_lookup,
+                                bundle=bundle,
+                                case_id=case_id,
+                                task_type="track_diagnosis",
+                            )
+                            existing_proposal_manifest = _manifest_row_for_task(
+                                existing_manifest_lookup,
+                                bundle=bundle,
+                                case_id=case_id,
+                                task_type="proposal",
+                            )
+                            if existing_diagnosis_manifest is not None and existing_proposal_manifest is not None:
+                                continue
                             world_state_entry = world_state_store.get(case_id)
-                            outcome = execute_case_pipeline(record, bundle, world_state_entry)
+                            outcome = execute_case_pipeline(
+                                record,
+                                bundle,
+                                world_state_entry,
+                                existing_diagnosis_manifest=existing_diagnosis_manifest,
+                                existing_proposal_manifest=existing_proposal_manifest,
+                            )
                             for request_result in outcome.request_results:
                                 record_generation_result(
                                     request_info=request_result.request_info,
@@ -2011,8 +2375,29 @@ def run_reasoning_floor(
                         for bundle in bundle_list:
                             for record in _iter_materialized_generation_records(generation_selection):
                                 case_id = record["id"]
+                                existing_diagnosis_manifest = _manifest_row_for_task(
+                                    existing_manifest_lookup,
+                                    bundle=bundle,
+                                    case_id=case_id,
+                                    task_type="track_diagnosis",
+                                )
+                                existing_proposal_manifest = _manifest_row_for_task(
+                                    existing_manifest_lookup,
+                                    bundle=bundle,
+                                    case_id=case_id,
+                                    task_type="proposal",
+                                )
+                                if existing_diagnosis_manifest is not None and existing_proposal_manifest is not None:
+                                    continue
                                 world_state_entry = world_state_store.get(case_id)
-                                future = executor.submit(execute_case_pipeline, record, bundle, world_state_entry)
+                                future = executor.submit(
+                                    execute_case_pipeline,
+                                    record,
+                                    bundle,
+                                    world_state_entry,
+                                    existing_diagnosis_manifest=existing_diagnosis_manifest,
+                                    existing_proposal_manifest=existing_proposal_manifest,
+                                )
                                 pending_futures[future] = case_id
                                 if len(pending_futures) >= effective_parallel_workers:
                                     drain_completed_futures(wait_for_all=False)
@@ -2032,47 +2417,65 @@ def run_reasoning_floor(
                             for record in _iter_materialized_generation_records(generation_selection):
                                 case_id = record["id"]
                                 world_state_entry = world_state_store.get(case_id)
-                                diagnosis_bundle, diagnosis_metadata = build_diagnosis_request(
-                                    record,
-                                    bundle,
-                                    world_state_entry,
-                                )
-                                diagnosis_custom_id = f"rf_{request_counter:09d}"
-                                request_counter += 1
-                                provider.write_batch_request(
-                                    batch_input_fh,
-                                    custom_id=diagnosis_custom_id,
-                                    prompt=diagnosis_bundle.prompt,
-                                    system_prompt=diagnosis_bundle.system_prompt,
-                                    response_format=diagnosis_bundle.response_format,
-                                    metadata=diagnosis_metadata,
-                                )
-                                _append_jsonl_record(
-                                    request_manifest_fh,
-                                    {"custom_id": diagnosis_custom_id, "metadata": diagnosis_metadata},
-                                )
+                                if (
+                                    _manifest_row_for_task(
+                                        existing_manifest_lookup,
+                                        bundle=bundle,
+                                        case_id=case_id,
+                                        task_type="track_diagnosis",
+                                    )
+                                    is None
+                                ):
+                                    diagnosis_bundle, diagnosis_metadata = build_diagnosis_request(
+                                        record,
+                                        bundle,
+                                        world_state_entry,
+                                    )
+                                    diagnosis_custom_id = f"rf_{request_counter:09d}"
+                                    request_counter += 1
+                                    provider.write_batch_request(
+                                        batch_input_fh,
+                                        custom_id=diagnosis_custom_id,
+                                        prompt=diagnosis_bundle.prompt,
+                                        system_prompt=diagnosis_bundle.system_prompt,
+                                        response_format=diagnosis_bundle.response_format,
+                                        metadata=diagnosis_metadata,
+                                    )
+                                    _append_jsonl_record(
+                                        request_manifest_fh,
+                                        {"custom_id": diagnosis_custom_id, "metadata": diagnosis_metadata},
+                                    )
 
-                                proposal_bundle, proposal_metadata = build_proposal_request(
-                                    record,
-                                    bundle,
-                                    world_state_entry,
-                                    proposal_track_used=record.get("track") or "A_BOX",
-                                    routing_source="oracle_historical_track",
-                                )
-                                proposal_custom_id = f"rf_{request_counter:09d}"
-                                request_counter += 1
-                                provider.write_batch_request(
-                                    batch_input_fh,
-                                    custom_id=proposal_custom_id,
-                                    prompt=proposal_bundle.prompt,
-                                    system_prompt=proposal_bundle.system_prompt,
-                                    response_format=proposal_bundle.response_format,
-                                    metadata=proposal_metadata,
-                                )
-                                _append_jsonl_record(
-                                    request_manifest_fh,
-                                    {"custom_id": proposal_custom_id, "metadata": proposal_metadata},
-                                )
+                                if (
+                                    _manifest_row_for_task(
+                                        existing_manifest_lookup,
+                                        bundle=bundle,
+                                        case_id=case_id,
+                                        task_type="proposal",
+                                    )
+                                    is None
+                                ):
+                                    proposal_bundle, proposal_metadata = build_proposal_request(
+                                        record,
+                                        bundle,
+                                        world_state_entry,
+                                        proposal_track_used=record.get("track") or "A_BOX",
+                                        routing_source="oracle_historical_track",
+                                    )
+                                    proposal_custom_id = f"rf_{request_counter:09d}"
+                                    request_counter += 1
+                                    provider.write_batch_request(
+                                        batch_input_fh,
+                                        custom_id=proposal_custom_id,
+                                        prompt=proposal_bundle.prompt,
+                                        system_prompt=proposal_bundle.system_prompt,
+                                        response_format=proposal_bundle.response_format,
+                                        metadata=proposal_metadata,
+                                    )
+                                    _append_jsonl_record(
+                                        request_manifest_fh,
+                                        {"custom_id": proposal_custom_id, "metadata": proposal_metadata},
+                                    )
 
                     batch_execution = None
                     batch_elapsed_seconds = 0.0
@@ -2140,6 +2543,11 @@ def run_reasoning_floor(
                 else:
                     phase_summaries: dict[str, dict[str, Any]] = {}
                     routed_tracks: dict[tuple[str, str], dict[str, Any]] = {}
+                    for bundle in bundle_list:
+                        for case_id in selected_case_ids:
+                            routing_info = routing_info_for_existing_case(bundle=bundle, case_id=case_id)
+                            if routing_info is not None:
+                                routed_tracks[(bundle, case_id)] = routing_info
 
                     diagnosis_input_path = out_dir / "diagnosis_batch_input.jsonl"
                     diagnosis_manifest_path = out_dir / "diagnosis_batch_request_manifest.jsonl"
@@ -2150,6 +2558,16 @@ def run_reasoning_floor(
                         for bundle in bundle_list:
                             for record in _iter_materialized_generation_records(generation_selection):
                                 case_id = record["id"]
+                                if (
+                                    _manifest_row_for_task(
+                                        existing_manifest_lookup,
+                                        bundle=bundle,
+                                        case_id=case_id,
+                                        task_type="track_diagnosis",
+                                    )
+                                    is not None
+                                ):
+                                    continue
                                 world_state_entry = world_state_store.get(case_id)
                                 diagnosis_bundle, diagnosis_metadata = build_diagnosis_request(
                                     record,
@@ -2248,6 +2666,16 @@ def run_reasoning_floor(
                     ) as request_manifest_fh:
                         for bundle in bundle_list:
                             for record in _iter_materialized_generation_records(generation_selection):
+                                if (
+                                    _manifest_row_for_task(
+                                        existing_manifest_lookup,
+                                        bundle=bundle,
+                                        case_id=record["id"],
+                                        task_type="proposal",
+                                    )
+                                    is not None
+                                ):
+                                    continue
                                 routing_info = routed_tracks.get((bundle, record["id"]))
                                 if not isinstance(routing_info, dict):
                                     routing_info = {
@@ -2520,6 +2948,18 @@ def run_reasoning_floor(
                 "memory_cache_case_threshold": GENERATION_IN_MEMORY_CASE_THRESHOLD,
             },
             "proposal_track_mode": normalized_proposal_track_mode,
+            "resume": {
+                "enabled": resume_requested,
+                "resumed_from": str(out_dir) if resume_requested else None,
+                "run_config_path": str(run_config_path),
+                "existing_manifest_rows": len(existing_manifest_rows),
+                "completed_work_units_before_resume": existing_completed_work_units if resume_requested else 0,
+                "original_started_at_utc": (
+                    existing_run_config.get("started_at_utc")
+                    if isinstance(existing_run_config, dict)
+                    else None
+                ),
+            },
         }
         if normalized_execution_mode == "parallel":
             summary["run_info"]["parallel"] = {

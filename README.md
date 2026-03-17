@@ -106,6 +106,12 @@ Show reasoning-floor CLI:
 uv run python src/reasoning_floor.py --help
 ```
 
+Resume an interrupted reasoning-floor run from its existing run directory:
+
+```bash
+uv run python src/reasoning_floor.py --resume-run-dir reports/reasoning_floor/<RUN_ID>_<provider>_<model>
+```
+
 Launch the reasoning-floor viewer:
 
 ```bash

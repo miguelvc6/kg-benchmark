@@ -247,6 +247,16 @@ uv run python src/reasoning_floor.py \
   --output-dir reports/reasoning_floor
 ```
 
+If the run is interrupted, resume it by pointing `--resume-run-dir` at that concrete run directory. The runner will append only the missing requests and then rebuild evaluation from the merged artifacts:
+
+```bash
+uv run python src/reasoning_floor.py \
+  --classified-benchmark data/04_classified_benchmark.jsonl \
+  --world-state data/03_world_state.json \
+  --selection-manifest reports/benchmark_selection/paper_eval_tbox_cap_100_seed_13.json \
+  --resume-run-dir reports/reasoning_floor/<RUN_ID>_<provider>_<model>
+```
+
 For Ollama throughput runs, prefer explicit parallel execution:
 
 ```bash
@@ -257,6 +267,18 @@ uv run python src/reasoning_floor.py \
   --output-dir reports/reasoning_floor \
   --execution-mode parallel \
   --parallel-workers 2
+```
+
+The same resume flag works for parallel runs:
+
+```bash
+uv run python src/reasoning_floor.py \
+  --classified-benchmark data/04_classified_benchmark.jsonl \
+  --world-state data/03_world_state.json \
+  --selection-manifest reports/benchmark_selection/paper_eval_tbox_cap_100_seed_13.json \
+  --execution-mode parallel \
+  --parallel-workers 2 \
+  --resume-run-dir reports/reasoning_floor/<RUN_ID>_<provider>_<model>
 ```
 
 For `14b` and larger models on the A30, change `--parallel-workers` to `1`.

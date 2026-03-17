@@ -236,6 +236,7 @@ The summary aggregates results by:
 - a top-level directory named `<run_id>_<provider>_<model>`
 - `raw_model_responses.jsonl`
 - `run_manifest.jsonl`
+- `run_config.json`
 - one subdirectory per ablation bundle
 - normalized proposal JSONL files per bundle
 - evaluation traces and summaries per bundle
@@ -250,7 +251,9 @@ When the runner uses `--execution-mode batch`, the same run directory also inclu
 
 `run_manifest.jsonl` includes per-call provider, model, token usage, cached token counts when available, elapsed seconds when available, estimated cost when pricing metadata is configured, and cost-estimation metadata including whether batch pricing was applied. Recovered batch rows may also include a `recovery` object describing a synchronous retry after a retryable batch failure.
 
-`reasoning_floor_summary.json` includes aggregated run-level token totals, cached token totals when available, estimated cost, elapsed time, provider, model, execution mode, an explicit `run_info.batch_mode_used` flag, output directory, cost-estimation metadata, and input references including the optional selection manifest path. OpenAI batch calls apply a built-in `0.5` cost-estimation multiplier. If some batch failures are retried synchronously, the summary reports `usage.cost_estimation_mode: "mixed"` and includes both `usage.per_call_cost_estimation_modes` and `usage.per_call_cost_estimation_multipliers`. Batch runs also include provider batch metadata under `run_info.batch`, including `run_info.batch.sync_retry_fallback` and per-phase `run_info.batch.phases[*].sync_retry_fallback`.
+`run_config.json` stores the stable run configuration, including provider/model choice, execution mode, proposal-track mode, selected case ids, and selected generation artifact path when present. The runner uses this file to validate `--resume-run-dir` invocations before it appends new results into an interrupted run directory.
+
+`reasoning_floor_summary.json` includes aggregated run-level token totals, cached token totals when available, estimated cost, elapsed time, provider, model, execution mode, an explicit `run_info.batch_mode_used` flag, output directory, cost-estimation metadata, and input references including the optional selection manifest path. OpenAI batch calls apply a built-in `0.5` cost-estimation multiplier. If some batch failures are retried synchronously, the summary reports `usage.cost_estimation_mode: "mixed"` and includes both `usage.per_call_cost_estimation_modes` and `usage.per_call_cost_estimation_multipliers`. Batch runs also include provider batch metadata under `run_info.batch`, including `run_info.batch.sync_retry_fallback` and per-phase `run_info.batch.phases[*].sync_retry_fallback`. Resumed runs also include `run_info.resume` metadata describing the reused run directory and the amount of generation work already completed before the resumed process began.
 
 The combined and per-bundle evaluation summaries now also expose:
 

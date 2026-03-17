@@ -83,6 +83,7 @@ Execution CLI settings:
 - `--parallel-workers` for `parallel` mode
 - `--batch-completion-window` (defaults to `24h`)
 - `--batch-poll-interval-seconds` (defaults to `60`)
+- `--resume-run-dir` to continue an interrupted run from an existing run directory
 
 If `--execution-mode` is omitted:
 
@@ -140,6 +141,7 @@ A reasoning-floor run writes:
 
 - raw model responses
 - run manifest
+- `run_config.json`
 - a model-specific run directory named `<run_id>_<provider>_<model>`
 - normalized track-diagnosis JSONL per ablation bundle
 - normalized proposal JSONL per ablation bundle
@@ -152,9 +154,11 @@ Batch runs also write provider batch artifacts at the top level of the run direc
 - `batch_request_manifest.jsonl`
 - provider-specific batch job metadata, output JSONL, and error JSONL when available
 
+`run_config.json` stores the immutable run settings and the ordered selected case ids so a later `--resume-run-dir` invocation can verify that the resumed command still targets the same provider, model, selection, execution mode, proposal-track mode, and ablation bundles.
+
 The run manifest stores per-call token usage, cached prompt tokens when available, elapsed seconds when available, estimated cost when provider token pricing is configured in `.env`, cost-estimation metadata, and the prompt template name used for that call. When a retryable batch failure is recovered by a synchronous retry, the recovered raw and manifest rows also carry a `recovery` block describing the fallback path.
 
-The combined summary stores run-level provider, model, output directory, execution mode, an explicit `batch_mode_used` flag, total elapsed time, aggregate prompt/completion/total tokens, aggregate cached tokens, aggregate estimated cost, and cost-estimation metadata. For OpenAI batch calls, the runner applies a built-in `0.5` multiplier to estimated costs to reflect batch pricing. When a batch run includes synchronous retry fallbacks, the summary marks `usage.cost_estimation_mode` as `mixed` and also records `usage.per_call_cost_estimation_modes` and `usage.per_call_cost_estimation_multipliers`. Parallel runs also record `run_info.parallel.workers` and its configuration source. Batch runs also record provider batch metadata in `run_info.batch`.
+The combined summary stores run-level provider, model, output directory, execution mode, an explicit `batch_mode_used` flag, total elapsed time, aggregate prompt/completion/total tokens, aggregate cached tokens, aggregate estimated cost, and cost-estimation metadata. For OpenAI batch calls, the runner applies a built-in `0.5` multiplier to estimated costs to reflect batch pricing. When a batch run includes synchronous retry fallbacks, the summary marks `usage.cost_estimation_mode` as `mixed` and also records `usage.per_call_cost_estimation_modes` and `usage.per_call_cost_estimation_multipliers`. Parallel runs also record `run_info.parallel.workers` and its configuration source. Batch runs also record provider batch metadata in `run_info.batch`. Resumed runs also record `run_info.resume`, including the originating run directory, the persisted `run_config.json` path, and how much generation work had already completed before the resumed process started.
 
 Run and per-bundle summaries now also expose proposal parser visibility directly:
 
@@ -184,6 +188,8 @@ Startup status now begins before generation-selection materialization and before
 After generation completes, the runner shows a second `tqdm` bar for bundle evaluation so the terminal does not appear idle while per-bundle summaries and traces are still being computed.
 
 In synchronous mode, the runner appends raw responses, manifest rows, normalized proposals, and evaluation traces incrementally over one stable ordered selected subset. In parallel mode, it keeps the same outputs but executes multiple cases concurrently with bounded in-flight work.
+
+When `--resume-run-dir` is used, the runner opens the existing JSONL artifacts in append mode, loads prior completion state from `run_manifest.jsonl`, and only submits the missing request(s). This works for sync, parallel, and batch execution. In `diagnosis_routed` mode, proposal resumption is driven from the existing normalized diagnosis artifacts, so the runner can skip already-finished diagnosis calls and submit only the missing proposals or synthetic skips.
 
 In batch mode:
 

@@ -12,6 +12,11 @@ def main() -> int:
     parser.add_argument("--classified-benchmark", default="data/04_classified_benchmark.jsonl")
     parser.add_argument("--world-state", default="data/03_world_state.json")
     parser.add_argument("--output-dir", default="reports/reasoning_floor")
+    parser.add_argument(
+        "--resume-run-dir",
+        default=None,
+        help="Resume an interrupted reasoning-floor run from an existing run directory.",
+    )
     parser.add_argument("--model", default=None, help="Override the model name configured in .env.")
     parser.add_argument(
         "--execution-mode",
@@ -64,6 +69,7 @@ def main() -> int:
         classified_path=args.classified_benchmark,
         world_state_path=args.world_state,
         output_dir=args.output_dir,
+        resume_run_dir=args.resume_run_dir,
         model_name=args.model,
         execution_mode=args.execution_mode,
         proposal_track_mode=args.proposal_track_mode,

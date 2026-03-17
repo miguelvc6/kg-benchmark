@@ -190,11 +190,76 @@ class RetryableBatchFailureOpenAIProvider(CostedStaticOpenAIProvider):
         return super().parse_batch_result(result_record, metadata)
 
 
+class CountingStaticResponseProvider(StaticResponseProvider):
+    def __init__(self, resolver: Callable[[dict[str, Any]], dict[str, Any]], **kwargs: Any) -> None:
+        super().__init__(resolver, **kwargs)
+        self.generate_call_count = 0
+        self.batch_execute_call_count = 0
+
+    def generate(
+        self,
+        prompt: str,
+        system_prompt: str,
+        response_format: dict[str, Any],
+        metadata: dict[str, Any],
+    ) -> tuple[Any, Any, dict[str, Any]]:
+        self.generate_call_count += 1
+        return super().generate(prompt, system_prompt, response_format, metadata)
+
+    def execute_batch(
+        self,
+        batch_input_path: Path,
+        *,
+        request_manifest_path: Path,
+        output_dir: Path,
+        completion_window: str,
+        poll_interval_seconds: float,
+        status_callback: Callable[[str], None] | None = None,
+    ) -> BatchExecutionResult:
+        self.batch_execute_call_count += 1
+        return super().execute_batch(
+            batch_input_path,
+            request_manifest_path=request_manifest_path,
+            output_dir=output_dir,
+            completion_window=completion_window,
+            poll_interval_seconds=poll_interval_seconds,
+            status_callback=status_callback,
+        )
+
+
+class FailingAfterNGenerateCallsProvider(CountingStaticResponseProvider):
+    def __init__(
+        self,
+        resolver: Callable[[dict[str, Any]], dict[str, Any]],
+        *,
+        fail_after: int,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(resolver, **kwargs)
+        self.fail_after = fail_after
+
+    def generate(
+        self,
+        prompt: str,
+        system_prompt: str,
+        response_format: dict[str, Any],
+        metadata: dict[str, Any],
+    ) -> tuple[Any, Any, dict[str, Any]]:
+        if self.generate_call_count >= self.fail_after:
+            raise RuntimeError("intentional test failure")
+        return super().generate(prompt, system_prompt, response_format, metadata)
+
+
 class ReasoningFloorTests(unittest.TestCase):
     def _write_jsonl(self, path: Path, rows: list[dict]) -> None:
         with open(path, "w", encoding="utf-8") as fh:
             for row in rows:
                 fh.write(json.dumps(row) + "\n")
+
+    def _read_jsonl(self, path: Path) -> list[dict[str, Any]]:
+        if not path.exists():
+            return []
+        return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
     def _make_stub_fixture(self) -> tuple[Path, Path, Path, Path, Callable[[dict[str, Any]], dict[str, Any]]]:
         tmp_dir = tempfile.TemporaryDirectory()
@@ -485,6 +550,102 @@ class ReasoningFloorTests(unittest.TestCase):
         )
         self.assertEqual(summary["usage"]["per_call_cost_estimation_multipliers"], [0.5, 1.0])
         self.assertIsNone(summary["usage"]["cost_estimation_multiplier"])
+
+    def test_reasoning_floor_resume_sync_run_only_executes_missing_cases(self) -> None:
+        root, classified_path, world_state_path, _selection_manifest_path, resolver = self._make_stub_fixture()
+        failing_provider = FailingAfterNGenerateCallsProvider(resolver, fail_after=2, model="stub-model")
+
+        with self.assertRaisesRegex(RuntimeError, "intentional test failure"):
+            run_reasoning_floor(
+                classified_path=classified_path,
+                world_state_path=world_state_path,
+                output_dir=root / "outputs",
+                provider=failing_provider,
+                ablation_bundles=["minimal_case"],
+            )
+
+        run_dir = next((root / "outputs").iterdir())
+        initial_manifest_rows = self._read_jsonl(run_dir / "run_manifest.jsonl")
+        resumed_provider = CountingStaticResponseProvider(resolver, model="stub-model")
+
+        summary = run_reasoning_floor(
+            classified_path=classified_path,
+            world_state_path=world_state_path,
+            output_dir=root / "ignored",
+            resume_run_dir=run_dir,
+            provider=resumed_provider,
+            ablation_bundles=["minimal_case"],
+        )
+
+        manifest_rows = self._read_jsonl(run_dir / "run_manifest.jsonl")
+        self.assertEqual(len(initial_manifest_rows), 2)
+        self.assertEqual(len(manifest_rows), 4)
+        self.assertEqual(resumed_provider.generate_call_count, 2)
+        self.assertEqual(summary["counts"]["cases"], 2)
+        self.assertTrue(summary["run_info"]["resume"]["enabled"])
+        self.assertEqual(summary["run_info"]["resume"]["existing_manifest_rows"], 2)
+        self.assertEqual(summary["run_info"]["output_dir"], str(run_dir))
+
+    def test_reasoning_floor_resume_diagnosis_routed_batch_only_submits_missing_proposals(self) -> None:
+        root, classified_path, world_state_path, _selection_manifest_path, resolver = self._make_stub_fixture()
+        initial_summary = run_reasoning_floor(
+            classified_path=classified_path,
+            world_state_path=world_state_path,
+            output_dir=root / "outputs",
+            provider=StaticResponseProvider(resolver, model="stub-model"),
+            ablation_bundles=["minimal_case"],
+            execution_mode="batch",
+            batch_poll_interval_seconds=0.0,
+            proposal_track_mode="diagnosis_routed",
+        )
+
+        run_dir = Path(initial_summary["run_info"]["output_dir"])
+        manifest_path = run_dir / "run_manifest.jsonl"
+        raw_path = run_dir / "raw_model_responses.jsonl"
+        t_box_path = run_dir / "minimal_case" / "t_box_proposals.jsonl"
+        self._write_jsonl(
+            manifest_path,
+            [
+                row
+                for row in self._read_jsonl(manifest_path)
+                if not (row["case_id"] == "reform_case" and row["task_type"] == "proposal")
+            ],
+        )
+        self._write_jsonl(
+            raw_path,
+            [
+                row
+                for row in self._read_jsonl(raw_path)
+                if not (row["case_id"] == "reform_case" and row["task_type"] == "proposal")
+            ],
+        )
+        self._write_jsonl(
+            t_box_path,
+            [row for row in self._read_jsonl(t_box_path) if row["case_id"] != "reform_case"],
+        )
+
+        resumed_provider = CountingStaticResponseProvider(resolver, model="stub-model")
+        summary = run_reasoning_floor(
+            classified_path=classified_path,
+            world_state_path=world_state_path,
+            output_dir=root / "ignored",
+            resume_run_dir=run_dir,
+            provider=resumed_provider,
+            ablation_bundles=["minimal_case"],
+            execution_mode="batch",
+            batch_poll_interval_seconds=0.0,
+            proposal_track_mode="diagnosis_routed",
+        )
+
+        proposal_manifest_rows = self._read_jsonl(run_dir / "proposal_batch_request_manifest.jsonl")
+        manifest_rows = self._read_jsonl(manifest_path)
+        self.assertEqual(resumed_provider.batch_execute_call_count, 1)
+        self.assertEqual(len(proposal_manifest_rows), 1)
+        self.assertEqual(proposal_manifest_rows[0]["metadata"]["case_id"], "reform_case")
+        self.assertEqual(summary["counts"]["cases"], 2)
+        self.assertTrue(summary["run_info"]["resume"]["enabled"])
+        self.assertEqual(summary["run_info"]["resume"]["existing_manifest_rows"], 3)
+        self.assertEqual(len(manifest_rows), 4)
 
     def test_prompt_bundles_use_named_templates(self) -> None:
         record = {
