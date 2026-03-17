@@ -141,6 +141,8 @@ Implementation details that matter for downstream tooling:
 
 The builder validates uniqueness and schema consistency before `data/03_world_state.json` is finalized.
 
+Reasoning-floor prompt construction does not expose `L1_ego_node.properties[target_pid]` from Stage 3 verbatim. For prompt bundles, the repository now preserves current world-state neighborhood and constraint context but rewrites the edited target property to a synthetic pre-repair state derived from the Stage 2 repair record. This keeps the stored world snapshot usable without leaking post-repair target-property values into the zero-shot baseline.
+
 ## Stage 4: Classification
 
 `src/classifier.py` reads Stage 2 repairs and Stage 3 world state, then writes:

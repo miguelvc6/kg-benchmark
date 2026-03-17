@@ -16,6 +16,12 @@ from guardian.reasoning import (
 )
 
 
+def _extract_input_case(prompt: str) -> dict[str, Any]:
+    marker = "Input case:\n"
+    _, payload = prompt.split(marker, 1)
+    return json.loads(payload)
+
+
 class CostedStaticOpenAIProvider(StaticResponseProvider):
     def generate(
         self,
@@ -576,6 +582,227 @@ class ReasoningFloorTests(unittest.TestCase):
         self.assertNotIn('"Q999"', proposal_bundle.prompt)
         self.assertNotIn('"persistence_check"', proposal_bundle.prompt)
         self.assertIn('"L2_labels"', diagnosis_bundle.prompt)
+
+    def test_a_box_local_graph_prompt_uses_pre_repair_target_state(self) -> None:
+        record = {
+            "id": "repair_case",
+            "qid": "Q1",
+            "property": "P31",
+            "track": "A_BOX",
+            "classification": {"class": "TypeC", "subtype": "EXTERNAL"},
+            "labels_en": {},
+            "violation_context": {
+                "value": ["Q_OLD"],
+                "value_labels_en": ["Old value"],
+                "value_descriptions_en": ["Old description"],
+            },
+            "repair_target": {
+                "kind": "A_BOX",
+                "action": "UPDATE",
+                "old_value": ["Q_OLD"],
+                "old_value_labels_en": ["Old value"],
+                "old_value_descriptions_en": ["Old description"],
+                "new_value": ["Q_NEW"],
+            },
+        }
+        world_state_entry = {
+            "L1_ego_node": {
+                "qid": "Q1",
+                "label": "Entity",
+                "description": "desc",
+                "sitelinks_count": 1,
+                "properties": {"P31": ["Q_NEW"]},
+            },
+            "L2_labels": {
+                "entities": {
+                    "Q1": {"label": "Entity"},
+                    "P31": {"label": "instance of"},
+                    "Q_NEW": {"label": "New value", "description": "Current value"},
+                }
+            },
+            "L3_neighborhood": {
+                "outgoing_edges": [
+                    {
+                        "property_id": "P31",
+                        "target_qid": "Q_NEW",
+                        "target_label": "New value",
+                        "target_description": "Current value",
+                    }
+                ]
+            },
+            "L4_constraints": {"constraints": []},
+        }
+
+        proposal_payload = _extract_input_case(build_prompt_bundle(record, world_state_entry, "local_graph").prompt)
+        diagnosis_payload = _extract_input_case(
+            build_track_diagnosis_prompt_bundle(record, world_state_entry, "local_graph").prompt
+        )
+
+        for payload in (proposal_payload, diagnosis_payload):
+            local_context = payload["local_context"]
+            self.assertEqual(local_context["L1_ego_node"]["properties"], {"P31": ["Q_OLD"]})
+            self.assertEqual(local_context["L3_neighborhood"]["outgoing_edges"], [])
+            self.assertEqual(local_context["L2_labels"]["entities"]["Q_OLD"]["label"], "Old value")
+            self.assertEqual(local_context["L2_labels"]["entities"]["Q_OLD"]["description"], "Old description")
+            self.assertNotIn("Q_NEW", local_context["L2_labels"]["entities"])
+
+    def test_logic_only_prompt_uses_pre_repair_target_values_for_constraint_pruning(self) -> None:
+        record = {
+            "id": "repair_case",
+            "qid": "Q1",
+            "property": "P31",
+            "track": "A_BOX",
+            "classification": {"class": "TypeC", "subtype": "EXTERNAL"},
+            "labels_en": {},
+            "violation_context": {"value": ["Q_OLD"]},
+            "repair_target": {
+                "kind": "A_BOX",
+                "action": "UPDATE",
+                "old_value": ["Q_OLD"],
+                "new_value": ["Q_NEW"],
+            },
+        }
+        world_state_entry = {
+            "L4_constraints": {
+                "constraints": [
+                    {
+                        "constraint_type": {"qid": "Q_KEEP"},
+                        "qualifiers": [{"property_id": "P2305", "values": ["Q_OLD"]}],
+                    },
+                    {
+                        "constraint_type": {"qid": "Q_DROP"},
+                        "qualifiers": [{"property_id": "P2305", "values": ["Q_NEW"]}],
+                    },
+                ]
+            }
+        }
+
+        proposal_payload = _extract_input_case(build_prompt_bundle(record, world_state_entry, "logic_only").prompt)
+        diagnosis_payload = _extract_input_case(
+            build_track_diagnosis_prompt_bundle(record, world_state_entry, "logic_only").prompt
+        )
+
+        for payload in (proposal_payload, diagnosis_payload):
+            kept_qids = [
+                constraint["constraint_type"]["qid"]
+                for constraint in payload["logic_context"]["constraints"]
+            ]
+            self.assertEqual(kept_qids, ["Q_KEEP"])
+
+    def test_t_box_local_graph_prompt_uses_violation_value_fallback_for_target_state(self) -> None:
+        record = {
+            "id": "reform_case",
+            "qid": "Q2",
+            "property": "P31",
+            "track": "T_BOX",
+            "classification": {"class": "T_BOX"},
+            "labels_en": {},
+            "violation_context": {
+                "value": ["Q_HIST"],
+                "value_labels_en": ["Historical value"],
+                "value_descriptions_en": ["Historical description"],
+            },
+            "repair_target": {
+                "kind": "T_BOX",
+                "constraint_delta": {
+                    "changed_constraint_types": ["Q21510859"],
+                    "signature_before": [],
+                    "signature_after": [],
+                },
+            },
+        }
+        world_state_entry = {
+            "L1_ego_node": {
+                "qid": "Q2",
+                "label": "Entity",
+                "description": "desc",
+                "sitelinks_count": 1,
+                "properties": {"P31": ["Q_CURR"]},
+            },
+            "L2_labels": {
+                "entities": {
+                    "Q2": {"label": "Entity"},
+                    "P31": {"label": "instance of"},
+                    "Q_CURR": {"label": "Current value"},
+                }
+            },
+            "L3_neighborhood": {
+                "outgoing_edges": [
+                    {
+                        "property_id": "P31",
+                        "target_qid": "Q_CURR",
+                        "target_label": "Current value",
+                        "target_description": "Current description",
+                    }
+                ]
+            },
+            "L4_constraints": {
+                "constraints": [
+                    {
+                        "constraint_type": {"qid": "Q21510859"},
+                        "qualifiers": [{"property_id": "P2305", "values": ["Q_HIST"]}],
+                    }
+                ]
+            },
+        }
+
+        proposal_payload = _extract_input_case(build_prompt_bundle(record, world_state_entry, "local_graph").prompt)
+        diagnosis_payload = _extract_input_case(
+            build_track_diagnosis_prompt_bundle(record, world_state_entry, "local_graph").prompt
+        )
+
+        for payload in (proposal_payload, diagnosis_payload):
+            local_context = payload["local_context"]
+            self.assertEqual(local_context["L1_ego_node"]["properties"], {"P31": ["Q_HIST"]})
+            self.assertEqual(local_context["L3_neighborhood"]["outgoing_edges"], [])
+            self.assertEqual(local_context["L2_labels"]["entities"]["Q_HIST"]["label"], "Historical value")
+            self.assertNotIn("Q_CURR", local_context["L2_labels"]["entities"])
+
+    def test_local_graph_prompt_omits_target_property_when_no_pre_repair_source(self) -> None:
+        record = {
+            "id": "repair_case",
+            "qid": "Q1",
+            "property": "P31",
+            "track": "A_BOX",
+            "classification": {"class": "TypeC", "subtype": "EXTERNAL"},
+            "labels_en": {},
+            "violation_context": {"report_violation_type": "Value type"},
+            "repair_target": {"kind": "A_BOX", "action": "UPDATE", "new_value": ["Q_NEW"]},
+        }
+        world_state_entry = {
+            "L1_ego_node": {
+                "qid": "Q1",
+                "label": "Entity",
+                "description": "desc",
+                "sitelinks_count": 1,
+                "properties": {"P31": ["Q_NEW"]},
+            },
+            "L2_labels": {
+                "entities": {
+                    "Q1": {"label": "Entity"},
+                    "P31": {"label": "instance of"},
+                    "Q_NEW": {"label": "Current value"},
+                }
+            },
+            "L3_neighborhood": {
+                "outgoing_edges": [
+                    {
+                        "property_id": "P31",
+                        "target_qid": "Q_NEW",
+                        "target_label": "Current value",
+                        "target_description": "Current description",
+                    }
+                ]
+            },
+            "L4_constraints": {"constraints": []},
+        }
+
+        proposal_payload = _extract_input_case(build_prompt_bundle(record, world_state_entry, "local_graph").prompt)
+
+        local_context = proposal_payload["local_context"]
+        self.assertNotIn("properties", local_context["L1_ego_node"])
+        self.assertEqual(local_context["L3_neighborhood"]["outgoing_edges"], [])
+        self.assertNotIn("Q_NEW", local_context["L2_labels"]["entities"])
 
     def test_t_box_prompt_template_avoids_specific_anchor_example(self) -> None:
         template = get_prompt_template("reasoning_floor_t_box_zero_shot")

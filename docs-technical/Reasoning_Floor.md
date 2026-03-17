@@ -34,7 +34,15 @@ Prompt payloads are now hard-sanitized before rendering. Model-visible inputs ex
 - `popularity`
 - post-hoc `truth_*` and `*_current_2026*` fields
 
-The pruned `logic_only` and `local_graph` bundles keep only constraint and graph context that is directly implicated by the current violation type, the current violating value, or the current target-property values in world state. Manifest rows record pruning audit counts such as `constraint_count_before`, `constraint_count_after`, and for `local_graph` also `edge_count_after` and `label_count_after`.
+The pruned `logic_only` and `local_graph` bundles keep only constraint and graph context that is directly implicated by the current violation type, the current violating value, or the synthetic pre-repair target-property state reconstructed from benchmark repair metadata. This avoids leaking post-repair target values from the stored world-state snapshot into reasoning-floor prompts while still preserving current surrounding graph and constraint context.
+
+For `local_graph`, the prompt builder now:
+
+- rewrites `L1_ego_node.properties[target_pid]` to the synthetic pre-repair target state
+- omits `L3_neighborhood` edges on the target property instead of exposing current/post-repair target edges
+- backfills missing `L2_labels.entities` entries for synthetic pre-repair target QIDs from the benchmark's resolved Stage 2 mirrors when world state does not already provide them
+
+This temporal policy is shared by proposal and track-diagnosis prompt bundles. Manifest rows still record pruning audit counts such as `constraint_count_before`, `constraint_count_after`, and for `local_graph` also `edge_count_after` and `label_count_after`.
 
 ## Provider Interface
 

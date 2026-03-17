@@ -26,6 +26,7 @@ from guardian.tbox_parser import normalize_proposal as normalize_t_box_proposal
 from guardian.track_parser import load_schema as load_track_schema
 from guardian.track_parser import normalize_diagnosis
 from lib.benchmark_selection import resolve_case_id_filter
+from lib.repair_state import pre_repair_target_state, reconstruct_properties_with_pre_repair_target
 from lib.utils import iter_jsonl, normalize_text
 
 
@@ -387,19 +388,12 @@ def _constraint_type_qid(constraint: dict[str, Any]) -> str | None:
     return None
 
 
-def _current_target_values(record: dict[str, Any], world_state_entry: Optional[dict[str, Any]]) -> list[str]:
-    if not isinstance(world_state_entry, dict):
-        return []
-    l1_node = world_state_entry.get("L1_ego_node")
-    if not isinstance(l1_node, dict):
-        return []
-    properties = l1_node.get("properties")
-    if not isinstance(properties, dict):
-        return []
-    target_pid = record.get("property")
-    if not isinstance(target_pid, str) or target_pid not in properties:
-        return []
-    return list(dict.fromkeys(_iter_leaf_strings(properties.get(target_pid))))
+def _synthetic_target_values(record: dict[str, Any]) -> list[str]:
+    return pre_repair_target_state(record).values
+
+
+def _synthetic_target_label_entries(record: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    return pre_repair_target_state(record).entity_label_entries()
 
 
 def _repair_target_constraint_type_qids(record: dict[str, Any]) -> list[str]:
@@ -536,7 +530,7 @@ def _pruned_constraints_payload(
         return None, audit
 
     mapped_constraint_qid = _mapped_constraint_qid(record)
-    referenced_tokens = set(_violation_values(record)) | set(_current_target_values(record, world_state_entry))
+    referenced_tokens = set(_violation_values(record)) | set(_synthetic_target_values(record))
     kept_constraints: list[dict[str, Any]] = []
     for constraint in valid_constraints:
         constraint_qid = _constraint_type_qid(constraint)
@@ -571,8 +565,8 @@ def _pruned_l1_ego_node(record: dict[str, Any], world_state_entry: Optional[dict
         "description": l1_node.get("description"),
         "sitelinks_count": l1_node.get("sitelinks_count"),
     }
-    properties = l1_node.get("properties")
-    if isinstance(properties, dict) and isinstance(target_pid, str) and target_pid in properties:
+    properties = reconstruct_properties_with_pre_repair_target(record, l1_node.get("properties"))
+    if isinstance(target_pid, str) and target_pid in properties:
         sanitized["properties"] = {target_pid: properties.get(target_pid)}
     return {key: value for key, value in sanitized.items() if value not in (None, {}, [])}
 
@@ -586,18 +580,43 @@ def _edge_matches_references(edge: dict[str, Any], target_pid: str | None, refer
         return False
     property_id = edge.get("property_id") or edge.get("pid")
     if isinstance(target_pid, str) and property_id == target_pid:
-        return True
+        return False
     return bool(_collect_reference_ids(edge) & references)
 
 
-def _pruned_l2_labels(labels_payload: Any, references: set[str]) -> tuple[Any, int]:
+def _pruned_l2_labels(
+    labels_payload: Any,
+    references: set[str],
+    *,
+    synthetic_entities: Optional[dict[str, dict[str, Any]]] = None,
+) -> tuple[Any, int]:
+    fallback_entities = {
+        key: value
+        for key, value in (synthetic_entities or {}).items()
+        if key in references and isinstance(value, dict)
+    }
     if not isinstance(labels_payload, dict):
-        return labels_payload, 0
+        if not fallback_entities:
+            return labels_payload, 0
+        return {"entities": fallback_entities}, len(fallback_entities)
     entities = labels_payload.get("entities")
     if isinstance(entities, dict):
         kept = {key: value for key, value in entities.items() if key in references}
+        for key, value in fallback_entities.items():
+            existing = kept.get(key)
+            if isinstance(existing, dict):
+                merged = dict(existing)
+                for field_name, field_value in value.items():
+                    if merged.get(field_name) in (None, "") and field_value is not None:
+                        merged[field_name] = field_value
+                kept[key] = merged
+            else:
+                kept[key] = dict(value)
         return {**labels_payload, "entities": kept}, len(kept)
     kept = {key: value for key, value in labels_payload.items() if key in references}
+    for key, value in fallback_entities.items():
+        if key not in kept:
+            kept[key] = dict(value)
     return kept, len(kept)
 
 
@@ -628,7 +647,11 @@ def _pruned_local_context(
                 outgoing_edges.append(edge)
                 references.update(_collect_reference_ids(edge))
 
-    l2_payload, label_count_after = _pruned_l2_labels(world_state_entry.get("L2_labels"), references)
+    l2_payload, label_count_after = _pruned_l2_labels(
+        world_state_entry.get("L2_labels"),
+        references,
+        synthetic_entities=_synthetic_target_label_entries(record),
+    )
 
     local_context = {
         "L1_ego_node": l1_ego_node,

@@ -42,6 +42,7 @@ from lib.utils import (
     safe_get,
     utc_now_iso,
 )
+from lib.repair_state import pre_repair_target_raw_value
 
 DATE_ISO_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
@@ -562,13 +563,7 @@ def get_truth_info(repair_event: Dict[str, Any]) -> Tuple[List[str], str, bool]:
 
 
 def _pre_repair_value(repair_event: Dict[str, Any]) -> Tuple[Any, str]:
-    rt = repair_event.get("repair_target", {})
-    if isinstance(rt, dict) and "old_value" in rt:
-        return rt.get("old_value"), "repair_target.old_value"
-    vc_val = safe_get(repair_event, "violation_context", "value")
-    if vc_val is not None:
-        return vc_val, "violation_context.value"
-    return None, "missing"
+    return pre_repair_target_raw_value(repair_event)
 
 
 def local_context_buckets(

@@ -9,6 +9,7 @@ from typing import Any, Callable, Iterable, Optional
 
 from classifier import VIOLATION_TO_CONSTRAINT_MAP, WorldStateStore
 from lib.benchmark_selection import resolve_case_id_filter
+from lib.repair_state import comparable_atom, normalize_value_list, reconstruct_properties_with_pre_repair_target
 from lib.utils import iter_jsonl, normalize_text
 from guardian.patch_parser import normalize_proposal as normalize_a_box_proposal
 from guardian.track_parser import normalize_diagnosis as normalize_track_diagnosis
@@ -54,33 +55,6 @@ def write_json(path: str | Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", encoding="utf-8") as fh:
         json.dump(payload, fh, ensure_ascii=False, indent=2, default=_json_default)
-
-
-def _comparable_atom(value: Any) -> str:
-    if value is None:
-        return "null"
-    if isinstance(value, bool):
-        return "true" if value else "false"
-    if isinstance(value, (int, float)):
-        return str(value)
-    if isinstance(value, str):
-        return value
-    if isinstance(value, dict):
-        for key in ("qid", "id", "raw", "value"):
-            if key in value:
-                return _comparable_atom(value[key])
-    return str(value)
-
-
-def _normalize_value_list(value: Any) -> list[str]:
-    if value is None:
-        return []
-    if isinstance(value, list):
-        items = value
-    else:
-        items = [value]
-    normalized = [_comparable_atom(item) for item in items if item not in (None, "MISSING")]
-    return normalized
 
 
 def _derive_popularity_buckets(records: list[dict[str, Any]]) -> dict[str, str]:
@@ -261,9 +235,9 @@ def _qualifier_values(constraint: dict[str, Any], property_id: str) -> list[str]
             continue
         for value in qualifier.get("values", []):
             if isinstance(value, dict):
-                values.append(_comparable_atom(value))
+                values.append(comparable_atom(value))
             else:
-                values.append(_comparable_atom(value))
+                values.append(comparable_atom(value))
     return values
 
 
@@ -328,19 +302,7 @@ def _supported_constraint_violations(
 
 def _reconstruct_pre_repair_properties(record: dict[str, Any], world_state_entry: dict[str, Any]) -> dict[str, list[str]]:
     properties = copy.deepcopy(world_state_entry.get("L1_ego_node", {}).get("properties", {}))
-    if not isinstance(properties, dict):
-        properties = {}
-    target_pid = record.get("property")
-    repair_target = record.get("repair_target", {})
-    old_value = repair_target.get("old_value") if isinstance(repair_target, dict) else None
-    if old_value is None:
-        old_value = record.get("violation_context", {}).get("value")
-    old_values = _normalize_value_list(old_value)
-    if old_values:
-        properties[target_pid] = old_values
-    else:
-        properties.pop(target_pid, None)
-    return properties
+    return reconstruct_properties_with_pre_repair_target(record, properties)
 
 
 def _apply_ops(properties: dict[str, list[str]], ops: list[Any]) -> tuple[dict[str, list[str]], bool, Optional[str]]:
@@ -350,14 +312,14 @@ def _apply_ops(properties: dict[str, list[str]], ops: list[Any]) -> tuple[dict[s
             pid = op.pid
             current = list(state.get(pid, []))
             if op.op == "SET":
-                state[pid] = [_comparable_atom(op.value)]
+                state[pid] = [comparable_atom(op.value)]
             elif op.op == "ADD":
-                value = _comparable_atom(op.value)
+                value = comparable_atom(op.value)
                 if value not in current:
                     current.append(value)
                 state[pid] = current
             elif op.op == "REMOVE":
-                value = _comparable_atom(op.value)
+                value = comparable_atom(op.value)
                 state[pid] = [item for item in current if item != value]
                 if not state[pid]:
                     state.pop(pid, None)
@@ -376,7 +338,7 @@ def _expected_target_values(record: dict[str, Any]) -> list[str]:
         return []
     if repair_target.get("action") == "DELETE":
         return []
-    return _normalize_value_list(repair_target.get("new_value") or repair_target.get("value"))
+    return normalize_value_list(repair_target.get("new_value") or repair_target.get("value"))
 
 
 def _derived_action(before_values: list[str], after_values: list[str]) -> str:
@@ -510,7 +472,7 @@ def _world_state_target_values(
     properties = l1_node.get("properties")
     if not isinstance(properties, dict):
         return []
-    return _normalize_value_list(properties.get(property_id))
+    return normalize_value_list(properties.get(property_id))
 
 
 def _signature_after_jaccard(left: list[dict[str, Any]], right: list[dict[str, Any]]) -> float:
@@ -616,7 +578,7 @@ def _signature_qualifier_values(
             continue
         qualifier_values = qualifier.get("values")
         if isinstance(qualifier_values, list):
-            values.extend(_normalize_value_list(qualifier_values))
+            values.extend(normalize_value_list(qualifier_values))
     return values
 
 

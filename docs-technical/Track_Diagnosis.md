@@ -19,6 +19,8 @@ It answers a higher-level question:
 - `src/reasoning_floor.py`: generates zero-shot diagnosis outputs and can optionally route proposal generation through them
 - `src/evaluate.py`: scores diagnosis outputs against the historical benchmark track
 
+Diagnosis prompts share the same sanitized bundle builder as proposal prompts. For `logic_only` and `local_graph`, the focus target property is reconstructed from synthetic pre-repair benchmark state rather than copied directly from current world-state target values, so diagnosis does not get post-repair target-property leakage that proposal prompting is supposed to avoid.
+
 ## Output Contract
 
 Normalized diagnosis records contain:
