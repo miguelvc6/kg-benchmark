@@ -30,6 +30,7 @@ Stage 7 - Reasoning floor: run the zero-shot baseline over benchmark cases, incl
 - `reports/`: classifier stats and run summaries
 - `docs-conceptual/`: research framing, taxonomy intent, evaluation goals
 - `docs-technical/`: implementation details, artifact schemas, script behavior
+- `docs-public/`: public-facing benchmark usage guides, invariants, and dataset card
 - `docs/README.md`: pointer into the two documentation areas
 
 ## Quick start
@@ -139,4 +140,4 @@ at repo root for inspection.
 - Fetcher runs write resume checkpoints to `logs/resume_checkpoint_<run>.json`
   unless `--no-checkpoint` is set.
 - Stage 3 requires the `data/latest-all.json.gz` Wikidata dump.
-- See `docs-conceptual/` for benchmark design docs and `docs-technical/` for repository-facing docs.
+- See `docs-public/` for researcher-facing usage docs, `docs-conceptual/` for benchmark design docs, and `docs-technical/` for repository-facing implementation docs.
