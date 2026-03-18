@@ -35,8 +35,28 @@ ui = [
     "streamlit>=1.42",
 ]
 
+[project.scripts]
+kg-fetcher = "fetcher:main"
+kg-classifier = "classifier:main"
+kg-splitter = "splitter:main"
+kg-select-benchmark-cases = "select_benchmark_cases:main"
+kg-evaluate = "evaluate:main"
+kg-reasoning-floor = "reasoning_floor:main"
+kg-reasoning-floor-viewer = "reasoning_floor_viewer:main"
+kg-analyze-tbox-updates = "analyze_tbox_updates:main"
+
 [tool.setuptools]
 package-dir = {"" = "src"}
+py-modules = [
+    "analyze_tbox_updates",
+    "classifier",
+    "evaluate",
+    "fetcher",
+    "reasoning_floor",
+    "reasoning_floor_viewer",
+    "select_benchmark_cases",
+    "splitter",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -50,3 +70,4 @@ select = ["E", "F", "I"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "--capture=sys"

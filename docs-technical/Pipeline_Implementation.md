@@ -29,6 +29,14 @@ The repository does not currently provide Guardian multi-turn intervention loops
 
 - Use `uv run python ...` for repository commands so the project-managed interpreter
   is selected consistently.
+- The built project now also installs console entry points such as `kg-fetcher`,
+  `kg-classifier`, `kg-evaluate`, and `kg-reasoning-floor`. These are useful for
+  editable installs and wheel-based workflows, but the repository convention
+  remains `uv run python ...`.
+- The packaged install also includes the top-level pipeline modules, so
+  `uv run python -m fetcher`, `uv run python -m classifier`, and the other
+  script modules work after installation instead of relying only on source-path
+  execution.
 - Do not rely on bare `python` being present on `PATH` in this environment.
 - Use `python3` only for ad hoc commands that intentionally run outside the `uv`
   environment.

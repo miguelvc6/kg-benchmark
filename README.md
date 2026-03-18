@@ -1,41 +1,52 @@
 # kg-benchmark
 
-WikidataRepairEval 1.0: a benchmark of real Wikidata repair events with frozen
-context for evaluating knowledge graph repair and retrieval needs. The pipeline
-reconstructs historical fixes, attaches a 2026 world-state snapshot, and labels
-each case by information necessity (Type A/B/C).
+WikidataRepairEval 1.0 is a benchmark of real Wikidata repair events with frozen
+context for evaluating knowledge-graph repair and retrieval needs. The pipeline
+reconstructs historical fixes, attaches a 2026 world-state snapshot, labels each
+case by information necessity (Type A/B/C), and supports downstream evaluation
+and reasoning-floor runs.
 
 ## Pipeline overview
 
-Stage 1 - Indexer: find candidate repairs from Wikidata constraint report diffs.
-Stage 2 - Fetcher: locate the atomic edit and capture provenance (A-box or T-box).
-Stage 3 - Context builder: freeze 2026 graph context (L1-L4).
-Stage 4 - Classifier: assign Type A/B/C and emit audit traces.
-Stage 5 - Splitter: generate deterministic train/dev/test partitions.
-Stage 6 - Evaluator: score normalized repair/reform proposals against frozen artifacts.
-Stage 7 - Reasoning floor: run the zero-shot baseline over benchmark cases, including A-box vs T-box diagnosis.
+Stage 1 - Index candidate repairs from Wikidata constraint report diffs.
+Stage 2 - Fetch the atomic edit and capture provenance plus A-box/T-box track.
+Stage 3 - Build frozen 2026 graph context layers (L1-L4).
+Stage 4 - Classify cases into the benchmark taxonomy and emit audit traces.
+Stage 5 - Generate deterministic train/dev/test splits.
+Stage 6 - Evaluate normalized proposals against the frozen benchmark artifacts.
+Stage 7 - Run the zero-shot reasoning-floor baseline, including track diagnosis.
 
-## Repo layout
+## Documentation map
 
-- `src/fetcher.py`: stages 1-3 (index, fetch, world state build)
+- `docs-conceptual/`: research framing, benchmark intent, hypotheses, taxonomy, and evaluation goals
+- `docs-technical/`: repository structure, scripts, artifacts, schemas, and runtime behavior
+- `docs-public/`: shorter public-facing benchmark guidance and release-facing usage notes
+- `docs/README.md`: pointer into the primary conceptual and technical documentation areas
+
+Use the conceptual docs when research decisions change. Use the technical docs
+when code paths, CLI behavior, artifacts, or engineering choices change.
+
+## Repository layout
+
+- `src/fetcher.py`: stages 1-3 pipeline entry point
 - `src/classifier.py`: stage 4 taxonomy labeler
-- `src/splitter.py`: deterministic train/dev/test split generation
+- `src/splitter.py`: stage 5 train/dev/test split generation
+- `src/select_benchmark_cases.py`: deterministic paper-subset selection manifest builder
 - `src/evaluate.py`: benchmark evaluation entry point
 - `src/reasoning_floor.py`: zero-shot baseline runner
-- `src/reasoning_floor_viewer.py`: Streamlit debugger for reasoning-floor runs
+- `src/reasoning_floor_viewer.py`: Streamlit viewer for reasoning-floor runs
+- `src/analyze_tbox_updates.py`: frequency analysis for Stage 4 T-box update groups
 - `src/lib/`: shared pipeline modules
-- `src/guardian/`: proposal validation, evaluation, and reasoning-floor support modules
-- `data/`: generated artifacts (large)
-- `data_sample/`: sample artifacts for quick runs (large)
-- `reports/`: classifier stats and run summaries
-- `docs-conceptual/`: research framing, taxonomy intent, evaluation goals
-- `docs-technical/`: implementation details, artifact schemas, script behavior
-- `docs-public/`: public-facing benchmark usage guides, invariants, and dataset card
-- `docs/README.md`: pointer into the two documentation areas
+- `src/guardian/`: proposal normalization, evaluation, and reasoning-floor support modules
+- `data/`: generated artifacts and caches
+- `data_sample/`: sample artifacts for quick inspection and dry runs
+- `reports/`: run outputs, benchmark-selection manifests, and summaries
+- `schemas/`: JSON schemas for benchmark and proposal artifacts
+- `tests/`: parser, evaluator, selection, and reasoning-floor coverage
 
-## Quick start
+## Setup
 
-Setup (uv + pyproject.toml):
+This repository uses `uv` and `pyproject.toml`.
 
 ```bash
 # Windows
@@ -47,69 +58,92 @@ export UV_PROJECT_ENVIRONMENT=.venv-wsl
 uv sync
 ```
 
-Command convention: use `uv run python ...` for repo commands. In this environment,
-bare `python` is not guaranteed to exist on `PATH`; use `python3` only for ad hoc
-non-project one-offs.
+Optional extras:
 
-Run the full pipeline (stages 1-3):
+- `uv sync --extra dev` for `pytest` and `ruff`
+- `uv sync --extra ui` for the Streamlit reasoning-floor viewer
+- `uv sync --extra analysis` for plotting and analysis dependencies
+- `uv sync --extra notebook` for Jupyter and notebook support
+
+Command convention: prefer `uv run python ...` for repository commands. Bare
+`python` is not guaranteed to exist on `PATH`; use `python3` only for ad hoc
+commands outside the project's `uv` environment.
+
+The project metadata also installs console entry points such as `kg-fetcher`,
+`kg-classifier`, `kg-evaluate`, and `kg-reasoning-floor`, and it packages the
+top-level modules so `uv run python -m fetcher`-style execution works in
+editable installs and built artifacts.
+
+If you plan to run the reasoning floor, create a local `.env` from
+`.env.example` and set the provider variables there. The current runtime
+supports `MODEL_PROVIDER=openai` and `MODEL_PROVIDER=ollama`.
+
+## Common workflows
+
+Inspect the live CLI surfaces:
+
+```bash
+uv run python src/fetcher.py --help
+uv run python src/classifier.py --help
+uv run python src/evaluate.py --help
+uv run python src/reasoning_floor.py --help
+```
+
+Run stages 1-3:
 
 ```bash
 uv run python src/fetcher.py
 ```
 
-Debug run with a cap:
+Debug or resume the fetcher:
 
 ```bash
 uv run python src/fetcher.py --max-candidates 100
-```
-
-Resume an interrupted fetcher run:
-
-```bash
-# Preferred: resume from a prior stats log (new runs include candidate_key)
 uv run python src/fetcher.py --resume-stats logs/fetcher_stats_YYYYMMDDTHHMMSS.jsonl
-
-# Resume from a checkpoint file (written every 5k candidates by default)
 uv run python src/fetcher.py --resume-checkpoint logs/resume_checkpoint_YYYYMMDDTHHMMSS.json
-
-# Reuse existing popularity artifact instead of rebuilding data/00_entity_popularity.json
 uv run python src/fetcher.py --reuse-popularity-artifact
-```
-
-Validate an existing world state:
-
-```bash
 uv run python src/fetcher.py --validate-only
 ```
 
-Run the classifier (stage 4) on sample data:
+Run the benchmark classifier and split generation on sample artifacts:
 
 ```bash
 uv run python src/classifier.py --sample
-```
-
-Minimal self-test for classifier logic:
-
-```bash
+uv run python src/splitter.py --sample
 uv run python src/classifier.py --self-test
 ```
 
-Show evaluator CLI:
+Build a deterministic benchmark-selection manifest for paper-facing runs:
 
 ```bash
-uv run python src/evaluate.py --help
+uv run python src/select_benchmark_cases.py \
+  --classified-benchmark data/04_classified_benchmark.jsonl \
+  --output reports/benchmark_selection/paper_eval_tbox_cap_100_seed_13.json \
+  --tbox-cap-per-update 100 \
+  --seed 13
 ```
 
-Show reasoning-floor CLI:
+Run or resume the reasoning floor:
 
 ```bash
-uv run python src/reasoning_floor.py --help
+uv run python src/reasoning_floor.py \
+  --selection-manifest reports/benchmark_selection/paper_eval_tbox_cap_100_seed_13.json
+
+uv run python src/reasoning_floor.py \
+  --resume-run-dir reports/reasoning_floor/<RUN_ID>_<provider>_<model>
 ```
 
-Resume an interrupted reasoning-floor run from its existing run directory:
+Evaluate proposal artifacts against the benchmark:
 
 ```bash
-uv run python src/reasoning_floor.py --resume-run-dir reports/reasoning_floor/<RUN_ID>_<provider>_<model>
+uv run python src/evaluate.py \
+  --classified-benchmark data/04_classified_benchmark.jsonl \
+  --world-state data/03_world_state.json \
+  --selection-manifest reports/benchmark_selection/paper_eval_tbox_cap_100_seed_13.json \
+  --a-box-proposals <path/to/a_box_proposals.jsonl> \
+  --t-box-proposals <path/to/t_box_proposals.jsonl> \
+  --out-traces reports/evaluation_traces.jsonl \
+  --out-summary reports/evaluation_summary.json
 ```
 
 Launch the reasoning-floor viewer:
@@ -119,31 +153,42 @@ uv sync --extra ui
 uv run streamlit run src/reasoning_floor_viewer.py -- --reports-root reports/reasoning_floor
 ```
 
-Analyze which property-level T-box updates account for the Stage 4 T-box cases:
+Analyze which property-level T-box updates dominate Stage 4:
 
 ```bash
 uv run python src/analyze_tbox_updates.py --input data/04_classified_benchmark.jsonl
 ```
 
+Run tests:
+
+```bash
+uv sync --extra dev
+uv run pytest
+```
+
 ## Key artifacts
 
 - `data/01_repair_candidates.json`: candidate repair events from report diffs
-- `data/02_wikidata_repairs.json(.jsonl)`: atomic repair events with provenance
+- `data/02_wikidata_repairs.json` and `data/02_wikidata_repairs.jsonl`: atomic repair events with provenance
 - `data/03_world_state.json`: frozen 2026 context keyed by repair id
-- `data/04_classified_benchmark.jsonl`: labeled benchmark (lean)
-- `data/04_classified_benchmark_full.jsonl`: labeled benchmark with embedded context
+- `data/04_classified_benchmark.jsonl`: lean Stage 4 benchmark artifact
+- `data/04_classified_benchmark_full.jsonl`: Stage 4 benchmark artifact with embedded context
+- `reports/benchmark_selection/*.json`: deterministic selection manifests with `selected_case_ids`
+- `reports/reasoning_floor/<run_id>_<provider>_<model>/`: reasoning-floor outputs, manifests, and bundle summaries
 - `reports/evaluation_traces.jsonl`: per-case evaluator output
 - `reports/evaluation_summary.json`: aggregate evaluator summary
-- `reports/classifier_stats.json`: summary counts and diagnostics
+- `reports/classifier_stats.json`: classifier counts and diagnostics
 
-Sample outputs live in `data_sample/`, plus a small `classified_benchmark_sample.json`
-at repo root for inspection.
+Sample outputs live under `data_sample/`, including:
+
+- `data_sample/03_world_state.json`
+- `data_sample/04_classified_benchmark.jsonl`
+- `data_sample/classified_benchmark_sample.json`
 
 ## Notes
 
-- The fetcher hits the live Wikidata API and can take days. It writes large
-  artifacts and caches under `data/cache/`.
-- Fetcher runs write resume checkpoints to `logs/resume_checkpoint_<run>.json`
-  unless `--no-checkpoint` is set.
-- Stage 3 requires the `data/latest-all.json.gz` Wikidata dump.
-- See `docs-public/` for researcher-facing usage docs, `docs-conceptual/` for benchmark design docs, and `docs-technical/` for repository-facing implementation docs.
+- The fetcher hits the live Wikidata API and can take days on a full run.
+- Fetcher runs write large caches under `data/cache/` and resume state under `logs/`.
+- Stage 3 requires the Wikidata dump at `data/latest-all.json.gz`.
+- OpenAI reasoning-floor runs default to batch execution; other providers default to synchronous execution unless overridden.
+- For deeper implementation detail, start with `docs-technical/README.md`. For benchmark rationale, start with `docs-conceptual/README.md`. For external-facing benchmark usage, start with `docs-public/README.md`.
