@@ -140,6 +140,21 @@ def _normalize_api_key(env_name: str, value: str | None) -> str | None:
     return normalized or None
 
 
+OPENAI_REASONING_EFFORT_VALUES = frozenset({"none", "minimal", "low", "medium", "high", "xhigh"})
+
+
+def _normalize_openai_reasoning_effort(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value.strip().lower()
+    if not normalized:
+        return None
+    if normalized not in OPENAI_REASONING_EFFORT_VALUES:
+        allowed_values = ", ".join(sorted(OPENAI_REASONING_EFFORT_VALUES))
+        raise RuntimeError(f"OPENAI_REASONING_EFFORT must be one of: {allowed_values}.")
+    return normalized
+
+
 def _uses_gpt5_family(model_name: str | None) -> bool:
     if not model_name:
         return False
@@ -206,6 +221,7 @@ def _openai_chat_payload(
     prompt: str,
     system_prompt: str,
     response_format: dict[str, Any],
+    reasoning_effort: str | None = None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "model": model,
@@ -216,6 +232,8 @@ def _openai_chat_payload(
     }
     if not _uses_gpt5_family(model):
         payload["temperature"] = 0
+    if reasoning_effort is not None:
+        payload["reasoning"] = {"effort": reasoning_effort}
     if response_format:
         payload["response_format"] = response_format
     return payload
@@ -366,6 +384,7 @@ class OpenAIChatProvider:
     api_key: str | None = None
     model: str | None = None
     base_url: str | None = None
+    reasoning_effort: str | None = None
     timeout: int = 120
     provider_name: str = "openai"
 
@@ -374,6 +393,9 @@ class OpenAIChatProvider:
         self.api_key = _normalize_api_key("OPENAI_API_KEY", self.api_key or os.getenv("OPENAI_API_KEY"))
         self.model = self.model or os.getenv("OPENAI_MODEL")
         self.base_url = (self.base_url or os.getenv("OPENAI_BASE_URL") or "https://api.openai.com/v1").rstrip("/")
+        self.reasoning_effort = _normalize_openai_reasoning_effort(
+            self.reasoning_effort or os.getenv("OPENAI_REASONING_EFFORT")
+        )
         if not self.api_key:
             raise RuntimeError("OPENAI_API_KEY is required for the OpenAI provider.")
         if not self.model:
@@ -440,6 +462,7 @@ class OpenAIChatProvider:
             prompt=prompt,
             system_prompt=system_prompt,
             response_format=response_format,
+            reasoning_effort=self.reasoning_effort,
         )
         request_body = _encode_json_body(payload, metadata=metadata, provider_name="OpenAI")
         response = requests.post(
@@ -476,6 +499,7 @@ class OpenAIChatProvider:
             prompt=prompt,
             system_prompt=system_prompt,
             response_format=response_format,
+            reasoning_effort=self.reasoning_effort,
         )
         request_record = {
             "custom_id": custom_id,

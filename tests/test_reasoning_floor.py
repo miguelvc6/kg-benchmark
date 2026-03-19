@@ -258,6 +258,12 @@ class FailingAfterNGenerateCallsProvider(CountingStaticResponseProvider):
         return super().generate(prompt, system_prompt, response_format, metadata)
 
 
+class ConfiguredStaticOpenAIProvider(StaticResponseProvider):
+    def __init__(self, resolver: Callable[[dict[str, Any]], dict[str, Any]], *, model: str, reasoning_effort: str | None) -> None:
+        super().__init__(resolver, provider_name="openai", model=model)
+        self.reasoning_effort = reasoning_effort
+
+
 class ReasoningFloorTests(unittest.TestCase):
     def _write_jsonl(self, path: Path, rows: list[dict]) -> None:
         with open(path, "w", encoding="utf-8") as fh:
@@ -593,6 +599,48 @@ class ReasoningFloorTests(unittest.TestCase):
         self.assertTrue(summary["run_info"]["resume"]["enabled"])
         self.assertEqual(summary["run_info"]["resume"]["existing_manifest_rows"], 2)
         self.assertEqual(summary["run_info"]["output_dir"], str(run_dir))
+
+    def test_reasoning_floor_records_openai_reasoning_effort_in_run_config(self) -> None:
+        root, classified_path, world_state_path, _selection_manifest_path, resolver = self._make_stub_fixture()
+        summary = run_reasoning_floor(
+            classified_path=classified_path,
+            world_state_path=world_state_path,
+            output_dir=root / "outputs",
+            provider=ConfiguredStaticOpenAIProvider(resolver, model="stub-model", reasoning_effort="low"),
+            ablation_bundles=["minimal_case"],
+            execution_mode="sync",
+        )
+
+        run_dir = Path(summary["run_info"]["output_dir"])
+        run_config = json.loads((run_dir / "run_config.json").read_text(encoding="utf-8"))
+        self.assertEqual(run_config["openai_reasoning_effort"], "low")
+        report = json.loads((run_dir / "reasoning_floor_summary.json").read_text(encoding="utf-8"))
+        self.assertEqual(summary["run_info"]["openai_reasoning_effort"], "low")
+        self.assertEqual(report["run_info"]["openai_reasoning_effort"], "low")
+        self.assertEqual(report["inputs"]["openai_reasoning_effort"], "low")
+
+    def test_reasoning_floor_resume_rejects_changed_openai_reasoning_effort(self) -> None:
+        root, classified_path, world_state_path, _selection_manifest_path, resolver = self._make_stub_fixture()
+        initial_summary = run_reasoning_floor(
+            classified_path=classified_path,
+            world_state_path=world_state_path,
+            output_dir=root / "outputs",
+            provider=ConfiguredStaticOpenAIProvider(resolver, model="stub-model", reasoning_effort="low"),
+            ablation_bundles=["minimal_case"],
+            execution_mode="sync",
+        )
+
+        run_dir = Path(initial_summary["run_info"]["output_dir"])
+        with self.assertRaisesRegex(ValueError, "openai_reasoning_effort"):
+            run_reasoning_floor(
+                classified_path=classified_path,
+                world_state_path=world_state_path,
+                output_dir=root / "ignored",
+                resume_run_dir=run_dir,
+                provider=ConfiguredStaticOpenAIProvider(resolver, model="stub-model", reasoning_effort="high"),
+                ablation_bundles=["minimal_case"],
+                execution_mode="sync",
+            )
 
     def test_reasoning_floor_resume_diagnosis_routed_batch_only_submits_missing_proposals(self) -> None:
         root, classified_path, world_state_path, _selection_manifest_path, resolver = self._make_stub_fixture()

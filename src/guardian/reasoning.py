@@ -154,6 +154,7 @@ def _build_run_config_payload(
     out_dir: Path,
     provider_name: str,
     model_name: str,
+    openai_reasoning_effort: str | None,
     execution_mode: str,
     proposal_track_mode: str,
     classified_path: str | Path,
@@ -173,6 +174,7 @@ def _build_run_config_payload(
         "output_dir": str(out_dir.resolve()),
         "provider": provider_name,
         "model": model_name,
+        "openai_reasoning_effort": openai_reasoning_effort,
         "execution_mode": execution_mode,
         "proposal_track_mode": proposal_track_mode,
         "classified_benchmark": _resolved_path_str(classified_path),
@@ -201,6 +203,7 @@ def _validate_resume_run_config(
     for key in (
         "provider",
         "model",
+        "openai_reasoning_effort",
         "execution_mode",
         "proposal_track_mode",
         "classified_benchmark",
@@ -1444,6 +1447,7 @@ def run_reasoning_floor(
     selected_provider = (
         getattr(provider, "provider_name", None) or provider.__class__.__name__.replace("ChatProvider", "").lower()
     )
+    openai_reasoning_effort = getattr(provider, "reasoning_effort", None) if selected_provider == "openai" else None
 
     normalized_execution_mode = (execution_mode or "").strip().lower()
     if not normalized_execution_mode:
@@ -1534,6 +1538,7 @@ def run_reasoning_floor(
         out_dir=out_dir,
         provider_name=selected_provider,
         model_name=selected_model,
+        openai_reasoning_effort=openai_reasoning_effort,
         execution_mode=normalized_execution_mode,
         proposal_track_mode=normalized_proposal_track_mode,
         classified_path=classified_path,
@@ -2905,6 +2910,7 @@ def run_reasoning_floor(
                 "ablation_bundles": bundle_list,
                 "provider": selected_provider,
                 "model": selected_model,
+                "openai_reasoning_effort": openai_reasoning_effort,
                 "output_dir": str(out_dir),
                 "selection_manifest": str(selection_manifest_path) if selection_manifest_path else None,
             },
@@ -2933,6 +2939,7 @@ def run_reasoning_floor(
             "run_id": run_id,
             "provider": selected_provider,
             "model": selected_model,
+            "openai_reasoning_effort": openai_reasoning_effort,
             "output_dir": str(out_dir),
             "started_at_utc": run_started_utc,
             "elapsed_seconds": round(run_elapsed_seconds, 6),

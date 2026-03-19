@@ -159,6 +159,12 @@ OPENAI_MODEL=YOUR_MODEL_NAME
 
 Use the raw key value only. Do not paste `OPENAI_API_KEY=...` into the value itself, and do not add a `Bearer ` prefix.
 
+Optional for GPT-5 reasoning control on OpenAI requests:
+
+```dotenv
+OPENAI_REASONING_EFFORT=low
+```
+
 Optional for a non-default OpenAI-compatible endpoint:
 
 ```dotenv

@@ -62,6 +62,7 @@ Supported runtime settings:
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL`
 - optional `OPENAI_BASE_URL`
+- optional `OPENAI_REASONING_EFFORT` to send `reasoning: {"effort": ...}` on OpenAI chat-completions requests
 - `MODEL_PROVIDER=ollama`
 - `OLLAMA_MODEL`
 - optional `OLLAMA_BASE_URL` (defaults to `http://localhost:11434/api`)
@@ -75,6 +76,8 @@ Process environment variables still take precedence over values loaded from `.en
 For provider API keys, use only the raw secret value in `.env`. Do not include the variable name again or a `Bearer ` prefix.
 
 `src/reasoning_floor.py` also accepts `--model` to override the model name from `.env` without changing provider selection.
+
+When `OPENAI_REASONING_EFFORT` is set, the OpenAI adapter includes that value in both synchronous and batch chat-completions payloads. The accepted values are `none`, `minimal`, `low`, `medium`, `high`, and `xhigh`.
 
 Execution CLI settings:
 
@@ -154,11 +157,11 @@ Batch runs also write provider batch artifacts at the top level of the run direc
 - `batch_request_manifest.jsonl`
 - provider-specific batch job metadata, output JSONL, and error JSONL when available
 
-`run_config.json` stores the immutable run settings and the ordered selected case ids so a later `--resume-run-dir` invocation can verify that the resumed command still targets the same provider, model, selection, execution mode, proposal-track mode, and ablation bundles.
+`run_config.json` stores the immutable run settings and the ordered selected case ids so a later `--resume-run-dir` invocation can verify that the resumed command still targets the same provider, model, OpenAI reasoning-effort setting when applicable, selection, execution mode, proposal-track mode, and ablation bundles.
 
 The run manifest stores per-call token usage, cached prompt tokens when available, elapsed seconds when available, estimated cost when provider token pricing is configured in `.env`, cost-estimation metadata, and the prompt template name used for that call. When a retryable batch failure is recovered by a synchronous retry, the recovered raw and manifest rows also carry a `recovery` block describing the fallback path.
 
-The combined summary stores run-level provider, model, output directory, execution mode, an explicit `batch_mode_used` flag, total elapsed time, aggregate prompt/completion/total tokens, aggregate cached tokens, aggregate estimated cost, and cost-estimation metadata. For OpenAI batch calls, the runner applies a built-in `0.5` multiplier to estimated costs to reflect batch pricing. When a batch run includes synchronous retry fallbacks, the summary marks `usage.cost_estimation_mode` as `mixed` and also records `usage.per_call_cost_estimation_modes` and `usage.per_call_cost_estimation_multipliers`. Parallel runs also record `run_info.parallel.workers` and its configuration source. Batch runs also record provider batch metadata in `run_info.batch`. Resumed runs also record `run_info.resume`, including the originating run directory, the persisted `run_config.json` path, and how much generation work had already completed before the resumed process started.
+The combined summary stores run-level provider, model, the OpenAI reasoning-effort setting when applicable, output directory, execution mode, an explicit `batch_mode_used` flag, total elapsed time, aggregate prompt/completion/total tokens, aggregate cached tokens, aggregate estimated cost, and cost-estimation metadata. The same OpenAI reasoning-effort value is also preserved under top-level summary inputs. For OpenAI batch calls, the runner applies a built-in `0.5` multiplier to estimated costs to reflect batch pricing. When a batch run includes synchronous retry fallbacks, the summary marks `usage.cost_estimation_mode` as `mixed` and also records `usage.per_call_cost_estimation_modes` and `usage.per_call_cost_estimation_multipliers`. Parallel runs also record `run_info.parallel.workers` and its configuration source. Batch runs also record provider batch metadata in `run_info.batch`. Resumed runs also record `run_info.resume`, including the originating run directory, the persisted `run_config.json` path, and how much generation work had already completed before the resumed process started.
 
 Run and per-bundle summaries now also expose proposal parser visibility directly:
 

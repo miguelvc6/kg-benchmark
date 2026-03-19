@@ -96,7 +96,7 @@ class OpenAIChatProviderTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)
             (root / ".env").write_text(
-                "OPENAI_API_KEY=test-key\nOPENAI_MODEL=test-model\n",
+                "OPENAI_API_KEY=test-key\nOPENAI_MODEL=test-model\nOPENAI_REASONING_EFFORT=low\n",
                 encoding="utf-8",
             )
 
@@ -111,6 +111,7 @@ class OpenAIChatProviderTests(unittest.TestCase):
             self.assertEqual(provider.api_key, "test-key")
             self.assertEqual(provider.model, "test-model")
             self.assertEqual(provider.base_url, "https://api.openai.com/v1")
+            self.assertEqual(provider.reasoning_effort, "low")
 
     def test_factory_allows_model_override(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -159,6 +160,60 @@ class OpenAIChatProviderTests(unittest.TestCase):
         request_payload = json.loads(post.call_args.kwargs["data"].decode("utf-8"))
         self.assertNotIn("temperature", request_payload)
         self.assertNotIn("tool_choice", request_payload)
+
+    def test_includes_reasoning_effort_in_generate_payload_when_configured(self) -> None:
+        response = MagicMock()
+        response.json.return_value = {
+            "choices": [{"message": {"content": "{\"case_id\": \"c1\"}"}, "finish_reason": "stop"}],
+            "usage": {"prompt_tokens": 11, "completion_tokens": 7, "total_tokens": 18},
+        }
+
+        with patch("guardian.model_provider.requests.post", return_value=response) as post:
+            provider = OpenAIChatProvider(
+                api_key="test-key",
+                model="gpt-5.4",
+                reasoning_effort="low",
+            )
+            provider.generate(
+                prompt="{}",
+                system_prompt="Return JSON only.",
+                response_format={"type": "json_object"},
+                metadata={"case_id": "c1"},
+            )
+
+        request_payload = json.loads(post.call_args.kwargs["data"].decode("utf-8"))
+        self.assertEqual(request_payload["reasoning"], {"effort": "low"})
+
+    def test_includes_reasoning_effort_in_batch_payload_when_configured(self) -> None:
+        provider = OpenAIChatProvider(
+            api_key="test-key",
+            model="gpt-5.4",
+            reasoning_effort="low",
+        )
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            output_path = Path(tmp_dir) / "batch.jsonl"
+            with output_path.open("w", encoding="utf-8") as handle:
+                provider.write_batch_request(
+                    handle,
+                    custom_id="case-1",
+                    prompt="{}",
+                    system_prompt="Return JSON only.",
+                    response_format={"type": "json_object"},
+                    metadata={"case_id": "c1"},
+                )
+
+            batch_record = json.loads(output_path.read_text(encoding="utf-8").strip())
+
+        self.assertEqual(batch_record["body"]["reasoning"], {"effort": "low"})
+
+    def test_rejects_invalid_reasoning_effort(self) -> None:
+        with self.assertRaisesRegex(RuntimeError, "OPENAI_REASONING_EFFORT"):
+            OpenAIChatProvider(
+                api_key="test-key",
+                model="gpt-5.4",
+                reasoning_effort="fast",
+            )
 
     def test_rejects_tool_call_responses(self) -> None:
         response = MagicMock()
