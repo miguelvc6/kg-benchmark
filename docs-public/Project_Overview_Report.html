@@ -1,0 +1,958 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WikidataRepairEval Project Overview Report</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #18212f;
+      --muted: #536074;
+      --line: #d8dee8;
+      --paper: #fbfcfe;
+      --panel: #ffffff;
+      --blue: #1f5f99;
+      --green: #287357;
+      --gold: #8a661f;
+      --red: #9b3d3d;
+      --violet: #5b4c8f;
+      --soft-blue: #eaf3fb;
+      --soft-green: #eaf7f1;
+      --soft-gold: #fff5dd;
+      --soft-red: #fbecec;
+      --soft-violet: #f0edf8;
+      --shadow: 0 14px 40px rgba(21, 35, 56, 0.10);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+      line-height: 1.58;
+    }
+
+    a {
+      color: var(--blue);
+    }
+
+    .hero {
+      color: #fff;
+      background:
+        linear-gradient(120deg, rgba(18, 48, 76, 0.93), rgba(33, 86, 83, 0.87)),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1600' height='760' viewBox='0 0 1600 760'%3E%3Crect width='1600' height='760' fill='%23224156'/%3E%3Cg stroke='%23d8f1ff' stroke-opacity='0.22' fill='none'%3E%3Cpath d='M100 180 C310 80 420 330 650 210 S1040 100 1220 260 1420 420 1530 340'/%3E%3Cpath d='M80 520 C260 430 360 570 540 470 S900 360 1060 500 1320 610 1520 500'/%3E%3Cpath d='M250 90 L430 210 L620 150 L840 280 L1030 210 L1260 320 L1450 250'/%3E%3Cpath d='M220 600 L430 510 L690 620 L920 500 L1130 610 L1380 460'/%3E%3C/g%3E%3Cg fill='%23ffffff' fill-opacity='0.72'%3E%3Ccircle cx='100' cy='180' r='7'/%3E%3Ccircle cx='430' cy='210' r='7'/%3E%3Ccircle cx='650' cy='210' r='7'/%3E%3Ccircle cx='840' cy='280' r='7'/%3E%3Ccircle cx='1220' cy='260' r='7'/%3E%3Ccircle cx='1450' cy='250' r='7'/%3E%3Ccircle cx='220' cy='600' r='7'/%3E%3Ccircle cx='540' cy='470' r='7'/%3E%3Ccircle cx='920' cy='500' r='7'/%3E%3Ccircle cx='1380' cy='460' r='7'/%3E%3C/g%3E%3C/svg%3E");
+      background-size: cover;
+      background-position: center;
+      min-height: 74vh;
+      display: flex;
+      align-items: flex-end;
+      padding: 68px 24px 56px;
+    }
+
+    .hero-inner {
+      max-width: 1120px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .eyebrow {
+      margin: 0 0 14px;
+      font-size: 0.88rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: #dff4ff;
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 980px;
+      font-size: clamp(2.5rem, 5vw, 5.7rem);
+      line-height: 0.96;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 24px 0 0;
+      max-width: 880px;
+      font-size: clamp(1.05rem, 1.8vw, 1.42rem);
+      color: #e7f7ff;
+    }
+
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 28px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 6px 12px;
+      border: 1px solid rgba(255, 255, 255, 0.34);
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 999px;
+      color: #fff;
+      font-size: 0.92rem;
+      backdrop-filter: blur(8px);
+    }
+
+    .chip-link {
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    main {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 34px 24px 80px;
+    }
+
+    nav {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 10px;
+      margin: 0 0 34px;
+    }
+
+    nav a {
+      text-decoration: none;
+      color: var(--ink);
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-weight: 700;
+      box-shadow: 0 4px 16px rgba(21, 35, 56, 0.05);
+    }
+
+    section {
+      margin: 54px 0;
+    }
+
+    h2 {
+      margin: 0 0 16px;
+      font-size: clamp(1.7rem, 3vw, 2.45rem);
+      line-height: 1.12;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 28px 0 10px;
+      font-size: 1.22rem;
+      line-height: 1.25;
+    }
+
+    p {
+      margin: 0 0 14px;
+    }
+
+    .lead {
+      color: var(--muted);
+      font-size: 1.08rem;
+      max-width: 900px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 22px;
+      box-shadow: var(--shadow);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+    }
+
+    .stat {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 1.8rem;
+      line-height: 1.08;
+      color: var(--blue);
+    }
+
+    .stat span {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .flow {
+      counter-reset: flow;
+      display: grid;
+      gap: 12px;
+    }
+
+    .flow-step {
+      display: grid;
+      grid-template-columns: 46px 1fr;
+      gap: 14px;
+      align-items: start;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .flow-step::before {
+      counter-increment: flow;
+      content: counter(flow);
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: var(--soft-blue);
+      color: var(--blue);
+      font-weight: 800;
+    }
+
+    .tag {
+      display: inline-block;
+      margin: 0 6px 6px 0;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: var(--soft-blue);
+      color: var(--blue);
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+
+    .tag.green {
+      background: var(--soft-green);
+      color: var(--green);
+    }
+
+    .tag.gold {
+      background: var(--soft-gold);
+      color: var(--gold);
+    }
+
+    .tag.red {
+      background: var(--soft-red);
+      color: var(--red);
+    }
+
+    .tag.violet {
+      background: var(--soft-violet);
+      color: var(--violet);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    th,
+    td {
+      text-align: left;
+      vertical-align: top;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    th {
+      background: #eef4f8;
+      font-size: 0.88rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .example {
+      border-left: 5px solid var(--blue);
+      background: #fff;
+      border-radius: 8px;
+      padding: 18px;
+      box-shadow: 0 8px 24px rgba(21, 35, 56, 0.07);
+    }
+
+    .example + .example {
+      margin-top: 14px;
+    }
+
+    .example h3 {
+      margin-top: 0;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 18px;
+    }
+
+    .callout {
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--gold);
+      border-radius: 8px;
+      background: #fffaf0;
+      padding: 18px;
+    }
+
+    .formula {
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--blue);
+      border-radius: 8px;
+      background: #fff;
+      padding: 16px;
+    }
+
+    ul {
+      margin: 8px 0 0;
+      padding-left: 22px;
+    }
+
+    li {
+      margin: 7px 0;
+    }
+
+    .footer-note {
+      color: var(--muted);
+      font-size: 0.92rem;
+      border-top: 1px solid var(--line);
+      padding-top: 22px;
+      margin-top: 60px;
+    }
+
+    @media (max-width: 760px) {
+      .hero {
+        min-height: 68vh;
+        padding: 48px 18px 38px;
+      }
+
+      main {
+        padding: 24px 18px 64px;
+      }
+
+      .split {
+        grid-template-columns: 1fr;
+      }
+
+      .flow-step {
+        grid-template-columns: 1fr;
+      }
+
+      table {
+        display: block;
+        overflow-x: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-inner">
+      <p class="eyebrow">Standalone project overview</p>
+      <h1>WikidataRepairEval</h1>
+      <p class="subtitle">
+        A benchmark for studying how knowledge graphs can be repaired, verified, and kept aligned when large language models propose changes to structured knowledge.
+      </p>
+      <div class="meta-row" aria-label="Report metadata">
+        <span class="chip">Project: kg-benchmark</span>
+        <span class="chip">Generated: May 18, 2026</span>
+        <span class="chip">Scope: benchmark, evaluation, baseline</span>
+        <a class="chip chip-link" href="./Project_Technical_Appendix.html" target="_blank" rel="noopener">Open technical appendix</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <nav aria-label="Report sections">
+      <a href="#summary">Summary</a>
+      <a href="#scientific-value">Scientific Value</a>
+      <a href="#data">Data Construction</a>
+      <a href="#taxonomy">Taxonomy</a>
+      <a href="#evaluation">Evaluation</a>
+      <a href="#examples">Examples</a>
+      <a href="#strengths">Strengths</a>
+      <a href="#weaknesses">Weaknesses</a>
+      <a href="#future-work">Future Work</a>
+    </nav>
+
+    <section id="summary">
+      <h2>Executive Summary</h2>
+      <p class="lead">
+        WikidataRepairEval is a research benchmark built from real Wikidata repair events. It reconstructs historical fixes, attaches a frozen contemporary graph context, classifies each case by the kind of information needed to solve it, and evaluates whether a system can produce a repair that is valid, auditable, and aligned with the historical human-maintained outcome.
+      </p>
+      <div class="panel">
+        <p>
+          The project addresses a central problem in neuro-symbolic artificial intelligence: language models can generate plausible graph updates, but they may hallucinate, overfit to local patterns, or satisfy constraints by destroying useful knowledge. Knowledge graphs, in contrast, are structured and auditable, but they are incomplete and need constant maintenance. This benchmark provides a controlled way to measure whether a proposed repair is genuinely good rather than merely syntactically acceptable.
+        </p>
+        <p>
+          The current release should be understood as the first minimum publishable unit of a larger Guardian-style research program. It contains the benchmark substrate, validity rules, proposal contracts, an offline evaluator, and a zero-shot reasoning-floor baseline. It does not yet implement the full future protocol in which a verifier repeatedly guides a model through multi-step repair attempts.
+        </p>
+      </div>
+    </section>
+
+<section id="facts">
+      <h2>Current Benchmark Snapshot</h2>
+      <p class="lead">
+        The current classified benchmark statistics indicate a large and highly skewed dataset. The skew is itself scientifically important because a single schema change can explain thousands of apparent violations.
+      </p>
+      
+      <!-- Line 1: General and T-box metrics -->
+      <div class="stat-grid" role="list">
+        <div class="stat" role="listitem"><strong>535,570</strong><span>classified benchmark records</span></div>
+        <div class="stat" role="listitem"><strong>92,576</strong><span>cases in the deterministic paper evaluation subset</span></div>
+        <div class="stat" role="listitem"><strong>456,594</strong><span>T-box schema-reform cases</span></div>
+        <div class="stat" role="listitem"><strong>305</strong><span>distinct T-box update groups in the paper subset policy</span></div>
+      </div>
+
+      <!-- Line 2: A-box repair cases and subtypes -->
+      <div class="stat-grid" role="list" style="margin-top: 16px;">
+        <div class="stat" role="listitem"><strong>78,976</strong><span>A-box instance-data repair cases</span></div>
+        <div class="stat" role="listitem"><strong>47,216</strong><span>Type A logical A-box cases</span></div>
+        <div class="stat" role="listitem"><strong>13,492</strong><span>Type B local-context A-box cases</span></div>
+        <div class="stat" role="listitem"><strong>18,268</strong><span>Type C external-information A-box cases</span></div>
+      </div>
+
+      <div class="callout" style="margin-top: 16px;">
+        <strong>Interpretation caution.</strong>
+        The full benchmark is the canonical historical record. The smaller paper-facing subset keeps all A-box cases but caps T-box repetitions per schema update, so aggregate scores are less dominated by a few high-frequency property revisions.
+      </div>
+    </section>
+
+    <section id="problem">
+      <h2>The Problem It Tries To Solve</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Knowledge graphs need repair</h3>
+          <p>
+            Wikidata contains structured claims and constraints, but violations arise naturally as facts change, editors add data, and property constraints evolve. A repair may change an entity statement, or it may reveal that the constraint itself has become outdated.
+          </p>
+        </div>
+        <div class="card">
+          <h3>LLMs are useful but risky</h3>
+          <p>
+            A language model can suggest plausible repairs, explain its reasoning, and generalize across domains. The same model can also invent facts, ignore provenance, or choose a shortcut that makes a violation disappear while degrading the graph.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Verification needs structure</h3>
+          <p>
+            A graph update should be treated as a transaction with a target, evidence, uncertainty, and a validity check. The benchmark is designed to test that transaction, not only the surface ability to emit a patch.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="scientific-value">
+      <h2>Scientific Value</h2>
+      <p class="lead">
+        The benchmark is valuable because it turns graph repair into a controlled scientific question: what information was required, what kind of repair was historically accepted, and whether a model can reproduce that behavior without violating symbolic constraints.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Scientific contribution</th>
+            <th>Why it matters</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Historical ecological validity</td>
+            <td>The cases come from real Wikidata maintenance events rather than synthetic corruption. This makes the benchmark closer to the actual conditions under which graph repair systems would operate.</td>
+          </tr>
+          <tr>
+            <td>Information-necessity taxonomy</td>
+            <td>Cases are separated by whether the repair can be solved by logic, local graph context, or external information. This lets researchers distinguish reasoning failures from retrieval failures.</td>
+          </tr>
+          <tr>
+            <td>A-box versus T-box separation</td>
+            <td>The project distinguishes repairs to factual instance data from reforms to constraints or schema. Many benchmarks conflate these, but they represent different scientific problems.</td>
+          </tr>
+          <tr>
+            <td>Temporal validity controls</td>
+            <td>Historical repairs are judged carefully against a frozen later snapshot. The benchmark avoids pretending that every past repair remains meaningful after the world and graph have changed.</td>
+          </tr>
+          <tr>
+            <td>Reasoning-floor baseline</td>
+            <td>Zero-shot model performance is measured before retrieval, tools, memory, verifier loops, or learning interventions are added. This gives later protocol gains a defensible baseline.</td>
+          </tr>
+          <tr>
+            <td>Auditability as a benchmark requirement</td>
+            <td>Accepted proposals are expected to include rationale, provenance, and uncertainty. This aligns evaluation with trustworthy knowledge maintenance rather than raw answer matching alone.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="data">
+      <h2>How The Data Is Built</h2>
+      <p class="lead">
+        The data construction process converts public Wikidata maintenance history into benchmark cases. The important idea is that a case is not just a before-and-after value. It is a repair event with provenance, context, classification, and evaluation targets.
+      </p>
+      <div class="flow">
+        <div class="flow-step">
+          <div>
+            <h3>Mine candidate repair events</h3>
+            <p>
+              The process starts from historical Wikidata constraint-violation reports. When an item disappears from a report between two report snapshots, that disappearance is treated as a candidate repair signal. The system guards against simple report reorganization by checking whether the same item moved elsewhere rather than being repaired.
+            </p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div>
+            <h3>Reconstruct the repair</h3>
+            <p>
+              Each candidate is traced back to the relevant Wikidata edit history. If the entity statement changed, the case becomes an A-box repair. If the property constraint changed instead, it becomes a T-box reform. The benchmark records the target, action, old value, new value, editor metadata, and repair provenance.
+            </p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div>
+            <h3>Check persistence</h3>
+            <p>
+              The repair is tested against the frozen contemporary graph state. Non-delete repairs must still be meaningful in the graph. Cases that no longer support the same logical evaluation question are filtered rather than silently reinterpreted.
+            </p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div>
+            <h3>Attach frozen world-state context</h3>
+            <p>
+              Each repair receives graph context layers: the focus node, English labels and descriptions, one-hop neighborhood information, property constraints, and optional before-and-after schema context for T-box cases. This gives systems controlled access to local graph evidence without using the current target-property value as the historical before-state.
+            </p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div>
+            <h3>Add popularity metadata</h3>
+            <p>
+              Each focus entity receives a popularity score derived from pageviews, graph degree, and sitelinks. This enables controlled analysis of head entities versus long-tail entities, where model familiarity may differ sharply.
+            </p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div>
+            <h3>Classify the benchmark case</h3>
+            <p>
+              A deterministic classifier labels A-box cases as logical, local, or external according to the information needed to solve the repair. T-box cases are labeled separately as schema reforms, with subtypes that describe the kind of constraint change when possible.
+            </p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div>
+            <h3>Create reproducible evaluation subsets</h3>
+            <p>
+              The full benchmark remains the complete record. For paper-scale evaluation, a deterministic manifest can select all A-box cases and cap repeated T-box cases from the same property-level schema update. This keeps the evaluation reproducible without letting repeated manifestations of one schema edit overwhelm the analysis.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="taxonomy">
+      <h2>Benchmark Taxonomy</h2>
+      <div class="grid">
+        <div class="card">
+          <span class="tag green">Type A</span>
+          <h3>Logical repairs</h3>
+          <p>
+            The rule itself or internal consistency determines the fix. Examples include format corrections, singleton allowed-value constraints, or deletion of an invalid value. These cases test reasoning without retrieval.
+          </p>
+        </div>
+        <div class="card">
+          <span class="tag gold">Type B</span>
+          <h3>Local repairs</h3>
+          <p>
+            The answer is available in the focus node or immediate graph neighborhood. These cases test whether a system can use structured context rather than relying on open-ended outside knowledge.
+          </p>
+        </div>
+        <div class="card">
+          <span class="tag red">Type C</span>
+          <h3>External repairs</h3>
+          <p>
+            Local graph context is insufficient. The repair requires information outside the immediate graph view, such as a source, external database, historical fact, or web evidence.
+          </p>
+        </div>
+        <div class="card">
+          <span class="tag violet">T-box</span>
+          <h3>Schema reform</h3>
+          <p>
+            The historical fix changed a property constraint rather than an entity statement. These cases capture concept drift, outdated rules, overly narrow constraints, and evolving modeling practice.
+          </p>
+        </div>
+      </div>
+
+      <h3>Repair tracks</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Track</th>
+            <th>What changed historically</th>
+            <th>What it tests</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>A-box repair</td>
+            <td>A factual statement on a focus entity changed.</td>
+            <td>Can a system repair instance data while preserving graph consistency?</td>
+          </tr>
+          <tr>
+            <td>T-box reform</td>
+            <td>A property constraint or schema rule changed.</td>
+            <td>Can a system recognize when the rule is wrong or outdated rather than the entity data?</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="temporal">
+      <h2>Temporal Validity</h2>
+      <p class="lead">
+        Historical repair benchmarks face a time-travel problem: an edit that was correct in the past may look wrong against a later graph snapshot because the entity, constraint, or real world changed.
+      </p>
+      <div class="split">
+        <div class="panel">
+          <h3>The benchmark question</h3>
+          <p>
+            The benchmark does not ask whether today's graph has today's violation under today's rule. It asks whether the same logical problem still exists when the historical repair target is evaluated with frozen contemporary context.
+          </p>
+        </div>
+        <div class="panel">
+          <h3>The target-property rule</h3>
+          <p>
+            Current graph context may be used for surrounding labels, neighbors, and constraints. The edited target property is the exception: its historical pre-repair state must be reconstructed from repair metadata, not copied from the frozen world-state snapshot.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="evaluation">
+      <h2>How It Is Evaluated</h2>
+      <p class="lead">
+        Evaluation is designed to answer whether a proposed repair is executable, historically aligned, semantically appropriate, and auditable. It is stricter than simply checking whether a model produced valid JSON or mentioned the correct entity.
+      </p>
+
+      <h3>A-box evaluation</h3>
+      <div class="panel">
+        <p>
+          For factual entity repairs, the evaluator reconstructs the pre-repair target-property state, applies the proposed operations in memory, and compares the resulting target property against the historical repaired state. A successful proposal should be executable against the intended entity and property, preserve relevant information, avoid supported local constraint regressions, and include rationale, provenance, and uncertainty.
+        </p>
+        <p>
+          Important signals include functional success, exact historical agreement, information preservation, provenance completeness, auditability completeness, regression behavior, conversion rate when multiple attempts exist, and token or cost telemetry when available.
+        </p>
+      </div>
+
+      <h3>T-box evaluation</h3>
+      <div class="panel">
+        <p>
+          For schema reforms, the evaluator compares the proposed post-reform constraint signature against the historical post-reform signature. Exact agreement remains strict. The benchmark also records family-level semantic compatibility so that evaluation can distinguish a completely wrong schema edit from a plausible reform that has the right direction but does not exactly match the historical signature.
+        </p>
+        <p>
+          Important signals include exact action match, exact signature match, semantic-family success, whether the proposal targets the changed constraint family, signature overlap, whether current values would be admitted by the reform, provenance completeness, and auditability completeness.
+        </p>
+      </div>
+
+      <h3>Track diagnosis</h3>
+      <div class="panel">
+        <p>
+          The benchmark also supports a diagnostic task: decide whether the correct locus of repair is A-box, T-box, or ambiguous. This matters because a model may correctly see that something is wrong but repair the wrong layer. In future protocol systems, locus selection can become part of the control flow rather than only an analytic score.
+        </p>
+      </div>
+
+      <h3>Reasoning floor</h3>
+      <div class="panel">
+        <p>
+          The reasoning floor is the zero-shot pre-intervention baseline. It asks what current models can do without tools, retrieval, memory, rejection sampling, or verifier-guided retries. It uses fixed prompt bundles with different amounts of context: a minimal case payload, logic and constraint context, and local graph context. Later systems should be compared against this floor so that claimed improvements can be attributed to protocol support rather than to an undefined baseline.
+        </p>
+      </div>
+    </section>
+
+    <section id="zero-shot-prompts">
+      <h2>Zero-Shot Baseline Prompts</h2>
+      <p class="lead">
+        For the main zero-shot baseline evaluation, each benchmark case is evaluated with four model prompts: two ablation bundles multiplied by two prediction tasks.
+      </p>
+      <div class="grid">
+        <div class="card">
+          <span class="tag">Ablation 1</span>
+          <h3>Logic-only context</h3>
+          <p>
+            The model receives the sanitized case payload plus the directly relevant constraint context. This tests whether the repair can be solved from the rule structure without broader graph neighborhood evidence.
+          </p>
+        </div>
+        <div class="card">
+          <span class="tag">Ablation 2</span>
+          <h3>Local-graph context</h3>
+          <p>
+            The model receives the sanitized case payload plus pruned local graph context and constraint context. This tests whether one-hop graph evidence improves repair and locus decisions.
+          </p>
+        </div>
+        <div class="card">
+          <span class="tag green">Prediction 1</span>
+          <h3>Track prediction</h3>
+          <p>
+            The model predicts whether the correct repair locus is an A-box entity repair, a T-box schema reform, or an ambiguous case. This measures locus-selection ability separately from repair content.
+          </p>
+        </div>
+        <div class="card">
+          <span class="tag gold">Prediction 2</span>
+          <h3>Repair proposal</h3>
+          <p>
+            The model proposes the actual repair in the appropriate normalized form. A-box proposals edit entity values; T-box proposals reform the relevant property constraint signature.
+          </p>
+        </div>
+      </div>
+      <div class="formula" style="margin-top: 16px;">
+        <strong>Prompt count per case:</strong>
+        <code>2 ablation bundles x 2 prediction tasks = 4 prompts</code>
+      </div>
+    </section>
+
+    <section id="examples">
+      <h2>Representative Examples</h2>
+      <p class="lead">
+        These examples are simplified for explanation. They illustrate the types of reasoning the benchmark tries to separate.
+      </p>
+
+      <article class="example">
+        <span class="tag green">Type A</span>
+        <span class="tag">A-box</span>
+        <h3>Format correction</h3>
+        <p>
+          A plant identifier contained an extra trailing slash. The property constraint described the allowed identifier format, and the historical repair removed the invalid character. This is logical because the rule itself provides the repair signal.
+        </p>
+        <p><strong>What a model must do:</strong> apply the format rule without inventing a new identifier or deleting unrelated values.</p>
+      </article>
+
+      <article class="example">
+        <span class="tag gold">Type B</span>
+        <span class="tag">A-box</span>
+        <h3>Local context resolves the target</h3>
+        <p>
+          A case involving a use-restriction status had multiple candidate values, and the historical repair removed one while preserving another. The relevant truth signal was available in the focus-node context rather than requiring outside retrieval.
+        </p>
+        <p><strong>What a model must do:</strong> read the local graph state carefully and avoid satisfying the constraint by discarding useful surviving information.</p>
+      </article>
+
+      <article class="example">
+        <span class="tag red">Type C</span>
+        <span class="tag">A-box</span>
+        <h3>External grounding needed</h3>
+        <p>
+          A historical-person case changed a value for a conviction-related property from one legal or historical concept to another. The local graph context alone is not enough to know the correct replacement with confidence.
+        </p>
+        <p><strong>What a model must do:</strong> seek or cite evidence beyond the local graph rather than guessing from labels.</p>
+      </article>
+
+      <article class="example">
+        <span class="tag violet">T-box</span>
+        <h3>Constraint removed after repeated violations</h3>
+        <p>
+          A genomic-coordinate property previously had a distinct-values constraint. The historical schema edit removed that constraint while preserving other constraints such as format and property scope. In this case, the repair target is the rule, not the individual entity values that appeared in the violation report.
+        </p>
+        <p><strong>What a model must do:</strong> recognize that the property model changed and propose an appropriate schema reform rather than editing each violating entity independently.</p>
+      </article>
+
+      <article class="example">
+        <span class="tag violet">T-box</span>
+        <h3>Constraint parameter refinement</h3>
+        <p>
+          A person-identifier property had language-related constraint metadata that was historically adjusted. This kind of case tests whether a system can reason about constraint parameters and modeling practice, not only about subject-entity facts.
+        </p>
+        <p><strong>What a model must do:</strong> edit the constraint signature in the right semantic direction and target the actual changed constraint family.</p>
+      </article>
+    </section>
+
+    <section id="strengths">
+      <h2>Main Strengths</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Real repair events</h3>
+          <p>
+            The benchmark is anchored in actual Wikidata maintenance, making it more representative than synthetic corruption tasks.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Clear task decomposition</h3>
+          <p>
+            Logical, local, external, and schema-reform cases support fine-grained analysis of where systems fail.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Temporal safeguards</h3>
+          <p>
+            The benchmark explicitly separates historical repair targets from frozen contemporary context, reducing leakage and invalid comparisons.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Auditable evaluation</h3>
+          <p>
+            Proposals are judged not only by output value but also by executability, provenance, uncertainty, and local side effects.
+          </p>
+        </div>
+        <div class="card">
+          <h3>A-box and T-box coverage</h3>
+          <p>
+            Separating instance-data repair from schema reform makes the benchmark relevant to concept drift and evolving modeling practice.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Baseline discipline</h3>
+          <p>
+            The reasoning floor provides a stable control condition for later retrieval or verifier-guided protocols.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="weaknesses">
+      <h2>Main Weaknesses And Risks</h2>
+      <div class="panel">
+        <h3>Dataset skew</h3>
+        <p>
+          T-box cases dominate the full benchmark. Many cases can originate from the same property-level schema edit, so naive aggregate scores may overrepresent a small number of repeated reform events. The deterministic capped subset mitigates this for paper evaluation but does not remove the underlying skew from the full historical record.
+        </p>
+
+        <h3>Historical repair is an imperfect gold standard</h3>
+        <p>
+          A human-maintained edit is a strong alignment proxy, but it is not proof of universal correctness. Some historical repairs may reflect local community conventions, incomplete evidence, or later-revised modeling assumptions.
+        </p>
+
+        <h3>Temporal complexity remains hard</h3>
+        <p>
+          The project has explicit temporal validity rules, but historical graph repair is inherently difficult. Entities may be merged, deleted, reclassified, or independently repaired. Some cases must be discarded because they no longer express a stable evaluation question.
+        </p>
+
+        <h3>External evidence is not yet fully operationalized</h3>
+        <p>
+          Type C cases identify the need for outside information, but the current minimum publishable unit does not yet include retrieval-backed evidence collection as a full protocol layer. This limits what can be concluded about evidence-grounded repair behavior.
+        </p>
+
+        <h3>Evaluation is necessarily partial</h3>
+        <p>
+          The evaluator can check supported constraint families and compare against historical targets, but it cannot fully reproduce every possible Wikidata validation rule or every community judgment. Some semantic quality remains hard to automate.
+        </p>
+
+        <h3>Prompt leakage must be actively avoided</h3>
+        <p>
+          Because the frozen world state may include post-repair target-property values, prompt builders must reconstruct the pre-repair target property from benchmark metadata. Incorrect use can accidentally leak the answer.
+        </p>
+
+        <h3>Current scope is pre-protocol</h3>
+        <p>
+          The repository establishes the benchmark, evaluator, and zero-shot control. It does not yet implement the full multi-turn Guardian protocol with verifier feedback, retrieval, and iterative repair attempts.
+        </p>
+      </div>
+    </section>
+
+    <section id="future-work">
+      <h2>Future Work</h2>
+      <p class="lead">
+        The natural continuation is to build protocol layers on top of the benchmark without weakening the benchmark itself.
+      </p>
+      <div class="flow">
+        <div class="flow-step">
+          <div>
+            <h3>Live verifier runtime</h3>
+            <p>
+              Add a repair-time verifier that can reject candidate transactions and return structured diagnostics before a proposal is finalized.
+            </p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div>
+            <h3>Retrieval-augmented repair</h3>
+            <p>
+              Add evidence collection for Type C and evidence-heavy T-box cases, with normalized provenance that can be evaluated rather than merely displayed.
+            </p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div>
+            <h3>Guardian-style iterative protocols</h3>
+            <p>
+              Test bounded multi-attempt workflows where model proposals are checked, rejected, revised, and eventually accepted or abstained.
+            </p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div>
+            <h3>Actionable locus selection</h3>
+            <p>
+              Move A-box versus T-box diagnosis from a separate analytic task into a control decision that determines the repair route.
+            </p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div>
+            <h3>Cost-quality frontier analysis</h3>
+            <p>
+              Measure not only correctness but also attempt count, retrieval calls, verifier calls, tokens-to-fix, latency, and cost per accepted repair.
+            </p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div>
+            <h3>Broader semantic validation</h3>
+            <p>
+              Expand supported validation families and improve semantic scoring for schema reforms, especially where exact historical agreement is too narrow to capture useful behavior.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="takeaway">
+      <h2>Bottom Line</h2>
+      <div class="panel">
+        <p>
+          WikidataRepairEval is best understood as a benchmark for trustworthy knowledge-graph repair, not just a dataset of edits. Its key contribution is the combination of real historical repair events, information-necessity labels, A-box/T-box separation, temporal validity rules, auditable proposal contracts, and a zero-shot baseline.
+        </p>
+        <p>
+          Its scientific value comes from making future claims about LLM-assisted graph repair measurable. A system can be asked not only whether it produced an answer, but whether it chose the right repair layer, used the right information source, preserved knowledge, supplied evidence, survived symbolic checks, and improved over a well-defined reasoning floor.
+        </p>
+      </div>
+    </section>
+
+    <p class="footer-note">
+      This report is intentionally standalone. It summarizes the benchmark's goals, data model, evaluation philosophy, limitations, and future research direction without requiring the reader to inspect repository internals.
+    </p>
+  </main>
+</body>
+</html>

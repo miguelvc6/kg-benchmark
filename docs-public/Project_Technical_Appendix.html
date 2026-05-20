@@ -1,0 +1,1095 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WikidataRepairEval Technical Appendix</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #172130;
+      --muted: #566274;
+      --line: #d9e0ea;
+      --paper: #fbfcfd;
+      --panel: #ffffff;
+      --blue: #1f5f99;
+      --green: #287357;
+      --gold: #87651e;
+      --red: #9b3d3d;
+      --violet: #5b4c8f;
+      --soft-blue: #eaf3fb;
+      --soft-green: #eaf7f1;
+      --soft-gold: #fff5dd;
+      --soft-red: #fbecec;
+      --soft-violet: #f0edf8;
+      --code-bg: #111827;
+      --shadow: 0 12px 34px rgba(21, 35, 56, 0.09);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+      line-height: 1.58;
+    }
+
+    a {
+      color: var(--blue);
+    }
+
+    header {
+      background: linear-gradient(125deg, #173a58, #255f68);
+      color: #fff;
+      padding: 64px 24px 44px;
+    }
+
+    .header-inner,
+    main {
+      max-width: 1160px;
+      margin: 0 auto;
+    }
+
+    .eyebrow {
+      margin: 0 0 12px;
+      color: #d7f2ff;
+      font-weight: 800;
+      font-size: 0.86rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 980px;
+      font-size: clamp(2.2rem, 4.8vw, 4.9rem);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      max-width: 900px;
+      margin: 20px 0 0;
+      color: #e8f7ff;
+      font-size: clamp(1.02rem, 1.8vw, 1.28rem);
+    }
+
+    main {
+      padding: 30px 24px 78px;
+    }
+
+    nav {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 10px;
+      margin-bottom: 36px;
+    }
+
+    nav a {
+      display: block;
+      text-decoration: none;
+      color: var(--ink);
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-weight: 800;
+      box-shadow: 0 4px 16px rgba(21, 35, 56, 0.05);
+    }
+
+    section {
+      margin: 54px 0;
+    }
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: clamp(1.65rem, 2.8vw, 2.35rem);
+      line-height: 1.12;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 26px 0 10px;
+      font-size: 1.2rem;
+      line-height: 1.25;
+    }
+
+    p {
+      margin: 0 0 14px;
+    }
+
+    .lead {
+      color: var(--muted);
+      font-size: 1.06rem;
+      max-width: 900px;
+    }
+
+    .panel,
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .panel {
+      padding: 22px;
+      box-shadow: var(--shadow);
+    }
+
+    .card {
+      padding: 18px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(245px, 1fr));
+      gap: 16px;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 16px;
+    }
+
+    .tag {
+      display: inline-block;
+      margin: 0 6px 6px 0;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: var(--soft-blue);
+      color: var(--blue);
+      font-size: 0.84rem;
+      font-weight: 800;
+    }
+
+    .tag.green {
+      background: var(--soft-green);
+      color: var(--green);
+    }
+
+    .tag.gold {
+      background: var(--soft-gold);
+      color: var(--gold);
+    }
+
+    .tag.red {
+      background: var(--soft-red);
+      color: var(--red);
+    }
+
+    .tag.violet {
+      background: var(--soft-violet);
+      color: var(--violet);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    th,
+    td {
+      text-align: left;
+      vertical-align: top;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    th {
+      background: #edf4f8;
+      font-size: 0.86rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      margin: 14px 0 0;
+      padding: 16px;
+      color: #e8eef8;
+      background: var(--code-bg);
+      border-radius: 8px;
+      overflow-x: auto;
+      line-height: 1.45;
+      font-size: 0.88rem;
+    }
+
+    .formula {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--blue);
+      border-radius: 8px;
+      padding: 16px;
+      margin: 12px 0;
+    }
+
+    .flow {
+      counter-reset: flow;
+      display: grid;
+      gap: 12px;
+    }
+
+    .flow-step {
+      display: grid;
+      grid-template-columns: 46px 1fr;
+      gap: 14px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .flow-step::before {
+      counter-increment: flow;
+      content: counter(flow);
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: var(--soft-blue);
+      color: var(--blue);
+      font-weight: 900;
+    }
+
+    ul {
+      margin: 8px 0 0;
+      padding-left: 22px;
+    }
+
+    li {
+      margin: 7px 0;
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 0.94rem;
+    }
+
+    @media (max-width: 760px) {
+      header {
+        padding: 44px 18px 34px;
+      }
+
+      main {
+        padding: 24px 18px 64px;
+      }
+
+      .split {
+        grid-template-columns: 1fr;
+      }
+
+      .flow-step {
+        grid-template-columns: 1fr;
+      }
+
+      table {
+        display: block;
+        overflow-x: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <p class="eyebrow">Technical appendix</p>
+      <h1>How WikidataRepairEval Works Internally</h1>
+      <p class="subtitle">
+        A standalone technical companion to the project overview: artifact shapes, frozen context, popularity scoring, classification decisions, proposal validity, and exact evaluation metrics.
+      </p>
+    </div>
+  </header>
+
+  <main>
+    <nav aria-label="Technical appendix sections">
+      <a href="#world-state">Frozen World State</a>
+      <a href="#popularity">Popularity Metadata</a>
+      <a href="#records">Benchmark Records</a>
+      <a href="#classification">Classification</a>
+      <a href="#proposals">Proposal Validity</a>
+      <a href="#metrics">Metric Formulas</a>
+      <a href="#constraints">Constraint Checks</a>
+      <a href="#summary">Aggregation</a>
+    </nav>
+
+    <section id="world-state">
+      <h2>Frozen World-State Context</h2>
+      <p class="lead">
+        A world-state entry is the frozen graph context attached to one historical repair. It is keyed by the benchmark case id and contains four layers plus optional T-box change context.
+      </p>
+      <div class="grid">
+        <div class="card">
+          <span class="tag">L1</span>
+          <h3>Ego node</h3>
+          <p>The focus entity id, label, description, sitelink count, compact property map, and optional popularity block.</p>
+        </div>
+        <div class="card">
+          <span class="tag">L2</span>
+          <h3>Labels</h3>
+          <p>A deterministic id-indexed map of labels and descriptions for the focus node, target property, neighbors, and constraint-related ids.</p>
+        </div>
+        <div class="card">
+          <span class="tag">L3</span>
+          <h3>Neighborhood</h3>
+          <p>A bounded one-hop outgoing neighborhood with property ids, target ids, target labels, and target descriptions.</p>
+        </div>
+        <div class="card">
+          <span class="tag">L4</span>
+          <h3>Constraints</h3>
+          <p>The current property constraint inventory, including constraint-family ids, qualifier details, and human-readable rule summaries.</p>
+        </div>
+      </div>
+
+      <h3>Reduced example</h3>
+      <p>
+        This example is deliberately compact. Real entries may contain more properties, labels, neighborhood edges, and constraints.
+      </p>
+      <pre><code>{
+  "reform_Q18065630_P645_722137891": {
+    "L1_ego_node": {
+      "qid": "Q18065630",
+      "label": "NPIPA5",
+      "description": "protein-coding gene in the species Homo sapiens",
+      "sitelinks_count": 2,
+      "properties": {
+        "P351": ["100288332"],
+        "P279": ["Q20747295"],
+        "P353": ["NPIPA5"]
+      }
+    },
+    "L2_labels": {
+      "entities": {
+        "Q18065630": {
+          "label": "NPIPA5",
+          "description": "protein-coding gene in the species Homo sapiens"
+        },
+        "P645": {
+          "label": "genomic end",
+          "description": "genomic ending coordinate of a biological sequence"
+        },
+        "Q20747295": {
+          "label": "protein-coding gene",
+          "description": "type of a gene"
+        }
+      }
+    },
+    "L3_neighborhood": {
+      "outgoing_edges": [
+        {
+          "property_id": "P279",
+          "target_qid": "Q20747295",
+          "target_label": "protein-coding gene",
+          "target_description": "type of a gene"
+        }
+      ]
+    },
+    "L4_constraints": {
+      "property_id": "P645",
+      "constraints": [
+        {
+          "constraint_type": {
+            "qid": "Q21502404",
+            "label": "format constraint"
+          },
+          "qualifiers": [
+            {
+              "property_id": "P1793",
+              "property_label": "format as a regular expression",
+              "values": [{"raw": "\\d{1,12}"}]
+            }
+          ],
+          "rule_summary": "format as a regular expression (P1793): \\d{1,12}"
+        }
+      ]
+    },
+    "constraint_change_context": {
+      "property_revision_id": 722137891,
+      "property_revision_prev": 705729614,
+      "changed_constraint_types": ["Q21502410"]
+    }
+  }
+}</code></pre>
+
+      <div class="formula">
+        <strong>Important temporal rule:</strong>
+        the frozen world state may describe the contemporary graph, but the target property's historical pre-repair state is reconstructed from repair metadata during prompting and evaluation. This prevents post-repair target values from leaking into model-visible inputs.
+      </div>
+    </section>
+
+    <section id="popularity">
+      <h2>Popularity Metadata</h2>
+      <p class="lead">
+        Popularity is a controlled covariate. It helps analyze whether models behave differently on widely visible entities and long-tail entities.
+      </p>
+      <div class="flow">
+        <div class="flow-step">
+          <div>
+            <h3>Raw components</h3>
+            <p>For each focus entity, the pipeline collects three signals: English Wikipedia pageviews over a 365-day window, graph out-degree, and total sitelinks count.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div>
+            <h3>Log scaling</h3>
+            <p>Each raw component is transformed with <code>log1p(value)</code> before ranking, reducing the dominance of extremely popular entities.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div>
+            <h3>Percentile normalization</h3>
+            <p>Each transformed component is converted to a percentile rank within the current focus-entity set. Ties receive the average percentile of their tied range.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div>
+            <h3>Composite score</h3>
+            <p>The final score is a weighted sum: pageviews percentile contributes 50%, out-degree percentile contributes 30%, and sitelinks percentile contributes 20%.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="formula">
+        <strong>Formula:</strong>
+        <code>popularity_score = 0.5 * pageviews_norm + 0.3 * degree_norm + 0.2 * sitelinks_norm</code>
+      </div>
+
+      <pre><code>{
+  "popularity": {
+    "score": 0.553479,
+    "components": {
+      "pageviews_365d": 0,
+      "out_degree": 19,
+      "sitelinks": 2
+    },
+    "normalization": {
+      "pageviews_norm": 0.338707,
+      "degree_norm": 0.853548,
+      "sitelinks_norm": 0.640305
+    },
+    "policy": {
+      "window_days": 365,
+      "wiki": "enwiki",
+      "pageviews_project": "en.wikipedia.org"
+    }
+  }
+}</code></pre>
+      <p class="note">
+        Popularity buckets used in summaries are derived by sorting cases by score: the bottom 20% are tail, the top 20% are head, and the rest are mid. Missing scores are bucketed as unknown.
+      </p>
+    </section>
+
+    <section id="records">
+      <h2>Benchmark Record Shape</h2>
+      <p class="lead">
+        The classified benchmark record is the main case object used for evaluation. It combines repair provenance, target information, labels, popularity, world-state reference, and the classifier decision.
+      </p>
+
+      <h3>Reduced A-box example</h3>
+      <pre><code>{
+  "id": "repair_Q770225_2086423553",
+  "qid": "Q770225",
+  "property": "P3795",
+  "track": "A_BOX",
+  "labels_en": {
+    "qid": {"label": "Torilis nodosa"},
+    "property": {"label": "Flora of Israel Online plant ID"}
+  },
+  "violation_context": {
+    "report_violation_type_normalized": "Format",
+    "report_fix_date": "historical report timestamp"
+  },
+  "repair_target": {
+    "kind": "A_BOX",
+    "action": "UPDATE",
+    "old_value": ["TORNOD/"],
+    "new_value": ["TORNOD"]
+  },
+  "context_ref": {
+    "world_state_id": "repair_Q770225_2086423553"
+  },
+  "classification": {
+    "class": "TypeA",
+    "subtype": "LOGICAL",
+    "confidence": "high"
+  }
+}</code></pre>
+
+      <h3>Reduced T-box example</h3>
+      <pre><code>{
+  "id": "reform_Q18065630_P645_722137891",
+  "qid": "Q18065630",
+  "property": "P645",
+  "track": "T_BOX",
+  "labels_en": {
+    "qid": {"label": "NPIPA5"},
+    "property": {"label": "genomic end"}
+  },
+  "violation_context": {
+    "report_violation_type_normalized": "Unique value"
+  },
+  "repair_target": {
+    "kind": "T_BOX",
+    "property_revision_id": 722137891,
+    "constraint_delta": {
+      "changed_constraint_types": ["Q21502410"],
+      "signature_before": ["... distinct-values constraint present ..."],
+      "signature_after": ["... distinct-values constraint removed ..."]
+    }
+  },
+  "classification": {
+    "class": "T_BOX",
+    "subtype": "SCHEMA_UPDATE",
+    "confidence": "medium"
+  }
+}</code></pre>
+    </section>
+
+    <section id="classification">
+      <h2>How Cases Are Classified</h2>
+      <p class="lead">
+        Classification is deterministic for fixed artifacts. It first decides the repair locus, then decides what information source is required for A-box cases.
+      </p>
+
+      <div class="panel">
+        <h3>What the classifier is trying to answer</h3>
+        <p>
+          The classifier is not trying to predict whether a repair is correct. The historical repair target already defines the benchmark target. Classification instead answers a methodological question: what kind of information would a system need in order to reproduce or justify that target repair?
+        </p>
+        <p>
+          This distinction matters because two cases can have similar surface shapes but require different capabilities. Removing a value because a format rule is violated is a different task from replacing a value using evidence in a neighboring node, and both are different from changing the schema because the property constraint itself has become outdated.
+        </p>
+      </div>
+
+      <h3>Inputs used for classification</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Input</th>
+            <th>Role in the decision</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Historical repair record</td>
+            <td>Provides the focus entity, target property, repair track, old value, new value, action, violation report context, and T-box constraint delta when present.</td>
+          </tr>
+          <tr>
+            <td>Frozen world-state context</td>
+            <td>Provides local graph evidence, labels, descriptions, one-hop neighbors, and current property constraint metadata.</td>
+          </tr>
+          <tr>
+            <td>Reconstructed pre-repair target state</td>
+            <td>Replaces the current target-property values with the historical pre-repair values so local evidence checks do not accidentally see the answer after the repair.</td>
+          </tr>
+          <tr>
+            <td>Constraint metadata</td>
+            <td>Identifies rule-deterministic cases and provides the constraint-family inventory used for T-box subtype inference.</td>
+          </tr>
+          <tr>
+            <td>Resolved truth tokens</td>
+            <td>Represents the historical repair target as comparable tokens, such as QIDs, literals, dates, or normalized values, so the classifier can ask where the truth was available.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Decision priority</h3>
+      <p>
+        The classifier runs in a fixed priority order. Earlier decisions intentionally mask later ones. For example, a delete action is treated as logical rejection before local evidence is considered; a T-box reform is kept out of the A-box Type A/B/C taxonomy because it is a schema-level repair.
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Decision order</th>
+            <th>Classification result</th>
+            <th>Reason</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>World-state entry missing</td>
+            <td><span class="tag red">TypeC / EXTERNAL</span></td>
+            <td>Without context, local reasoning cannot be safely established. This is a low-confidence fallback, not proof that the case is truly external.</td>
+          </tr>
+          <tr>
+            <td>Historical target is schema-level</td>
+            <td><span class="tag violet">T_BOX</span></td>
+            <td>The repair changed the property constraint signature rather than an entity statement.</td>
+          </tr>
+          <tr>
+            <td>A-box delete action</td>
+            <td><span class="tag green">TypeA / REJECTION</span></td>
+            <td>Deleting an invalid value is treated as logical rejection or cleaning.</td>
+          </tr>
+          <tr>
+            <td>Rule-deterministic repair</td>
+            <td><span class="tag green">TypeA / LOGICAL</span></td>
+            <td>The constraint itself uniquely identifies the repair signal.</td>
+          </tr>
+          <tr>
+            <td>Truth found in local context</td>
+            <td><span class="tag gold">TypeB / LOCAL...</span></td>
+            <td>The target truth appears in focus-node text, synthetic pre-repair target values, neighbor ids, or neighbor text.</td>
+          </tr>
+          <tr>
+            <td>No local or rule-deterministic evidence</td>
+            <td><span class="tag red">TypeC / EXTERNAL</span></td>
+            <td>The repair requires information beyond the local graph context.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>A-box logical rules</h3>
+      <p>
+        A case is Type A when the repair can be determined from the rule, the violation shape, or the rejection of an invalid value, without needing graph traversal or external evidence. The classifier distinguishes two main Type A pathways.
+      </p>
+      <div class="grid">
+        <div class="card">
+          <span class="tag green">REJECTION</span>
+          <h3>Delete-as-cleaning</h3>
+          <p>
+            If the historical A-box action deleted the violating value, the case is labeled Type A because the task is to reject a value that should not be present. The system does not need to retrieve a replacement truth.
+          </p>
+        </div>
+        <div class="card">
+          <span class="tag green">LOGICAL</span>
+          <h3>Rule-deterministic repair</h3>
+          <p>
+            If the constraint uniquely points to the fix, the case is logical. Supported first-wave signals include format constraints, singleton one-of constraints, and range constraints when the repaired value matches a rule-implied boundary.
+          </p>
+        </div>
+      </div>
+
+      <h3>Rule-deterministic examples</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Constraint family</th>
+            <th>Why it can be Type A</th>
+            <th>Confidence behavior</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Format</td>
+            <td>A malformed literal can often be corrected by the regular expression or by the format violation itself, such as removing an illegal trailing character.</td>
+            <td>Usually high when constraint metadata is present; report-type fallback can also support a format signal.</td>
+          </tr>
+          <tr>
+            <td>One-of singleton</td>
+            <td>If exactly one value is allowed, the rule itself identifies the target value.</td>
+            <td>High when the repaired truth matches the singleton allowed value; medium when singleton structure is present but truth evidence is weaker.</td>
+          </tr>
+          <tr>
+            <td>Range boundary</td>
+            <td>If the repaired value is the rule boundary itself, the repair can be inferred from the constraint rather than external knowledge.</td>
+            <td>High for direct numeric or date boundary matches; medium when the signal is only visible through a rule summary.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>A-box local evidence</h3>
+      <p>
+        Local evidence is searched after reconstructing the target property in its pre-repair state. QID truths require exact id matches. Literal truths use normalized text matching. Date matches must preserve enough precision; a year-only mention does not satisfy a full-date truth.
+      </p>
+      <p>
+        Local evidence is gathered into separate buckets. The classifier then checks whether the historical repair target appears in any bucket. The subtype records where the evidence was found.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Local subtype</th>
+            <th>Evidence source</th>
+            <th>Interpretation</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>LOCAL_FOCUS_PREREPAIR_PROPERTY</code></td>
+            <td>Values already present on the reconstructed focus node before the target repair.</td>
+            <td>The graph already contains the needed truth near the target property; the task is selecting or preserving the right local value.</td>
+          </tr>
+          <tr>
+            <td><code>LOCAL_NEIGHBOR_IDS</code></td>
+            <td>Exact ids in one-hop outgoing neighbor targets.</td>
+            <td>The answer is structurally visible in the immediate graph neighborhood.</td>
+          </tr>
+          <tr>
+            <td><code>LOCAL_TEXT</code></td>
+            <td>Focus-node or neighbor labels and descriptions.</td>
+            <td>The answer is visible in local text, but this is slightly weaker evidence than an exact graph-id match.</td>
+          </tr>
+          <tr>
+            <td><code>LOCAL_MIXED</code></td>
+            <td>More than one local source type.</td>
+            <td>The repair target is locally available through multiple evidence channels.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>How truth matching works</h3>
+      <div class="panel">
+        <p>
+          The classifier first extracts comparable truth tokens from the historical target. For A-box updates, this usually means the repaired new value; for deletes, no replacement truth is expected. Values are normalized into comparable atoms so that graph ids, literals, and dates can be matched consistently.
+        </p>
+        <p>
+          QID repairs require exact QID matches. Literal repairs are normalized before comparison so superficial casing or spacing differences do not dominate. Date repairs require adequate precision: a local mention of only a year is not treated as enough evidence for a full date repair. Post-repair target-property values from the frozen world state are excluded so the classifier does not label a case local merely because the answer is already present after the historical repair.
+        </p>
+      </div>
+
+      <h3>External fallback</h3>
+      <p>
+        A case becomes Type C when the repair target is not rule-deterministic and the truth cannot be found in the local buckets. This does not mean the repair is unknowable. It means a benchmarked system would need some non-local source: an external database, source citation, web evidence, longer graph traversal, or domain knowledge not present in the supplied local context.
+      </p>
+      <p>
+        Confidence is medium by default for external fallbacks. It drops to low when the case should have truth tokens but the available artifacts cannot extract them cleanly, because then the external label is partly a consequence of missing or weak metadata.
+      </p>
+
+      <h3>T-box subtypes</h3>
+      <p>
+        T-box cases are assigned schema-change subtypes such as range widened, range narrowed, allowed set expanded, allowed set contracted, generic schema update, or coincidental schema change. Clear directional changes receive higher confidence than weakly causal or coincidental changes.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>T-box subtype</th>
+            <th>What changed</th>
+            <th>Typical confidence</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>RELAXATION_RANGE_WIDENED</code></td>
+            <td>A numeric or date range became more permissive, such as a lower minimum or higher maximum.</td>
+            <td>High when the direction is clear.</td>
+          </tr>
+          <tr>
+            <td><code>RESTRICTION_RANGE_NARROWED</code></td>
+            <td>A range became more restrictive, such as a higher minimum or lower maximum.</td>
+            <td>High when the direction is clear.</td>
+          </tr>
+          <tr>
+            <td><code>RELAXATION_SET_EXPANSION</code></td>
+            <td>An allowed set grew, such as more permitted values or types.</td>
+            <td>High when the before/after set relation is clear.</td>
+          </tr>
+          <tr>
+            <td><code>RESTRICTION_SET_CONTRACTION</code></td>
+            <td>An allowed set shrank.</td>
+            <td>High when the before/after set relation is clear.</td>
+          </tr>
+          <tr>
+            <td><code>SCHEMA_UPDATE</code></td>
+            <td>The constraint signature changed, but the change is not cleanly reducible to a narrower directional family.</td>
+            <td>Medium by default.</td>
+          </tr>
+          <tr>
+            <td><code>COINCIDENTAL_SCHEMA_CHANGE</code></td>
+            <td>The property schema changed near the event, but the violation type does not map convincingly to the changed constraint family.</td>
+            <td>Low because causality is weak.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>What the decision trace records</h3>
+      <p>
+        Each classification includes a decision trace so later audits can see why the class was assigned. The trace records whether the case was a delete, whether a rule-deterministic branch fired, whether local evidence was found, whether the classifier fell back to external, and which final branch produced the label.
+      </p>
+      <pre><code>{
+  "classification": {
+    "class": "TypeB",
+    "subtype": "LOCAL_NEIGHBOR_IDS",
+    "confidence": "high",
+    "decision_trace": [
+      {"step": "is_delete", "result": false},
+      {"step": "rule_deterministic", "result": false},
+      {
+        "step": "local_availability",
+        "result": true,
+        "evidence": {
+          "matches": [
+            {"source": "NEIGHBOR_IDS", "token": "Q123"}
+          ]
+        }
+      },
+      {"step": "fallback_external", "result": false},
+      {"step": "branch", "result": "local_match"}
+    ],
+    "rationale": "Truth tokens matched neighbor identifiers."
+  }
+}</code></pre>
+
+      <h3>How to read confidence</h3>
+      <p>
+        Confidence is a classifier confidence, not a model-performance score and not a truth probability. High means the artifact evidence cleanly supports the label. Medium usually means the branch is plausible but less direct, such as local text evidence or a generic schema update. Low means the label is a fallback, a coincidental T-box signal, or depends on incomplete context.
+      </p>
+    </section>
+
+    <section id="proposals">
+      <h2>Prediction And Proposal Validity</h2>
+      <p class="lead">
+        A model prediction is first normalized into a proposal contract. Evaluation then asks whether that normalized proposal is executable and successful.
+      </p>
+
+      <div class="split">
+        <div class="panel">
+          <h3>A-box proposal contract</h3>
+          <ul>
+            <li>Targets one entity id and one property id.</li>
+            <li>Uses operations from <code>SET</code>, <code>ADD</code>, <code>REMOVE</code>, and <code>DELETE_ALL</code>.</li>
+            <li>Normalizes ids, finite numbers, dates, provenance, uncertainty, and a deterministic hash.</li>
+            <li>Is executable only when the proposal target matches the benchmark entity and target property.</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3>T-box proposal contract</h3>
+          <ul>
+            <li>Targets one property id and one constraint-family id.</li>
+            <li>Uses supported schema-reform actions such as set expansion, set contraction, range widening, range narrowing, or generic schema update.</li>
+            <li>Normalizes the proposed post-reform constraint signature.</li>
+            <li>Rejects constraint-family ids outside the case-local allowlist when that allowlist is available.</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>Auditability requirements</h3>
+      <p>
+        A proposal can normalize successfully but still fail acceptance if it is not auditable. Acceptance requires a non-empty rationale, at least one usable provenance entry, and a numeric proposal-level uncertainty confidence.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Provenance kind</th>
+            <th>Counted as complete when</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>WEB</td>
+            <td>A URL is present.</td>
+          </tr>
+          <tr>
+            <td>KG</td>
+            <td>A graph node id is present.</td>
+          </tr>
+          <tr>
+            <td>HISTORY</td>
+            <td>A revision id is present.</td>
+          </tr>
+          <tr>
+            <td>OTHER</td>
+            <td>The entry is structurally present and not one of the stricter provenance kinds above.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="metrics">
+      <h2>Exact Evaluation Metrics</h2>
+      <p class="lead">
+        Metrics are computed per case and then averaged over applicable cases. Some metrics only apply to A-box or T-box records.
+      </p>
+
+      <h3>A-box metrics</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Metric</th>
+            <th>Exact calculation</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>proposal_valid</code></td>
+            <td>True when a normalized proposal object exists for the case.</td>
+          </tr>
+          <tr>
+            <td><code>proposal_executable</code></td>
+            <td>True when the proposal target entity equals the benchmark focus entity and the proposal target property equals the benchmark target property.</td>
+          </tr>
+          <tr>
+            <td><code>a_box_exact_value_match</code></td>
+            <td>Apply proposal operations to the reconstructed pre-repair property state; true when the resulting target-property values equal the historical repaired target values.</td>
+          </tr>
+          <tr>
+            <td><code>a_box_exact_action_match</code></td>
+            <td>Derive the action from before/after values: delete if values disappear, create if absent values appear, update if values change, otherwise no-op. True when this derived action equals the historical repair action.</td>
+          </tr>
+          <tr>
+            <td><code>functional_success</code></td>
+            <td>True when the proposal is executable and the resulting target-property values exactly match the historical repaired values.</td>
+          </tr>
+          <tr>
+            <td><code>exact_historical_agreement</code></td>
+            <td>True when both exact action match and exact value match are true.</td>
+          </tr>
+          <tr>
+            <td><code>a_box_regression_pass</code></td>
+            <td>True when the count of supported local target-property constraint violations after applying the proposal is less than or equal to the count before applying it.</td>
+          </tr>
+          <tr>
+            <td><code>information_preservation</code></td>
+            <td>1.0 for exact action and value agreement; -0.5 when the historical action was not delete but the proposal removes all target values; otherwise 0.0.</td>
+          </tr>
+          <tr>
+            <td><code>accepted</code></td>
+            <td>True when functional success, regression pass, and auditability completeness are all true.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>T-box metrics</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Metric</th>
+            <th>Exact calculation</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>changed_constraint_type_hit</code></td>
+            <td>True when the proposed target constraint-family id appears in the historical set of changed constraint types. If that set is absent, it is inferred from the before/after signatures.</td>
+          </tr>
+          <tr>
+            <td><code>proposal_executable</code></td>
+            <td>True when the proposal target property equals the benchmark target property and <code>changed_constraint_type_hit</code> is true.</td>
+          </tr>
+          <tr>
+            <td><code>exact_action_match</code></td>
+            <td>True when the proposed schema action exactly equals the historical classification subtype.</td>
+          </tr>
+          <tr>
+            <td><code>exact_signature_match</code></td>
+            <td>True when the normalized proposed post-reform signature exactly equals the normalized historical post-reform signature.</td>
+          </tr>
+          <tr>
+            <td><code>exact_historical_agreement</code></td>
+            <td>True when exact action match and exact signature match are both true.</td>
+          </tr>
+          <tr>
+            <td><code>functional_success</code></td>
+            <td>For T-box cases, this is intentionally strict and equals acceptance: valid, executable, exact historical agreement, and auditability complete.</td>
+          </tr>
+          <tr>
+            <td><code>semantic_success</code></td>
+            <td>True when the proposal is executable, targets the historical constraint family, maps to the same semantic reform family as the historical change, and its signature direction is compatible when direction can be inferred.</td>
+          </tr>
+          <tr>
+            <td><code>signature_after_jaccard</code></td>
+            <td>Jaccard overlap between the set of normalized JSON entries in the proposed post-reform signature and the historical post-reform signature.</td>
+          </tr>
+          <tr>
+            <td><code>proposal_admits_current_values</code></td>
+            <td>For supported one-of, range, and format constraints, checks whether current target-property values would be admitted by the proposed post-reform signature. It is null when the check is not applicable.</td>
+          </tr>
+          <tr>
+            <td><code>accepted</code></td>
+            <td>True when the proposal is valid, executable, an exact reform match, and auditability complete.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Shared metrics</h3>
+      <div class="grid">
+        <div class="card">
+          <h3>Provenance completeness</h3>
+          <p>Number of complete provenance entries divided by total provenance entries. Empty or malformed provenance receives 0.0.</p>
+        </div>
+        <div class="card">
+          <h3>Auditability complete</h3>
+          <p>1.0 when rationale is non-empty, provenance exists with completeness above 0.0, and uncertainty has numeric confidence. Otherwise 0.0.</p>
+        </div>
+        <div class="card">
+          <h3>Conversion rate</h3>
+          <p>1.0 for an accepted attempted proposal, 0.0 for an attempted but unaccepted proposal, and null when no proposal attempt exists.</p>
+        </div>
+        <div class="card">
+          <h3>Tokens to fix</h3>
+          <p>If accepted and token usage exists, this is proposal total tokens plus diagnosis total tokens. It is null for unaccepted proposals or missing usage.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="constraints">
+      <h2>How Constraint Validity Is Checked</h2>
+      <p class="lead">
+        Constraint checks are deliberately conservative. The evaluator only counts supported families represented in the stored constraint metadata, rather than pretending to reproduce every Wikidata validation behavior.
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Constraint family</th>
+            <th>Validity check</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Format constraint</td>
+            <td>Extract regular-expression patterns from qualifier <code>P1793</code>. A violation is counted if any target value fails to fully match all available pattern alternatives.</td>
+          </tr>
+          <tr>
+            <td>One-of constraint</td>
+            <td>Extract allowed values from qualifier <code>P2305</code>. A violation is counted if any target value is outside the allowed set.</td>
+          </tr>
+          <tr>
+            <td>Range constraint</td>
+            <td>Extract numeric lower and upper bounds from range qualifiers. A violation is counted if a numeric target value falls below the minimum or above the maximum.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>A-box regression rule</h3>
+      <div class="formula">
+        <code>regression_pass = supported_violations_after &lt;= supported_violations_before</code>
+      </div>
+      <p>
+        This means a proposal is not rewarded for fixing the target value while creating additional supported target-property violations on the same focus node.
+      </p>
+
+      <h3>T-box admissibility rule</h3>
+      <p>
+        For supported T-box families, the evaluator can ask whether the proposed schema would admit the current target-property values. One-of reforms check membership in the proposed allowed set, range reforms check proposed numeric bounds, and format reforms check proposed regular expressions.
+      </p>
+    </section>
+
+    <section id="summary">
+      <h2>Aggregation And Reporting</h2>
+      <p class="lead">
+        Per-case traces are aggregated into summary rates and means. Summaries are grouped so researchers can inspect behavior by information class, subtype, track, ablation bundle, and popularity bucket.
+      </p>
+      <div class="panel">
+        <p>
+          Rates are computed as arithmetic means over cases where the metric is numeric. Metrics that do not apply to a track remain null for that track and are excluded from the denominator. Summary objects therefore include applicability counts so that, for example, T-box-only semantic metrics are not mistaken for all-case metrics.
+        </p>
+        <p>
+          The reporting layer also tracks proposal parse errors, proposal request errors, track-diagnosis request errors, parser-error messages, aggregate token totals, diagnosis presence, and exact track-diagnosis accuracy when diagnosis artifacts are supplied.
+        </p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

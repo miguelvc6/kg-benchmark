@@ -8,6 +8,8 @@ It is intentionally shorter and more policy-oriented than the material in
 
 Start here:
 
+- [Project Overview Report](./Project_Overview_Report.html): standalone HTML overview of the project, scientific value, data construction, evaluation, examples, limitations, and future work
+- [Project Technical Appendix](./Project_Technical_Appendix.html): deeper standalone HTML companion covering world-state context, popularity scoring, JSON examples, classification rules, proposal validity, and metric calculations
 - [Dataset Card](./Dataset_Card.md): what the dataset is, what it contains, and what it is for
 - [Benchmark Invariants](./Benchmark_Invariants.md): the rules that must stay true when loading, prompting, and evaluating cases
 - [Correct Usage and Pitfalls](./Correct_Usage_and_Pitfalls.md): the shortest path to using the benchmark correctly and the most common failure modes

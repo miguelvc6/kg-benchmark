@@ -5,6 +5,7 @@ This area contains repository-facing documentation: how the benchmark is built, 
 - [Pipeline Implementation](./Pipeline_Implementation.md): current stage-by-stage workflow, scripts, CLI entry points, caches, and outputs.
 - [Artifact Schemas](./Artifact_Schemas.md): structure of the Stage 2, Stage 3, Stage 4, and Stage 5 artifacts.
 - [Classifier Specification](./Classifier_Specification.md): current classification logic implemented in `src/classifier.py`.
+- [Confidence Frequency Report](./Confidence_Frequency_Report.md): script and JSON output for confidence-value frequencies by benchmark strata.
 - [Benchmark Selection](./Benchmark_Selection.md): deterministic paper-subset manifest generation and runtime filtering.
 - [Proposal Validation](./Proposal_Validation.md): A-box and T-box proposal normalization contracts and runtime modules.
 - [Evaluation Harness](./Evaluation_Harness.md): benchmark scoring workflow, outputs, and metric semantics.
