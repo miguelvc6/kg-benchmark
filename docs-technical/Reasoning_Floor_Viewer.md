@@ -10,13 +10,13 @@ Install the UI extra, then start the app:
 
 ```bash
 uv sync --extra ui
-uv run streamlit run src/reasoning_floor_viewer.py -- --reports-root reports/reasoning_floor
+uv run streamlit run scripts/reasoning_floor_viewer.py -- --reports-root reports/reasoning_floor
 ```
 
 Optional overrides are available when the app needs to reconstruct prompts or compute evaluation metrics for runs that do not have `reasoning_floor_summary.json`, `evaluation_traces.jsonl`, or `evaluation_summary.json` on disk:
 
 ```bash
-uv run streamlit run src/reasoning_floor_viewer.py -- \
+uv run streamlit run scripts/reasoning_floor_viewer.py -- \
   --reports-root reports/reasoning_floor \
   --classified-benchmark data/04_classified_benchmark.jsonl \
   --world-state data/03_world_state.json

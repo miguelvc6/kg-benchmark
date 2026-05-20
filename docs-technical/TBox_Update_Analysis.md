@@ -1,6 +1,6 @@
 # T-BOX Update Analysis
 
-`src/analyze_tbox_updates.py` summarizes how many Stage 4 `T_BOX` benchmark cases point back to the same property-level schema edit.
+`scripts/analyze_tbox_updates.py` summarizes how many Stage 4 `T_BOX` benchmark cases point back to the same property-level schema edit.
 
 This answers the question "which T-BOX updates generated these repairs?" more directly than the raw T-BOX case count, because many violations can map to a single `repair_target.property_revision_id`.
 
@@ -23,7 +23,7 @@ The script writes a small report bundle under `reports/tbox_update_analysis/` by
 ## Usage
 
 ```bash
-uv run python src/analyze_tbox_updates.py \
+uv run python scripts/analyze_tbox_updates.py \
   --input data/04_classified_benchmark.jsonl \
   --output-dir reports/tbox_update_analysis \
   --top-n 25 \

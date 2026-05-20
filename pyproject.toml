@@ -42,24 +42,20 @@ kg-splitter = "splitter:main"
 kg-select-benchmark-cases = "select_benchmark_cases:main"
 kg-evaluate = "evaluate:main"
 kg-reasoning-floor = "reasoning_floor:main"
-kg-reasoning-floor-viewer = "reasoning_floor_viewer:main"
-kg-analyze-tbox-updates = "analyze_tbox_updates:main"
+kg-reasoning-floor-viewer = "scripts.reasoning_floor_viewer:main"
+kg-analyze-tbox-updates = "scripts.analyze_tbox_updates:main"
 
 [tool.setuptools]
-package-dir = {"" = "src"}
+package-dir = {"" = "src", "scripts" = "scripts"}
+packages = ["guardian", "lib", "scripts"]
 py-modules = [
-    "analyze_tbox_updates",
     "classifier",
     "evaluate",
     "fetcher",
     "reasoning_floor",
-    "reasoning_floor_viewer",
     "select_benchmark_cases",
     "splitter",
 ]
-
-[tool.setuptools.packages.find]
-where = ["src"]
 
 [tool.ruff]
 line-length = 120

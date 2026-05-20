@@ -34,8 +34,8 @@ when code paths, CLI behavior, artifacts, or engineering choices change.
 - `src/select_benchmark_cases.py`: deterministic paper-subset selection manifest builder
 - `src/evaluate.py`: benchmark evaluation entry point
 - `src/reasoning_floor.py`: zero-shot baseline runner
-- `src/reasoning_floor_viewer.py`: Streamlit viewer for reasoning-floor runs
-- `src/analyze_tbox_updates.py`: frequency analysis for Stage 4 T-box update groups
+- `scripts/reasoning_floor_viewer.py`: Streamlit viewer for reasoning-floor runs
+- `scripts/analyze_tbox_updates.py`: frequency analysis for Stage 4 T-box update groups
 - `src/lib/`: shared pipeline modules
 - `src/guardian/`: proposal normalization, evaluation, and reasoning-floor support modules
 - `data/`: generated artifacts and caches
@@ -150,13 +150,13 @@ Launch the reasoning-floor viewer:
 
 ```bash
 uv sync --extra ui
-uv run streamlit run src/reasoning_floor_viewer.py -- --reports-root reports/reasoning_floor
+uv run streamlit run scripts/reasoning_floor_viewer.py -- --reports-root reports/reasoning_floor
 ```
 
 Analyze which property-level T-box updates dominate Stage 4:
 
 ```bash
-uv run python src/analyze_tbox_updates.py --input data/04_classified_benchmark.jsonl
+uv run python scripts/analyze_tbox_updates.py --input data/04_classified_benchmark.jsonl
 ```
 
 Run tests:
