@@ -254,7 +254,7 @@ def load_bundle_debug_data(
         traces_source=traces_source,
         case_rows=case_rows,
         bundle_manifest_rows=bundle_manifest_rows,
-        usage_summary=_summarize_usage(bundle_manifest_rows),
+        usage_summary=_summarize_usage(bundle_manifest_rows, run_summary),
         parse_status_counts=_parse_status_counts(bundle_manifest_rows),
         input_paths=input_paths,
         input_sources=input_sources,
@@ -272,7 +272,10 @@ def build_case_prompt_debug(bundle_data: BundleDebugData, case_id: str) -> CaseP
             diagnosis_prompt=None,
             error=f"Unknown case_id {case_id!r}.",
         )
-    if not isinstance(case_row.record, dict):
+    record = case_row.record
+    if not isinstance(record, dict):
+        record = load_case_record(bundle_data.input_paths.get("classified_benchmark"), case_id)
+    if not isinstance(record, dict):
         return CasePromptDebug(
             case_id=case_id,
             bundle_name=bundle_data.bundle_name,
@@ -295,13 +298,13 @@ def build_case_prompt_debug(bundle_data: BundleDebugData, case_id: str) -> CaseP
             if isinstance(manifest_track, str) and manifest_track in {"A_BOX", "T_BOX"}:
                 proposal_track_used = manifest_track
         proposal_prompt = build_prompt_bundle(
-            case_row.record,
+            record,
             world_state_entry,
             bundle_data.bundle_name,
             proposal_track=proposal_track_used,
         )
         diagnosis_prompt = build_track_diagnosis_prompt_bundle(
-            case_row.record,
+            record,
             world_state_entry,
             bundle_data.bundle_name,
         )
@@ -321,6 +324,21 @@ def build_case_prompt_debug(bundle_data: BundleDebugData, case_id: str) -> CaseP
         proposal_prompt=proposal_prompt,
         diagnosis_prompt=diagnosis_prompt,
     )
+
+
+def load_case_record(classified_path: str | Path | None, case_id: str) -> Optional[dict[str, Any]]:
+    records = _load_case_records(classified_path, [case_id])
+    return records.get(case_id)
+
+
+def load_world_state_entry(world_state_path: str | Path | None, case_id: str) -> Optional[dict[str, Any]]:
+    if not world_state_path:
+        return None
+    path = Path(world_state_path)
+    if not path.exists():
+        return None
+    with WorldStateStore(path, LOG) as store:
+        return store.get(case_id)
 
 
 def extract_response_content(raw_entry: Optional[dict[str, Any]]) -> Optional[str]:
@@ -487,6 +505,8 @@ def _load_case_records(
         if not isinstance(case_id, str) or case_id not in allowed:
             continue
         records[case_id] = row
+        if len(records) >= len(allowed):
+            break
     return records
 
 
@@ -552,7 +572,10 @@ def _build_request_input_map(
     return request_map
 
 
-def _summarize_usage(rows: list[dict[str, Any]]) -> dict[str, Any]:
+def _summarize_usage(
+    rows: list[dict[str, Any]],
+    run_summary: Optional[dict[str, Any]] = None,
+) -> dict[str, Any]:
     totals = {
         "prompt_tokens": 0,
         "completion_tokens": 0,
@@ -605,12 +628,25 @@ def _summarize_usage(rows: list[dict[str, Any]]) -> dict[str, Any]:
         cost_estimation_multiplier = usage.get("cost_estimation_multiplier")
         if isinstance(cost_estimation_multiplier, (int, float)):
             cost_multipliers.add(float(cost_estimation_multiplier))
+    elapsed_seconds: Optional[float] = round(totals["elapsed_seconds"], 6) if has_elapsed else None
+    elapsed_source = "manifest_usage" if has_elapsed else None
+    if elapsed_seconds is None and isinstance(run_summary, dict):
+        run_info = run_summary.get("run_info")
+        if isinstance(run_info, dict):
+            for key in ("generation_elapsed_seconds", "elapsed_seconds"):
+                value = run_info.get(key)
+                if isinstance(value, (int, float)):
+                    elapsed_seconds = round(float(value), 6)
+                    elapsed_source = f"run_info.{key}"
+                    break
+
     return {
         "prompt_tokens": totals["prompt_tokens"] if has_prompt else None,
         "completion_tokens": totals["completion_tokens"] if has_completion else None,
         "total_tokens": totals["total_tokens"] if has_total else None,
         "estimated_cost_usd": round(totals["estimated_cost_usd"], 10) if has_cost else None,
-        "elapsed_seconds": round(totals["elapsed_seconds"], 6) if has_elapsed else None,
+        "elapsed_seconds": elapsed_seconds,
+        "elapsed_seconds_source": elapsed_source,
         "call_count": totals["call_count"],
         "batch_pricing_applied": next(iter(batch_pricing_flags)) if len(batch_pricing_flags) == 1 else None,
         "cost_estimation_mode": next(iter(cost_modes)) if len(cost_modes) == 1 else None,

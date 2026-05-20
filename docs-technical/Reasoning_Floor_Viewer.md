@@ -55,9 +55,13 @@ If the required benchmark inputs cannot be found, the app still shows raw and no
 
 - Run and bundle summary metrics with parse-status breakdowns
 - Filtered case list with next and previous navigation
-- Reconstructed prompt inputs for track diagnosis and repair proposal
+- Filters for historical track, proposal parse status, proposal type, A-box classification type, T-box subtype, classification confidence, and acceptance status
+- Instance inputs, with the full Stage 4 benchmark record and frozen world-state context loaded on demand so initial render stays responsive on large artifacts
+- Prompt inputs for track diagnosis and repair proposal
 - Single-case diagnosis and proposal outputs, including raw provider payloads
 - Single-case evaluation trace and raw JSON inspectors
+
+For batch runs, per-call `usage.elapsed_seconds` values in `run_manifest.jsonl` may be null because provider work completes remotely. In that case, the main elapsed-seconds metric falls back to `run_info.generation_elapsed_seconds` or `run_info.elapsed_seconds` from `reasoning_floor_summary.json`.
 
 ## Related Docs
 

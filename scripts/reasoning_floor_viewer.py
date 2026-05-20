@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import html
 import json
 import sys
 from typing import Any, Optional
@@ -10,7 +11,7 @@ from typing import Any, Optional
 import streamlit as st
 
 from guardian.reasoning import PromptBundle
-from guardian.reasoning_floor_viewer_data import (
+from scripts.reasoning_floor_viewer_data import (
     BundleDebugData,
     CaseDebugRecord,
     build_case_prompt_debug,
@@ -18,6 +19,7 @@ from guardian.reasoning_floor_viewer_data import (
     extract_response_content,
     list_run_bundles,
     load_bundle_debug_data,
+    load_world_state_entry,
 )
 
 
@@ -46,6 +48,25 @@ def load_bundle_data_cached(
         world_state=world_state,
         include_case_records=False,
     )
+
+
+@st.cache_data(show_spinner=False)
+def load_world_state_entry_cached(world_state_path: Optional[str], case_id: str) -> Optional[dict[str, Any]]:
+    return load_world_state_entry(world_state_path, case_id)
+
+
+@st.cache_data(show_spinner=False)
+def load_case_record_cached(classified_benchmark_path: Optional[str], case_id: str) -> Optional[dict[str, Any]]:
+    from scripts.reasoning_floor_viewer_data import load_case_record
+
+    return load_case_record(classified_benchmark_path, case_id)
+
+
+A_BOX_TYPE_LABELS = {
+    "TypeA": "Type A Logical",
+    "TypeB": "Type B Local",
+    "TypeC": "Type C External",
+}
 
 
 def main() -> None:
@@ -120,6 +141,49 @@ def main() -> None:
         default=proposal_type_options,
         key="proposal_type_filter",
     )
+    a_box_type_options = sorted(
+        {
+            classification_class(row)
+            for row in bundle_data.case_rows
+            if classification_class(row) in {"TypeA", "TypeB", "TypeC"}
+        }
+    )
+    selected_a_box_type_labels = st.sidebar.multiselect(
+        "A Box Type",
+        [A_BOX_TYPE_LABELS[value] for value in a_box_type_options],
+        default=[A_BOX_TYPE_LABELS[value] for value in a_box_type_options],
+        key="a_box_type_filter",
+    )
+    selected_a_box_types = {
+        value for value, label in A_BOX_TYPE_LABELS.items() if label in selected_a_box_type_labels
+    }
+    t_box_subtype_options = sorted(
+        {
+            classification_subtype(row)
+            for row in bundle_data.case_rows
+            if classification_class(row) == "T_BOX" and classification_subtype(row)
+        }
+    )
+    selected_t_box_subtypes = st.sidebar.multiselect(
+        "T Box Subtype",
+        t_box_subtype_options,
+        default=t_box_subtype_options,
+        key="t_box_subtype_filter",
+    )
+    confidence_options = sorted(
+        {classification_confidence(row) for row in bundle_data.case_rows if classification_confidence(row)},
+        key=confidence_sort_key,
+    )
+    selected_confidences = st.sidebar.multiselect(
+        "Classification confidence",
+        confidence_options,
+        default=confidence_options,
+        key="classification_confidence_filter",
+    )
+    if not confidence_options:
+        st.sidebar.caption(
+            "Classification confidence is only available when classified benchmark records are loaded."
+        )
     accepted_filter = st.sidebar.selectbox(
         "Accepted",
         options=["all", "accepted", "rejected", "unknown"],
@@ -132,6 +196,9 @@ def main() -> None:
         tracks=set(selected_tracks),
         parse_statuses=set(selected_parse_status),
         proposal_types=set(selected_proposal_types),
+        a_box_types=selected_a_box_types,
+        t_box_subtypes=set(selected_t_box_subtypes),
+        classification_confidences=set(selected_confidences),
         accepted_filter=accepted_filter,
     )
     if not filtered_cases:
@@ -175,10 +242,12 @@ def main() -> None:
     with st.expander("Filtered cases", expanded=False):
         st.dataframe([case_table_row(row) for row in filtered_cases], use_container_width=True, hide_index=True)
 
-    tabs = st.tabs(["Overview", "Inputs", "Track Prediction", "Repair Proposal", "Evaluation", "Raw JSON"])
+    tabs = st.tabs(["Overview", "Inputs", "Prompts", "Track Prediction", "Repair Proposal", "Evaluation", "Raw JSON"])
     with tabs[0]:
         render_overview_tab(bundle_data, selected_case)
     with tabs[1]:
+        render_case_inputs_tab(bundle_data, selected_case)
+    with tabs[2]:
         if st.button(
             "Reconstruct prompts from source inputs",
             key=f"reconstruct_prompts_button::{selected_run_name}::{selected_bundle}::{selected_case_id}",
@@ -186,14 +255,14 @@ def main() -> None:
         ):
             st.session_state[prompt_debug_key] = True
             st.rerun()
-        render_inputs_tab(selected_case, prompt_debug)
-    with tabs[2]:
-        render_track_prediction_tab(selected_case)
+        render_prompts_tab(selected_case, prompt_debug)
     with tabs[3]:
-        render_repair_proposal_tab(selected_case)
+        render_track_prediction_tab(selected_case)
     with tabs[4]:
-        render_evaluation_tab(selected_case)
+        render_repair_proposal_tab(selected_case)
     with tabs[5]:
+        render_evaluation_tab(selected_case)
+    with tabs[6]:
         render_raw_json_tab(bundle_data, selected_case, prompt_debug)
 
 
@@ -247,6 +316,10 @@ def render_run_header(bundle_data: BundleDebugData) -> None:
     detail_cols[1].metric("Calls", format_int(usage.get("call_count")))
     detail_cols[2].metric("Elapsed seconds", format_float(usage.get("elapsed_seconds"), 1))
     detail_cols[3].metric("Estimated cost", format_cost(usage.get("estimated_cost_usd")))
+    if usage.get("elapsed_seconds_source") and usage.get("elapsed_seconds_source") != "manifest_usage":
+        st.caption(
+            "Elapsed seconds uses run summary timing because per-call manifest elapsed_seconds values are unavailable."
+        )
     st.caption(
         " | ".join(
             part
@@ -291,10 +364,10 @@ def render_overview_tab(bundle_data: BundleDebugData, case: CaseDebugRecord) -> 
     hero_cols[5].metric("Accepted", format_bool(case.accepted))
 
     detail_cols = st.columns(4)
-    detail_cols[0].metric("QID", value_or_na(record.get("qid")))
-    detail_cols[1].metric("Property", value_or_na(record.get("property")))
-    detail_cols[2].metric("Class", value_or_na((record.get("classification") or {}).get("class")))
-    detail_cols[3].metric("Subtype", value_or_na((record.get("classification") or {}).get("subtype")))
+    detail_cols[0].metric("QID", value_or_na(case_qid(case)))
+    detail_cols[1].metric("Property", value_or_na(case_property(case)))
+    detail_cols[2].metric("Class", value_or_na(classification_class(case)))
+    detail_cols[3].metric("Subtype", value_or_na(classification_subtype(case)))
 
     secondary_cols = st.columns(4)
     secondary_cols[0].metric("Track exact match", format_bool(diagnosis.get("exact_track_match")))
@@ -317,7 +390,53 @@ def render_overview_tab(bundle_data: BundleDebugData, case: CaseDebugRecord) -> 
     )
 
 
-def render_inputs_tab(case: CaseDebugRecord, prompt_debug: Any) -> None:
+def render_case_inputs_tab(bundle_data: BundleDebugData, case: CaseDebugRecord) -> None:
+    record = case.record or {}
+    instance_payload = {
+        "case_id": case.case_id,
+        "qid": case_qid(case),
+        "property": case_property(case),
+        "track": record.get("track") or case.historical_track,
+        "classification": compact_classification(case),
+        "labels_en": record.get("labels_en"),
+        "violation_context": record.get("violation_context"),
+        "repair_target": record.get("repair_target"),
+        "context_ref": record.get("context_ref"),
+        "persistence_check": record.get("persistence_check"),
+        "popularity": record.get("popularity"),
+    }
+
+    st.markdown("#### Instance")
+    st.json({key: value for key, value in instance_payload.items() if value is not None}, expanded=False)
+
+    st.markdown("#### Benchmark Record")
+    benchmark_state_key = f"benchmark_record_loaded::{bundle_data.run_dir.name}::{bundle_data.bundle_name}::{case.case_id}"
+    benchmark_button_key = f"load_benchmark_record_button::{bundle_data.run_dir.name}::{bundle_data.bundle_name}::{case.case_id}"
+    if st.button("Load benchmark record", key=benchmark_button_key):
+        st.session_state[benchmark_state_key] = True
+    benchmark_record = None
+    if st.session_state.get(benchmark_state_key):
+        benchmark_record = load_case_record_cached(bundle_data.input_paths.get("classified_benchmark"), case.case_id)
+    if benchmark_record:
+        st.json(benchmark_record, expanded=False)
+    else:
+        st.info("Benchmark record is loaded on demand to keep the viewer responsive on large benchmark files.")
+
+    st.markdown("#### Frozen World-State Context")
+    world_state_state_key = f"world_state_loaded::{bundle_data.run_dir.name}::{bundle_data.bundle_name}::{case.case_id}"
+    world_state_button_key = f"load_world_state_button::{bundle_data.run_dir.name}::{bundle_data.bundle_name}::{case.case_id}"
+    if st.button("Load frozen world-state context", key=world_state_button_key):
+        st.session_state[world_state_state_key] = True
+    world_state_entry = None
+    if st.session_state.get(world_state_state_key):
+        world_state_entry = load_world_state_entry_cached(bundle_data.input_paths.get("world_state"), case.case_id)
+    if world_state_entry:
+        st.json(world_state_entry, expanded=False)
+    else:
+        st.info("Frozen world-state context is loaded on demand because the source artifact can be large.")
+
+
+def render_prompts_tab(case: CaseDebugRecord, prompt_debug: Any) -> None:
     if prompt_debug and prompt_debug.error:
         st.warning(prompt_debug.error)
     elif prompt_debug is None:
@@ -332,12 +451,6 @@ def render_inputs_tab(case: CaseDebugRecord, prompt_debug: Any) -> None:
     with prompt_cols[1]:
         st.markdown("#### Repair proposal input")
         render_prompt_source(case.proposal_request, None if prompt_debug is None else prompt_debug.proposal_prompt)
-
-    with st.expander("World-state entry", expanded=False):
-        if prompt_debug is None or prompt_debug.world_state_entry is None:
-            st.info("No world-state entry was required or available for this bundle.")
-        else:
-            st.json(prompt_debug.world_state_entry, expanded=False)
 
 
 def render_track_prediction_tab(case: CaseDebugRecord) -> None:
@@ -480,7 +593,7 @@ def render_prompt_bundle(prompt_bundle: Optional[PromptBundle]) -> None:
         return
     st.caption(f"{prompt_bundle.prompt_name} | bundle={prompt_bundle.ablation_bundle}")
     st.markdown("**System prompt**")
-    st.code(prompt_bundle.system_prompt, language="text")
+    render_wrapped_text(prompt_bundle.system_prompt)
     st.markdown("**Response format**")
     st.json(prompt_bundle.response_format, expanded=False)
     st.markdown("**User prompt**")
@@ -496,7 +609,7 @@ def render_prompt_source(request_entry: Optional[dict[str, Any]], prompt_bundle:
         st.caption("Source: original request artifact")
         if system_prompt:
             st.markdown("**System prompt**")
-            st.code(system_prompt, language="text")
+            render_wrapped_text(system_prompt)
         if body.get("response_format") is not None:
             st.markdown("**Response format**")
             st.json(body.get("response_format"), expanded=False)
@@ -536,6 +649,9 @@ def filter_case_rows(
     tracks: set[str],
     parse_statuses: set[str],
     proposal_types: set[str],
+    a_box_types: set[str],
+    t_box_subtypes: set[str],
+    classification_confidences: set[str],
     accepted_filter: str,
 ) -> list[CaseDebugRecord]:
     filtered = []
@@ -547,6 +663,15 @@ def filter_case_rows(
         if parse_statuses and row.proposal_parse_status not in parse_statuses:
             continue
         if proposal_types and row.proposal_type not in proposal_types:
+            continue
+        row_class = classification_class(row)
+        row_subtype = classification_subtype(row)
+        row_confidence = classification_confidence(row)
+        if row_class in {"TypeA", "TypeB", "TypeC"} and a_box_types and row_class not in a_box_types:
+            continue
+        if row_class == "T_BOX" and t_box_subtypes and row_subtype not in t_box_subtypes:
+            continue
+        if classification_confidences and row_confidence not in classification_confidences:
             continue
         if accepted_filter == "accepted" and row.accepted is not True:
             continue
@@ -567,9 +692,80 @@ def case_table_row(row: CaseDebugRecord) -> dict[str, Any]:
         "proposal_type": row.proposal_type,
         "proposal_parse_status": row.proposal_parse_status,
         "diagnosis_parse_status": row.diagnosis_parse_status,
+        "class": classification_class(row),
+        "subtype": classification_subtype(row),
+        "confidence": classification_confidence(row),
         "accepted": row.accepted,
         "track_exact_match": diagnosis.get("exact_track_match"),
     }
+
+
+def classification_class(row: CaseDebugRecord) -> Optional[str]:
+    classification = (row.record or {}).get("classification")
+    if isinstance(classification, dict) and isinstance(classification.get("class"), str):
+        return classification.get("class")
+    trace = row.trace or {}
+    value = trace.get("classification_class")
+    if isinstance(value, str) and value:
+        return value
+    return None
+
+
+def classification_subtype(row: CaseDebugRecord) -> Optional[str]:
+    classification = (row.record or {}).get("classification")
+    if isinstance(classification, dict) and isinstance(classification.get("subtype"), str):
+        return classification.get("subtype")
+    trace = row.trace or {}
+    value = trace.get("classification_subtype")
+    if isinstance(value, str) and value:
+        return value
+    return None
+
+
+def classification_confidence(row: CaseDebugRecord) -> Optional[str]:
+    classification = (row.record or {}).get("classification")
+    if isinstance(classification, dict) and isinstance(classification.get("confidence"), str):
+        return classification.get("confidence")
+    return None
+
+
+def compact_classification(row: CaseDebugRecord) -> dict[str, Optional[str]]:
+    return {
+        "class": classification_class(row),
+        "subtype": classification_subtype(row),
+        "confidence": classification_confidence(row),
+    }
+
+
+def case_qid(row: CaseDebugRecord) -> Optional[str]:
+    record = row.record or {}
+    value = record.get("qid")
+    if isinstance(value, str) and value:
+        return value
+    for source in (row.proposal_normalized, row.trace):
+        target = source.get("target") if isinstance(source, dict) else None
+        if isinstance(target, dict) and isinstance(target.get("qid"), str):
+            return target.get("qid")
+    parts = row.case_id.split("_")
+    return next((part for part in parts if part.startswith("Q")), None)
+
+
+def case_property(row: CaseDebugRecord) -> Optional[str]:
+    record = row.record or {}
+    value = record.get("property")
+    if isinstance(value, str) and value:
+        return value
+    for source in (row.proposal_normalized, row.trace):
+        target = source.get("target") if isinstance(source, dict) else None
+        if isinstance(target, dict) and isinstance(target.get("pid"), str):
+            return target.get("pid")
+    parts = row.case_id.split("_")
+    return next((part for part in parts if part.startswith("P")), None)
+
+
+def confidence_sort_key(value: str) -> tuple[int, str]:
+    order = {"high": 0, "medium": 1, "low": 2}
+    return order.get(value, 99), value
 
 
 def prompt_bundle_to_dict(prompt_bundle: Optional[PromptBundle]) -> Optional[dict[str, Any]]:
@@ -591,6 +787,13 @@ def render_text_or_json(value: str) -> None:
         st.code(value, language="text")
         return
     st.json(parsed, expanded=False)
+
+
+def render_wrapped_text(value: str) -> None:
+    st.markdown(
+        f'<pre class="wrapped-text">{html.escape(value)}</pre>',
+        unsafe_allow_html=True,
+    )
 
 
 def _message_content(messages: list[Any], role: str) -> Optional[str]:
@@ -658,6 +861,9 @@ def _initialize_sidebar_state(args: argparse.Namespace) -> None:
         "historical_track_filter": [],
         "proposal_parse_status_filter": [],
         "proposal_type_filter": [],
+        "a_box_type_filter": [],
+        "t_box_subtype_filter": [],
+        "classification_confidence_filter": [],
         "accepted_filter": "all",
     }
     for key, value in defaults.items():
@@ -720,6 +926,21 @@ def _apply_page_style() -> None:
             border: 1px solid rgba(25, 53, 47, 0.12);
             border-radius: 14px;
             padding: 0.4rem 0.8rem;
+        }
+        .wrapped-text {
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            background: #fffaf0;
+            border: 1px solid rgba(25, 53, 47, 0.14);
+            border-radius: 8px;
+            color: #17342d;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+            font-size: 0.86rem;
+            line-height: 1.45;
+            max-height: 34rem;
+            overflow-y: auto;
+            padding: 0.75rem;
         }
         </style>
         """,

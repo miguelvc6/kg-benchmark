@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest import mock
 
 from guardian.evaluator import evaluate_benchmark, write_json, write_jsonl
-from guardian.reasoning_floor_viewer_data import build_case_prompt_debug, load_bundle_debug_data
+from scripts.reasoning_floor_viewer_data import build_case_prompt_debug, load_bundle_debug_data
 
 
 class ReasoningFloorViewerDataTests(unittest.TestCase):
@@ -462,7 +462,7 @@ class ReasoningFloorViewerDataTests(unittest.TestCase):
     def test_load_bundle_debug_data_can_skip_eager_case_record_loading(self) -> None:
         root, reports_root, run_dir, _ = self._build_fixture(with_evaluation_artifacts=True)
 
-        with mock.patch("guardian.reasoning_floor_viewer_data._load_case_records") as mocked_loader:
+        with mock.patch("scripts.reasoning_floor_viewer_data._load_case_records") as mocked_loader:
             mocked_loader.side_effect = AssertionError("_load_case_records should not be called")
             bundle_data = load_bundle_debug_data(
                 reports_root=reports_root,

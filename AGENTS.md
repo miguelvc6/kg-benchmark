@@ -19,6 +19,8 @@ Use this split consistently:
 
 This environment does not guarantee a `python` executable on `PATH`; `python3` is available, and project commands are already managed through `uv`.
 
-- Prefer `uv run python ...` for repository scripts, tests, and other project-scoped commands.
+- When running commands from WSL, always use the WSL-specific virtual environment by setting `UV_PROJECT_ENVIRONMENT=.venv-wsl`.
+- Prefer `UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python ...` for repository scripts, tests, and other project-scoped commands from WSL.
 - Use bare `python3` only for ad hoc one-off commands that are intentionally outside the project's `uv` environment.
 - Do not assume `python` resolves successfully in this repository.
+- Do not use or recreate `.venv` from WSL; that environment may belong to Windows.
