@@ -17,21 +17,30 @@ The project should proceed with the following decisions fixed unless strong evid
 
 ## 1. Phase A — Project alignment and paper scope
 
+**Completion status:** complete on 2026-05-21  
+**Deliverable:** `00-phase_A_completion.md`  
+**Narrative update:** Section 4 of `00-kg_llm_benchmark.md` has been updated with the finalized operational RQs/hypotheses.
+
+### Phase A decision summary
+
+Task A3 should **not** reuse the original hypotheses from `00-kg_llm_benchmark.md` verbatim. The original hypotheses are a good conceptual base, but they have now been updated into metric-linked, contrast-linked hypotheses because the classifier audit changed the interpretation of Type C. Type C should be treated as external-by-elimination or unknown/incomplete-context unless it is manually or retrieval-confirmed.
+
 ### Task A1 — Freeze paper 1 scope
 
 **Type:** Research planning / writing  
 **Dependencies:** none  
-**Output:** short internal scope note
+**Output:** short internal scope note  
+**Status:** complete
 
-Define paper 1 as:
+Paper 1 is frozen as:
 
 > Benchmark + taxonomy operationalization + classifier validation + reasoning floor + prompt/context/model analysis.
 
-Explicitly exclude full RAG and Guardian from paper 1 except as future work or contingency.
+Full RAG, full cost-quality frontier analysis, and the neuro-symbolic Guardian agent loop are excluded from paper 1 except as future work or contingency.
 
-**Acceptance criteria:**
+**Acceptance criteria:** complete
 
-- One-paragraph main claim exists.
+- One-paragraph main claim exists in `00-phase_A_completion.md`.
 - List of in-scope and out-of-scope contributions exists.
 - Supervisor-aligned taxonomy positioning is documented.
 
@@ -39,9 +48,10 @@ Explicitly exclude full RAG and Guardian from paper 1 except as future work or c
 
 **Type:** Research planning / writing  
 **Dependencies:** A1  
-**Output:** taxonomy mapping note
+**Output:** taxonomy mapping note  
+**Status:** complete
 
-Create a table mapping repository terms to paper-facing terms:
+The paper-facing vocabulary separates repair locus from information condition:
 
 | Repository term | Paper-facing term | Notes |
 |---|---|---|
@@ -49,33 +59,51 @@ Create a table mapping repository terms to paper-facing terms:
 | T_BOX | T-box / schema-level repair | Use prior taxonomy nomenclature. |
 | TypeA | IC-L / rule-implied information condition | Keep TypeA in code if needed. |
 | TypeB | IC-G / local graph-grounded information condition | Keep TypeB in code if needed. |
-| TypeC | IC-E / external-by-elimination or external-evidence condition | Must split/qualify. |
+| TypeC | IC-E-elim or IC-U | Split/qualify; do not overclaim confirmed externality. |
 
-**Acceptance criteria:**
+**Acceptance criteria:** complete
 
 - No paper section claims A-box/T-box taxonomy as novel.
 - Type A/B/C is described as information access, not repair taxonomy.
+- Type C is explicitly split into external-by-elimination and unknown/incomplete-context cases before core experiments.
 
 ### Task A3 — Finalize research questions and hypotheses
 
 **Type:** Research planning / writing  
 **Dependencies:** A1, A2  
-**Output:** RQ/Hypothesis document section
+**Output:** RQ/Hypothesis document section  
+**Status:** complete
 
-Use these research questions:
+Decision: use the hypotheses in `00-kg_llm_benchmark.md` as the starting point, but update them. The finalized version adds metrics, experimental contrasts, and conservative Type C wording.
 
-1. Does information condition predict model behavior?
-2. Can models choose the correct repair locus?
-3. Are valid-looking LLM outputs executable and auditable graph transactions?
-4. Does local graph context help the correct classes?
-5. Does popularity expose memorization or robustness gaps?
-6. How does prompt design affect measured capability?
-7. What is the oracle-track vs diagnosis-routed gap?
+Finalized research-question set:
 
-**Acceptance criteria:**
+1. Can the benchmark labels be defended as an information-access instrument?
+2. Does information condition predict model behavior?
+3. Can models choose the correct repair locus?
+4. Can LLM proposals survive symbolic transaction checks?
+5. How much does prompt design matter?
+6. Does popularity expose memorization or robustness issues?
+7. Are local H100-runnable models sufficient for the main scientific claims?
+8. Can models recognize insufficient evidence, if abstention is implemented?
+
+**Acceptance criteria:** complete
 
 - Each RQ has at least one falsifiable hypothesis.
-- Each hypothesis has a corresponding metric and experimental contrast.
+- Each hypothesis has corresponding metrics and experimental contrast.
+- Type C is phrased as external-by-elimination or unresolved unless confirmed by audit/retrieval.
+- The updated RQs are stored in `00-phase_A_completion.md` and `00-kg_llm_benchmark.md`.
+
+
+### Phase A completion output — completed 2026-05-21
+
+Phase A is completed in [`00-phase_a_project_alignment.md`](00-phase_a_project_alignment.md).
+
+**A1 result.** Paper 1 is scoped as benchmark construction, taxonomy operationalization, classifier validation, reasoning-floor evaluation, and prompt/context/model analysis. Full RAG, full Guardian, live editing, and cost-quality frontier analysis are out of scope for the first paper except as future work or contingency.
+
+**A2 result.** A-box/T-box terminology is adopted as the repair-locus vocabulary from existing Wikidata repair-taxonomy work. Type A/B/C is reframed as an information-condition layer: IC-L, IC-G, and IC-E/IC-U. Type C must be split or qualified rather than treated as confirmed external evidence.
+
+**A3 result.** The hypotheses from `00-kg_llm_benchmark.md` were updated rather than copied unchanged. The revised set adds explicit metrics and experimental contrasts, separates prompt-design hypotheses from benchmark-behavior hypotheses, and accounts for `EXTERNAL_BY_ELIMINATION` and `UNKNOWN_*` Type C subtypes.
 
 ## 2. Phase B — Repository audit and classifier redesign
 
