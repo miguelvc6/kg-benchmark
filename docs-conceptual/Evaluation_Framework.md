@@ -1,103 +1,134 @@
 # Evaluation Framework
 
-This document describes what successful evaluation should measure. Script behavior and output schemas are described in [docs-technical](../docs-technical/README.md).
+WikidataRepairEval evaluates knowledge-graph repair as an executable, auditable transaction problem. It should not collapse results into a single leaderboard score. The important output is a stratified failure map across repair locus, information condition, context bundle, model, popularity bucket, and schema-reform cluster.
+
+Implementation details, schemas, and scripts live in [docs-technical](../docs-technical/README.md).
 
 ## Evaluation Goal
 
-The benchmark is not only about whether a model can emit a patch. It is about whether a neuro-symbolic workflow can:
+The benchmark asks whether a model can:
 
-- identify the right information source
-- produce a repair that survives symbolic validation
-- preserve knowledge rather than exploit shortcuts
-- remain aligned with human-maintained graph quality
+- choose the correct repair locus: A-box, T-box, or ambiguous;
+- use the available evidence appropriately;
+- avoid leaking post-repair target values from frozen contemporary context;
+- produce a parseable and executable proposal;
+- preserve useful graph information rather than deleting it to satisfy a rule;
+- align with the historically accepted repair target;
+- provide rationale, provenance, and uncertainty that make the proposal auditable.
 
-## Mandatory Evaluation Layers
+## Reasoning Floor
 
-The first publishable unit of the project requires three evaluation-facing capabilities:
+The reasoning floor is the zero-shot, no-tool, pre-intervention baseline. It measures what current models can do before retrieval, memory, verifier-guided retries, rejection sampling, learning, or a Guardian-style controller is added.
 
-- benchmark-ready cases produced from the historical repair pipeline
-- evaluation protocols that test validity, safety, and alignment
-- a reasoning-floor baseline that measures model performance before protocol support is introduced
+The main reasoning-floor setup uses:
 
-The reasoning floor is mandatory because the project is not only evaluating systems with intervention. It must also establish what models can already do without intervention.
+- deterministic zero-shot contract prompting;
+- sanitized benchmark inputs only;
+- `logic_only` and `local_graph` context bundles as primary conditions;
+- `minimal_case` as an optional diagnostic condition;
+- oracle-track and diagnosis-routed proposal modes.
 
-## The Reasoning Floor
+Few-shot prompting is an ablation, not the main baseline. It tests precedent adaptation and contract compliance rather than the pure reasoning floor.
 
-### Objective
+## Prediction Tasks
 
-The reasoning floor establishes the pre-Guardian baseline: what current LLMs can do without protocol, memory, tools, rejection sampling, or learning.
+### Track Diagnosis
 
-Conceptually, this defines the upper bound of unaided reasoning available before the neuro-symbolic transaction layer begins to help.
+The model predicts whether the repair locus is `A_BOX`, `T_BOX`, or `AMBIGUOUS`. This measures layer selection independently from repair generation.
 
-### Experimental Setup
+### Oracle-Track Repair
 
-The reasoning floor uses:
+The model receives the historical repair locus and proposes a repair using the corresponding contract. This measures repair quality when layer selection is not the bottleneck.
 
-- zero-shot prompting only
-- no tool use
-- no rejection sampling
-- inputs that strictly follow the Phase 2 ablation conditions
+### Diagnosis-Routed Repair
 
-### Role in the Research Program
+The model first predicts the repair locus and then generates a proposal using that predicted route. The gap between oracle-track and diagnosis-routed performance measures the cost of repair-locus errors.
 
-The reasoning floor is the control condition for later intervention studies.
+## Context Ablations
 
-It exists to answer:
+| Bundle | Contents | Purpose |
+|---|---|---|
+| `minimal_case` | Sanitized case payload only. | No-context diagnostic lower bound. |
+| `logic_only` | Sanitized payload plus pruned touched constraints. | Tests rule and constraint reasoning. |
+| `local_graph` | Sanitized payload plus pruned local graph and constraints. | Tests local graph grounding. |
 
-- which cases models can already solve unaided
-- where failure begins before Guardian support
-- whether later improvements come from genuine protocol value rather than from an artificially weak baseline
+All bundles must hide benchmark-only fields such as classification labels, historical repair targets, persistence checks, and current/post-repair target-property truth. The `local_graph` bundle must follow the target-property rule described in [Temporal Validity](./Temporal_Validity.md).
 
-## Validity Guardrails
+## Metric Families
 
-### Temporal Validity
+### Shared Metrics
 
-Historical repairs cannot be judged naively against a newer world snapshot. Cases whose logical problem no longer exists should be filtered out rather than repurposed. See [Temporal Validity](./Temporal_Validity.md).
+- proposal presence;
+- parse validity;
+- normalization success;
+- executability;
+- acceptance under strict benchmark criteria;
+- exact historical alignment where applicable;
+- auditability completeness;
+- provenance completeness;
+- uncertainty availability and calibration proxy;
+- tokens, latency, and cost per case or accepted repair.
 
-### Focus-Node Regression Control
+### A-box Metrics
 
-A repair should not be considered successful if it fixes one constraint while creating new violations on the same focus node. The evaluation therefore cares about local side effects, not just target-constraint satisfaction.
+A-box evaluation reconstructs the pre-repair target-property state, applies the proposed operations in memory, and compares the result to the historical repaired state.
 
-### Provenance and Auditability
+Important metrics:
 
-Accepted repairs should be inspectable. The benchmark values decision traces, provenance chains, and machine-verifiable evidence because these are prerequisites for trustworthy KG updates.
+- target entity/property match;
+- operation validity;
+- post-application state exact match;
+- information preservation;
+- over-delete rate;
+- local constraint-regression pass;
+- wrong target rate;
+- functional success.
 
-### Repeated-Event Weighting
+### T-box Metrics
 
-When many benchmark rows trace back to the same T-box revision, evaluation may use a frozen deterministic subset so aggregate results are not driven mainly by repeated manifestations of a small number of schema edits.
+T-box evaluation compares the proposed post-reform constraint signature with the historical post-reform signature.
 
-## Core Success Metrics
+Important metrics:
 
-### Pass@K
+- target property match;
+- target constraint-family match;
+- proposed action match;
+- exact post-signature match;
+- semantic-family match;
+- signature overlap;
+- whether the proposed schema would admit relevant current values;
+- case-level and property-revision cluster-macro averages.
 
-Measures whether at least one of the top-k candidate patches satisfies the constraint.
+Exact T-box signature match should remain strict, but semantic-family metrics are necessary because a proposal may be directionally correct without exactly reproducing the historical signature.
 
-For the reasoning floor, this should be interpreted as the best zero-shot performance obtainable without intervention.
+### Track-Diagnosis Metrics
 
-### Conversion Rate
+- exact track accuracy;
+- macro-F1 over A-box/T-box/ambiguous;
+- confusion matrix;
+- false A-box rate on T-box cases;
+- false T-box rate on A-box cases;
+- ambiguous prediction rate;
+- oracle-track vs diagnosis-routed repair gap.
 
-Measures whether verifier or guardian feedback helps the model move from a rejected draft to a valid repair on the next attempt.
+## Baselines
 
-### Revert Rate
+Non-LLM baselines are scientifically useful because they show how much can be solved without language-model repair reasoning:
 
-Uses historical alignment as the main trust proxy: would a human-maintained workflow likely reject or revert the model's action?
+- majority track;
+- always A-box;
+- always T-box;
+- constraint-only delete/update heuristic;
+- singleton one-of heuristic;
+- range-boundary heuristic;
+- local-token lookup oracle;
+- do-nothing or invalid proposal baseline.
 
-## Efficiency and Safety Metrics
+The main LLM experiments should use local H100-runnable instruction models. A small stratified API subset can serve as a calibration reference, but the paper does not require a full frontier-model leaderboard.
 
-### Information Preservation
+## Interpretation Rules
 
-The benchmark penalizes repairs that satisfy a rule by deleting useful knowledge instead of fixing it.
-
-### Tokens-to-Fix
-
-Measures how much interaction and retrieval cost is required before a verified repair is reached.
-
-### Provenance Completeness
-
-Measures whether accepted repairs are backed by an auditable citation or evidence chain rather than unsupported guesses.
-
-## Interpretation Principle
-
-The benchmark should support conclusions about reasoning, retrieval need, and verification quality. Metrics that blur those questions should be treated as secondary.
-
-This includes a strict comparison rule: post-Guardian or tool-enabled systems should be compared against the reasoning floor, not against an informal baseline.
+- Report metrics stratified by repair locus, information condition, subtype, context bundle, prompt regime, model, popularity bucket, and T-box property revision cluster.
+- Treat Type C results carefully unless manual audit or retrieval confirms external evidence need.
+- Treat historical repairs as historically accepted targets, not universal truth.
+- Compare future RAG or Guardian-style systems against the reasoning floor, not against an informal baseline.

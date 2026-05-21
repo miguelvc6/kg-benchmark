@@ -1,95 +1,81 @@
-# Scientific Vision: The Dynamics of Neuro-Symbolic Alignment
+# Scientific Vision
 
-## Scope
+WikidataRepairEval studies whether language models can perform knowledge-graph repair as a controlled edit problem. The project is not primarily a leaderboard and should not be framed as a generic LLM benchmark. It is a measurement instrument for testing whether a model can identify the right repair layer, use the right evidence, avoid temporal leakage, and emit an auditable transaction that survives symbolic checks.
 
-WikidataRepairEval Phase 1 studies how large language models and knowledge graphs can participate in a stable repair loop rather than acting as isolated components.
+## Thesis
 
-- LLMs are flexible but prone to hallucination and knowledge staleness.
-- Knowledge graphs are auditable but incomplete and brittle.
-- A sustainable neuro-symbolic system needs a mediation layer that decides when model output is trustworthy enough to change structured knowledge.
+Knowledge-graph repair is not the same task as link prediction, triple classification, or question answering. A repair system must decide:
 
-This benchmark is the experimental apparatus for that claim.
+- whether the error is in an entity statement or in a property constraint;
+- whether the repair is rule-implied, locally grounded, or dependent on non-local evidence;
+- whether the available context is sufficient or the system should abstain or request retrieval;
+- whether the proposed edit is executable and preserves useful information;
+- whether the rationale, provenance, and uncertainty are auditable.
 
-## Repository Objective
+The benchmark operationalizes this thesis using historical Wikidata repair events, frozen 2026 world-state context, temporal target-property reconstruction, structured proposal contracts, and symbolic evaluation.
 
-This repository is the first minimum publishable unit of the broader research program.
+## Relation To Prior Repair Work
 
-Its purpose is to deliver the full Phase 1 benchmark foundation:
+WikidataRepairEval adopts the A-box/T-box repair distinction and related nomenclature from existing Wikidata repair-taxonomy work, especially Ferranti et al. (2025), *Formalizing Repairs for Wikidata Constraint Violations: A Taxonomy and Empirical Analysis*.
 
-- benchmark data processing from historical repair discovery through experiment-ready artifacts
-- evaluation procedures that can judge repair quality, validity, and alignment
-- a "reasoning floor" baseline that measures what current LLMs can do before any Guardian protocol, tool use, memory, or learning intervention is introduced
+The novelty claim is not that A-box and T-box repair are new. The contribution is that this repair view is turned into an LLM-facing evaluation protocol with:
 
-The repository therefore does not exist only to build data. It exists to establish the benchmark, the evaluation frame, and the minimum baseline against which later Guardian-style systems can be compared.
+- repair-locus diagnosis;
+- information-access labels;
+- controlled context ablations;
+- temporal leakage safeguards;
+- executable A-box and T-box repair contracts;
+- stratified evaluation of parse validity, executability, historical alignment, semantic compatibility, and auditability.
 
-## Phase 1 Completion Requirements
+## First-Paper Scope
 
-Phase 1 is conceptually complete only when the repository supports all three of the following:
+The first publishable unit should establish the benchmark and the reasoning-floor evaluation, not a full retrieval or Guardian-style repair agent.
 
-1. End-to-end benchmark construction for the benchmark artifacts needed by downstream experiments.
-2. Evaluation logic that can test success, failure, and safety under the benchmark's validity rules.
-3. A reasoning-floor baseline that exposes the zero-shot performance ceiling of unaided models under the same benchmark conditions used in later phases.
+It should include:
 
-These requirements define the minimum publishable unit because without all three, later claims about protocol gains would be underspecified:
+- benchmark construction from real Wikidata repair events;
+- repair-locus and information-access taxonomy alignment;
+- classifier audit and label validation;
+- full, core, dev/pilot, and audit dataset tiers;
+- zero-shot reasoning-floor experiments;
+- `logic_only` vs `local_graph` context ablations;
+- oracle-track vs diagnosis-routed repair;
+- local H100-runnable model baselines;
+- a small stratified API reference subset if budget allows;
+- failure analysis and limitations.
 
-- without the benchmark, there is no controlled task
-- without the evaluation layer, there is no defensible measurement
-- without the reasoning floor, there is no pre-intervention reference point
-
-## The Guardian Hypothesis
-
-The project assumes that a durable neuro-symbolic workflow requires a formal transaction protocol, described here as a "Guardian", between a stochastic model and a rigid knowledge graph.
-
-Two hypotheses follow:
-
-1. Symbolic rejection filters such as SHACL or OWL constraints are necessary to prevent semantic drift in generated knowledge.
-2. Better semantic behavior comes from active grounding: verified repairs become the safe signal that can later be reused for training, evaluation, or feedback loops.
+Retrieval-augmented repair, verifier-guided retry loops, and the full Guardian protocol are natural follow-up work unless a small contingency experiment is needed.
 
 ## Research Questions
 
-### RQ1: Protocol Definition
+### RQ1. Does Information Need Predict Model Behavior?
 
-What should count as a valid knowledge transaction?
+Rule-implied, local-context, and external or unresolved cases should behave differently under controlled context ablations. Local graph context should help most on genuinely local cases, while no-retrieval Type C cases should remain difficult or require abstention.
 
-The project treats a repair as more than a triple edit. A useful transaction must preserve proposal content, rationale, provenance, and uncertainty.
+### RQ2. Can Models Choose The Correct Repair Locus?
 
-### RQ2: Information Gap
+Models must distinguish A-box entity repair from T-box schema reform. The gap between oracle-track repair and diagnosis-routed repair measures the cost of choosing the wrong layer.
 
-What information source is actually required to resolve a violation?
+### RQ3. Do Proposals Survive Symbolic Transaction Checks?
 
-The benchmark distinguishes cases solvable from:
+Valid JSON is not enough. A proposal can parse while still targeting the wrong entity or property, deleting useful information, failing executability, hallucinating provenance, or missing the historical repair state.
 
-- internal logic alone
-- local graph topology
-- genuinely external information
+### RQ4. How Much Does Context And Prompt Design Matter?
 
-This is the central motivation for the Type A / B / C taxonomy.
+The main baseline is zero-shot contract prompting. Few-shot prompting is an ablation that tests precedent adaptation and contract compliance, not the base reasoning floor.
 
-### RQ3: Verification Trade-off
+### RQ5. Does Popularity Expose Memorization Risk?
 
-How much human oversight can be replaced by automated constraint verification without damaging graph integrity?
+Head entities may be easier in no-retrieval settings because of parametric memory. Tail-entity behavior is more diagnostic of context use, local reasoning, and abstention under insufficient evidence.
 
-The project therefore cares about acceptance quality, not just whether a model can produce a syntactically valid patch.
+## Design Commitments
 
-### RQ4: Loop Dynamics
+- Use real historical Wikidata repair events rather than synthetic-only cases.
+- Separate repair locus from information-access condition.
+- Treat Type C conservatively unless manual audit or retrieval confirms external evidence need.
+- Reconstruct the edited target property as a historical pre-repair state instead of exposing current post-repair values.
+- Report stratified metrics rather than a single aggregate leaderboard score.
+- Control repeated T-box schema reforms so one property revision cannot dominate paper-facing results.
+- Treat historical repairs as historically accepted targets, not universal truth.
 
-If an LLM is trained on historically verified repairs, does it become more truthful, or does it simply overfit to benchmark-specific constraint logic?
-
-### RQ5: The Reasoning Floor
-
-What is the strongest performance current models can achieve under zero-shot conditions before any Guardian intervention is added?
-
-This question matters because later protocol gains are only meaningful if they are measured against a clear pre-intervention baseline rather than against an undefined notion of model capability.
-
-## Why This Benchmark Exists
-
-Existing KG-repair resources tend to be fragmented, outdated, or focused only on whether a repair was produced. WikidataRepairEval is designed instead to answer what information was needed to produce a correct repair and whether that distinction can support more rigorous neuro-symbolic evaluation.
-
-Key design commitments:
-
-- Real historical Wikidata repair events rather than purely synthetic cases.
-- Benchmark stratification by information necessity rather than by constraint family alone.
-- Separate treatment of data repair and schema reform to make concept drift visible.
-- Auditable popularity stratification so head and long-tail entities can be studied separately.
-
-The conceptual taxonomy that supports these commitments is defined in [Benchmark Taxonomy](./Benchmark_Taxonomy.md).
+The taxonomy details are summarized in [Benchmark Taxonomy](./Benchmark_Taxonomy.md), evaluation details in [Evaluation Framework](./Evaluation_Framework.md), and temporal leakage policy in [Temporal Validity](./Temporal_Validity.md).

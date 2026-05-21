@@ -1,12 +1,17 @@
 # Conceptual Documentation
 
-This area contains the relatively stable benchmark design: why the project exists, what it is trying to measure, and which research decisions define the benchmark.
+This area contains the benchmark's research-facing design: why the project exists, what it measures, and which methodological decisions define WikidataRepairEval.
 
-At this stage, the conceptual docs also define the repository's minimum publishable-unit scope: end-to-end benchmark construction, evaluation, and the pre-Guardian reasoning-floor baseline.
+Start with the two anchor documents:
 
-- [Scientific Vision](./Scientific_Vision.md): project thesis, hypotheses, and research questions.
-- [Benchmark Taxonomy](./Benchmark_Taxonomy.md): conceptual definition of Type A/B/C cases, A-box vs T-box tracks, and benchmark design choices.
-- [Evaluation Framework](./Evaluation_Framework.md): evaluation goals, validity guardrails, and success metrics.
-- [Temporal Validity](./Temporal_Validity.md): the time-travel paradox and why persistent, temporally consistent cases matter.
+- [Full Project Description](./00-full_project_description.md): complete conceptual description of WikidataRepairEval 1.0, including pipeline, taxonomy, classifier risks, dataset tiers, prompting, evaluation, and paper scope.
+- [KG LLM Benchmark Narrative](./00-kg_llm_benchmark.md): paper-facing research narrative, hypotheses, tasks, context ablations, evaluation protocol, limitations, and positioning.
 
-If a change is driven by repository implementation rather than research intent, it belongs in [docs-technical](../docs-technical/README.md).
+The remaining conceptual docs are shorter navigational slices that should agree with those anchors:
+
+- [Scientific Vision](./Scientific_Vision.md): project thesis, research questions, and first-paper scope.
+- [Benchmark Taxonomy](./Benchmark_Taxonomy.md): repair-locus and information-access labels.
+- [Evaluation Framework](./Evaluation_Framework.md): evaluation goals, reasoning-floor design, and metric families.
+- [Temporal Validity](./Temporal_Validity.md): leakage risks, persistence checks, and the target-property rule.
+
+If a change is driven by repository implementation, CLI behavior, artifact layout, or engineering procedure, it belongs in [docs-technical](../docs-technical/README.md), not here.
