@@ -407,17 +407,42 @@
                     "enum": [
                         "TypeA",
                         "TypeB",
-                        "TypeC"
+                        "TypeC",
+                        "T_BOX"
                     ]
                 },
                 "subtype": {
                     "type": "string",
                     "enum": [
                         "LOGICAL",
-                        "LOCAL",
-                        "EXTERNAL",
                         "REJECTION",
-                        "UNKNOWN"
+                        "REJECTION_RULE_INVALID",
+                        "REJECTION_FORMAT_INVALID",
+                        "DELETE_SELECTION_LOCAL",
+                        "DELETE_SELECTION_EXTERNAL",
+                        "DELETE_AMBIGUOUS",
+                        "LOCAL",
+                        "LOCAL_FOCUS_PREREPAIR_PROPERTY",
+                        "LOCAL_FOCUS_NON_TARGET_PROPERTY",
+                        "LOCAL_NEIGHBOR_IDS",
+                        "LOCAL_TEXT",
+                        "LOCAL_L2_REFERENCED_TEXT",
+                        "LOCAL_MIXED",
+                        "EXTERNAL",
+                        "EXTERNAL_BY_ELIMINATION",
+                        "EXTERNAL_CONFIRMED",
+                        "UNKNOWN",
+                        "UNKNOWN_MISSING_WORLD_STATE",
+                        "UNKNOWN_MISSING_TRUTH",
+                        "UNKNOWN_CURRENT_VALUE_FALLBACK",
+                        "UNKNOWN_UNSUPPORTED_VALUE_SHAPE",
+                        "UNKNOWN_INCOMPLETE_LOCAL_CONTEXT",
+                        "RELAXATION_RANGE_WIDENED",
+                        "RESTRICTION_RANGE_NARROWED",
+                        "RELAXATION_SET_EXPANSION",
+                        "RESTRICTION_SET_CONTRACTION",
+                        "SCHEMA_UPDATE",
+                        "COINCIDENTAL_SCHEMA_CHANGE"
                     ]
                 },
                 "confidence": {
@@ -441,12 +466,7 @@
                         "properties": {
                             "step": {
                                 "type": "string",
-                                "enum": [
-                                    "is_delete",
-                                    "local_availability",
-                                    "logical_whitelist",
-                                    "fallback_external"
-                                ]
+                                "minLength": 1
                             },
                             "result": {
                                 "type": [
@@ -486,6 +506,16 @@
                             }
                         }
                     }
+                },
+                "local_subtype": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "diagnostics": {
+                    "type": "object",
+                    "additionalProperties": true
                 }
             }
         },

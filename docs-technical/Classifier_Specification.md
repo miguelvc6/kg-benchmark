@@ -16,57 +16,45 @@ Outputs:
 - `data/04_classified_benchmark_full.jsonl`
 - `reports/classifier_stats.json`
 
+The CLI also supports explicit path overrides:
+
+- `--repairs-path`
+- `--world-state-path`
+- `--popularity-path`
+- `--out-path`
+- `--out-full-path`
+- `--no-full-output`
+- `--stats-path`
+
 Runtime side effect:
 
-- a SQLite index is built next to `data/03_world_state.json` to support keyed world-state lookup during classification
-
-CLI options currently implemented:
-
-- `--sample`
-- `--self-test`
-- `--verbose`
-- `--quiet`
-- `--no-progress`
+- a SQLite index is built next to the world-state JSON file to support keyed world-state lookup during classification.
 
 ## Decision Order
 
-Classification is deterministic and runs in a fixed order.
+Classification is deterministic and runs in this order:
 
-1. If the world-state entry is missing, the record is classified as low-confidence `TypeC/EXTERNAL`.
-2. T-box records are classified separately as class `T_BOX`, with a subtype inferred from the constraint delta.
-3. Delete actions are labeled `TypeA` with subtype `REJECTION`.
-4. Rule-deterministic cases are labeled `TypeA`.
-5. Repairs whose truth is available in local context are labeled `TypeB`.
-6. Remaining applicable cases fall back to `TypeC`.
+1. Missing world state -> `TypeC/UNKNOWN_MISSING_WORLD_STATE`.
+2. T-box records -> class `T_BOX`, with subtype inferred from the constraint delta.
+3. A-box deletes -> refined delete subtype.
+4. Missing historical truth -> `TypeC/UNKNOWN_MISSING_TRUTH`.
+5. Current-value-only truth fallback -> `TypeC/UNKNOWN_CURRENT_VALUE_FALLBACK`.
+6. Rule-deterministic cases -> `TypeA/LOGICAL`.
+7. Local truth match -> `TypeB/LOCAL_*`.
+8. Remaining cases -> `TypeC/EXTERNAL_BY_ELIMINATION` or `TypeC/UNKNOWN_INCOMPLETE_LOCAL_CONTEXT`.
 
-## T-box Classification
+## Type C Semantics
 
-The current code does not collapse T-box records into `UNKNOWN`.
+Unqualified `TypeC/EXTERNAL` is no longer emitted by the redesigned classifier. The supported subtypes are:
 
-Instead it uses `ConstraintDiffer` to emit:
+- `EXTERNAL_BY_ELIMINATION`: historical truth exists, but supported rule and local checks did not find it.
+- `UNKNOWN_MISSING_WORLD_STATE`: frozen local context is unavailable.
+- `UNKNOWN_MISSING_TRUTH`: no usable historical repair target tokens are available.
+- `UNKNOWN_CURRENT_VALUE_FALLBACK`: only a current 2025/2026 value fallback exists.
+- `UNKNOWN_INCOMPLETE_LOCAL_CONTEXT`: local context is too sparse for a negative local-evidence claim.
+- `EXTERNAL_CONFIRMED`: reserved for manual audit or retrieval-confirmed cases.
 
-- class `T_BOX`
-- a subtype such as `RELAXATION_RANGE_WIDENED`, `RESTRICTION_RANGE_NARROWED`, `RELAXATION_SET_EXPANSION`, `RESTRICTION_SET_CONTRACTION`, `SCHEMA_UPDATE`, or `COINCIDENTAL_SCHEMA_CHANGE`
-- a decision trace specific to the schema-change path
-
-Confidence is adjusted by subtype:
-
-- `high` for clear widening or contraction signals
-- `medium` for generic schema updates
-- `low` for coincidental or weakly causal schema changes
-
-## Missing Context Behavior
-
-If a world-state entry cannot be found for a repair id, the classifier still emits a Stage 4 record.
-
-In that case it defaults to:
-
-- class `TypeC`
-- subtype `EXTERNAL`
-- confidence `low`
-- error counter `missing_world_state`
-
-This is a fallback, not evidence that the case is truly external.
+Current-value fallback fields are diagnostics only. They do not feed rule or local matching.
 
 ## Local Evidence Policy
 
@@ -75,32 +63,82 @@ The classifier reconstructs the target property in its pre-repair state to avoid
 It searches for truth evidence in:
 
 - focus-node labels and descriptions
-- pre-repair focus-node property values
+- synthetic pre-repair target-property values
+- non-target focus-node property values
 - one-hop neighbor identifiers
 - one-hop neighbor labels and descriptions
+- labels and descriptions for ids that are locally referenced
 
-Matching rules:
+Leakage controls:
 
-- QID truths use exact identifier matching.
-- Literal truths use normalized text matching.
-- Date matches must preserve sufficient precision; a year-only mention does not satisfy a full-date truth.
-- post-repair values of the target property are explicitly excluded from local evidence to avoid leakage
+- current/post-repair target-property values from `L1_ego_node.properties[target_pid]` are excluded
+- target-property `L3_neighborhood` edges are excluded
+- QID/PID truth tokens require exact id matches, not label matches
+
+Literal matching is conservative:
+
+- full ISO dates require exact full-date boundary matches
+- literals shorter than four normalized characters require exact field equality
+- longer literals require exact normalized field equality or token-boundary matches
+- every local match records match kind and source in the decision trace
+
+## Delete Policy
+
+Deletes are no longer automatically high-confidence logical rejections.
+
+Supported delete subtypes:
+
+- `REJECTION_RULE_INVALID`: a supported rule family identifies the value as invalid.
+- `REJECTION_FORMAT_INVALID`: a format constraint justifies deleting the malformed value.
+- `DELETE_SELECTION_LOCAL`: reserved for cases where local evidence selects the deletion.
+- `DELETE_SELECTION_EXTERNAL`: reserved for cases where external evidence selects the deletion.
+- `DELETE_AMBIGUOUS`: not enough evidence to classify the deletion confidently.
+
+Single-value and unique-value conflicts are routed to `DELETE_AMBIGUOUS` unless a stronger rule signal exists.
 
 ## Rule-Deterministic Policy
 
-The current implementation treats a case as Type A only when the rule itself uniquely determines the repair.
+The classifier treats a case as Type A only when the rule itself uniquely determines the repair.
 
-Supported deterministic families in the current code:
+Supported deterministic families:
 
-- format constraints
+- simple format normalizations, such as whitespace stripping, trailing punctuation stripping, case normalization, and trivial date literal normalization
 - one-of constraints with a singleton allowed set
-- range constraints when the repair matches a rule-implied boundary
+- numeric range boundaries using `P2313` minimum quantity/value and `P2312` maximum quantity/value
+- date range boundaries using `P2310` minimum date and `P2311` maximum date
 
-Constraint information is read primarily from `world_state.L4_constraints` and selectively supplemented by the repair metadata when needed.
+Non-deterministic format updates are not high-confidence Type A repairs.
+
+## T-Box Classification
+
+T-box records are classified separately as class `T_BOX`.
+
+The classifier emits subtypes such as:
+
+- `RELAXATION_RANGE_WIDENED`
+- `RESTRICTION_RANGE_NARROWED`
+- `RELAXATION_SET_EXPANSION`
+- `RESTRICTION_SET_CONTRACTION`
+- `SCHEMA_UPDATE`
+- `COINCIDENTAL_SCHEMA_CHANGE`
+
+Range analysis separates numeric and date bounds. Type and value-type constraints compare `P2308` type/value class and `P2309` relation qualifiers rather than treating them as one-of values.
+
+## Audit Reporting
+
+`scripts/classifier_audit_report.py` produces Phase B audit reports:
+
+- counts by class, subtype, confidence, truth source, decision branch, local subtype, and repair track
+- Type C subtype metrics
+- current-value fallback counts
+- Type A delete and format counts
+- old/new transition matrices with example case ids
+
+The console entry point is `kg-classifier-audit-report`.
 
 ## Output Contract
 
-Each Stage 4 record written by the current code contains:
+Each Stage 4 record contains:
 
 - `id`, `qid`, `property`, `track`
 - `information_type`
@@ -113,33 +151,24 @@ Each Stage 4 record written by the current code contains:
 - `classification`
 - `build`
 
-Each `classification` block includes at least:
+Each `classification` block includes:
 
 ```json
 {
-  "classification": {
-    "class": "TypeB",
-    "subtype": "LOCAL_NEIGHBOR_IDS",
-    "decision_trace": [],
-    "rationale": "",
-    "constraint_types": [],
-    "diagnostics": {},
-    "local_subtype": null
-  }
+  "class": "TypeB",
+  "subtype": "LOCAL_NEIGHBOR_IDS",
+  "confidence": "high",
+  "decision_trace": [],
+  "rationale": "",
+  "constraint_types": [],
+  "diagnostics": {},
+  "local_subtype": "LOCAL_NEIGHBOR_IDS"
 }
 ```
-
-The classifier preserves Stage 2 semantics; it appends classification results rather than rewriting the source repair event.
-
-## Determinism Notes
-
-- Classification does not perform live web calls.
-- Given identical Stage 2 input, Stage 3 input, and classifier code, output is deterministic.
-- The same script can emit both LEAN and FULL records in one run.
 
 ## Current Verification Status
 
 Confirmed directly from the repository:
 
-- `uv run python src/classifier.py --self-test` passes
-- Stage 4 output is now consumed by the proposal validator, evaluation harness, and reasoning-floor runner
+- `UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python src/classifier.py --self-test` passes
+- `UV_PROJECT_ENVIRONMENT=.venv-wsl uv run --extra dev python -m pytest tests/test_classifier.py` passes

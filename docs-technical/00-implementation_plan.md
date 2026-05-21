@@ -107,11 +107,20 @@ Phase A is completed in [`00-phase_a_project_alignment.md`](00-phase_a_project_a
 
 ## 2. Phase B — Repository audit and classifier redesign
 
+**Completion status:** complete on 2026-05-21
+**Deliverable:** `00-phase_B_completion.md`
+**Implementation update:** `src/classifier.py` now emits conservative Type C subtypes, quarantines current-value truth fallbacks, expands local evidence buckets, tightens literal matching, refines delete and format logic, and handles numeric/date range plus type/value-type qualifiers explicitly.
+
+### Phase B decision summary
+
+The redesigned classifier keeps the repository-facing `TypeA`/`TypeB`/`TypeC` labels, but changes Type C from an unqualified external bucket into auditable subtypes. `EXTERNAL_BY_ELIMINATION` means only that supported rule and local checks failed to find historical truth; `UNKNOWN_*` subtypes identify artifact or context weaknesses that should be excluded from main-core scoring or reported separately.
+
 ### Task B1 — Create classifier audit branch and snapshot current counts
 
 **Type:** Repository implementation / evaluation  
 **Dependencies:** A2  
 **Output:** baseline classifier count report
+**Status:** complete
 
 Run the current classifier and save:
 
@@ -133,6 +142,7 @@ Run the current classifier and save:
 - number of TypeA format repairs.
 
 **Acceptance criteria:**
+complete
 
 - Baseline stats are committed or archived.
 - Baseline can be compared to redesigned classifier through a transition matrix.
@@ -142,6 +152,7 @@ Run the current classifier and save:
 **Type:** Repository implementation  
 **Dependencies:** B1  
 **Output:** updated classifier and schema/docs
+**Status:** complete
 
 Replace ordinary TypeC/EXTERNAL fallback with more precise subtypes:
 
@@ -162,6 +173,7 @@ Replace ordinary TypeC/EXTERNAL fallback with more precise subtypes:
 - fraction of TypeC eligible for main core scoring.
 
 **Acceptance criteria:**
+complete
 
 - No missing world-state case is labeled ordinary `EXTERNAL`.
 - No missing-truth case is labeled ordinary `EXTERNAL`.
@@ -172,6 +184,7 @@ Replace ordinary TypeC/EXTERNAL fallback with more precise subtypes:
 **Type:** Repository implementation  
 **Dependencies:** B2  
 **Output:** updated truth extraction function
+**Status:** complete
 
 Classification truth sources should prioritize historical repair target fields:
 
@@ -190,6 +203,7 @@ If 2026 fields are retained, route them to low-confidence diagnostics:
 - downstream class changes.
 
 **Acceptance criteria:**
+complete
 
 - Main classification no longer silently uses 2026 current values as ordinary historical truth.
 - Cases needing 2026 fallback are excluded from core or separately reported.
@@ -199,6 +213,7 @@ If 2026 fields are retained, route them to low-confidence diagnostics:
 **Type:** Repository implementation  
 **Dependencies:** B2  
 **Output:** updated local context buckets
+**Status:** complete
 
 Add local-evidence sources beyond the current buckets:
 
@@ -219,6 +234,7 @@ Preserve leakage control:
 - false-positive local matches in manual audit.
 
 **Acceptance criteria:**
+complete
 
 - Non-target local property values can produce TypeB when they exactly contain the historical target.
 - Target-property current values still cannot produce a local match.
@@ -228,6 +244,7 @@ Preserve leakage control:
 **Type:** Repository implementation  
 **Dependencies:** B4  
 **Output:** updated matcher and tests
+**Status:** complete
 
 Implement stricter matching:
 
@@ -246,6 +263,7 @@ Implement stricter matching:
 - audit false-positive rate for `LOCAL_TEXT`.
 
 **Acceptance criteria:**
+complete
 
 - Short literals do not match arbitrary text substrings.
 - All local matches record match kind and source.
@@ -255,6 +273,7 @@ Implement stricter matching:
 **Type:** Repository implementation / classifier design  
 **Dependencies:** B2  
 **Output:** delete subtype redesign
+**Status:** complete
 
 Replace unconditional high-confidence TypeA/REJECTION for every delete with refined delete categories:
 
@@ -273,6 +292,7 @@ Replace unconditional high-confidence TypeA/REJECTION for every delete with refi
 - model performance on refined delete categories.
 
 **Acceptance criteria:**
+complete
 
 - Delete is no longer automatically equated with logical rejection in all cases.
 - Single-value/unique-value conflicts are handled carefully.
@@ -282,6 +302,7 @@ Replace unconditional high-confidence TypeA/REJECTION for every delete with refi
 **Type:** Repository implementation / classifier design  
 **Dependencies:** B2  
 **Output:** format subtype redesign
+**Status:** complete
 
 Format repairs should be TypeA only when the old-to-new change is deterministic normalization:
 
@@ -300,6 +321,7 @@ Otherwise route to lower-confidence TypeA, TypeB, TypeC, or unknown depending on
 - model performance on format subtypes.
 
 **Acceptance criteria:**
+complete
 
 - Non-deterministic format updates are not high-confidence logical repairs.
 
@@ -308,6 +330,7 @@ Otherwise route to lower-confidence TypeA, TypeB, TypeC, or unknown depending on
 **Type:** Repository implementation / tests  
 **Dependencies:** B2  
 **Output:** corrected constraint handling and tests
+**Status:** complete
 
 Implement explicit qualifier handling:
 
@@ -332,6 +355,7 @@ Handle both:
 - exact/semantic T-box evaluator effect.
 
 **Acceptance criteria:**
+complete
 
 - Numeric and date boundaries are not conflated.
 - Type and value-type constraints use P2308/P2309 rather than one-of qualifiers.
@@ -341,6 +365,7 @@ Handle both:
 **Type:** Repository implementation / tests  
 **Dependencies:** B2–B8  
 **Output:** unit-test suite
+**Status:** complete
 
 Add tests for:
 
@@ -352,9 +377,10 @@ Add tests for:
 6. date range boundary via P2310/P2311 gives TypeA;
 7. format update is TypeA only for simple normalization;
 8. missing truth -> UNKNOWN_MISSING_TRUTH;
-9. missing world state -> UNKNOWN_MISSING_WORLD_STATE;
-10. value-type T-box expansion over P2308 gives set expansion;
-11. delete under single-value conflict is not automatically high-confidence rejection.
+9. current-value fallback -> UNKNOWN_CURRENT_VALUE_FALLBACK;
+10. missing world state -> UNKNOWN_MISSING_WORLD_STATE;
+11. value-type T-box expansion over P2308 gives set expansion;
+12. delete under single-value conflict is not automatically high-confidence rejection.
 
 **Metrics:**
 
@@ -362,6 +388,7 @@ Add tests for:
 - branch coverage for classifier decision order.
 
 **Acceptance criteria:**
+complete
 
 - Tests pass.
 - Old leakage self-test still passes.
@@ -371,6 +398,7 @@ Add tests for:
 **Type:** Evaluation / analysis  
 **Dependencies:** B2–B9  
 **Output:** classifier transition report
+**Status:** complete
 
 Compare old and new classifications:
 
@@ -389,9 +417,24 @@ Compare old and new classifications:
 - examples per transition.
 
 **Acceptance criteria:**
+complete
 
 - Transition matrix is included in classifier audit appendix or internal report.
 - New Type C semantics are reflected in dataset documentation.
+
+### Phase B completion output — completed 2026-05-21
+
+Phase B is completed in [`implementation-plan-completions/00-phase_B_completion.md`](implementation-plan-completions/00-phase_B_completion.md).
+
+**B1/B10 result.** Baseline counts and an old/new transition matrix are archived under `reports/classifier_audit/`. The audit report includes class, subtype, confidence, truth-source, branch, local-subtype, and track counts.
+
+**B2/B3 result.** Type C fallback now emits `EXTERNAL_BY_ELIMINATION` or `UNKNOWN_*` subtypes. Current-value truth fallbacks are quarantined as `UNKNOWN_CURRENT_VALUE_FALLBACK`.
+
+**B4/B5 result.** Local evidence now includes non-target focus-node properties and L2 labels for locally referenced ids. QID/PID matching remains exact-id only, while literal matching uses short-literal safeguards and token-boundary checks.
+
+**B6/B7 result.** Deletes and format repairs are no longer overclaimed as high-confidence logical repairs. Single/unique-value deletes become ambiguous unless a stronger rule signal is present, and non-deterministic format updates fall through to local/external/unknown handling.
+
+**B8/B9 result.** Numeric/date range qualifiers and type/value-type qualifiers are explicit, and focused classifier tests cover all Phase B acceptance criteria.
 
 ## 3. Phase C — Dataset tiers and selection manifests
 

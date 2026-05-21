@@ -44,6 +44,7 @@ kg-evaluate = "evaluate:main"
 kg-reasoning-floor = "reasoning_floor:main"
 kg-reasoning-floor-viewer = "scripts.reasoning_floor_viewer:main"
 kg-analyze-tbox-updates = "scripts.analyze_tbox_updates:main"
+kg-classifier-audit-report = "scripts.classifier_audit_report:main"
 
 [tool.setuptools]
 package-dir = {"" = "src", "scripts" = "scripts"}

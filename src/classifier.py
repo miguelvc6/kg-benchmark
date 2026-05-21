@@ -58,7 +58,21 @@ DEFAULT_STATS_PATH = "reports/classifier_stats.json"
 FORMAT_QIDS = {"Q21502404"}  # format constraint
 ONE_OF_QIDS = {"Q21510859", "Q21502402"}  # one-of constraint (observed + legacy)
 RANGE_QIDS = {"Q21510860"}  # range constraint
-TYPE_QIDS = {"Q21503250"}  # type constraint
+TYPE_QIDS = {"Q21503250"}  # subject type constraint
+VALUE_TYPE_QIDS = {"Q21510865"}  # value-type constraint
+
+ONE_OF_VALUE_QUALIFIER = "P2305"
+TYPE_VALUE_QUALIFIERS = ("P2308", "P2309")
+NUMERIC_MIN_QUALIFIER = "P2313"
+NUMERIC_MAX_QUALIFIER = "P2312"
+DATE_MIN_QUALIFIER = "P2310"
+DATE_MAX_QUALIFIER = "P2311"
+CURRENT_VALUE_TRUTH_SOURCES = {
+    "persistence_check.current_value_2026",
+    "violation_context.value_current_2026",
+    "persistence_check.current_value_2025",
+    "violation_context.value_current_2025",
+}
 
 VIOLATION_TO_CONSTRAINT_MAP = {
     "Single value": "Q19474404",
@@ -124,6 +138,10 @@ def constraint_kind(ctype: Dict[str, Any]) -> Optional[str]:
         return "one_of"
     if qid in RANGE_QIDS:
         return "range"
+    if qid in TYPE_QIDS:
+        return "type"
+    if qid in VALUE_TYPE_QIDS:
+        return "value_type"
     if isinstance(label, str):
         ln = normalize_text(label)
         if ln in {"format constraint", "format"}:
@@ -132,6 +150,10 @@ def constraint_kind(ctype: Dict[str, Any]) -> Optional[str]:
             return "one_of"
         if ln in {"range constraint", "range"}:
             return "range"
+        if ln in {"type constraint", "type"}:
+            return "type"
+        if ln in {"value type constraint", "value-type constraint", "value type", "value-type"}:
+            return "value_type"
     return None
 
 
@@ -199,12 +221,20 @@ def _collect_qualifiers_for_qid(signature: List[Dict[str, Any]], qid: str) -> Li
     return qualifiers
 
 
-def _collect_qualifier_values(qualifiers: List[Dict[str, Any]], property_id: Optional[str] = None) -> List[str]:
+def _collect_qualifier_values(
+    qualifiers: List[Dict[str, Any]],
+    property_id: Optional[str] = None,
+    property_ids: Optional[Iterable[str]] = None,
+) -> List[str]:
     out: List[str] = []
+    property_id_set = set(property_ids) if property_ids is not None else None
     for q in qualifiers:
         if not isinstance(q, dict):
             continue
-        if property_id and q.get("property_id") != property_id:
+        q_pid = q.get("property_id")
+        if property_id and q_pid != property_id:
+            continue
+        if property_id_set is not None and q_pid not in property_id_set:
             continue
         values = q.get("values")
         if values is None:
@@ -228,11 +258,23 @@ def _extract_numeric_bound(
     return min(nums) if prefer == "min" else max(nums)
 
 
+def _extract_date_bound(qualifiers: List[Dict[str, Any]], property_id: str, prefer: str) -> Optional[str]:
+    values = _collect_qualifier_values(qualifiers, property_id=property_id)
+    dates = [d for d in (_parse_date_boundary(v) for v in values) if d is not None]
+    if not dates:
+        return None
+    return min(dates) if prefer == "min" else max(dates)
+
+
 def analyze_range_change(old_qualifiers: List[Dict[str, Any]], new_qualifiers: List[Dict[str, Any]]) -> str:
-    old_min = _extract_numeric_bound(old_qualifiers, "P2313", "min")
-    old_max = _extract_numeric_bound(old_qualifiers, "P2312", "max")
-    new_min = _extract_numeric_bound(new_qualifiers, "P2313", "min")
-    new_max = _extract_numeric_bound(new_qualifiers, "P2312", "max")
+    old_min = _extract_numeric_bound(old_qualifiers, NUMERIC_MIN_QUALIFIER, "min")
+    old_max = _extract_numeric_bound(old_qualifiers, NUMERIC_MAX_QUALIFIER, "max")
+    new_min = _extract_numeric_bound(new_qualifiers, NUMERIC_MIN_QUALIFIER, "min")
+    new_max = _extract_numeric_bound(new_qualifiers, NUMERIC_MAX_QUALIFIER, "max")
+    old_date_min = _extract_date_bound(old_qualifiers, DATE_MIN_QUALIFIER, "min")
+    old_date_max = _extract_date_bound(old_qualifiers, DATE_MAX_QUALIFIER, "max")
+    new_date_min = _extract_date_bound(new_qualifiers, DATE_MIN_QUALIFIER, "min")
+    new_date_max = _extract_date_bound(new_qualifiers, DATE_MAX_QUALIFIER, "max")
 
     widened = False
     narrowed = False
@@ -245,6 +287,16 @@ def analyze_range_change(old_qualifiers: List[Dict[str, Any]], new_qualifiers: L
         if new_max > old_max:
             widened = True
         elif new_max < old_max:
+            narrowed = True
+    if old_date_min is not None and new_date_min is not None:
+        if new_date_min < old_date_min:
+            widened = True
+        elif new_date_min > old_date_min:
+            narrowed = True
+    if old_date_max is not None and new_date_max is not None:
+        if new_date_max > old_date_max:
+            widened = True
+        elif new_date_max < old_date_max:
             narrowed = True
 
     if widened:
@@ -267,10 +319,11 @@ def _compare_sets(old_values: set, new_values: set) -> str:
 def _analyze_set_change(
     old_qualifiers: List[Dict[str, Any]],
     new_qualifiers: List[Dict[str, Any]],
-    property_id: str,
+    property_id: Optional[str] = None,
+    property_ids: Optional[Iterable[str]] = None,
 ) -> str:
-    old_values = set(_collect_qualifier_values(old_qualifiers, property_id=property_id))
-    new_values = set(_collect_qualifier_values(new_qualifiers, property_id=property_id))
+    old_values = set(_collect_qualifier_values(old_qualifiers, property_id=property_id, property_ids=property_ids))
+    new_values = set(_collect_qualifier_values(new_qualifiers, property_id=property_id, property_ids=property_ids))
     return _compare_sets(old_values, new_values)
 
 
@@ -353,13 +406,19 @@ class ConstraintDiffer:
         if target_qid in RANGE_QIDS:
             result = analyze_range_change(old_qualifiers, new_qualifiers)
             trace.append({"step": "range_semantics", "result": result})
-            rationale = "Range constraint qualifiers compared using numeric bounds."
+            rationale = "Range constraint qualifiers compared using numeric and date bounds."
             return result, trace, rationale
 
-        if target_qid in ONE_OF_QIDS or target_qid in TYPE_QIDS:
-            result = _analyze_set_change(old_qualifiers, new_qualifiers, property_id="P2305")
-            trace.append({"step": "set_semantics", "result": result, "property_id": "P2305"})
-            rationale = "Constraint values compared as a set for one-of/type constraints."
+        if target_qid in ONE_OF_QIDS:
+            result = _analyze_set_change(old_qualifiers, new_qualifiers, property_id=ONE_OF_VALUE_QUALIFIER)
+            trace.append({"step": "set_semantics", "result": result, "property_id": ONE_OF_VALUE_QUALIFIER})
+            rationale = "One-of constraint values compared as a set using P2305."
+            return result, trace, rationale
+
+        if target_qid in TYPE_QIDS or target_qid in VALUE_TYPE_QIDS:
+            result = _analyze_set_change(old_qualifiers, new_qualifiers, property_ids=TYPE_VALUE_QUALIFIERS)
+            trace.append({"step": "set_semantics", "result": result, "property_ids": list(TYPE_VALUE_QUALIFIERS)})
+            rationale = "Type/value-type constraint classes and relations compared using P2308/P2309."
             return result, trace, rationale
 
         result = _analyze_generic_set_change(old_qualifiers, new_qualifiers)
@@ -373,6 +432,8 @@ def _parse_numeric_token(token: str) -> Optional[Decimal]:
         return None
     token = token.strip()
     if not token:
+        return None
+    if DATE_ISO_RE.match(token.lstrip("+")):
         return None
 
     # Handle Wikidata time strings like "+2025-01-01T00:00:00Z"
@@ -418,7 +479,7 @@ def _extract_allowed_values(constraint: Dict[str, Any]) -> List[str]:
         if not isinstance(q, dict):
             continue
         pid = q.get("property_id")
-        if pid != "P2305":
+        if pid != ONE_OF_VALUE_QUALIFIER:
             continue
         values = q.get("values")
         if not isinstance(values, list):
@@ -441,17 +502,19 @@ def _extract_allowed_values(constraint: Dict[str, Any]) -> List[str]:
     return uniq
 
 
-def _extract_range_bounds(constraint: Dict[str, Any]) -> Tuple[List[str], List[str]]:
-    mins: List[str] = []
-    maxs: List[str] = []
+def _extract_range_bounds(constraint: Dict[str, Any]) -> Tuple[List[str], List[str], List[str], List[str]]:
+    numeric_mins: List[str] = []
+    numeric_maxs: List[str] = []
+    date_mins: List[str] = []
+    date_maxs: List[str] = []
     qualifiers = constraint.get("qualifiers")
     if not isinstance(qualifiers, list):
-        return mins, maxs
+        return numeric_mins, numeric_maxs, date_mins, date_maxs
     for q in qualifiers:
         if not isinstance(q, dict):
             continue
         pid = q.get("property_id")
-        if pid not in {"P2310", "P2311"}:
+        if pid not in {NUMERIC_MIN_QUALIFIER, NUMERIC_MAX_QUALIFIER, DATE_MIN_QUALIFIER, DATE_MAX_QUALIFIER}:
             continue
         values = q.get("values")
         if not isinstance(values, list):
@@ -464,11 +527,15 @@ def _extract_range_bounds(constraint: Dict[str, Any]) -> Tuple[List[str], List[s
                 raw = v
             if not isinstance(raw, str):
                 continue
-            if pid == "P2310":
-                mins.append(raw)
+            if pid == NUMERIC_MIN_QUALIFIER:
+                numeric_mins.append(raw)
+            elif pid == NUMERIC_MAX_QUALIFIER:
+                numeric_maxs.append(raw)
+            elif pid == DATE_MIN_QUALIFIER:
+                date_mins.append(raw)
             else:
-                maxs.append(raw)
-    return mins, maxs
+                date_maxs.append(raw)
+    return numeric_mins, numeric_maxs, date_mins, date_maxs
 
 
 def flatten_truth(value: Any) -> List[str]:
@@ -534,7 +601,9 @@ def flatten_truth(value: Any) -> List[str]:
 def get_truth_info(repair_event: Dict[str, Any]) -> Tuple[List[str], str, bool]:
     """
     Returns (truth_tokens, truth_source, truth_applicable).
-    For A-BOX UPDATE/CREATE: truth is the post-repair value with fallbacks.
+    For A-BOX UPDATE/CREATE: truth is the historical post-repair value.
+    Current snapshot fields are returned only as a diagnostic fallback source so
+    the classifier can quarantine them instead of using them as ordinary truth.
     For DELETE and T-BOX: truth is not applicable.
     """
     rt = repair_event.get("repair_target", {})
@@ -549,13 +618,22 @@ def get_truth_info(repair_event: Dict[str, Any]) -> Tuple[List[str], str, bool]:
     if action == "DELETE":
         return [], "none_expected", False
 
-    candidates = [
+    historical_candidates = [
         ("repair_target.new_value", rt.get("new_value")),
         ("repair_target.value", rt.get("value")),
+    ]
+    for src, v in historical_candidates:
+        toks = flatten_truth(v)
+        if toks:
+            return toks, src, True
+
+    diagnostic_candidates = [
         ("persistence_check.current_value_2026", safe_get(repair_event, "persistence_check", "current_value_2026")),
         ("violation_context.value_current_2026", safe_get(repair_event, "violation_context", "value_current_2026")),
+        ("persistence_check.current_value_2025", safe_get(repair_event, "persistence_check", "current_value_2025")),
+        ("violation_context.value_current_2025", safe_get(repair_event, "violation_context", "value_current_2025")),
     ]
-    for src, v in candidates:
+    for src, v in diagnostic_candidates:
         toks = flatten_truth(v)
         if toks:
             return toks, src, True
@@ -564,6 +642,15 @@ def get_truth_info(repair_event: Dict[str, Any]) -> Tuple[List[str], str, bool]:
 
 def _pre_repair_value(repair_event: Dict[str, Any]) -> Tuple[Any, str]:
     return pre_repair_target_raw_value(repair_event)
+
+
+def _label_entry_for_id(world_state_entry: Dict[str, Any], entity_id: str) -> Dict[str, Any]:
+    entities = safe_get(world_state_entry, "L2_labels", "entities", default={})
+    if isinstance(entities, dict):
+        entry = entities.get(entity_id)
+        if isinstance(entry, dict):
+            return entry
+    return {}
 
 
 def local_context_buckets(
@@ -579,9 +666,14 @@ def local_context_buckets(
     """
     ids_neighbors: set = set()
     ids_focus_prerepair: set = set()
+    ids_focus_non_target: set = set()
+    locally_referenced_ids: set = set()
     text_focus: List[str] = []
     text_neighbors: List[str] = []
+    text_focus_properties: List[str] = []
+    text_l2_referenced: List[str] = []
     synth_info = {"used_pre_repair_value": False, "pre_repair_source": "missing", "tokens": []}
+    target_pid = repair_event.get("property") if is_pid(repair_event.get("property")) else None
 
     # Focus node text
     q_label = repair_event.get("qid_label_en") or safe_get(world_state_entry, "L1_ego_node", "label")
@@ -590,9 +682,22 @@ def local_context_buckets(
         if isinstance(x, str) and x.strip():
             text_focus.append(x)
 
+    # Focus-node non-target properties. Target property values are intentionally excluded because
+    # the frozen world state may contain the historical post-repair answer.
+    l1_properties = safe_get(world_state_entry, "L1_ego_node", "properties", default={})
+    if isinstance(l1_properties, dict):
+        for pid, values in l1_properties.items():
+            if target_pid and pid == target_pid:
+                continue
+            for tok in flatten_truth(values):
+                if is_qid(tok) or is_pid(tok):
+                    ids_focus_non_target.add(tok)
+                    locally_referenced_ids.add(tok)
+                elif tok not in (None, ""):
+                    text_focus_properties.append(str(tok))
+
     # Neighborhood
     edges = safe_get(world_state_entry, "L3_neighborhood", "outgoing_edges", default=[])
-    target_pid = repair_event.get("property") if is_pid(repair_event.get("property")) else None
     if isinstance(edges, list):
         for e in edges:
             if not isinstance(e, dict):
@@ -604,6 +709,7 @@ def local_context_buckets(
             tq = e.get("target_qid")
             if is_qid(tq):
                 ids_neighbors.add(tq)
+                locally_referenced_ids.add(tq)
             tl = e.get("target_label")
             td = e.get("target_description")
             if isinstance(tl, str) and tl.strip():
@@ -623,6 +729,7 @@ def local_context_buckets(
             for tok in pre_tokens:
                 if is_qid(tok):
                     ids_focus_prerepair.add(tok)
+                    locally_referenced_ids.add(tok)
                 else:
                     text_focus.append(str(tok))
         else:
@@ -630,11 +737,24 @@ def local_context_buckets(
     else:
         synth_info["pre_repair_source"] = "not_applicable"
 
+    for entity_id in sorted(locally_referenced_ids):
+        entry = _label_entry_for_id(world_state_entry, entity_id)
+        for key in ("label", "description", "label_en", "description_en"):
+            value = entry.get(key)
+            if isinstance(value, str) and value.strip():
+                text_l2_referenced.append(value)
+
     buckets = {
         "ids_neighbors": ids_neighbors,
         "ids_focus_prerepair": ids_focus_prerepair,
-        "text_focus": normalize_text(" \n ".join(text_focus)),
-        "text_neighbors": normalize_text(" \n ".join(text_neighbors)),
+        "ids_focus_non_target": ids_focus_non_target,
+        "text_focus_fields": text_focus,
+        "text_neighbor_fields": text_neighbors,
+        "text_focus_property_fields": text_focus_properties,
+        "text_l2_referenced_fields": text_l2_referenced,
+        # Legacy aggregate fields remain for older tests/callers.
+        "text_focus": normalize_text(" \n ".join(text_focus + text_focus_properties)),
+        "text_neighbors": normalize_text(" \n ".join(text_neighbors + text_l2_referenced)),
     }
     return buckets, synth_info
 
@@ -655,9 +775,10 @@ def match_truth_locally(truth_tokens: List[str], buckets: Dict[str, Any]) -> Tup
       - matched: bool
       - evidence: dict with counts and examples
     Matching policy:
-      - QIDs: must appear in ids_neighbors or ids_focus_prerepair
-      - ISO dates: exact substring on normalized text
-      - Other literals: exact substring on normalized text
+      - QIDs/PIDs: exact id match only in locally referenced id buckets
+      - ISO dates: exact field or token-boundary match at full-date precision
+      - short literals (<4 chars): exact normalized field equality only
+      - longer literals: exact field equality or token-boundary match
     """
     if not truth_tokens:
         return False, {"matched": False, "needed": 0, "found": 0, "matches": []}
@@ -670,8 +791,49 @@ def match_truth_locally(truth_tokens: List[str], buckets: Dict[str, Any]) -> Tup
 
     ids_neighbors = buckets.get("ids_neighbors", set())
     ids_focus_prerepair = buckets.get("ids_focus_prerepair", set())
-    text_focus = buckets.get("text_focus", "")
-    text_neighbors = buckets.get("text_neighbors", "")
+    ids_focus_non_target = buckets.get("ids_focus_non_target", set())
+
+    def fields_for(source_key: str, legacy_key: str) -> List[str]:
+        fields = buckets.get(source_key)
+        if isinstance(fields, list):
+            return [str(field) for field in fields if str(field).strip()]
+        legacy = buckets.get(legacy_key, "")
+        if isinstance(legacy, str) and legacy.strip():
+            return [legacy]
+        return []
+
+    text_sources = [
+        ("FOCUS_TEXT", fields_for("text_focus_fields", "text_focus")),
+        ("NEIGHBOR_TEXT", fields_for("text_neighbor_fields", "text_neighbors")),
+        ("FOCUS_NON_TARGET_PROPERTY_TEXT", fields_for("text_focus_property_fields", "text_focus_properties")),
+        ("L2_REFERENCED_TEXT", fields_for("text_l2_referenced_fields", "text_l2_referenced")),
+    ]
+
+    def boundary_match(token_norm: str, field_norm: str) -> bool:
+        if not token_norm:
+            return False
+        return re.search(rf"(?<![0-9a-z]){re.escape(token_norm)}(?![0-9a-z])", field_norm) is not None
+
+    def match_text_token(token: str, *, is_date: bool) -> Optional[Dict[str, str]]:
+        tok_n = normalize_text(token)
+        if not tok_n:
+            return None
+        for source, fields in text_sources:
+            for raw_field in fields:
+                field_n = normalize_text(raw_field)
+                if not field_n:
+                    continue
+                if field_n == tok_n:
+                    return {
+                        "token": token,
+                        "kind": "date_exact" if is_date else "literal_exact",
+                        "source": source,
+                    }
+                if is_date and boundary_match(tok_n, field_n):
+                    return {"token": token, "kind": "date_boundary", "source": source}
+                if not is_date and len(tok_n) >= 4 and boundary_match(tok_n, field_n):
+                    return {"token": token, "kind": "literal_boundary", "source": source}
+        return None
 
     for tok in truth_tokens:
         if tok is None:
@@ -686,41 +848,28 @@ def match_truth_locally(truth_tokens: List[str], buckets: Dict[str, Any]) -> Tup
 
         needed += 1
 
-        if is_qid(tok_s):
+        if is_qid(tok_s) or is_pid(tok_s):
             if tok_s in ids_focus_prerepair:
                 found += 1
-                matches.append({"token": tok_s, "kind": "qid", "source": "FOCUS_PREREPAIR_PROPERTY"})
+                matches.append({"token": tok_s, "kind": "id_exact", "source": "FOCUS_PREREPAIR_PROPERTY"})
                 sources_used.add("FOCUS_PREREPAIR_PROPERTY")
+            elif tok_s in ids_focus_non_target:
+                found += 1
+                matches.append({"token": tok_s, "kind": "id_exact", "source": "FOCUS_NON_TARGET_PROPERTY"})
+                sources_used.add("FOCUS_NON_TARGET_PROPERTY")
             elif tok_s in ids_neighbors:
                 found += 1
-                matches.append({"token": tok_s, "kind": "qid", "source": "NEIGHBOR_IDS"})
+                matches.append({"token": tok_s, "kind": "id_exact", "source": "NEIGHBOR_IDS"})
                 sources_used.add("NEIGHBOR_IDS")
             continue
 
-        # literal/date matching on normalized text
-        if DATE_ISO_RE.match(tok_s):
-            tok_n = normalize_text(tok_s)
-            if tok_n in text_focus:
-                found += 1
-                matches.append({"token": tok_s, "kind": "date", "source": "FOCUS_TEXT"})
-                sources_used.add("FOCUS_TEXT")
-            elif tok_n in text_neighbors:
-                found += 1
-                matches.append({"token": tok_s, "kind": "date", "source": "NEIGHBOR_TEXT"})
-                sources_used.add("NEIGHBOR_TEXT")
-            continue
-
-        tok_n = normalize_text(tok_s)
-        if tok_n and tok_n in text_focus:
+        text_match = match_text_token(tok_s, is_date=bool(DATE_ISO_RE.match(tok_s)))
+        if text_match:
             found += 1
-            used_literal_substring = True
-            matches.append({"token": tok_s, "kind": "literal", "source": "FOCUS_TEXT"})
-            sources_used.add("FOCUS_TEXT")
-        elif tok_n and tok_n in text_neighbors:
-            found += 1
-            used_literal_substring = True
-            matches.append({"token": tok_s, "kind": "literal", "source": "NEIGHBOR_TEXT"})
-            sources_used.add("NEIGHBOR_TEXT")
+            if text_match["kind"] in {"literal_boundary", "date_boundary"}:
+                used_literal_substring = True
+            matches.append(text_match)
+            sources_used.add(text_match["source"])
 
     matched = needed > 0 and found == needed
     evidence = {
@@ -730,7 +879,7 @@ def match_truth_locally(truth_tokens: List[str], buckets: Dict[str, Any]) -> Tup
         "matches": matches,
         "used_literal_substring": used_literal_substring,
         "sources_used": sorted(sources_used),
-        "local_ids_count": len(ids_neighbors) + len(ids_focus_prerepair),
+        "local_ids_count": len(ids_neighbors) + len(ids_focus_prerepair) + len(ids_focus_non_target),
     }
     return matched, evidence
 
@@ -747,9 +896,61 @@ def local_match_subtype(matches: List[Dict[str, Any]]) -> Optional[str]:
         return "LOCAL_NEIGHBOR_IDS"
     if src == "FOCUS_PREREPAIR_PROPERTY":
         return "LOCAL_FOCUS_PREREPAIR_PROPERTY"
+    if src == "FOCUS_NON_TARGET_PROPERTY":
+        return "LOCAL_FOCUS_NON_TARGET_PROPERTY"
+    if src == "FOCUS_NON_TARGET_PROPERTY_TEXT":
+        return "LOCAL_FOCUS_NON_TARGET_PROPERTY"
+    if src == "L2_REFERENCED_TEXT":
+        return "LOCAL_L2_REFERENCED_TEXT"
     if src in {"FOCUS_TEXT", "NEIGHBOR_TEXT"}:
         return "LOCAL_TEXT"
     return "LOCAL_MIXED"
+
+
+def _collapse_internal_whitespace(value: str) -> str:
+    return re.sub(r"\s+", " ", value.strip())
+
+
+def _is_simple_format_normalization(old_value: str, new_value: str) -> Tuple[bool, str]:
+    old_s = str(old_value)
+    new_s = str(new_value)
+    if old_s == new_s:
+        return False, "unchanged"
+    if old_s.strip() == new_s:
+        return True, "strip_whitespace"
+    if _collapse_internal_whitespace(old_s) == new_s:
+        return True, "collapse_whitespace"
+    if old_s.strip().rstrip(".,;:") == new_s:
+        return True, "strip_trailing_punctuation"
+    if old_s.strip().lower() == new_s.lower() and old_s.strip() != new_s:
+        return True, "normalize_case"
+    old_date = _parse_date_boundary(old_s)
+    if old_date and old_date == new_s:
+        return True, "normalize_date_literal"
+    return False, "non_deterministic_format_update"
+
+
+def _format_normalization_detail(
+    repair_event: Dict[str, Any],
+    truth_tokens: List[str],
+    truth_source: str,
+) -> Tuple[bool, Dict[str, Any]]:
+    pre_val, pre_src = _pre_repair_value(repair_event)
+    pre_tokens = flatten_truth(pre_val)
+    if len(pre_tokens) != 1 or len(truth_tokens) != 1:
+        return False, {
+            "pre_repair_source": pre_src,
+            "truth_source": truth_source,
+            "reason": "format_repair_requires_single_old_and_new_value",
+        }
+    simple, kind = _is_simple_format_normalization(pre_tokens[0], truth_tokens[0])
+    return simple, {
+        "pre_repair_source": pre_src,
+        "truth_source": truth_source,
+        "normalization_kind": kind,
+        "old_value": pre_tokens[0],
+        "new_value": truth_tokens[0],
+    }
 
 
 def rule_deterministic_classification(
@@ -766,7 +967,11 @@ def rule_deterministic_classification(
     if not constraints:
         # fallback: format report type is still rule-driven
         if report_type_normalized(repair_event) == "format":
-            return True, "FORMAT", "high", {"signal": "report_type"}
+            simple, detail = _format_normalization_detail(repair_event, truth_tokens, truth_source)
+            if simple:
+                detail["signal"] = "report_type"
+                return True, "FORMAT", "high", detail
+            return False, "", "", {"signal": "report_type", **detail}
         return False, "", "", {"signal": "none"}
 
     pre_val, _ = _pre_repair_value(repair_event)
@@ -776,7 +981,10 @@ def rule_deterministic_classification(
         ctype = c.get("constraint_type", {}) if isinstance(c, dict) else {}
         kind = constraint_kind(ctype)
         if kind == "format":
-            return True, "FORMAT", "high", {"signal": "L4_constraints", "constraint_type": ctype}
+            simple, detail = _format_normalization_detail(repair_event, truth_tokens, truth_source)
+            if simple:
+                return True, "FORMAT", "high", {"signal": "L4_constraints", "constraint_type": ctype, **detail}
+            continue
 
         if kind == "one_of":
             allowed = _extract_allowed_values(c)
@@ -813,11 +1021,11 @@ def rule_deterministic_classification(
             if len(truth_tokens) != 1:
                 continue
             tok = truth_tokens[0]
-            min_raws, max_raws = _extract_range_bounds(c)
-            min_dates = [d for d in (_parse_date_boundary(x) for x in min_raws) if d]
-            max_dates = [d for d in (_parse_date_boundary(x) for x in max_raws) if d]
-            min_nums = [n for n in (_parse_numeric_token(x) for x in min_raws) if n is not None]
-            max_nums = [n for n in (_parse_numeric_token(x) for x in max_raws) if n is not None]
+            numeric_min_raws, numeric_max_raws, date_min_raws, date_max_raws = _extract_range_bounds(c)
+            min_dates = [d for d in (_parse_date_boundary(x) for x in date_min_raws) if d]
+            max_dates = [d for d in (_parse_date_boundary(x) for x in date_max_raws) if d]
+            min_nums = [n for n in (_parse_numeric_token(x) for x in numeric_min_raws) if n is not None]
+            max_nums = [n for n in (_parse_numeric_token(x) for x in numeric_max_raws) if n is not None]
 
             if DATE_ISO_RE.match(str(tok)):
                 if tok in min_dates or tok in max_dates:
@@ -842,6 +1050,72 @@ def rule_deterministic_classification(
             continue
 
     return False, "", "", {"signal": "L4_constraints", "constraint_type": None}
+
+
+def _has_constraint_kind(constraint_types: List[Dict[str, Optional[str]]], kinds: Iterable[str]) -> bool:
+    wanted = set(kinds)
+    for ctype in constraint_types:
+        if constraint_kind({"qid": ctype.get("qid"), "label": ctype.get("label_en")}) in wanted:
+            return True
+    return False
+
+
+def classify_delete_action(
+    repair_event: Dict[str, Any],
+    constraint_types: List[Dict[str, Optional[str]]],
+) -> Tuple[str, str, str, Dict[str, Any]]:
+    report_type = report_type_normalized(repair_event)
+    has_format = _has_constraint_kind(constraint_types, {"format"}) or report_type == "format"
+    if has_format:
+        return (
+            "REJECTION_FORMAT_INVALID",
+            "high",
+            "A-Box DELETE removes a value made invalid by a format constraint.",
+            {"report_type": report_type, "delete_reason": "format_invalid"},
+        )
+
+    rule_invalid_reports = {"one of", "range", "type", "value type", "diff within range", "quantity"}
+    if report_type in rule_invalid_reports:
+        return (
+            "REJECTION_RULE_INVALID",
+            "medium",
+            "A-Box DELETE removes a value identified as invalid by a supported rule family.",
+            {"report_type": report_type, "delete_reason": "rule_invalid"},
+        )
+
+    if report_type in {"single value", "unique value"}:
+        return (
+            "DELETE_AMBIGUOUS",
+            "low",
+            "A-Box DELETE under a single/unique-value conflict is not automatically logical because value selection may require evidence.",
+            {"report_type": report_type, "delete_reason": "selection_conflict"},
+        )
+
+    return (
+        "DELETE_AMBIGUOUS",
+        "low",
+        "A-Box DELETE lacks enough rule/local evidence to classify the deletion target confidently.",
+        {"report_type": report_type, "delete_reason": "insufficient_delete_evidence"},
+    )
+
+
+def local_context_is_sparse(buckets: Dict[str, Any]) -> bool:
+    text_field_count = 0
+    for key in (
+        "text_focus_fields",
+        "text_neighbor_fields",
+        "text_focus_property_fields",
+        "text_l2_referenced_fields",
+    ):
+        value = buckets.get(key)
+        if isinstance(value, list):
+            text_field_count += len([field for field in value if str(field).strip()])
+    id_count = 0
+    for key in ("ids_neighbors", "ids_focus_prerepair", "ids_focus_non_target"):
+        value = buckets.get(key)
+        if isinstance(value, set):
+            id_count += len(value)
+    return id_count == 0 and text_field_count <= 1
 
 
 def classify_one(
@@ -876,7 +1150,7 @@ def classify_one(
     }
 
     if not isinstance(world_state_entry, dict):
-        # no context => we cannot safely do local check; treat as external with low confidence
+        # no context => we cannot safely make a negative local-evidence claim.
         trace = [
             {"step": "is_delete", "result": None},
             {"step": "rule_deterministic", "result": None},
@@ -885,7 +1159,12 @@ def classify_one(
             {"step": "branch", "result": "missing_world_state"},
         ]
         classification = make(
-            "TypeC", "EXTERNAL", "low", trace, "Missing world_state entry; defaulted to external.", []
+            "TypeC",
+            "UNKNOWN_MISSING_WORLD_STATE",
+            "low",
+            trace,
+            "Missing world-state entry; cannot claim externality from absent local context.",
+            [],
         )
         classification["local_subtype"] = None
         classification["diagnostics"] = diagnostics
@@ -929,19 +1208,21 @@ def classify_one(
     # A-BOX delete => Type A rejection
     action = rt.get("action")
     if action == "DELETE":
+        subtype, conf, rationale, detail = classify_delete_action(repair_event, constraint_types)
         trace = [
             {"step": "is_delete", "result": True},
+            {"step": "delete_classification", "result": subtype, "detail": detail},
             {"step": "rule_deterministic", "result": None},
             {"step": "local_availability", "result": False},
             {"step": "fallback_external", "result": False},
-            {"step": "branch", "result": "delete_rejection"},
+            {"step": "branch", "result": "delete_refined"},
         ]
         classification = make(
             "TypeA",
-            "REJECTION",
-            "high",
+            subtype,
+            conf,
             trace,
-            "A-Box DELETE action treated as logical rejection/cleaning.",
+            rationale,
             constraint_types,
         )
         classification["local_subtype"] = None
@@ -949,6 +1230,56 @@ def classify_one(
         return classification, None, {"missing_truth_tokens": False, "missing_old_value": False}
 
     missing_truth = len(truth_tokens) == 0
+
+    if truth_source in CURRENT_VALUE_TRUTH_SOURCES:
+        trace = [
+            {"step": "is_delete", "result": False},
+            {"step": "truth_source", "result": truth_source},
+            {"step": "rule_deterministic", "result": None},
+            {"step": "local_availability", "result": None},
+            {"step": "fallback_external", "result": False},
+            {"step": "branch", "result": "current_value_truth_fallback"},
+        ]
+        classification = make(
+            "TypeC",
+            "UNKNOWN_CURRENT_VALUE_FALLBACK",
+            "low",
+            trace,
+            "Historical repair truth is missing; only current snapshot value is available, so the case is quarantined.",
+            constraint_types,
+        )
+        classification["local_subtype"] = None
+        classification["diagnostics"] = diagnostics
+        return (
+            classification,
+            None,
+            {"missing_truth_tokens": False, "missing_old_value": False, "current_value_truth_fallback": True},
+        )
+
+    if truth_applicable and missing_truth:
+        trace = [
+            {"step": "is_delete", "result": False},
+            {"step": "truth_source", "result": truth_source},
+            {"step": "rule_deterministic", "result": None},
+            {"step": "local_availability", "result": None},
+            {"step": "fallback_external", "result": False},
+            {"step": "branch", "result": "missing_truth"},
+        ]
+        classification = make(
+            "TypeC",
+            "UNKNOWN_MISSING_TRUTH",
+            "low",
+            trace,
+            "No usable historical repair truth tokens are available for classification.",
+            constraint_types,
+        )
+        classification["local_subtype"] = None
+        classification["diagnostics"] = diagnostics
+        return (
+            classification,
+            None,
+            {"missing_truth_tokens": True, "missing_old_value": False},
+        )
 
     # Rule-deterministic check (precedes local)
     det, det_kind, det_conf, det_detail = rule_deterministic_classification(
@@ -997,8 +1328,12 @@ def classify_one(
         ]
         if local_subtype == "LOCAL_FOCUS_PREREPAIR_PROPERTY":
             rationale = "Truth tokens matched synthetic pre-repair target property values."
+        elif local_subtype == "LOCAL_FOCUS_NON_TARGET_PROPERTY":
+            rationale = "Truth tokens matched non-target focus-node property values."
         elif local_subtype == "LOCAL_NEIGHBOR_IDS":
             rationale = "Truth tokens matched neighbor identifiers."
+        elif local_subtype == "LOCAL_L2_REFERENCED_TEXT":
+            rationale = "Truth tokens matched labels or descriptions for locally referenced ids."
         elif local_subtype == "LOCAL_TEXT":
             rationale = "Truth tokens matched local text context."
         else:
@@ -1022,23 +1357,28 @@ def classify_one(
             },
         )
 
-    # Default: external
-    conf = "medium"
-    if truth_applicable and missing_truth:
-        conf = "low"
+    # Default: external by elimination or unknown if local context is too sparse for a negative claim.
+    sparse_local_context = local_context_is_sparse(buckets)
+    fallback_subtype = "UNKNOWN_INCOMPLETE_LOCAL_CONTEXT" if sparse_local_context else "EXTERNAL_BY_ELIMINATION"
+    conf = "low" if sparse_local_context else "medium"
     trace = [
         {"step": "is_delete", "result": False},
         {"step": "rule_deterministic", "result": False, "detail": det_detail},
         {"step": "local_availability", "result": False, "evidence": evidence, "synthetic": synth_info},
         {"step": "fallback_external", "result": True},
-        {"step": "branch", "result": "external_fallback"},
+        {"step": "branch", "result": "incomplete_local_context" if sparse_local_context else "external_by_elimination"},
     ]
+    rationale = (
+        "Local context is too sparse to claim externality."
+        if sparse_local_context
+        else "Historical truth exists, but supported rule and local-evidence checks did not find it; externality is by elimination."
+    )
     classification = make(
         "TypeC",
-        "EXTERNAL",
+        fallback_subtype,
         conf,
         trace,
-        "Truth not found locally and rule is not deterministic; treated as external.",
+        rationale,
         constraint_types,
     )
     classification["local_subtype"] = None
@@ -1297,6 +1637,13 @@ def main() -> int:
     ap.add_argument("--verbose", action="store_true", help="Enable verbose logging")
     ap.add_argument("--quiet", action="store_true", help="Show only warnings and errors")
     ap.add_argument("--no-progress", action="store_true", help="Disable tqdm progress bars")
+    ap.add_argument("--repairs-path", type=Path, help="Override repairs input path.")
+    ap.add_argument("--world-state-path", type=Path, help="Override world-state input path.")
+    ap.add_argument("--popularity-path", type=Path, help="Override popularity input path.")
+    ap.add_argument("--out-path", type=Path, help="Override lean classified JSONL output path.")
+    ap.add_argument("--out-full-path", type=Path, help="Override full classified JSONL output path.")
+    ap.add_argument("--no-full-output", action="store_true", help="Do not write the full embedded world-state output.")
+    ap.add_argument("--stats-path", type=Path, help="Override classifier stats output path.")
     args = ap.parse_args()
     configure_logging(verbose=args.verbose, quiet=args.quiet)
     log = logging.getLogger("classifier")
@@ -1311,12 +1658,14 @@ def main() -> int:
     FOLDER_PATH = Path("data/")
     if args.sample:
         FOLDER_PATH = Path("data_sample/")
-    repairs_path = FOLDER_PATH / DEFAULT_REPAIRS_PATH
-    world_state_path = FOLDER_PATH / DEFAULT_WORLD_STATE_PATH
-    popularity_path = FOLDER_PATH / DEFAULT_POPULARITY_PATH
-    out_path = FOLDER_PATH / DEFAULT_OUT_PATH
-    out_full_path = FOLDER_PATH / DEFAULT_OUT_FULL_PATH if DEFAULT_OUT_FULL_PATH else None
-    stats_path = Path(DEFAULT_STATS_PATH)
+    repairs_path = args.repairs_path or (FOLDER_PATH / DEFAULT_REPAIRS_PATH)
+    world_state_path = args.world_state_path or (FOLDER_PATH / DEFAULT_WORLD_STATE_PATH)
+    popularity_path = args.popularity_path or (FOLDER_PATH / DEFAULT_POPULARITY_PATH)
+    out_path = args.out_path or (FOLDER_PATH / DEFAULT_OUT_PATH)
+    out_full_path = args.out_full_path or (FOLDER_PATH / DEFAULT_OUT_FULL_PATH if DEFAULT_OUT_FULL_PATH else None)
+    if args.no_full_output:
+        out_full_path = None
+    stats_path = args.stats_path or Path(DEFAULT_STATS_PATH)
     use_progress = (not args.no_progress) and sys.stderr.isatty()
     log.info("Starting classifier run")
     log.info("Inputs: repairs=%s world_state=%s", repairs_path, world_state_path)
@@ -1421,14 +1770,21 @@ def main() -> int:
                 # Counters
                 c = classification.get("class")
                 s = classification.get("subtype")
+                conf = classification.get("confidence")
                 stats["counts"][f"class:{c}"] += 1
                 stats["counts"][f"subtype:{s}"] += 1
+                stats["counts"][f"confidence:{conf}"] += 1
                 stats["counts"][f"track:{out.get('track')}"] += 1
+                local_subtype = classification.get("local_subtype")
+                if isinstance(local_subtype, str) and local_subtype:
+                    stats["counts"][f"local_subtype:{local_subtype}"] += 1
                 diag_block = classification.get("diagnostics", {})
                 if isinstance(diag_block, dict):
                     ts = diag_block.get("truth_source")
                     if isinstance(ts, str):
                         stats["counts"][f"truth_source:{ts}"] += 1
+                        if ts in CURRENT_VALUE_TRUTH_SOURCES:
+                            stats["counts"]["truth_source:current_value_fallback_total"] += 1
                 for step in classification.get("decision_trace", []):
                     if not isinstance(step, dict):
                         continue

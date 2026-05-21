@@ -1,0 +1,51 @@
+{
+  "baseline": {
+    "counts": {
+      "class:T_BOX": 871,
+      "class:TypeA": 72,
+      "class:TypeB": 29,
+      "class:TypeC": 28,
+      "confidence:high": 267,
+      "confidence:low": 303,
+      "confidence:medium": 430,
+      "decision_branch:delete_rejection": 21,
+      "decision_branch:external_fallback": 28,
+      "decision_branch:local_match": 29,
+      "decision_branch:missing": 871,
+      "decision_branch:rule_deterministic": 51,
+      "local_subtype:LOCAL_FOCUS_PREREPAIR_PROPERTY": 28,
+      "local_subtype:LOCAL_TEXT": 1,
+      "records": 1000,
+      "subtype:COINCIDENTAL_SCHEMA_CHANGE": 303,
+      "subtype:EXTERNAL": 28,
+      "subtype:LOCAL_FOCUS_PREREPAIR_PROPERTY": 28,
+      "subtype:LOCAL_TEXT": 1,
+      "subtype:LOGICAL": 51,
+      "subtype:REJECTION": 21,
+      "subtype:RELAXATION_SET_EXPANSION": 170,
+      "subtype:RESTRICTION_SET_CONTRACTION": 3,
+      "subtype:SCHEMA_UPDATE": 395,
+      "track:A_BOX": 129,
+      "track:T_BOX": 871,
+      "truth_source:none_expected": 892,
+      "truth_source:repair_target.new_value": 108
+    },
+    "metrics": {
+      "current_value_truth_fallback": 0,
+      "missing_truth": 0,
+      "missing_world_state": 0,
+      "typea_deletes": 21,
+      "typea_format_repairs": 51,
+      "typea_subtypes": {
+        "LOGICAL": 51,
+        "REJECTION": 21
+      },
+      "typec_low_confidence": 0,
+      "typec_subtypes": {
+        "EXTERNAL": 28
+      },
+      "typec_total": 28
+    },
+    "source": "first 1000 records from data/04_classified_benchmark.jsonl"
+  }
+}
