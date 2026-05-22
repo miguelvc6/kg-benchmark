@@ -253,6 +253,13 @@ Recommended manifests:
 - `reports/benchmark_selection/dev_prompt_v1_seed_13.json` for prompt development only
 - `reports/benchmark_selection/core_v1_seed_13.json` for final core experiments
 
+Build them from the canonical Stage 4 artifact:
+
+```bash
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python src/select_benchmark_cases.py --tier dev --output reports/benchmark_selection/dev_prompt_v1_seed_13.json
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python src/select_benchmark_cases.py --tier core --exclude-manifest reports/benchmark_selection/dev_prompt_v1_seed_13.json --output reports/benchmark_selection/core_v1_seed_13.json
+```
+
 The core manifest must expose:
 
 - `selected_case_ids` for all core cases, including diagnostic/challenge cases
@@ -262,3 +269,4 @@ The core manifest must expose:
 
 The runner can consume the manifest through `--selection-manifest`. Evaluation and aggregation should use the manifest annotations to separate headline scores from diagnostic slices. Dev/pilot manifests must not be used for final benchmark scores.
 
+For TypeC reporting, use `EXTERNAL_BY_ELIMINATION` / IC-E-elim for the main no-retrieval stress slice and IC-U for `UNKNOWN_*` diagnostics. Do not describe IC-E-elim as confirmed external evidence unless a post-audit `EXTERNAL_CONFIRMED` label exists.

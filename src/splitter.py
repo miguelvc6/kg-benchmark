@@ -17,6 +17,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
+from lib.benchmark_selection import group_key_for_record
 from lib.utils import iter_jsonl
 
 DEFAULT_IN_PATH = "04_classified_benchmark.jsonl"
@@ -31,6 +32,15 @@ TAIL_FRAC = 0.2
 HEAD_FRAC = 0.2
 ALLOW_MISSING_POPULARITY = False
 MAX_DELTA = 0.02
+
+
+def derive_split_group(record: Dict[str, Any]) -> Dict[str, Any]:
+    group_key, tbox_revision_key, weak_group_key = group_key_for_record(record)
+    return {
+        "group_key": group_key,
+        "tbox_revision_key": tbox_revision_key,
+        "weak_group_key": weak_group_key,
+    }
 
 
 def _popularity_score(rec: Dict[str, Any]) -> Optional[float]:

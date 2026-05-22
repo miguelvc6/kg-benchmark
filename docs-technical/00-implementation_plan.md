@@ -12,7 +12,7 @@ The project should proceed with the following decisions fixed unless strong evid
 4. Treat few-shot prompting as an ablation.
 5. Use hybrid JSON + controlled natural language as the main prompt representation unless dev results strongly disprove it.
 6. Create full, core, and dev dataset tiers.
-7. Redesign Type C to distinguish external-by-elimination from unknown or confirmed external cases.
+7. Redesign TypeC to distinguish `EXTERNAL_BY_ELIMINATION`, `UNKNOWN_*`, and post-audit `EXTERNAL_CONFIRMED` cases.
 8. Keep RAG, full cost-quality frontier, and neuro-symbolic Guardian as paper 2 unless a small Guardian-lite contingency is needed.
 
 ## 1. Phase A — Project alignment and paper scope
@@ -23,7 +23,7 @@ The project should proceed with the following decisions fixed unless strong evid
 
 ### Phase A decision summary
 
-Task A3 should **not** reuse the original hypotheses from `00-kg_llm_benchmark.md` verbatim. The original hypotheses are a good conceptual base, but they have now been updated into metric-linked, contrast-linked hypotheses because the classifier audit changed the interpretation of Type C. Type C should be treated as external-by-elimination or unknown/incomplete-context unless it is manually or retrieval-confirmed.
+Task A3 should **not** reuse the original hypotheses from `00-kg_llm_benchmark.md` verbatim. The original hypotheses are a good conceptual base, but they have now been updated into metric-linked, contrast-linked hypotheses because the classifier audit changed the interpretation of TypeC. TypeC should be treated as `EXTERNAL_BY_ELIMINATION` / IC-E-elim or `UNKNOWN_*` / IC-U unless it is manually or retrieval-confirmed as `EXTERNAL_CONFIRMED`.
 
 ### Task A1 — Freeze paper 1 scope
 
@@ -59,7 +59,7 @@ Create a table mapping repository terms to paper-facing terms:
 | T_BOX | T-box / schema-level repair | Use prior taxonomy nomenclature. |
 | TypeA | IC-L / rule-implied information condition | Keep TypeA in code if needed. |
 | TypeB | IC-G / local graph-grounded information condition | Keep TypeB in code if needed. |
-| TypeC | IC-E / external-by-elimination or external-evidence condition | Must split/qualify. |
+| TypeC | IC-E-elim / IC-U / post-audit `EXTERNAL_CONFIRMED` | Must split/qualify. |
 
 **Acceptance criteria:**
 
@@ -91,11 +91,11 @@ Use these research questions:
 
 **Completion status:** complete on 2026-05-21
 **Deliverable:** `00-phase_B_completion.md`
-**Implementation update:** `src/classifier.py` now emits conservative Type C subtypes, quarantines current-value truth fallbacks, expands local evidence buckets, tightens literal matching, refines delete and format logic, and handles numeric/date range plus type/value-type qualifiers explicitly.
+**Implementation update:** `src/classifier.py` now emits conservative TypeC subtypes, quarantines current-value truth fallbacks, expands local evidence buckets, tightens literal matching, refines delete and format logic, and handles numeric/date range plus type/value-type qualifiers explicitly.
 
 ### Phase B decision summary
 
-The redesigned classifier keeps the repository-facing `TypeA`/`TypeB`/`TypeC` labels, but changes Type C from an unqualified external bucket into auditable subtypes. `EXTERNAL_BY_ELIMINATION` means only that supported rule and local checks failed to find historical truth; `UNKNOWN_*` subtypes identify artifact or context weaknesses that should be excluded from main-core scoring or reported separately.
+The redesigned classifier keeps the repository-facing `TypeA`/`TypeB`/`TypeC` labels, but changes TypeC from an unqualified external bucket into auditable subtypes. `EXTERNAL_BY_ELIMINATION` means only that supported rule and local checks failed to find historical truth; `UNKNOWN_*` subtypes identify artifact or context weaknesses that should be excluded from main-core scoring or reported separately.
 
 ### Task B1 — Create classifier audit branch and snapshot current counts
 
@@ -441,7 +441,7 @@ Core v1 is a fixed 4,800-case measurement suite, not a random downsample. It bal
 **Type:** Repository implementation  
 **Dependencies:** C1  
 **Output:** `reports/benchmark_selection/core_v1_seed_13.json`  
-**Status:** design complete; Codex implementation prompt written
+**Status:** complete
 
 Core v1 target quotas:
 
@@ -450,7 +450,7 @@ Core v1 target quotas:
 | TypeA clean rule/rejection | 700 | main |
 | TypeA ambiguous delete | 250 | diagnostic only |
 | TypeB local graph-grounded | 1,150 | main |
-| TypeC external-by-elimination | 900 | main stress slice, reported as IC-E-elim |
+| TypeC / `EXTERNAL_BY_ELIMINATION` | 900 | main stress slice, reported as IC-E-elim |
 | T-box directional/schema reform | 1,500 | main, with schema-update separated from directional reforms |
 | T-box coincidental schema change | 300 | diagnostic only |
 | **Total** | **4,800** | mixed |
@@ -470,7 +470,8 @@ Core caps:
 - `main_score_case_ids` versus `diagnostic_case_ids`;
 - overlap with dev.
 
-**Acceptance criteria:** complete in policy; repository implementation delegated to Codex prompt
+**Acceptance criteria:** complete
+**Implementation status:** complete in `src/lib/benchmark_selection.py` and `src/select_benchmark_cases.py`
 
 - No T-box revision may dominate the core.
 - All key strata have enough cases for analysis or an explicit underfill record.
@@ -480,7 +481,7 @@ Core caps:
 **Type:** Repository implementation / prompt development support  
 **Dependencies:** C1  
 **Output:** `reports/benchmark_selection/dev_prompt_v1_seed_13.json`  
-**Status:** design complete; Codex implementation prompt written
+**Status:** complete
 
 Dev/Pilot v1 target quotas:
 
@@ -489,7 +490,7 @@ Dev/Pilot v1 target quotas:
 | TypeA clean rule/rejection | 70 |
 | TypeA ambiguous delete | 40 |
 | TypeB local graph-grounded | 130 |
-| TypeC external-by-elimination or unknown diagnostic | 120 |
+| TypeC / `EXTERNAL_BY_ELIMINATION` or `UNKNOWN_*` diagnostic | 120 |
 | T-box relaxation expansion | 80 |
 | T-box restriction contraction | 40 |
 | T-box schema update | 80 |
@@ -506,6 +507,7 @@ Dev is selected before core. Core selection must exclude dev case ids and dev T-
 - A-box `(qid, property)` overlap warning if unavoidable.
 
 **Acceptance criteria:** complete
+**Implementation status:** complete in `src/lib/benchmark_selection.py` and `src/select_benchmark_cases.py`
 
 - Dev is representative but small enough for prompt iteration.
 - Dev is not used for final benchmark scoring.
@@ -515,7 +517,7 @@ Dev is selected before core. Core selection must exclude dev case ids and dev T-
 **Type:** Repository implementation  
 **Dependencies:** C1–C3  
 **Output:** deterministic group-aware split artifact  
-**Status:** design complete; Codex implementation prompt written
+**Status:** complete
 
 Decision: the splitter must become group-aware for any train/dev/test or few-shot exemplar split.
 
@@ -537,13 +539,14 @@ Required stratification keys:
 - selection stratum.
 
 **Acceptance criteria:** complete in policy
+**Implementation status:** the selector and splitter share the same T-box/A-box group-key helpers, including weak fallback keys.
 
 - Train/dev/test distributions must be reported by stratum.
 - T-box property revisions must not be split across prompt-development and final-evaluation sets when few-shot examples are used.
 
 ### Phase C completion output — completed 2026-05-22
 
-Phase C is completed in `00-phase_C_completion.md`. The repository implementation prompt is in `00-codex_phase_C_selection.md`. The Phase D readiness prompt is in `00-codex_phase_D_audit.md`.
+Phase C is completed in `00-phase_C_completion.md`. The repository implementation is in `src/lib/benchmark_selection.py`, `src/select_benchmark_cases.py`, and the group-key bridge in `src/splitter.py`. The Phase D readiness prompt remains in `00-codex_phase_D_audit.md`.
 
 ## 4. Phase D — Manual audit
 
@@ -636,7 +639,7 @@ Audit each sampled case.
 Define which cases count in main core vs challenge/diagnostic:
 
 - high-confidence confirmed or well-supported cases -> main core;
-- medium-confidence external-by-elimination -> main core but separate slice;
+- medium-confidence `EXTERNAL_BY_ELIMINATION` -> main core but separate IC-E-elim slice;
 - unknown/missing/sparse/current fallback -> challenge or excluded from main score;
 - low-causality T-box -> separate slice.
 

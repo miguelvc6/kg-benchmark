@@ -91,7 +91,7 @@ The full benchmark remains the release artifact. Paper experiments should use de
 | Dev/Pilot v1 | 600 | Prompt development and debugging. |
 | Audit v1 | 450 | Manual label validation. |
 
-T-box dominance remains severe: T-box records represent about 85% of the full benchmark. Core selection therefore caps T-box cases per property revision at 10 and marks low-causality `COINCIDENTAL_SCHEMA_CHANGE` cases as diagnostic-only.
+The repository writes the Phase C core/dev tiers as manifest JSON files under `reports/benchmark_selection/`, not as additional Stage 4 benchmark files. T-box dominance remains severe: T-box records represent about 85% of the full benchmark. Core selection therefore caps T-box cases per property revision at 10 and marks low-causality `COINCIDENTAL_SCHEMA_CHANGE` cases as diagnostic-only.
 
 ---
 
@@ -144,7 +144,7 @@ For A-box cases, the current labels are:
 
 - **Type A**: logical/rule-implied repair;
 - **Type B**: local-context repair;
-- **Type C**: external or non-local evidence required, currently often assigned by elimination.
+- **Type C**: `EXTERNAL_BY_ELIMINATION`, `UNKNOWN_*`, or post-audit `EXTERNAL_CONFIRMED`.
 
 For T-box cases, the classifier assigns schema-change subtypes such as:
 
@@ -280,7 +280,7 @@ Local evidence sources include:
 
 Phase B status: local evidence extraction now includes synthetic pre-repair target-property values, non-target focus-node properties, one-hop neighbor ids, and labels/descriptions for locally referenced ids. TypeB remains an audit target, especially `LOCAL_TEXT` and rare local subtypes.
 
-### Type C: external-by-elimination / unresolved non-local evidence
+### TypeC: `EXTERNAL_BY_ELIMINATION` / IC-U unresolved non-local evidence
 
 After Phase B, ordinary fallback cases are no longer emitted as unqualified `TypeC / EXTERNAL`. The main TypeC subtype is now `EXTERNAL_BY_ELIMINATION`:
 
@@ -325,10 +325,10 @@ This priority order is now safer for paper claims, but it still requires manual 
 
 | Risk | Consequence | Recommended fix |
 |---|---|---|
-| Type C assigned by elimination | Overclaims external evidence need. | Rename/split into external-by-elimination and unknown subtypes. |
+| TypeC / `EXTERNAL_BY_ELIMINATION` overclaim | Overclaims confirmed external evidence need. | Report as IC-E-elim unless audit/retrieval confirms `EXTERNAL_CONFIRMED`; keep `UNKNOWN_*` as IC-U. |
 | 2026/current-value truth fallbacks | Potential post-repair leakage into classification. | Use historical repair target for classification; downgrade fallback cases. |
-| Narrow local evidence scan | False Type C labels. | Expand local buckets to all non-target L1 properties and aligned L2 labels. |
-| Literal substring matching | False Type B or false Type C labels. | Add exact/boundary matching and short-literal safeguards. |
+| Narrow local evidence scan | False TypeC / `EXTERNAL_BY_ELIMINATION` labels. | Expand local buckets to all non-target L1 properties and aligned L2 labels. |
+| Literal substring matching | False Type B or false TypeC labels. | Add exact/boundary matching and short-literal safeguards. |
 | All deletes are Type A | Hides cases where selecting deletion needs evidence. | Split delete subtypes and downgrade generic deletes. |
 | Format constraints over-treated as deterministic | Some format repairs are not unique. | Treat only simple normalizations as high-confidence Type A. |
 | Numeric/date range handling may be incomplete | Missed Type A range cases. | Explicitly separate numeric and date bound qualifier properties. |
@@ -353,16 +353,16 @@ Before final experiments, manually audit a stratified sample of approximately 30
 
 | Stratum | Suggested cases |
 |---|---:|
-| Type C external-by-elimination, QID truth | 50 |
-| Type C external-by-elimination, literal truth | 50 |
-| Type C sparse local graph | 50 |
-| Type C current-value fallback | all or 50 |
+| TypeC / `EXTERNAL_BY_ELIMINATION`, QID truth | 50 |
+| TypeC / `EXTERNAL_BY_ELIMINATION`, literal truth | 50 |
+| TypeC / `UNKNOWN_*` sparse local graph | 50 |
+| TypeC / `UNKNOWN_CURRENT_VALUE_FALLBACK` | all or 50 |
 | Type A format update | 50 |
 | Type A delete under single/unique constraints | 50 |
 | Type B local text | 50 |
 | T-box generic schema update | 50 |
 
-For each Type C case, ask:
+For each TypeC case, ask:
 
 1. Is the historical target truth actually present in local context?
 2. Was it missed because the extractor did not scan the relevant field?
@@ -623,7 +623,7 @@ Candidate failure classes:
 | Non-auditable | Missing rationale, provenance, or uncertainty. |
 | Exact mismatch but semantic match | Directionally plausible but not historically exact. |
 | Constraint regression | Fix introduces or preserves supported violations. |
-| External-evidence hallucination | Guesses Type C target without evidence. |
+| External-evidence hallucination | Guesses a TypeC / `EXTERNAL_BY_ELIMINATION` or IC-U target without evidence. |
 
 This failure taxonomy is likely to be one of the most scientifically valuable outputs.
 
@@ -635,7 +635,7 @@ The natural continuation is a second paper on neuro-symbolic repair-time control
 
 ### 16.1 Retrieval-augmented repair
 
-Type C and evidence-heavy T-box cases require retrieval. A future protocol should add:
+Post-audit `EXTERNAL_CONFIRMED` TypeC cases and evidence-heavy T-box cases require retrieval. A future protocol should add:
 
 - query generation;
 - evidence retrieval;
@@ -679,7 +679,7 @@ This should be a second paper unless the first paper is repeatedly rejected for 
 |---|---|
 | “Just another LLM benchmark” | Lead with repair-locus, information condition, transaction evaluation, and temporal controls. |
 | Taxonomy novelty challenge | Adopt prior taxonomy explicitly; present information condition as an evaluation axis. |
-| Type C overclaim | Rename/split Type C and manually audit. |
+| TypeC overclaim | Report `EXTERNAL_BY_ELIMINATION` as IC-E-elim, keep `UNKNOWN_*` as IC-U, and manually audit for `EXTERNAL_CONFIRMED`. |
 | Historical gold imperfection | Say “historically accepted repair target,” not universal truth. |
 | T-box skew | Use core subset caps and property-revision macro-averages. |
 | Prompt leakage | Enforce target-property reconstruction and sanitizer tests. |
@@ -724,7 +724,7 @@ The first paper should not try to fully implement RAG, cost-quality frontier ana
 | Diagnosis-routed | Proposal generation routed through the model's predicted repair locus. |
 | Frozen world state | Contemporary graph context attached to cases for controlled evaluation. |
 | Target-property rule | The edited property is reconstructed as pre-repair and not copied from the current snapshot. |
-| External by elimination | A Type C-like case assigned because supported rule/local checks did not find the target. |
+| `EXTERNAL_BY_ELIMINATION` | A TypeC / IC-E-elim case assigned because supported rule/local checks did not find the target. |
 | Guardian | Future verifier-guided repair-time controller. |
 
 ## Reference anchors for future writing

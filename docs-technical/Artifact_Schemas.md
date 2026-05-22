@@ -159,7 +159,7 @@ Required top-level fields:
 - `seed`
 - `created_at_utc`
 - `inputs.classified_benchmark`
-- `inputs.world_state`
+- `inputs.exclude_manifest`
 - `policy`
 - `selected_case_ids`
 - `main_score_case_ids`
@@ -172,7 +172,12 @@ Required top-level fields:
 
 `case_annotations` maps each selected case id to derived selection metadata:
 
+- `case_id`
 - `tier`
+- `track`
+- `class`
+- `subtype`
+- `confidence`
 - `selection_stratum`
 - `analysis_slice`
 - `main_score`
@@ -180,16 +185,20 @@ Required top-level fields:
 - `group_key`
 - `tbox_revision_key`
 - `weak_group_key`
-- `class`
-- `subtype`
-- `confidence`
-- `track`
 - `popularity_bucket`
 - `constraint_family`
 - `truth_source`
 - `truth_token_kind`
 
 The manifest must distinguish headline evaluation cases from diagnostic/challenge cases. The main paper score should use `main_score_case_ids`, while `diagnostic_case_ids` should be reported separately.
+
+Phase C uses deterministic SHA-1 ordering within each stratum:
+
+```text
+sha1(seed|tier|selection_stratum|group_key|case_id)
+```
+
+The selector writes manifests from `data/04_classified_benchmark.jsonl`; it must not create a second Stage 4 benchmark file. `EXTERNAL_BY_ELIMINATION` is reported as IC-E-elim/no-retrieval stress, while `UNKNOWN_*` TypeC cases are IC-U diagnostics.
 
 Hard validation checks for `core_v1`:
 

@@ -261,25 +261,27 @@ The audit sample targets **450 cases** and covers the highest-risk classifier de
 
 ## 8. Tests required for Phase C implementation
 
-Codex should add tests that verify:
+The repository implementation includes tests that verify:
 
-1. core and dev manifests are deterministic for fixed seed;
-2. core and dev case ids do not overlap;
-3. core and dev T-box property-revision groups do not overlap;
-4. core max T-box cap is 10 per revision;
-5. dev max T-box cap is 3 per revision;
-6. diagnostic-only subtypes are not included in `main_score_case_ids`;
-7. unknown TypeC and low-confidence cases are never in `main_score_case_ids`;
-8. rare subtypes can underfill without crashing and produce an `underfilled_quotas` entry;
-9. manifest counts match selected ids;
-10. audit sample builder emits all required annotation fields.
+1. same seed produces identical selected ids and annotations;
+2. different seed changes deterministic order while preserving quota validity;
+3. core and dev case ids do not overlap;
+4. core and dev T-box property-revision groups do not overlap;
+5. core max T-box cap is enforced;
+6. dev max T-box cap is enforced;
+7. diagnostic-only subtypes are not included in `main_score_case_ids`;
+8. `UNKNOWN_*` TypeC and low-confidence cases are never in `main_score_case_ids`;
+9. rare subtypes can underfill without crashing, produce an `underfilled_quotas` entry, and backfill where policy allows;
+10. every selected id has a case annotation;
+11. manifest counts match selected ids;
+12. group-key fallback marks `weak_group_key=true`.
 
 Minimum command set after implementation:
 
 ```bash
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python src/classifier.py --self-test
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run --extra dev python -m pytest tests/test_classifier.py
-UV_PROJECT_ENVIRONMENT=.venv-wsl uv run --extra dev python -m pytest tests/test_benchmark_selection.py tests/test_splitter.py tests/test_manual_audit.py
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run --extra dev python -m pytest tests/test_benchmark_selection.py tests/test_splitter.py
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python src/select_benchmark_cases.py --tier dev --output reports/benchmark_selection/dev_prompt_v1_seed_13.json
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python src/select_benchmark_cases.py --tier core --exclude-manifest reports/benchmark_selection/dev_prompt_v1_seed_13.json --output reports/benchmark_selection/core_v1_seed_13.json
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python src/build_audit_sample.py --core-manifest reports/benchmark_selection/core_v1_seed_13.json --dev-manifest reports/benchmark_selection/dev_prompt_v1_seed_13.json --output-jsonl reports/manual_audit/audit_phase_d_v1_seed_13.jsonl --output-csv reports/manual_audit/audit_phase_d_v1_seed_13.csv
@@ -289,19 +291,20 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python src/build_audit_sample.py --core-
 
 | Acceptance criterion | Status |
 |---|---|
-| Core and dev are deterministic. | Completed as policy; implementation prompt specifies stable hashing and tests. |
-| Core excludes or separately marks low-confidence/unknown cases. | Completed; unknown and low-confidence are diagnostic-only. |
-| Dev does not overlap final core evaluation. | Completed; case-id and T-box-revision disjointness required. |
-| No T-box revision dominates the core. | Completed; max 10 per property revision. |
-| All key strata have enough cases for analysis. | Completed; quotas are fixed and underfills are recorded. |
-| Splitter can avoid few-shot leakage. | Completed as group-aware split requirement. |
+| Core and dev are deterministic. | Completed in `src/lib/benchmark_selection.py` with stable SHA-1 ordering and tests. |
+| Core excludes or separately marks low-confidence/unknown cases. | Completed; unknown and low-confidence are diagnostic-only and hard validation blocks them from main score. |
+| Dev does not overlap final core evaluation. | Completed; core excludes dev case ids and T-box revision keys. |
+| No T-box revision dominates the core. | Completed; default max is 10 per property revision. |
+| All key strata have enough cases for analysis. | Completed; quotas are fixed and underfills/backfills are recorded. |
+| Splitter can avoid few-shot leakage. | Completed via shared group-key helper coverage in `tests/test_splitter.py`. |
 | Phase D can start. | Completed; audit sample and template requirements are specified. |
 
-## 10. Remaining repository implementation handoff
+## 10. Repository implementation status
 
-The conceptual Phase C decisions are complete. The repository still needs the manifest builder and audit builder implemented in code. Use:
+The Phase C manifest builder is implemented in:
 
-- `00-codex_phase_C_selection.md`
-- `00-codex_phase_D_audit.md`
+- `src/lib/benchmark_selection.py`
+- `src/select_benchmark_cases.py`
+- `src/splitter.py`
 
-as Codex prompts. After those prompts are applied inside the actual repository, run the tests listed above and commit the generated manifests.
+Phase D audit-builder work remains separate and is covered by `00-codex_phase_D_audit.md`.

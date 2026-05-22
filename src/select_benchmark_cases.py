@@ -1,52 +1,53 @@
 #!/usr/bin/env python3
 
+from __future__ import annotations
+
 import argparse
 import json
 from pathlib import Path
 
 from lib.benchmark_selection import (
+    DEFAULT_ABOX_CAP_CORE,
+    DEFAULT_ABOX_CAP_DEV,
+    DEFAULT_CORE_SIZE,
+    DEFAULT_DEV_SIZE,
     DEFAULT_SELECTION_SEED,
     DEFAULT_SELECTED_CASE_ORDER,
-    DEFAULT_TBOX_CAP_PER_UPDATE,
+    DEFAULT_TBOX_CAP_CORE,
+    DEFAULT_TBOX_CAP_DEV,
     SUPPORTED_SELECTED_CASE_ORDERS,
-    build_selection_manifest,
+    SelectionOptions,
+    build_tier_manifest,
 )
 
 
-def main() -> int:
+def _default_output_for_tier(tier: str, seed: int) -> str:
+    name = "dev_prompt" if tier == "dev" else "core"
+    return f"reports/benchmark_selection/{name}_v1_seed_{seed}.json"
+
+
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Build a deterministic benchmark case-selection manifest that keeps all "
-            "A-BOX cases and caps T-BOX cases per property revision."
+            "Build a deterministic Phase C benchmark selection manifest from the "
+            "canonical Stage 4 classified benchmark."
         )
     )
+    parser.add_argument("--tier", choices=("dev", "core"), required=True)
     parser.add_argument("--classified-benchmark", default="data/04_classified_benchmark.jsonl")
-    parser.add_argument(
-        "--output",
-        default="reports/benchmark_selection/paper_eval_tbox_cap_100_seed_13.json",
-        help="Path to the JSON selection manifest to write.",
-    )
-    parser.add_argument(
-        "--tbox-cap-per-update",
-        type=int,
-        default=DEFAULT_TBOX_CAP_PER_UPDATE,
-        help="Maximum number of T-BOX cases to keep per property revision.",
-    )
-    parser.add_argument(
-        "--seed",
-        type=int,
-        default=DEFAULT_SELECTION_SEED,
-        help="Seed used in the stable hash ordering for within-update case selection.",
-    )
+    parser.add_argument("--output", help="Path to the JSON selection manifest to write.")
+    parser.add_argument("--exclude-manifest", help="Dev manifest to exclude when building the core tier.")
+    parser.add_argument("--seed", type=int, default=DEFAULT_SELECTION_SEED)
+    parser.add_argument("--core-size", type=int, default=DEFAULT_CORE_SIZE)
+    parser.add_argument("--dev-size", type=int, default=DEFAULT_DEV_SIZE)
+    parser.add_argument("--tbox-cap-core", type=int, default=DEFAULT_TBOX_CAP_CORE)
+    parser.add_argument("--tbox-cap-dev", type=int, default=DEFAULT_TBOX_CAP_DEV)
+    parser.add_argument("--abox-cap-core", type=int, default=DEFAULT_ABOX_CAP_CORE)
+    parser.add_argument("--abox-cap-dev", type=int, default=DEFAULT_ABOX_CAP_DEV)
     parser.add_argument(
         "--selected-case-order",
         choices=sorted(SUPPORTED_SELECTED_CASE_ORDERS),
         default=DEFAULT_SELECTED_CASE_ORDER,
-        help=(
-            "Ordering to write into selected_case_ids. "
-            "'sorted' keeps global case-id ordering; 'shuffled' applies a deterministic "
-            "seeded hash order so small --max-cases runs can mix tracks."
-        ),
     )
     parser.add_argument(
         "--progress-every",
@@ -54,26 +55,45 @@ def main() -> int:
         default=100000,
         help="Print a progress update every N input lines. Set to 0 to disable.",
     )
-    args = parser.parse_args()
+    return parser.parse_args()
 
-    manifest = build_selection_manifest(
-        args.classified_benchmark,
-        tbox_cap_per_update=args.tbox_cap_per_update,
+
+def main() -> int:
+    args = parse_args()
+    output = Path(args.output or _default_output_for_tier(args.tier, args.seed))
+    options = SelectionOptions(
+        classified_benchmark=Path(args.classified_benchmark),
+        tier=args.tier,
         seed=args.seed,
+        core_size=args.core_size,
+        dev_size=args.dev_size,
+        tbox_cap_core=args.tbox_cap_core,
+        tbox_cap_dev=args.tbox_cap_dev,
+        abox_cap_core=args.abox_cap_core,
+        abox_cap_dev=args.abox_cap_dev,
         selected_case_order=args.selected_case_order,
         progress_every=args.progress_every,
+        exclude_manifest=Path(args.exclude_manifest) if args.exclude_manifest else None,
     )
-    out_path = Path(args.output)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+    manifest = build_tier_manifest(options)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
     counts = manifest["counts"]
-    print(f"[done] wrote {out_path}")
-    print(f"[done] selected_cases={counts['selected_cases']:,}")
-    print(f"[done] selected_a_box_cases={counts['selected_a_box_cases']:,}")
-    print(f"[done] selected_t_box_cases={counts['selected_t_box_cases']:,}")
-    print(f"[done] distinct_t_box_updates={counts['distinct_t_box_updates']:,}")
-    print(f"[done] selected_case_order={manifest['policy']['selected_case_order']}")
+    validation = manifest["validation"]
+    print(f"[done] wrote {output}")
+    print(f"[done] tier={manifest['tier']} seed={manifest['seed']}")
+    print(f"[done] selected={counts['selected']:,} main_score={counts['main_score']:,} diagnostic={counts['diagnostic']:,}")
+    print(f"[done] underfilled_quotas={len(manifest['underfilled_quotas'])}")
+    print(f"[done] hard_validation_passed={validation['hard_validation_passed']}")
+    if manifest["warnings"]:
+        for warning in manifest["warnings"]:
+            print(f"[warning] {warning}")
+
+    if args.tier == "core" and not validation["hard_validation_passed"]:
+        print("[error] core manifest failed hard Phase C validation checks")
+        return 1
     return 0
 
 

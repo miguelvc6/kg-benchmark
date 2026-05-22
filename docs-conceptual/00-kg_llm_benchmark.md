@@ -81,7 +81,7 @@ This avoids the reviewer objection that the A-box/T-box taxonomy is already know
 
 **H1.4.** If Type A performance improves substantially from local graph context, the Type A definition or classifier may be too broad.
 
-**H1.5.** If Type C performance improves substantially from local graph context, the Type C bucket should be audited for missed local evidence or prompt leakage.
+**H1.5.** If TypeC / `EXTERNAL_BY_ELIMINATION` performance improves substantially from local graph context, the IC-E-elim bucket should be audited for missed local evidence or prompt leakage.
 
 ---
 
@@ -180,7 +180,7 @@ The benchmark does not blindly treat every historical edit as a usable evaluatio
 
 A deterministic classifier assigns A-box cases to information-access classes. T-box cases are classified separately as schema reforms.
 
-The current classifier is useful as a deterministic first pass, but its Type C class requires careful interpretation. In the current design, many Type C cases are effectively **external by elimination**: the target truth was not found by supported rule checks or supported local-context extraction. This does not prove that external evidence is definitely required. The paper should either rename this subtype or report it with manual-audit validation.
+The current classifier is useful as a deterministic first pass, but its TypeC class requires careful interpretation. In the current design, many TypeC cases are `EXTERNAL_BY_ELIMINATION` / IC-E-elim: the target truth was not found by supported rule checks or supported local-context extraction. This does not prove that external evidence is definitely required. `UNKNOWN_*` cases are IC-U diagnostics.
 
 ### 5.5 Reproducible subsets
 
@@ -193,7 +193,7 @@ Recommended tiers:
 | **Full dataset** | Canonical release and descriptive statistics. |
 | **Core dataset** | Main LLM evaluation across axes. |
 | **Dev/Pilot set** | Prompt engineering, representation ablations, debugging, and initial failure analysis. |
-| **Audit set** | Manual validation of classifier labels, especially Type C and T-box cases. |
+| **Audit set** | Manual validation of classifier labels, especially TypeC and T-box cases. |
 
 ---
 
@@ -219,12 +219,13 @@ The current Type A/B/C naming can remain in code, but the paper should consider 
 |---|---|---|---|
 | **Type A** | **IC-L: logical / rule-implied** | The rule, violation shape, or internal consistency is sufficient. | Should be solvable with logic-only constraints. |
 | **Type B** | **IC-G: local graph-grounded** | The repair target is available in focus-node or one-hop local context. | Should benefit most from local graph context. |
-| **Type C** | **IC-E: external / non-local evidence** or **IC-U: unresolved external-by-elimination** | The supported local/rule evidence does not identify the target. | Should be hard without retrieval; may require abstention. |
+| **TypeC / `EXTERNAL_BY_ELIMINATION`** | **IC-E-elim: no-retrieval stress** | The supported local/rule evidence does not identify the target. | Should be hard without retrieval; may require abstention. |
+| **TypeC / `UNKNOWN_*`** | **IC-U: unresolved** | Required truth, world-state, or local-context evidence is incomplete. | Diagnostic only; excluded from headline score. |
 
-A crucial paper decision: Type C should not be overclaimed. Use one of these formulations:
+A crucial paper decision: TypeC should not be overclaimed. Use one of these formulations:
 
-- conservative: **Type C = not supported by local/rule evidence under the current extraction protocol**;
-- stronger, after manual audit: **Type C = external evidence required only after audit/retrieval confirmation**;
+- conservative: **TypeC / `EXTERNAL_BY_ELIMINATION` = not supported by local/rule evidence under the current extraction protocol**;
+- stronger, after manual audit: **TypeC / `EXTERNAL_CONFIRMED` = external evidence required after audit/retrieval confirmation**;
 - best: split into `EXTERNAL_CONFIRMED`, `EXTERNAL_BY_ELIMINATION`, and `UNKNOWN_*` subtypes.
 
 ### 6.3 T-box schema-reform subtypes
@@ -492,7 +493,12 @@ Paper experiments should use deterministic manifests over the full Stage 4 bench
 | Dev/Pilot v1 | 600 cases | Prompt engineering and representation ablations. | No. |
 | Audit v1 | 450 cases | Manual validation of labels and failure modes. | No; used to justify label quality and filtering. |
 
-Core v1 is stratified by repair locus, class/subtype, confidence, popularity bucket, constraint family, and T-box property-revision group. It uses seed-13 deterministic SHA-1 ordering and caps T-box property-revision groups at 10 cases in core.
+The Phase C repository manifests are:
+
+- `reports/benchmark_selection/dev_prompt_v1_seed_13.json`
+- `reports/benchmark_selection/core_v1_seed_13.json`
+
+Core v1 is stratified by repair locus, class/subtype, confidence, popularity bucket, constraint family, and T-box property-revision group. It uses seed-13 deterministic SHA-1 ordering and caps T-box property-revision groups at 10 cases in core. Dev/Pilot v1 is selected first; core excludes dev case ids and dev T-box property-revision groups.
 
 Core v1 target composition:
 
@@ -507,6 +513,8 @@ Core v1 target composition:
 | **Total** | **4,800** | mixed |
 
 The main paper score must use `main_score_case_ids`. `DELETE_AMBIGUOUS`, `COINCIDENTAL_SCHEMA_CHANGE`, low-confidence, and `UNKNOWN_*` cases may be run as diagnostics, but they should not be silently mixed into the headline score.
+
+The TypeC terminology is intentionally conservative: `EXTERNAL_BY_ELIMINATION` is IC-E-elim/no-retrieval stress, `UNKNOWN_*` is IC-U, and only post-audit `EXTERNAL_CONFIRMED` should be described as confirmed external evidence.
 
 Recommended T-box policy:
 
@@ -529,7 +537,7 @@ A plausible result pattern:
 
 1. Models often produce syntactically valid JSON but fail executability or exact historical agreement.
 2. Local graph context improves Type B/IC-G cases more than Type A/IC-L cases.
-3. Type C/IC-E-elim cases remain difficult without retrieval or should trigger abstention rather than hallucinated repair.
+3. TypeC / `EXTERNAL_BY_ELIMINATION` (IC-E-elim) cases remain difficult without retrieval or should trigger abstention rather than hallucinated repair.
 4. T-box repair is harder than A-box repair because models confuse entity values with constraint-family ids or reform the wrong layer.
 5. Diagnosis-routed repair is substantially worse than oracle-track repair, showing that repair-locus selection is a real bottleneck.
 6. Few-shot prompting improves contract compliance and T-box shape but does not solve external evidence.
@@ -542,12 +550,12 @@ The paper's discussion should emphasize that these patterns support the benchmar
 ## 14. Limitations to state explicitly
 
 1. **Historical repair is not universal ground truth.** The benchmark evaluates alignment with a historically accepted repair target, not metaphysical correctness.
-2. **Type C is not automatically retrieval-confirmed.** Without manual audit or retrieval evidence, many Type C cases should be treated as external-by-elimination.
+2. **TypeC is not automatically retrieval-confirmed.** Without manual audit or retrieval evidence, many TypeC cases should be treated as `EXTERNAL_BY_ELIMINATION` / IC-E-elim or `UNKNOWN_*` / IC-U.
 3. **Evaluation is partial.** The evaluator checks supported constraints and exact/semantic alignment but cannot reproduce all Wikidata community judgment.
 4. **Temporal reconstruction is difficult.** Some entities, properties, and constraints change independently after the repair event.
 5. **T-box skew is real.** Many apparent cases can originate from a single schema reform.
 6. **Few-shot prompting can become implicit retrieval.** Matched examples must be carefully separated from the test set.
-7. **No-retrieval Type C results are hard to interpret.** Success may reflect memory, leakage, or guessing rather than grounded evidence.
+7. **No-retrieval TypeC / `EXTERNAL_BY_ELIMINATION` results are hard to interpret.** Success may reflect memory, leakage, or guessing rather than grounded evidence.
 
 ---
 
@@ -565,7 +573,7 @@ The paper's discussion should emphasize that these patterns support the benchmar
 
 - Do not claim the A-box/T-box taxonomy is novel.
 - Do not claim historical edits are perfect ground truth.
-- Do not claim Type C fully evaluates retrieval unless retrieval is actually implemented.
+- Do not claim TypeC / `EXTERNAL_BY_ELIMINATION` fully evaluates retrieval unless retrieval is actually implemented.
 - Do not claim the evaluator fully validates Wikidata correctness.
 - Do not report one aggregate score without stratified breakdowns.
 
@@ -593,7 +601,7 @@ The paper's discussion should emphasize that these patterns support the benchmar
 
 4. **Repair and information taxonomy**
    - A-box/T-box repair locus from prior taxonomy.
-   - Information-access condition: logical, local, external-by-elimination/confirmed external.
+   - Information-access condition: logical, local, IC-E-elim, IC-U, or post-audit `EXTERNAL_CONFIRMED`.
    - T-box subtypes.
 
 5. **Tasks and prompts**
