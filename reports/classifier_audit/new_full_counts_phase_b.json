@@ -1,0 +1,70 @@
+{
+  "baseline": {
+    "counts": {
+      "class:T_BOX": 456594,
+      "class:TypeA": 17556,
+      "class:TypeB": 22409,
+      "class:TypeC": 39011,
+      "confidence:high": 114733,
+      "confidence:low": 162709,
+      "confidence:medium": 258128,
+      "decision_branch:delete_refined": 17525,
+      "decision_branch:external_by_elimination": 39011,
+      "decision_branch:local_match": 22409,
+      "decision_branch:missing": 456594,
+      "decision_branch:rule_deterministic": 31,
+      "local_subtype:LOCAL_FOCUS_NON_TARGET_PROPERTY": 209,
+      "local_subtype:LOCAL_FOCUS_PREREPAIR_PROPERTY": 12541,
+      "local_subtype:LOCAL_MIXED": 111,
+      "local_subtype:LOCAL_NEIGHBOR_IDS": 2,
+      "local_subtype:LOCAL_TEXT": 9546,
+      "records": 535570,
+      "subtype:COINCIDENTAL_SCHEMA_CHANGE": 153893,
+      "subtype:DELETE_AMBIGUOUS": 8816,
+      "subtype:EXTERNAL_BY_ELIMINATION": 39011,
+      "subtype:LOCAL_FOCUS_NON_TARGET_PROPERTY": 209,
+      "subtype:LOCAL_FOCUS_PREREPAIR_PROPERTY": 12541,
+      "subtype:LOCAL_MIXED": 111,
+      "subtype:LOCAL_NEIGHBOR_IDS": 2,
+      "subtype:LOCAL_TEXT": 9546,
+      "subtype:LOGICAL": 31,
+      "subtype:REJECTION_FORMAT_INVALID": 8675,
+      "subtype:REJECTION_RULE_INVALID": 34,
+      "subtype:RELAXATION_SET_EXPANSION": 86876,
+      "subtype:RESTRICTION_SET_CONTRACTION": 2023,
+      "subtype:SCHEMA_UPDATE": 213802,
+      "track:A_BOX": 78976,
+      "track:T_BOX": 456594,
+      "truth_source:none_expected": 474119,
+      "truth_source:repair_target.new_value": 61451
+    },
+    "metrics": {
+      "current_value_truth_fallback": 0,
+      "missing_truth": 0,
+      "missing_world_state": 0,
+      "tbox_range_diagnostic_note": "Raw range-signature semantics are counted independently of final classifier subtype. Final T-box subtypes only show range widened/narrowed when the classifier selects Q21510860 as the causal target constraint.",
+      "tbox_range_signature_semantics": {
+        "NO_RANGE_SIGNATURE": 347,
+        "RELAXATION_RANGE_WIDENED": 10148,
+        "SCHEMA_UPDATE": 7768
+      },
+      "tbox_selected_range_target_subtypes": {
+        "SCHEMA_UPDATE": 1
+      },
+      "typea_deletes": 17525,
+      "typea_format_repairs": 8704,
+      "typea_subtypes": {
+        "DELETE_AMBIGUOUS": 8816,
+        "LOGICAL": 31,
+        "REJECTION_FORMAT_INVALID": 8675,
+        "REJECTION_RULE_INVALID": 34
+      },
+      "typec_low_confidence": 0,
+      "typec_subtypes": {
+        "EXTERNAL_BY_ELIMINATION": 39011
+      },
+      "typec_total": 39011
+    },
+    "source": "data\\04_classified_benchmark.jsonl"
+  }
+}

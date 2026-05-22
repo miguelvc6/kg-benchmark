@@ -1,0 +1,278 @@
+{
+  "baseline": {
+    "counts": {
+      "class:T_BOX": 248920,
+      "class:TypeA": 24365,
+      "class:TypeB": 6770,
+      "class:TypeC": 9547,
+      "confidence:high": 75670,
+      "confidence:low": 89460,
+      "confidence:medium": 124472,
+      "decision_branch:delete_rejection": 9018,
+      "decision_branch:external_fallback": 9547,
+      "decision_branch:local_match": 6770,
+      "decision_branch:missing": 248920,
+      "decision_branch:rule_deterministic": 15347,
+      "local_subtype:LOCAL_FOCUS_PREREPAIR_PROPERTY": 6287,
+      "local_subtype:LOCAL_MIXED": 50,
+      "local_subtype:LOCAL_NEIGHBOR_IDS": 67,
+      "local_subtype:LOCAL_TEXT": 366,
+      "records": 289602,
+      "subtype:COINCIDENTAL_SCHEMA_CHANGE": 89460,
+      "subtype:EXTERNAL": 9547,
+      "subtype:LOCAL_FOCUS_PREREPAIR_PROPERTY": 6287,
+      "subtype:LOCAL_MIXED": 50,
+      "subtype:LOCAL_NEIGHBOR_IDS": 67,
+      "subtype:LOCAL_TEXT": 366,
+      "subtype:LOGICAL": 15347,
+      "subtype:REJECTION": 9018,
+      "subtype:RELAXATION_SET_EXPANSION": 45094,
+      "subtype:RESTRICTION_SET_CONTRACTION": 1041,
+      "subtype:SCHEMA_UPDATE": 113325,
+      "track:A_BOX": 40682,
+      "track:T_BOX": 248920,
+      "truth_source:none_expected": 257938,
+      "truth_source:repair_target.new_value": 31664
+    },
+    "metrics": {
+      "current_value_truth_fallback": 0,
+      "missing_truth": 0,
+      "missing_world_state": 0,
+      "typea_deletes": 9018,
+      "typea_format_repairs": 15346,
+      "typea_subtypes": {
+        "LOGICAL": 15347,
+        "REJECTION": 9018
+      },
+      "typec_low_confidence": 0,
+      "typec_subtypes": {
+        "EXTERNAL": 9547
+      },
+      "typec_total": 9547
+    },
+    "source": "reports\\classifier_audit\\baseline_full_before_phase_b.jsonl"
+  },
+  "comparison": {
+    "examples": {
+      "T_BOX/COINCIDENTAL_SCHEMA_CHANGE -> T_BOX/COINCIDENTAL_SCHEMA_CHANGE": [
+        "reform_Q18035078_P644_690339109",
+        "reform_Q2343934_P268_2317147423",
+        "reform_Q66114654_P268_2317147423",
+        "reform_Q23111464_P645_696618524",
+        "reform_Q376087_P268_2317147423"
+      ],
+      "T_BOX/RELAXATION_SET_EXPANSION -> T_BOX/RELAXATION_SET_EXPANSION": [
+        "reform_Q124970155_P640_2317152167",
+        "reform_Q29482789_P4658_2385185076",
+        "reform_Q38276488_P4381_2418670693",
+        "reform_Q108865583_P950_2330325818",
+        "reform_Q1139246_P4529_2172698999"
+      ],
+      "T_BOX/RESTRICTION_SET_CONTRACTION -> T_BOX/RESTRICTION_SET_CONTRACTION": [
+        "reform_Q1990294_P495_2438012093",
+        "reform_Q64513386_P5082_2442820132",
+        "reform_Q17368257_P495_2438012093",
+        "reform_Q184564_P5082_2442820132",
+        "reform_Q35830_P5082_2442820132"
+      ],
+      "T_BOX/SCHEMA_UPDATE -> T_BOX/RELAXATION_SET_EXPANSION": [
+        "reform_Q1431507_P403_2442802452",
+        "reform_Q49005278_P403_2442802452",
+        "reform_Q104630635_P559_2447282435"
+      ],
+      "T_BOX/SCHEMA_UPDATE -> T_BOX/SCHEMA_UPDATE": [
+        "reform_Q18065630_P645_722137891",
+        "reform_Q357608_P2605_2351781179",
+        "reform_Q8262638_P31_2445635727",
+        "reform_Q5000889_P2193_2431371575",
+        "reform_Q3826846_P18_2402814023"
+      ],
+      "TypeA/LOGICAL -> TypeA/LOGICAL": [
+        "repair_Q137368096_2444114456",
+        "repair_Q55696321_2442203963",
+        "repair_Q2657551_2443627321",
+        "repair_Q1105142_2400047501",
+        "repair_Q33005040_2447258755"
+      ],
+      "TypeA/LOGICAL -> TypeB/LOCAL_FOCUS_NON_TARGET_PROPERTY": [
+        "repair_Q92513380_2443447165",
+        "repair_Q137291588_2439622640",
+        "repair_Q132575976_2314341401",
+        "repair_Q137249309_2438725640",
+        "repair_Q5416809_2441208330"
+      ],
+      "TypeA/LOGICAL -> TypeB/LOCAL_MIXED": [
+        "repair_Q11198_2402656077",
+        "repair_Q113161831_2447182034",
+        "repair_Q137301804_2440162591",
+        "repair_Q62093321_2426688785"
+      ],
+      "TypeA/LOGICAL -> TypeB/LOCAL_TEXT": [
+        "repair_Q770225_2086423553",
+        "repair_Q86773_2297191858",
+        "repair_Q15546620_2086444940",
+        "repair_Q19969695_2297181062",
+        "repair_Q25351_2446005313"
+      ],
+      "TypeA/LOGICAL -> TypeC/EXTERNAL_BY_ELIMINATION": [
+        "repair_Q82111310_2425490931",
+        "repair_Q223005_2425222842",
+        "repair_Q100537718_1295681195",
+        "repair_Q100542096_1295704072",
+        "repair_Q100539615_1295668053"
+      ],
+      "TypeA/REJECTION -> TypeA/DELETE_AMBIGUOUS": [
+        "repair_Q42389726_2440887704",
+        "repair_Q83556035_2442775469",
+        "repair_Q124196568_2441117120",
+        "repair_Q42396815_2440874427",
+        "repair_Q4364605_2440876394"
+      ],
+      "TypeA/REJECTION -> TypeA/REJECTION_FORMAT_INVALID": [
+        "repair_Q128046_2422276452",
+        "repair_Q4400747_2442103484",
+        "repair_Q21770_2422271352",
+        "repair_Q694344_2422276903",
+        "repair_Q21898_2422271282"
+      ],
+      "TypeA/REJECTION -> TypeA/REJECTION_RULE_INVALID": [
+        "repair_Q31047_2446957383",
+        "repair_Q220890_2446263335",
+        "repair_Q223167_2440286306",
+        "repair_Q28164079_1712351587",
+        "repair_Q12313696_2440499280"
+      ],
+      "TypeB/LOCAL_FOCUS_PREREPAIR_PROPERTY -> TypeB/LOCAL_FOCUS_PREREPAIR_PROPERTY": [
+        "repair_Q63898560_2333535005",
+        "repair_Q63900283_2333543995",
+        "repair_Q24522497_2446936221",
+        "repair_Q63897453_2333531963",
+        "repair_Q67405595_2333805271"
+      ],
+      "TypeB/LOCAL_MIXED -> TypeB/LOCAL_MIXED": [
+        "repair_Q137409850_2443442644",
+        "repair_Q63898518_2333534912",
+        "repair_Q63897495_2333532217",
+        "repair_Q63898616_2333535222",
+        "repair_Q58430423_2446942774"
+      ],
+      "TypeB/LOCAL_NEIGHBOR_IDS -> TypeB/LOCAL_FOCUS_NON_TARGET_PROPERTY": [
+        "repair_Q136808097_2441520995",
+        "repair_Q107434788_2432798780",
+        "repair_Q137160674_2439460786",
+        "repair_Q99872049_2444734128",
+        "repair_Q4053147_2440438760"
+      ],
+      "TypeB/LOCAL_NEIGHBOR_IDS -> TypeB/LOCAL_NEIGHBOR_IDS": [
+        "repair_Q1007723_2368242516"
+      ],
+      "TypeB/LOCAL_TEXT -> TypeB/LOCAL_TEXT": [
+        "repair_Q7305306_2442871123",
+        "repair_Q62878404_2444879097",
+        "repair_Q14883768_2447210159",
+        "repair_Q14415070_2443295794",
+        "repair_Q88358722_2445360305"
+      ],
+      "TypeC/EXTERNAL -> TypeB/LOCAL_FOCUS_NON_TARGET_PROPERTY": [
+        "repair_Q7231_2443761104",
+        "repair_Q7231_2443761424"
+      ],
+      "TypeC/EXTERNAL -> TypeB/LOCAL_MIXED": [
+        "repair_Q130754609_2440512852"
+      ],
+      "TypeC/EXTERNAL -> TypeC/EXTERNAL_BY_ELIMINATION": [
+        "repair_Q25397335_2444276017",
+        "repair_Q43733_2441433709",
+        "repair_Q48393125_2447218141",
+        "repair_Q14169_2443677954",
+        "repair_Q33913641_2444736634"
+      ]
+    },
+    "matched_records": 289602,
+    "new_records_missing_old": 245968,
+    "new_source": "data\\04_classified_benchmark.jsonl",
+    "old_source": "reports\\classifier_audit\\baseline_full_before_phase_b.jsonl",
+    "transition_matrix": {
+      "T_BOX/COINCIDENTAL_SCHEMA_CHANGE -> T_BOX/COINCIDENTAL_SCHEMA_CHANGE": 89460,
+      "T_BOX/RELAXATION_SET_EXPANSION -> T_BOX/RELAXATION_SET_EXPANSION": 45094,
+      "T_BOX/RESTRICTION_SET_CONTRACTION -> T_BOX/RESTRICTION_SET_CONTRACTION": 1041,
+      "T_BOX/SCHEMA_UPDATE -> T_BOX/RELAXATION_SET_EXPANSION": 3,
+      "T_BOX/SCHEMA_UPDATE -> T_BOX/SCHEMA_UPDATE": 113322,
+      "TypeA/LOGICAL -> TypeA/LOGICAL": 15,
+      "TypeA/LOGICAL -> TypeB/LOCAL_FOCUS_NON_TARGET_PROPERTY": 34,
+      "TypeA/LOGICAL -> TypeB/LOCAL_MIXED": 4,
+      "TypeA/LOGICAL -> TypeB/LOCAL_TEXT": 4588,
+      "TypeA/LOGICAL -> TypeC/EXTERNAL_BY_ELIMINATION": 10706,
+      "TypeA/REJECTION -> TypeA/DELETE_AMBIGUOUS": 4514,
+      "TypeA/REJECTION -> TypeA/REJECTION_FORMAT_INVALID": 4485,
+      "TypeA/REJECTION -> TypeA/REJECTION_RULE_INVALID": 19,
+      "TypeB/LOCAL_FOCUS_PREREPAIR_PROPERTY -> TypeB/LOCAL_FOCUS_PREREPAIR_PROPERTY": 6287,
+      "TypeB/LOCAL_MIXED -> TypeB/LOCAL_MIXED": 50,
+      "TypeB/LOCAL_NEIGHBOR_IDS -> TypeB/LOCAL_FOCUS_NON_TARGET_PROPERTY": 66,
+      "TypeB/LOCAL_NEIGHBOR_IDS -> TypeB/LOCAL_NEIGHBOR_IDS": 1,
+      "TypeB/LOCAL_TEXT -> TypeB/LOCAL_TEXT": 366,
+      "TypeC/EXTERNAL -> TypeB/LOCAL_FOCUS_NON_TARGET_PROPERTY": 2,
+      "TypeC/EXTERNAL -> TypeB/LOCAL_MIXED": 1,
+      "TypeC/EXTERNAL -> TypeC/EXTERNAL_BY_ELIMINATION": 9544
+    }
+  },
+  "redesigned": {
+    "counts": {
+      "class:T_BOX": 456594,
+      "class:TypeA": 17556,
+      "class:TypeB": 22409,
+      "class:TypeC": 39011,
+      "confidence:high": 114733,
+      "confidence:low": 162709,
+      "confidence:medium": 258128,
+      "decision_branch:delete_refined": 17525,
+      "decision_branch:external_by_elimination": 39011,
+      "decision_branch:local_match": 22409,
+      "decision_branch:missing": 456594,
+      "decision_branch:rule_deterministic": 31,
+      "local_subtype:LOCAL_FOCUS_NON_TARGET_PROPERTY": 209,
+      "local_subtype:LOCAL_FOCUS_PREREPAIR_PROPERTY": 12541,
+      "local_subtype:LOCAL_MIXED": 111,
+      "local_subtype:LOCAL_NEIGHBOR_IDS": 2,
+      "local_subtype:LOCAL_TEXT": 9546,
+      "records": 535570,
+      "subtype:COINCIDENTAL_SCHEMA_CHANGE": 153893,
+      "subtype:DELETE_AMBIGUOUS": 8816,
+      "subtype:EXTERNAL_BY_ELIMINATION": 39011,
+      "subtype:LOCAL_FOCUS_NON_TARGET_PROPERTY": 209,
+      "subtype:LOCAL_FOCUS_PREREPAIR_PROPERTY": 12541,
+      "subtype:LOCAL_MIXED": 111,
+      "subtype:LOCAL_NEIGHBOR_IDS": 2,
+      "subtype:LOCAL_TEXT": 9546,
+      "subtype:LOGICAL": 31,
+      "subtype:REJECTION_FORMAT_INVALID": 8675,
+      "subtype:REJECTION_RULE_INVALID": 34,
+      "subtype:RELAXATION_SET_EXPANSION": 86876,
+      "subtype:RESTRICTION_SET_CONTRACTION": 2023,
+      "subtype:SCHEMA_UPDATE": 213802,
+      "track:A_BOX": 78976,
+      "track:T_BOX": 456594,
+      "truth_source:none_expected": 474119,
+      "truth_source:repair_target.new_value": 61451
+    },
+    "metrics": {
+      "current_value_truth_fallback": 0,
+      "missing_truth": 0,
+      "missing_world_state": 0,
+      "typea_deletes": 17525,
+      "typea_format_repairs": 8704,
+      "typea_subtypes": {
+        "DELETE_AMBIGUOUS": 8816,
+        "LOGICAL": 31,
+        "REJECTION_FORMAT_INVALID": 8675,
+        "REJECTION_RULE_INVALID": 34
+      },
+      "typec_low_confidence": 0,
+      "typec_subtypes": {
+        "EXTERNAL_BY_ELIMINATION": 39011
+      },
+      "typec_total": 39011
+    },
+    "source": "data\\04_classified_benchmark.jsonl"
+  }
+}
