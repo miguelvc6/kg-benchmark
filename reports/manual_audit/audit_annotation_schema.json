@@ -1,0 +1,366 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "allowed_values": {
+    "core_recommendation": [
+      "main",
+      "diagnostic",
+      "exclude",
+      "needs_discussion"
+    ],
+    "external_evidence_required": [
+      "yes",
+      "no",
+      "maybe",
+      "unclear",
+      "not_applicable"
+    ],
+    "extractor_missed_local_evidence": [
+      "yes",
+      "no",
+      "unclear",
+      "not_applicable"
+    ],
+    "historical_target_well_defined": [
+      "yes",
+      "no",
+      "unclear"
+    ],
+    "repair_locus_correct": [
+      "yes",
+      "no",
+      "unclear"
+    ],
+    "target_visible_locally": [
+      "yes",
+      "no",
+      "partial",
+      "unclear"
+    ],
+    "tbox_judgment": [
+      "causal_schema_repair",
+      "plausible_schema_update",
+      "coincidental_or_weak",
+      "wrong_constraint_family",
+      "not_tbox"
+    ],
+    "typea_judgment": [
+      "clean_rule_or_format",
+      "delete_ambiguous_ok",
+      "needs_local_evidence",
+      "needs_external_evidence",
+      "overclaimed",
+      "not_typea"
+    ],
+    "typeb_judgment": [
+      "local_confirmed",
+      "local_false_positive",
+      "leakage_suspected",
+      "weak_literal_match",
+      "not_typeb"
+    ],
+    "typec_judgment": [
+      "external_confirmed",
+      "external_by_elimination_ok",
+      "local_missed",
+      "unknown_or_incomplete",
+      "bad_target",
+      "not_typec"
+    ]
+  },
+  "properties": {
+    "analysis_slice": {
+      "type": "string"
+    },
+    "annotation_timestamp_utc": {
+      "type": "string"
+    },
+    "annotator_id": {
+      "type": "string"
+    },
+    "case_id": {
+      "type": "string"
+    },
+    "class": {
+      "type": "string"
+    },
+    "confidence": {
+      "type": "string"
+    },
+    "constraint_family": {
+      "type": "string"
+    },
+    "core_recommendation": {
+      "enum": [
+        "main",
+        "diagnostic",
+        "exclude",
+        "needs_discussion",
+        "unannotated",
+        ""
+      ],
+      "type": "string"
+    },
+    "decision_branch": {
+      "type": "string"
+    },
+    "diagnostic_only": {
+      "type": "boolean"
+    },
+    "external_evidence_required": {
+      "enum": [
+        "yes",
+        "no",
+        "maybe",
+        "unclear",
+        "not_applicable",
+        "unannotated",
+        ""
+      ],
+      "type": "string"
+    },
+    "extractor_missed_local_evidence": {
+      "enum": [
+        "yes",
+        "no",
+        "unclear",
+        "not_applicable",
+        "unannotated",
+        ""
+      ],
+      "type": "string"
+    },
+    "group_key": {
+      "type": "string"
+    },
+    "historical_target_well_defined": {
+      "enum": [
+        "yes",
+        "no",
+        "unclear",
+        "unannotated",
+        ""
+      ],
+      "type": "string"
+    },
+    "local_match_kind": {
+      "type": "string"
+    },
+    "local_match_source": {
+      "type": "string"
+    },
+    "main_score": {
+      "type": "boolean"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "popularity_bucket": {
+      "enum": [
+        "head",
+        "mid",
+        "tail",
+        "unknown"
+      ],
+      "type": "string"
+    },
+    "property": {
+      "type": "string"
+    },
+    "qid": {
+      "type": "string"
+    },
+    "repair_locus_correct": {
+      "enum": [
+        "yes",
+        "no",
+        "unclear",
+        "unannotated",
+        ""
+      ],
+      "type": "string"
+    },
+    "selection_stratum": {
+      "type": "string"
+    },
+    "subtype": {
+      "type": "string"
+    },
+    "target_visible_locally": {
+      "enum": [
+        "yes",
+        "no",
+        "partial",
+        "unclear",
+        "unannotated",
+        ""
+      ],
+      "type": "string"
+    },
+    "tbox_judgment": {
+      "enum": [
+        "causal_schema_repair",
+        "plausible_schema_update",
+        "coincidental_or_weak",
+        "wrong_constraint_family",
+        "not_tbox",
+        "unannotated",
+        ""
+      ],
+      "type": "string"
+    },
+    "tbox_revision_key": {
+      "type": "string"
+    },
+    "track": {
+      "type": "string"
+    },
+    "truth_source": {
+      "type": "string"
+    },
+    "truth_token_kind": {
+      "enum": [
+        "qid",
+        "literal",
+        "date",
+        "numeric",
+        "mixed",
+        "none_expected"
+      ],
+      "type": "string"
+    },
+    "truth_tokens_preview": {
+      "type": "string"
+    },
+    "typea_judgment": {
+      "enum": [
+        "clean_rule_or_format",
+        "delete_ambiguous_ok",
+        "needs_local_evidence",
+        "needs_external_evidence",
+        "overclaimed",
+        "not_typea",
+        "unannotated",
+        ""
+      ],
+      "type": "string"
+    },
+    "typeb_judgment": {
+      "enum": [
+        "local_confirmed",
+        "local_false_positive",
+        "leakage_suspected",
+        "weak_literal_match",
+        "not_typeb",
+        "unannotated",
+        ""
+      ],
+      "type": "string"
+    },
+    "typec_judgment": {
+      "enum": [
+        "external_confirmed",
+        "external_by_elimination_ok",
+        "local_missed",
+        "unknown_or_incomplete",
+        "bad_target",
+        "not_typec",
+        "unannotated",
+        ""
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "case_id",
+    "qid",
+    "property",
+    "track",
+    "class",
+    "subtype",
+    "confidence",
+    "selection_stratum",
+    "analysis_slice",
+    "main_score",
+    "diagnostic_only",
+    "popularity_bucket",
+    "constraint_family",
+    "truth_source",
+    "truth_token_kind",
+    "truth_tokens_preview",
+    "decision_branch",
+    "local_match_kind",
+    "local_match_source",
+    "tbox_revision_key",
+    "group_key",
+    "repair_locus_correct",
+    "historical_target_well_defined",
+    "target_visible_locally",
+    "extractor_missed_local_evidence",
+    "external_evidence_required",
+    "typec_judgment",
+    "typea_judgment",
+    "typeb_judgment",
+    "tbox_judgment",
+    "core_recommendation",
+    "notes",
+    "annotator_id",
+    "annotation_timestamp_utc"
+  ],
+  "sampling_metadata": {
+    "counts": {
+      "by_selection_stratum": {
+        "TBOX_COINCIDENTAL_SCHEMA_CHANGE": 40,
+        "TBOX_DIRECTIONAL_RELAXATION_OR_RESTRICTION": 40,
+        "TBOX_SCHEMA_UPDATE": 50,
+        "TypeA_DELETE_AMBIGUOUS": 50,
+        "TypeA_REJECTION_FORMAT_INVALID": 50,
+        "TypeB_LOCAL_FOCUS_PREREPAIR_PROPERTY": 40,
+        "TypeB_LOCAL_TEXT": 50,
+        "TypeC_EXTERNAL_BY_ELIMINATION_LITERAL_TRUTH": 50,
+        "TypeC_EXTERNAL_BY_ELIMINATION_QID_TRUTH": 50,
+        "TypeC_UNKNOWN_OR_SPARSE_DIAGNOSTIC": 30
+      },
+      "candidate_records": 535183,
+      "dev_overlap": 0,
+      "input_records_scanned": 535570,
+      "max_abox_per_group": 1,
+      "max_tbox_per_revision": 5,
+      "selected": 450
+    },
+    "created_at_utc": "2026-05-22T12:47:25.823344Z",
+    "inputs": {
+      "classified_benchmark": "data/04_classified_benchmark.jsonl",
+      "core_manifest": "reports/benchmark_selection/core_v1_seed_13.json",
+      "dev_manifest": "reports/benchmark_selection/dev_prompt_v1_seed_13.json"
+    },
+    "manifest_type": "manual_audit_sample",
+    "policy_version": "phase_d_v1",
+    "quotas": {
+      "TBOX_COINCIDENTAL_SCHEMA_CHANGE": 40,
+      "TBOX_DIRECTIONAL_RELAXATION_OR_RESTRICTION": 40,
+      "TBOX_SCHEMA_UPDATE": 50,
+      "TypeA_DELETE_AMBIGUOUS": 50,
+      "TypeA_REJECTION_FORMAT_INVALID": 50,
+      "TypeB_LOCAL_FOCUS_PREREPAIR_PROPERTY": 40,
+      "TypeB_LOCAL_TEXT": 50,
+      "TypeC_EXTERNAL_BY_ELIMINATION_LITERAL_TRUTH": 50,
+      "TypeC_EXTERNAL_BY_ELIMINATION_QID_TRUTH": 50,
+      "TypeC_UNKNOWN_OR_SPARSE_DIAGNOSTIC": 30
+    },
+    "seed": 13,
+    "underfilled_quotas": [
+      {
+        "quota": 30,
+        "selected": 0,
+        "selection_stratum": "TypeC_UNKNOWN_OR_SPARSE_DIAGNOSTIC"
+      }
+    ],
+    "warnings": [
+      "TypeC_UNKNOWN_OR_SPARSE_DIAGNOSTIC underfilled: selected 0 of requested 30.",
+      "TypeC_UNKNOWN_OR_SPARSE_DIAGNOSTIC underfilled; backfilled with weakest TypeC_EXTERNAL_BY_ELIMINATION local-context diagnostics."
+    ]
+  },
+  "title": "WikidataRepairEval Phase D manual audit row",
+  "type": "object"
+}

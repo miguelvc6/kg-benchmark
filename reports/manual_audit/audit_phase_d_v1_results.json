@@ -1,0 +1,113 @@
+{
+  "Delete_ambiguity_confirmation_rate": {
+    "denominator": 0,
+    "numerator": 0,
+    "rate": null
+  },
+  "Tbox_causal_precision": {
+    "denominator": 0,
+    "numerator": 0,
+    "rate": null
+  },
+  "Tbox_coincidental_rate": {
+    "denominator": 0,
+    "numerator": 0,
+    "rate": null
+  },
+  "TypeA_overclaim_rate": {
+    "denominator": 0,
+    "numerator": 0,
+    "rate": null
+  },
+  "TypeB_leakage_suspicion_rate": {
+    "denominator": 0,
+    "numerator": 0,
+    "rate": null
+  },
+  "TypeB_local_precision": {
+    "denominator": 0,
+    "numerator": 0,
+    "rate": null
+  },
+  "TypeC_confirmed_external_rate": {
+    "denominator": 0,
+    "numerator": 0,
+    "rate": null
+  },
+  "TypeC_local_missed_rate": {
+    "denominator": 0,
+    "numerator": 0,
+    "rate": null
+  },
+  "TypeC_unknown_or_incomplete_rate": {
+    "denominator": 0,
+    "numerator": 0,
+    "rate": null
+  },
+  "annotation_completeness_rate": 0.0,
+  "complete_row_count": 0,
+  "diagnostic_or_exclude_rate": {
+    "denominator": 0,
+    "numerator": 0,
+    "rate": null
+  },
+  "label_precision_by_stratum": {
+    "TBOX_COINCIDENTAL_SCHEMA_CHANGE": {
+      "denominator": 0,
+      "numerator": 0,
+      "rate": null
+    },
+    "TBOX_DIRECTIONAL_RELAXATION_OR_RESTRICTION": {
+      "denominator": 0,
+      "numerator": 0,
+      "rate": null
+    },
+    "TBOX_SCHEMA_UPDATE": {
+      "denominator": 0,
+      "numerator": 0,
+      "rate": null
+    },
+    "TypeA_DELETE_AMBIGUOUS": {
+      "denominator": 0,
+      "numerator": 0,
+      "rate": null
+    },
+    "TypeA_REJECTION_FORMAT_INVALID": {
+      "denominator": 0,
+      "numerator": 0,
+      "rate": null
+    },
+    "TypeB_LOCAL_FOCUS_PREREPAIR_PROPERTY": {
+      "denominator": 0,
+      "numerator": 0,
+      "rate": null
+    },
+    "TypeB_LOCAL_TEXT": {
+      "denominator": 0,
+      "numerator": 0,
+      "rate": null
+    },
+    "TypeC_EXTERNAL_BY_ELIMINATION_LITERAL_TRUTH": {
+      "denominator": 0,
+      "numerator": 0,
+      "rate": null
+    },
+    "TypeC_EXTERNAL_BY_ELIMINATION_QID_TRUTH": {
+      "denominator": 0,
+      "numerator": 0,
+      "rate": null
+    },
+    "TypeC_UNKNOWN_OR_SPARSE_DIAGNOSTIC": {
+      "denominator": 0,
+      "numerator": 0,
+      "rate": null
+    }
+  },
+  "main_score_keep_rate": {
+    "denominator": 0,
+    "numerator": 0,
+    "rate": null
+  },
+  "row_count": 450,
+  "unannotated_row_count": 450
+}
