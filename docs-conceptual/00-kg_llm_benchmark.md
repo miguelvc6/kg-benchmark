@@ -69,65 +69,19 @@ This avoids the reviewer objection that the A-box/T-box taxonomy is already know
 
 ## 4. Research questions and hypotheses
 
-This section uses the hypotheses from the initial narrative as the starting point, but updates them into an operational form. The change is necessary because the classifier audit showed that some Type C cases are not positively confirmed external-evidence cases; they are often **external by elimination** under the current rule/local evidence extractor. The final paper should therefore avoid treating all Type C cases as equally strong evidence of retrieval need.
+### RQ1. Does information necessity predict model behavior?
 
-The paper-facing language should use the following distinction:
+**Question.** Do models behave differently on rule-implied, local-context, and external-evidence repair cases?
 
-- **IC-L**: rule-implied or logical information condition, currently `TypeA` in the repository.
-- **IC-G**: local graph-grounded information condition, currently `TypeB` in the repository.
-- **IC-E-elim**: external-by-elimination information condition, currently part of `TypeC` but requiring subtype refinement.
-- **IC-U**: unknown or insufficient-context cases, also currently mixed into `TypeC` and unsuitable for the main score unless manually audited.
-- **T-box repair**: schema-level repair evaluated on a separate repair-locus axis rather than as an A/B/C information condition.
+**H1.1.** Rule-implied A-box repairs should be easiest under a logic-only context bundle.
 
-### RQ0. Can the benchmark labels be defended as an information-access instrument?
+**H1.2.** Local graph context should provide the largest gain on local-context A-box repairs.
 
-**Question.** Can the deterministic classifier produce information-condition labels that are sufficiently reliable for model evaluation after splitting unknown cases from external-by-elimination cases?
+**H1.3.** External-evidence cases should remain difficult without retrieval. If performance is high in no-retrieval settings, the result may reflect parametric memory, hidden leakage, or lucky guessing rather than grounded repair.
 
-**H0.1.** Splitting Type C into `EXTERNAL_BY_ELIMINATION` and unknown subtypes will reveal that a non-trivial fraction of current Type C cases should not be interpreted as confirmed external-evidence cases.
+**H1.4.** If Type A performance improves substantially from local graph context, the Type A definition or classifier may be too broad.
 
-- **Metric:** Type C subtype distribution before and after classifier redesign; fraction of Type C routed to `UNKNOWN_MISSING_WORLD_STATE`, `UNKNOWN_MISSING_TRUTH`, `UNKNOWN_CURRENT_VALUE_FALLBACK`, or `UNKNOWN_INCOMPLETE_LOCAL_CONTEXT`.
-- **Contrast:** original classifier vs redesigned classifier.
-
-**H0.2.** Expanding local-evidence extraction will convert some current Type C cases into IC-G cases, showing that the previous Type C bucket contained missed local evidence.
-
-- **Metric:** transition matrix from old to new labels, especially `TypeC -> TypeB` / `IC-E-elim -> IC-G` transitions.
-- **Contrast:** original local buckets vs expanded local buckets.
-
-**H0.3.** A manually audited core subset will show higher precision for IC-L and IC-G than for IC-E-elim, because IC-E-elim is based on negative evidence rather than direct evidence.
-
-- **Metric:** manual-audit precision by information condition and subtype.
-- **Contrast:** IC-L vs IC-G vs IC-E-elim vs IC-U.
-
----
-
-### RQ1. Does information condition predict model behavior?
-
-**Question.** Do models behave differently on rule-implied, local-context, and external-by-elimination repair cases under controlled context bundles?
-
-**H1.1.** IC-L repairs should have the highest repair success under `logic_only`, because the constraint and violation shape should be sufficient.
-
-- **Metric:** accepted repair rate, exact historical agreement, executable proposal rate, and destructive-repair rate on IC-L.
-- **Contrast:** IC-L vs IC-G vs IC-E-elim under `logic_only`.
-
-**H1.2.** IC-G repairs should show the largest gain from `local_graph` over `logic_only`.
-
-- **Metric:** paired difference in accepted repair rate, exact historical agreement, semantic success, and executable proposal rate.
-- **Contrast:** `local_graph - logic_only` by information condition.
-
-**H1.3.** IC-E-elim cases should remain difficult without retrieval. High success on IC-E-elim should be interpreted cautiously as possible parametric memory, hidden leakage, lucky guessing, or residual label noise.
-
-- **Metric:** accepted repair rate on IC-E-elim; head-tail split; local-context gain; manual error analysis.
-- **Contrast:** IC-E-elim head vs tail entities; IC-E-elim under `logic_only` vs `local_graph`.
-
-**H1.4.** If IC-L improves substantially from `local_graph`, the classifier likely over-includes cases that actually require local evidence.
-
-- **Metric:** IC-L local-context gain and post-hoc audit of high-gain IC-L cases.
-- **Contrast:** IC-L cases with large local gain vs IC-L cases solved under `logic_only`.
-
-**H1.5.** If IC-E-elim improves substantially from `local_graph`, the Type C redesign or local-evidence extractor should be audited for missed local evidence or prompt leakage.
-
-- **Metric:** IC-E-elim local-context gain; proportion of successful IC-E-elim cases whose target appears in model-visible local context.
-- **Contrast:** successful vs failed IC-E-elim cases under `local_graph`.
+**H1.5.** If Type C performance improves substantially from local graph context, the Type C bucket should be audited for missed local evidence or prompt leakage.
 
 ---
 
@@ -135,41 +89,23 @@ The paper-facing language should use the following distinction:
 
 **Question.** Can a model distinguish between an entity-level repair and a schema-level repair?
 
-**H2.1.** Models will overpredict A-box repairs when a concrete violating entity/value is shown, even when the historical repair was T-box.
+**H2.1.** Models will overuse A-box repairs, especially when the input case contains a concrete violating entity and value.
 
-- **Metric:** track-diagnosis confusion matrix, macro-F1, A-box overprediction rate on T-box cases.
-- **Contrast:** track diagnosis on A-box vs T-box cases; `logic_only` vs `local_graph`.
+**H2.2.** Diagnosis-routed repair will perform worse than oracle-track repair. The gap measures the cost of repair-locus errors.
 
-**H2.2.** Diagnosis-routed repair will perform worse than oracle-track repair, and the gap will be largest for T-box cases.
-
-- **Metric:** accepted repair rate, executable proposal rate, exact/semantic success under `oracle` and `diagnosis_routed` modes.
-- **Contrast:** `oracle - diagnosis_routed` by repair locus and subtype.
-
-**H2.3.** T-box cases with generic schema updates or weak causal signatures will have lower diagnosis and repair success than directional T-box reforms.
-
-- **Metric:** T-box diagnosis accuracy, semantic-family success, signature similarity, and exact match by T-box subtype.
-- **Contrast:** directional reform subtypes vs generic/low-causality schema-update subtypes.
+**H2.3.** T-box cases will be hardest when the schema reform is generic, weakly causal, or repeated across many apparent violations.
 
 ---
 
 ### RQ3. Can LLM proposals survive symbolic transaction checks?
 
-**Question.** Are generated repairs merely parseable, or are they executable, historically aligned, and auditable graph transactions?
+**Question.** Are generated repairs merely parseable, or are they executable and historically aligned?
 
 **H3.1.** Valid JSON will overestimate repair success. Many proposals will parse but fail executability, target alignment, exact historical agreement, information preservation, or auditability.
 
-- **Metric:** funnel from response present -> parse valid -> schema valid -> executable -> exact/semantic success -> auditability pass.
-- **Contrast:** syntactic validity vs accepted repair rate across models and context bundles.
+**H3.2.** For T-box reforms, exact signature match will be strict and often low, but semantic-family success will reveal whether the model at least identified the correct reform direction or constraint family.
 
-**H3.2.** For T-box reforms, exact signature match will be low, but semantic-family success will reveal partial repair understanding.
-
-- **Metric:** exact signature match, target-constraint-family match, reform-direction match, signature Jaccard/overlap, and whether the proposed constraint would admit the historical violating value.
-- **Contrast:** exact T-box success vs semantic T-box success.
-
-**H3.3.** Models will sometimes satisfy the violation destructively, for example by deleting values or weakening constraints while losing useful information.
-
-- **Metric:** destructive-repair rate, over-delete rate, information-preservation failures, constraint-regression failures.
-- **Contrast:** A-box delete/update operations and T-box relax/restrict operations.
+**H3.3.** Models will sometimes satisfy constraints destructively, for example by deleting a problematic value while losing useful surviving information.
 
 ---
 
@@ -177,46 +113,23 @@ The paper-facing language should use the following distinction:
 
 **Question.** Does prompt format or few-shot selection improve repair quality, and where?
 
-**H4.1.** Hybrid JSON plus concise natural-language descriptions should outperform pure natural language and pure Turtle-like representations on parse validity and executability.
+**H4.1.** Hybrid JSON plus concise natural-language explanation should outperform pure natural language and pure Turtle on parse validity and executability.
 
-- **Metric:** parse validity, schema validity, executable proposal rate, accepted repair rate, tokens per case.
-- **Contrast:** hybrid JSON vs natural-language-only vs Turtle/table variants on the dev set.
+**H4.2.** Few-shot examples will primarily improve contract compliance, operation shape, and T-box constraint-family targeting. They should not substantially solve external-evidence cases unless they become an implicit retrieval mechanism.
 
-**H4.2.** Few-shot examples will primarily improve contract compliance and operation shape, not truth discovery.
-
-- **Metric:** parse validity, schema validity, executable rate, correct operation family, accepted repair rate.
-- **Contrast:** zero-shot vs random same-task few-shot vs matched few-shot.
-
-**H4.3.** Matched few-shot examples will help T-box more than A-box because T-box repair contracts and constraint signatures are less familiar to instruction models.
-
-- **Metric:** T-box target-constraint-family match, reform-direction match, signature similarity, exact match.
-- **Contrast:** matched few-shot vs zero-shot by repair locus.
-
-**H4.4.** Matched few-shot should not substantially solve IC-E-elim cases unless the examples act as implicit retrieval or memorized precedent.
-
-- **Metric:** IC-E-elim accepted repair rate and provenance plausibility under few-shot prompting.
-- **Contrast:** IC-E-elim few-shot gain vs IC-G few-shot gain.
+**H4.3.** Matched few-shot examples will help T-box more than A-box because T-box repair contracts and constraint signatures are less familiar to generic instruction models.
 
 ---
 
 ### RQ5. Does popularity expose memorization or robustness issues?
 
-**Question.** Do head and tail entities behave differently under no-retrieval repair?
+**Question.** Do head and tail entities behave differently?
 
 **H5.1.** Head entities should be easier in no-retrieval settings because parametric model memory is more likely to contain relevant facts.
 
-- **Metric:** accepted repair rate, exact historical agreement, and semantic success by popularity bucket.
-- **Contrast:** head vs mid vs tail entities under `logic_only` and `local_graph`.
+**H5.2.** Local graph context should reduce the head-tail gap for genuine local-context repairs.
 
-**H5.2.** Local graph context should reduce the head-tail gap for genuine IC-G cases.
-
-- **Metric:** head-tail performance gap on IC-G before and after adding local graph context.
-- **Contrast:** `logic_only` head-tail gap vs `local_graph` head-tail gap.
-
-**H5.3.** A large head-tail gap on IC-E-elim should be interpreted as memorization risk, not necessarily as repair reasoning.
-
-- **Metric:** IC-E-elim head-tail gap; success cases with unsupported or hallucinated provenance.
-- **Contrast:** IC-E-elim head vs tail cases and IC-E-elim vs IC-G.
+**H5.3.** A large head-tail gap on external-evidence cases should be interpreted as evidence of memorization risk, not necessarily as repair reasoning.
 
 ---
 
@@ -224,40 +137,13 @@ The paper-facing language should use the following distinction:
 
 **Question.** Can the main claims be established without a large API budget?
 
-**H6.1.** Local open instruction models should be sufficient to reveal structured failure patterns across repair locus, information condition, context bundle, and prompt format.
+**H6.1.** Local open instruction models should be adequate for measuring structured failure patterns, especially across context, track, and class axes.
 
-- **Metric:** relative ordering and failure taxonomy across local models.
-- **Contrast:** multiple local H100-runnable models on the core set.
+**H6.2.** A small API reference subset is sufficient for calibration. The paper does not need a full frontier-model leaderboard.
 
-**H6.2.** A small API reference subset is sufficient for calibration; the paper does not need a full frontier-model leaderboard.
-
-- **Metric:** same evaluation funnel as local models on a stratified reference subset.
-- **Contrast:** best local model vs API reference model on matched core subset.
-
-**H6.3.** The main result should be behavioral decomposition, not absolute leaderboard performance.
-
-- **Metric:** consistency of ablation effects and failure modes across models.
-- **Contrast:** model-level score differences vs class/context/locus effects.
+**H6.3.** The main contribution is the behavioral decomposition and evaluation protocol, not the best absolute score.
 
 ---
-
-### RQ7. Can models recognize insufficient evidence?
-
-**Question.** If an abstention option is added, can models avoid hallucinating repairs when the supplied context is insufficient?
-
-This RQ is conditional. It should be included in the main paper only if the output contract is extended to support abstention before the main experiments.
-
-**H7.1.** IC-E-elim and IC-U cases should produce more justified abstentions than IC-L and IC-G cases.
-
-- **Metric:** abstention rate, justified-abstention precision, hallucinated-repair rate.
-- **Contrast:** IC-E-elim/IC-U vs IC-L/IC-G.
-
-**H7.2.** Models without abstention will overproduce unsupported repairs on IC-E-elim and IC-U cases.
-
-- **Metric:** unsupported repair rate, hallucinated provenance rate, failed auditability rate.
-- **Contrast:** forced-repair contract vs abstention-enabled contract on the same dev/core subset.
-
-If abstention is not implemented, RQ7 should be moved to limitations and future work rather than reported as a main result.
 
 ## 5. Benchmark construction narrative
 
@@ -338,7 +224,7 @@ The current Type A/B/C naming can remain in code, but the paper should consider 
 A crucial paper decision: Type C should not be overclaimed. Use one of these formulations:
 
 - conservative: **Type C = not supported by local/rule evidence under the current extraction protocol**;
-- stronger, after manual audit: **Type C = external evidence required**;
+- stronger, after manual audit: **Type C = external evidence required only after audit/retrieval confirmation**;
 - best: split into `EXTERNAL_CONFIRMED`, `EXTERNAL_BY_ELIMINATION`, and `UNKNOWN_*` subtypes.
 
 ### 6.3 T-box schema-reform subtypes
@@ -595,27 +481,43 @@ The API subset should be stratified by class, track, subtype, popularity bucket,
 
 ---
 
-## 12. Dataset tiers for the paper
+## 12. Dataset tiers for the paper after Phase C
 
-A recommended design:
+Paper experiments should use deterministic manifests over the full Stage 4 benchmark, not separate benchmark files.
 
-| Tier | Size target | Use |
+| Tier | Size target | Use | Final-score role |
+|---|---:|---|---|
+| Full | all valid records | Release and descriptive statistics. | Not the default LLM score because of T-box skew. |
+| Core v1 | 4,800 cases | Main reasoning-floor experiments. | Yes, using `main_score_case_ids`; diagnostic cases reported separately. |
+| Dev/Pilot v1 | 600 cases | Prompt engineering and representation ablations. | No. |
+| Audit v1 | 450 cases | Manual validation of labels and failure modes. | No; used to justify label quality and filtering. |
+
+Core v1 is stratified by repair locus, class/subtype, confidence, popularity bucket, constraint family, and T-box property-revision group. It uses seed-13 deterministic SHA-1 ordering and caps T-box property-revision groups at 10 cases in core.
+
+Core v1 target composition:
+
+| Core group | Target cases | Score policy |
 |---|---:|---|
-| Full | all valid cases | Release and descriptive statistics. |
-| Core | 3,000-6,000 cases | Main LLM experiments. |
-| Dev/Pilot | 300-800 cases | Prompt engineering and representation ablations. |
-| Audit | 300-500 cases | Manual validation of labels and failure modes. |
+| TypeA clean rule/rejection | 700 | main |
+| TypeA ambiguous delete | 250 | diagnostic-only |
+| TypeB local graph-grounded | 1,150 | main |
+| TypeC / `EXTERNAL_BY_ELIMINATION` | 900 | main stress slice, reported as IC-E-elim rather than confirmed external. |
+| T-box directional/schema reform | 1,500 | main, with schema-update separated from directional reforms. |
+| T-box coincidental schema change | 300 | diagnostic-only |
+| **Total** | **4,800** | mixed |
 
-The core should not be selected only by classifier confidence. Confidence should be a stratification variable. Low-confidence cases should be included as a diagnostic slice or challenge set, but not silently mixed into the main score.
+The main paper score must use `main_score_case_ids`. `DELETE_AMBIGUOUS`, `COINCIDENTAL_SCHEMA_CHANGE`, low-confidence, and `UNKNOWN_*` cases may be run as diagnostics, but they should not be silently mixed into the headline score.
 
 Recommended T-box policy:
 
 | Dataset | T-box cap per property revision |
 |---|---:|
 | Full | no cap |
-| Extended paper subset | 50-100 |
-| Core | 5-20 |
-| Dev/Pilot | smaller fixed stratified sample |
+| Core v1 | 10 |
+| Dev/Pilot v1 | 3 |
+| Audit v1 | 5 |
+
+Dev and core must have zero case-id overlap and zero T-box property-revision overlap. This protects few-shot and prompt-development experiments from using examples that are effectively the same schema reform as final-evaluation cases.
 
 ---
 
@@ -627,7 +529,7 @@ A plausible result pattern:
 
 1. Models often produce syntactically valid JSON but fail executability or exact historical agreement.
 2. Local graph context improves Type B/IC-G cases more than Type A/IC-L cases.
-3. Type C/IC-E cases remain difficult without retrieval or should trigger abstention.
+3. Type C/IC-E-elim cases remain difficult without retrieval or should trigger abstention rather than hallucinated repair.
 4. T-box repair is harder than A-box repair because models confuse entity values with constraint-family ids or reform the wrong layer.
 5. Diagnosis-routed repair is substantially worse than oracle-track repair, showing that repair-locus selection is a real bottleneck.
 6. Few-shot prompting improves contract compliance and T-box shape but does not solve external evidence.

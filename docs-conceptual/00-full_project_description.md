@@ -54,20 +54,44 @@ This resolves a potential novelty problem: the project does not claim to invent 
 
 ---
 
-## 4. Current benchmark snapshot
+## 4. Current benchmark snapshot after Phase B
 
-The current classified benchmark is large and skewed. The project overview reports the following A-box counts:
+The Phase B classifier redesign materially changed the benchmark interpretation. The current Stage 4 snapshot contains:
 
-| Category | Count |
+| Slice | Count |
 |---|---:|
+| Full classified records | 535,570 |
 | A-box instance-data repair cases | 78,976 |
-| Type A logical A-box cases | 47,216 |
-| Type B local-context A-box cases | 13,492 |
-| Type C external-information A-box cases | 18,268 |
+| T-box schema-reform cases | 456,594 |
+| TypeA cases | 17,556 |
+| TypeB local-context cases | 22,409 |
+| TypeC / `EXTERNAL_BY_ELIMINATION` cases | 39,011 |
+| TypeA / `REJECTION_FORMAT_INVALID` | 8,675 |
+| TypeA / `REJECTION_RULE_INVALID` | 34 |
+| TypeA / `LOGICAL` | 31 |
+| TypeA / `DELETE_AMBIGUOUS` | 8,816 |
+| TypeB / `LOCAL_FOCUS_PREREPAIR_PROPERTY` | 12,541 |
+| TypeB / `LOCAL_TEXT` | 9,546 |
+| T-box / `RELAXATION_SET_EXPANSION` | 86,876 |
+| T-box / `RESTRICTION_SET_CONTRACTION` | 2,023 |
+| T-box / `SCHEMA_UPDATE` | 213,802 |
+| T-box / `COINCIDENTAL_SCHEMA_CHANGE` | 153,893 |
 
-The full benchmark also contains T-box schema-reform cases. A key structural challenge is that many T-box cases can be repeated manifestations of the same property-level schema edit. A single T-box repair may explain many apparent violations. Therefore, naive aggregate scores over the full dataset can overrepresent a small number of schema reforms.
+This snapshot has two consequences for the paper:
 
-The current selection manifest already supports capping T-box repetitions per property revision. The existing paper-subset policy keeps all A-box cases and caps T-box cases per update, with a default cap of 100. For core experiments, this cap should likely be reduced further to 5-20 per property revision.
+1. **TypeC is no longer described as unqualified external evidence.** It is `EXTERNAL_BY_ELIMINATION` unless manual audit or retrieval confirms true external evidence need.
+2. **TypeA is not mostly logical repair after Phase B.** It is mostly format rejection and ambiguous deletion. Therefore, `DELETE_AMBIGUOUS` must be a diagnostic slice rather than part of the clean TypeA headline score.
+
+The full benchmark remains the release artifact. Paper experiments should use deterministic selection manifests:
+
+| Tier | Target size | Purpose |
+|---|---:|---|
+| Full | all valid records | Release/statistics. |
+| Core v1 | 4,800 | Main LLM experiments, with main-score and diagnostic slices. |
+| Dev/Pilot v1 | 600 | Prompt development and debugging. |
+| Audit v1 | 450 | Manual label validation. |
+
+T-box dominance remains severe: T-box records represent about 85% of the full benchmark. Core selection therefore caps T-box cases per property revision at 10 and marks low-causality `COINCIDENTAL_SCHEMA_CHANGE` cases as diagnostic-only.
 
 ---
 
@@ -239,7 +263,7 @@ Examples:
 - range-boundary correction where the target equals a rule-implied boundary;
 - deletion of a value that should not be present.
 
-Concern: the current classifier treats all A-box deletes as Type A rejection. This is too broad when selecting which value to delete requires local or external evidence. Generic deletes should be refined into stronger subtypes or downgraded in confidence unless the rule identifies the invalid value.
+Phase B status: deletes are no longer automatically treated as clean TypeA rejection. The classifier now distinguishes `REJECTION_RULE_INVALID`, `REJECTION_FORMAT_INVALID`, and `DELETE_AMBIGUOUS`; the ambiguous delete subtype is diagnostic-only in the Phase C core policy.
 
 ### Type B: local graph-grounded
 
@@ -254,53 +278,48 @@ Local evidence sources include:
 - neighbor labels or descriptions;
 - labels for locally referenced ids.
 
-Concern: the current local evidence extraction is narrower than the conceptual definition of local context. It should be expanded to reduce false Type C assignments.
+Phase B status: local evidence extraction now includes synthetic pre-repair target-property values, non-target focus-node properties, one-hop neighbor ids, and labels/descriptions for locally referenced ids. TypeB remains an audit target, especially `LOCAL_TEXT` and rare local subtypes.
 
-### Type C: external / non-local evidence
+### Type C: external-by-elimination / unresolved non-local evidence
 
-Type C is intended to represent cases where local graph context and rule metadata are insufficient, so a system would need external evidence, a source citation, a database, domain knowledge, a longer graph traversal, or retrieval.
-
-Current problem: many Type C labels are assigned by elimination:
+After Phase B, ordinary fallback cases are no longer emitted as unqualified `TypeC / EXTERNAL`. The main TypeC subtype is now `EXTERNAL_BY_ELIMINATION`:
 
 ```text
-not delete
-and not T-box
-and not rule-deterministic
+not T-box
+and not clean rule-deterministic
 and target truth not found in supported local buckets
-=> TypeC / EXTERNAL
+=> TypeC / EXTERNAL_BY_ELIMINATION
 ```
 
-This does not prove external evidence is required. It proves only that the current extractor did not find local or rule evidence.
+This label means the supported rule and local-context checks did not identify the historical target. It does **not** prove that external evidence is definitely required. Stronger claims require manual audit or retrieval confirmation.
 
-Recommended redesign:
+Phase B TypeC vocabulary:
 
-| Current output | Better subtype |
-|---|---|
-| `TypeC / EXTERNAL` from final fallback | `TypeC / EXTERNAL_BY_ELIMINATION` |
-| Missing world state | `TypeC / UNKNOWN_MISSING_WORLD_STATE` |
-| Missing truth tokens | `TypeC / UNKNOWN_MISSING_TRUTH` |
-| Truth from current-2026 fallback | `TypeC / UNKNOWN_CURRENT_VALUE_FALLBACK` |
-| Sparse local graph | `TypeC / UNKNOWN_INCOMPLETE_LOCAL_CONTEXT` |
-| Manually or retrieval-confirmed external need | `TypeC / EXTERNAL_CONFIRMED` |
-
-For the paper, Type C should be described conservatively unless manual audit confirms external evidence need.
+| Subtype | Meaning | Phase C policy |
+|---|---|---|
+| `EXTERNAL_BY_ELIMINATION` | Supported rule/local checks did not identify the target. | Main no-retrieval stress slice, reported as IC-E-elim. |
+| `UNKNOWN_MISSING_WORLD_STATE` | Required world-state context is absent. | Diagnostic or excluded from main score. |
+| `UNKNOWN_MISSING_TRUTH` | Historical target truth tokens are unavailable. | Diagnostic or excluded from main score. |
+| `UNKNOWN_CURRENT_VALUE_FALLBACK` | Target would require current-value fallback. | Diagnostic or excluded from main score. |
+| `UNKNOWN_INCOMPLETE_LOCAL_CONTEXT` | Local context is too sparse to interpret the label. | Diagnostic or excluded from main score. |
+| `EXTERNAL_CONFIRMED` | Manual audit or retrieval confirms non-local evidence need. | Future/audit-upgraded label. |
 
 ---
 
-## 9. Classifier audit summary
+## 9. Classifier audit summary after Phase B
 
-The classifier is coherent as a deterministic heuristic, but several decisions should be hardened before final experiments.
+The classifier is coherent as a deterministic heuristic, and Phase B hardened the highest-risk branches before final experiments.
 
-### 9.1 Current classifier priority order
+### 9.1 Phase B classifier priority order
 
-1. Missing world state -> low-confidence Type C external fallback.
+1. Missing world state -> low-confidence `TypeC / UNKNOWN_MISSING_WORLD_STATE`.
 2. T-box repair -> T-box subtype via constraint-delta analysis.
-3. A-box delete -> Type A rejection.
-4. Rule-deterministic match -> Type A logical.
-5. Local truth match -> Type B local.
-6. Fallback -> Type C external.
+3. A-box delete -> refined delete subtype such as `REJECTION_RULE_INVALID`, `REJECTION_FORMAT_INVALID`, or `DELETE_AMBIGUOUS`.
+4. Rule-deterministic match -> clean TypeA subtype only for deterministic cases.
+5. Local truth match -> TypeB local subtype with match diagnostics.
+6. Fallback -> `TypeC / EXTERNAL_BY_ELIMINATION`.
 
-This priority order is understandable, but it makes Type C a residual class and makes delete overly broad.
+This priority order is now safer for paper claims, but it still requires manual audit because `EXTERNAL_BY_ELIMINATION` remains a negative-evidence label.
 
 ### 9.2 Main classifier risks
 

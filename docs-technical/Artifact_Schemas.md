@@ -117,7 +117,7 @@ The canonical classification fields are:
 Important runtime behavior:
 
 - T-box records are emitted as class `T_BOX`, not `UNKNOWN`
-- missing world-state entries still produce a Stage 4 record, defaulting to low-confidence `TypeC/EXTERNAL`
+- missing world-state entries still produce a Stage 4 record, defaulting to low-confidence `TypeC/UNKNOWN_MISSING_WORLD_STATE` after the Phase B redesign
 
 ## Stage 4 FULL: `data/04_classified_benchmark_full.jsonl`
 
@@ -146,24 +146,72 @@ Current stratification uses:
 
 ## Selection Manifest: `reports/benchmark_selection/*.json`
 
-The deterministic paper-subset selector writes a small JSON manifest rather than a second full benchmark artifact.
+The deterministic subset selector writes JSON manifests rather than creating alternate Stage 4 benchmark files. Phase C defines two primary manifests:
 
-Current manifest fields include:
+- `reports/benchmark_selection/dev_prompt_v1_seed_13.json`
+- `reports/benchmark_selection/core_v1_seed_13.json`
 
-- `manifest_type`
-- `manifest_version`
+Required top-level fields:
+
+- `manifest_type`: `benchmark_selection`
+- `manifest_version`: `phase_c_v1`
+- `tier`: `core` or `dev`
+- `seed`
+- `created_at_utc`
 - `inputs.classified_benchmark`
-- `policy.scope`
-- `policy.selection_strategy`
-- `policy.t_box_group_key`
-- `policy.tbox_cap_per_update`
-- `policy.seed`
-- `policy.stable_ordering`
-- `policy.selected_case_order`
-- `policy.selected_case_ids_ordering`
-- aggregate `counts`
-- `t_box_selected_counts_by_revision`
+- `inputs.world_state`
+- `policy`
 - `selected_case_ids`
+- `main_score_case_ids`
+- `diagnostic_case_ids`
+- `case_annotations`
+- `counts`
+- `underfilled_quotas`
+- `warnings`
+- `validation`
+
+`case_annotations` maps each selected case id to derived selection metadata:
+
+- `tier`
+- `selection_stratum`
+- `analysis_slice`
+- `main_score`
+- `diagnostic_only`
+- `group_key`
+- `tbox_revision_key`
+- `weak_group_key`
+- `class`
+- `subtype`
+- `confidence`
+- `track`
+- `popularity_bucket`
+- `constraint_family`
+- `truth_source`
+- `truth_token_kind`
+
+The manifest must distinguish headline evaluation cases from diagnostic/challenge cases. The main paper score should use `main_score_case_ids`, while `diagnostic_case_ids` should be reported separately.
+
+Hard validation checks for `core_v1`:
+
+- no duplicate selected ids;
+- no case-id overlap with `dev_prompt_v1`;
+- no T-box property-revision overlap with `dev_prompt_v1`;
+- max 10 T-box cases per property revision;
+- no `UNKNOWN_*` TypeC cases in `main_score_case_ids`;
+- no low-confidence cases in `main_score_case_ids` unless explicitly upgraded by policy;
+- no `DELETE_AMBIGUOUS` or `COINCIDENTAL_SCHEMA_CHANGE` cases in `main_score_case_ids`.
+
+## Manual Audit Artifacts: `reports/manual_audit/*`
+
+Phase D writes audit artifacts for validating high-risk classifier decisions:
+
+- `audit_phase_d_v1_seed_13.jsonl`
+- `audit_phase_d_v1_seed_13.csv`
+- `audit_annotation_schema.json`
+- `audit_phase_d_v1_results.json`
+- `audit_phase_d_v1_summary.md`
+
+Audit rows include prefilled case metadata, classifier diagnostics, and empty human annotation fields. The required annotation fields are documented in `00-manual_audit_phase_D.md`.
 
 ## Proposal Artifacts
 

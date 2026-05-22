@@ -243,3 +243,22 @@ This prevents summaries from collapsing plausible narrower T-box reforms to zero
 The dry-run integration path is covered by [tests/test_reasoning_floor.py](/home/mvazquez/kg-benchmark/tests/test_reasoning_floor.py).
 
 The diagnosis normalization path is covered by [tests/test_track_parser.py](/home/mvazquez/kg-benchmark/tests/test_track_parser.py).
+
+## Phase C Selection Manifests
+
+Paper-facing reasoning-floor runs should target deterministic Phase C manifests rather than ad hoc `--max-cases` samples.
+
+Recommended manifests:
+
+- `reports/benchmark_selection/dev_prompt_v1_seed_13.json` for prompt development only
+- `reports/benchmark_selection/core_v1_seed_13.json` for final core experiments
+
+The core manifest must expose:
+
+- `selected_case_ids` for all core cases, including diagnostic/challenge cases
+- `main_score_case_ids` for headline paper scores
+- `diagnostic_case_ids` for challenge analysis
+- `case_annotations` with `selection_stratum`, `analysis_slice`, `main_score`, and `diagnostic_only`
+
+The runner can consume the manifest through `--selection-manifest`. Evaluation and aggregation should use the manifest annotations to separate headline scores from diagnostic slices. Dev/pilot manifests must not be used for final benchmark scores.
+

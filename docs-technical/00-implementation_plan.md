@@ -32,11 +32,11 @@ Task A3 should **not** reuse the original hypotheses from `00-kg_llm_benchmark.m
 **Output:** short internal scope note  
 **Status:** complete
 
-Paper 1 is frozen as:
+Define paper 1 as:
 
 > Benchmark + taxonomy operationalization + classifier validation + reasoning floor + prompt/context/model analysis.
 
-Full RAG, full cost-quality frontier analysis, and the neuro-symbolic Guardian agent loop are excluded from paper 1 except as future work or contingency.
+Explicitly exclude full RAG and Guardian from paper 1 except as future work or contingency.
 
 **Acceptance criteria:** complete
 
@@ -51,7 +51,7 @@ Full RAG, full cost-quality frontier analysis, and the neuro-symbolic Guardian a
 **Output:** taxonomy mapping note  
 **Status:** complete
 
-The paper-facing vocabulary separates repair locus from information condition:
+Create a table mapping repository terms to paper-facing terms:
 
 | Repository term | Paper-facing term | Notes |
 |---|---|---|
@@ -59,51 +59,33 @@ The paper-facing vocabulary separates repair locus from information condition:
 | T_BOX | T-box / schema-level repair | Use prior taxonomy nomenclature. |
 | TypeA | IC-L / rule-implied information condition | Keep TypeA in code if needed. |
 | TypeB | IC-G / local graph-grounded information condition | Keep TypeB in code if needed. |
-| TypeC | IC-E-elim or IC-U | Split/qualify; do not overclaim confirmed externality. |
+| TypeC | IC-E / external-by-elimination or external-evidence condition | Must split/qualify. |
 
-**Acceptance criteria:** complete
+**Acceptance criteria:**
 
 - No paper section claims A-box/T-box taxonomy as novel.
 - Type A/B/C is described as information access, not repair taxonomy.
-- Type C is explicitly split into external-by-elimination and unknown/incomplete-context cases before core experiments.
 
 ### Task A3 — Finalize research questions and hypotheses
 
 **Type:** Research planning / writing  
 **Dependencies:** A1, A2  
-**Output:** RQ/Hypothesis document section  
-**Status:** complete
+**Output:** RQ/Hypothesis document section
 
-Decision: use the hypotheses in `00-kg_llm_benchmark.md` as the starting point, but update them. The finalized version adds metrics, experimental contrasts, and conservative Type C wording.
+Use these research questions:
 
-Finalized research-question set:
+1. Does information condition predict model behavior?
+2. Can models choose the correct repair locus?
+3. Are valid-looking LLM outputs executable and auditable graph transactions?
+4. Does local graph context help the correct classes?
+5. Does popularity expose memorization or robustness gaps?
+6. How does prompt design affect measured capability?
+7. What is the oracle-track vs diagnosis-routed gap?
 
-1. Can the benchmark labels be defended as an information-access instrument?
-2. Does information condition predict model behavior?
-3. Can models choose the correct repair locus?
-4. Can LLM proposals survive symbolic transaction checks?
-5. How much does prompt design matter?
-6. Does popularity expose memorization or robustness issues?
-7. Are local H100-runnable models sufficient for the main scientific claims?
-8. Can models recognize insufficient evidence, if abstention is implemented?
-
-**Acceptance criteria:** complete
+**Acceptance criteria:**
 
 - Each RQ has at least one falsifiable hypothesis.
-- Each hypothesis has corresponding metrics and experimental contrast.
-- Type C is phrased as external-by-elimination or unresolved unless confirmed by audit/retrieval.
-- The updated RQs are stored in `00-phase_A_completion.md` and `00-kg_llm_benchmark.md`.
-
-
-### Phase A completion output — completed 2026-05-21
-
-Phase A is completed in [`00-phase_a_project_alignment.md`](00-phase_a_project_alignment.md).
-
-**A1 result.** Paper 1 is scoped as benchmark construction, taxonomy operationalization, classifier validation, reasoning-floor evaluation, and prompt/context/model analysis. Full RAG, full Guardian, live editing, and cost-quality frontier analysis are out of scope for the first paper except as future work or contingency.
-
-**A2 result.** A-box/T-box terminology is adopted as the repair-locus vocabulary from existing Wikidata repair-taxonomy work. Type A/B/C is reframed as an information-condition layer: IC-L, IC-G, and IC-E/IC-U. Type C must be split or qualified rather than treated as confirmed external evidence.
-
-**A3 result.** The hypotheses from `00-kg_llm_benchmark.md` were updated rather than copied unchanged. The revised set adds explicit metrics and experimental contrasts, separates prompt-design hypotheses from benchmark-behavior hypotheses, and accounts for `EXTERNAL_BY_ELIMINATION` and `UNKNOWN_*` Type C subtypes.
+- Each hypothesis has a corresponding metric and experimental contrast.
 
 ## 2. Phase B — Repository audit and classifier redesign
 
@@ -377,10 +359,9 @@ Add tests for:
 6. date range boundary via P2310/P2311 gives TypeA;
 7. format update is TypeA only for simple normalization;
 8. missing truth -> UNKNOWN_MISSING_TRUTH;
-9. current-value fallback -> UNKNOWN_CURRENT_VALUE_FALLBACK;
-10. missing world state -> UNKNOWN_MISSING_WORLD_STATE;
-11. value-type T-box expansion over P2308 gives set expansion;
-12. delete under single-value conflict is not automatically high-confidence rejection.
+9. missing world state -> UNKNOWN_MISSING_WORLD_STATE;
+10. value-type T-box expansion over P2308 gives set expansion;
+11. delete under single-value conflict is not automatically high-confidence rejection.
 
 **Metrics:**
 
@@ -442,99 +423,127 @@ Phase B is completed in [`implementation-plan-completions/00-phase_B_completion.
 
 **Type:** Evaluation design / repository implementation  
 **Dependencies:** B10  
-**Output:** tier policy document
+**Output:** tier policy document  
+**Status:** complete
 
-Define:
+The full/core/dev/audit policy is defined in `dataset_tiers_and_selection.md`.
 
-| Tier | Size | Purpose |
-|---|---:|---|
-| Full | all valid cases | Release/statistics. |
-| Core | 3,000–6,000 | Main LLM experiments. |
-| Dev/Pilot | 300–800 | Prompt development and debugging. |
+Core v1 is a fixed 4,800-case measurement suite, not a random downsample. It balances A-box information conditions and T-box schema-reform types while marking ambiguous or low-causality cases as diagnostic-only.
 
-**Acceptance criteria:**
+**Acceptance criteria:** complete
 
-- Core and dev are deterministic.
-- Core excludes or separately marks low-confidence/unknown cases.
-- Dev does not overlap final test/core evaluation if used for prompt tuning.
+- Core and dev are deterministic through seed-13 SHA-1 stable ordering.
+- Core excludes or separately marks low-confidence and unknown cases through `main_score` and `diagnostic_only` flags.
+- Dev does not overlap final core evaluation by case id or T-box property-revision group.
 
 ### Task C2 — Implement core selection manifest
 
 **Type:** Repository implementation  
 **Dependencies:** C1  
-**Output:** `reports/benchmark_selection/core_*.json`
+**Output:** `reports/benchmark_selection/core_v1_seed_13.json`  
+**Status:** design complete; Codex implementation prompt written
 
-Selection rules:
+Core v1 target quotas:
 
-- balance A-box information conditions;
-- preserve T-box diversity;
-- cap T-box cases per property revision at 5–20;
-- stratify by subtype and popularity;
-- keep medium-confidence cases but report separately;
-- include low-confidence cases only as diagnostic/challenge slice.
+| Core group | Quota | Main-score policy |
+|---|---:|---|
+| TypeA clean rule/rejection | 700 | main |
+| TypeA ambiguous delete | 250 | diagnostic only |
+| TypeB local graph-grounded | 1,150 | main |
+| TypeC external-by-elimination | 900 | main stress slice, reported as IC-E-elim |
+| T-box directional/schema reform | 1,500 | main, with schema-update separated from directional reforms |
+| T-box coincidental schema change | 300 | diagnostic only |
+| **Total** | **4,800** | mixed |
 
-**Metrics:**
+Core caps:
+
+- T-box: max 10 cases per property revision.
+- A-box: max 3 cases per `(qid, property)` group.
+- Unknown TypeC and low-confidence cases: diagnostic-only or excluded from main score.
+- `DELETE_AMBIGUOUS` and `COINCIDENTAL_SCHEMA_CHANGE`: diagnostic-only.
+
+**Metrics to report:** complete in policy
 
 - total selected cases;
-- selected cases by track;
-- selected cases by class/subtype;
-- selected cases by confidence;
-- selected cases by popularity bucket;
+- selected cases by track/class/subtype/confidence/popularity bucket/constraint family;
 - T-box revisions and max count per revision;
-- overlap with dev/test splits.
+- `main_score_case_ids` versus `diagnostic_case_ids`;
+- overlap with dev.
 
-**Acceptance criteria:**
+**Acceptance criteria:** complete in policy; repository implementation delegated to Codex prompt
 
-- No T-box revision dominates the core.
-- All key strata have enough cases for analysis.
+- No T-box revision may dominate the core.
+- All key strata have enough cases for analysis or an explicit underfill record.
 
 ### Task C3 — Implement dev/pilot selection manifest
 
 **Type:** Repository implementation / prompt development support  
 **Dependencies:** C1  
-**Output:** `reports/benchmark_selection/dev_prompt_*.json`
+**Output:** `reports/benchmark_selection/dev_prompt_v1_seed_13.json`  
+**Status:** design complete; Codex implementation prompt written
 
-Dev set should include:
+Dev/Pilot v1 target quotas:
 
-- enough examples of each track and information condition;
-- enough T-box examples for prompt debugging;
-- Type C external-by-elimination and unknown slices;
-- head/mid/tail cases;
-- cases likely to expose parser and representation issues.
+| Dev group | Quota |
+|---|---:|
+| TypeA clean rule/rejection | 70 |
+| TypeA ambiguous delete | 40 |
+| TypeB local graph-grounded | 130 |
+| TypeC external-by-elimination or unknown diagnostic | 120 |
+| T-box relaxation expansion | 80 |
+| T-box restriction contraction | 40 |
+| T-box schema update | 80 |
+| T-box coincidental diagnostic | 40 |
+| **Total** | **600** |
 
-**Metrics:**
+Dev is selected before core. Core selection must exclude dev case ids and dev T-box property-revision groups.
+
+**Metrics:** complete in policy
 
 - distribution table;
-- overlap check with core final test if applicable.
+- core/dev case-id overlap;
+- core/dev T-box property-revision overlap;
+- A-box `(qid, property)` overlap warning if unavoidable.
 
-**Acceptance criteria:**
+**Acceptance criteria:** complete
 
 - Dev is representative but small enough for prompt iteration.
+- Dev is not used for final benchmark scoring.
 
 ### Task C4 — Update splitter if needed
 
 **Type:** Repository implementation  
 **Dependencies:** C1–C3  
-**Output:** deterministic split artifact
+**Output:** deterministic group-aware split artifact  
+**Status:** design complete; Codex implementation prompt written
 
-Ensure splits can stratify by:
+Decision: the splitter must become group-aware for any train/dev/test or few-shot exemplar split.
+
+Required group keys:
+
+| Record type | Group key |
+|---|---|
+| T-box | `TBOX::{property}::{property_revision_id}` with fallbacks. |
+| A-box | `ABOX::{qid}::{property}`. |
+
+Required stratification keys:
 
 - repair locus;
 - class/subtype;
 - confidence;
 - popularity bucket;
 - T-box property revision;
-- constraint family.
+- constraint family;
+- selection stratum.
 
-**Metrics:**
+**Acceptance criteria:** complete in policy
 
-- split distribution deltas;
-- maximum distribution deviation by stratum.
+- Train/dev/test distributions must be reported by stratum.
+- T-box property revisions must not be split across prompt-development and final-evaluation sets when few-shot examples are used.
 
-**Acceptance criteria:**
+### Phase C completion output — completed 2026-05-22
 
-- Train/dev/test distributions are within acceptable deltas.
-- T-box property revisions are not split in a way that leaks same-revision patterns when few-shot examples are used.
+Phase C is completed in `00-phase_C_completion.md`. The repository implementation prompt is in `00-codex_phase_C_selection.md`. The Phase D readiness prompt is in `00-codex_phase_D_audit.md`.
 
 ## 4. Phase D — Manual audit
 

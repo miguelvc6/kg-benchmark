@@ -10,3 +10,4 @@ script_extractor.py
 src/*.egg-info
 reports/reasoning_floor
 reports/classifier_audit/baseline_full_before_phase_b.jsonl
+temp/*
