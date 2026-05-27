@@ -114,6 +114,15 @@ The canonical classification fields are:
 - `classification.diagnostics`
 - `classification.local_subtype`
 
+After the delta-hardening pass, A-box diagnostics include:
+
+- `classification.diagnostics.value_change_summary`
+- `classification.diagnostics.classification_target_tokens`
+
+`value_change_summary.semantic_action` is one of `CREATE_FROM_MISSING`, `DELETE_TO_MISSING`, `DELETE_SUBSET`, `ADD_SUPERSET`, `REPLACE_1_TO_1`, `MULTIPLICITY_DECREASE_SAME_UNIQUE`, `MULTIPLICITY_INCREASE_SAME_UNIQUE`, `MULTIPLICITY_CHANGE_SAME_UNIQUE`, `MIXED_UPDATE`, or `NO_CHANGE_OR_REORDER_ONLY`.
+
+Local-match diagnostics use explicit source names such as `FOCUS_LABEL`, `FOCUS_DESCRIPTION`, `FOCUS_PREREPAIR_TARGET_PROPERTY_QID`, `FOCUS_PREREPAIR_TARGET_PROPERTY_LITERAL`, `FOCUS_QID`, `NEIGHBOR_ID`, and `NEIGHBOR_LABEL`. Synthetic pre-repair target-property values are not reported as generic `FOCUS_TEXT`.
+
 Important runtime behavior:
 
 - T-box records are emitted as class `T_BOX`, not `UNKNOWN`
@@ -189,6 +198,8 @@ Required top-level fields:
 - `constraint_family`
 - `truth_source`
 - `truth_token_kind`
+
+The current core policy treats refined labels such as `FORMAT_NORMALIZATION`, `FORMAT_VALUE_PRUNING`, `SELF_LINK_REJECTION`, `MULTIPLICITY_NORMALIZATION`, `LOCAL_TEXT_CONFIRMED`, `LOCAL_SELECTION_CONFIRMED`, and `LOCAL_FOCUS_QID` as main-score candidates when confidence is not low. Diagnostic labels such as `DELETE_AMBIGUOUS`, `UNKNOWN_SELECTION_AMBIGUOUS`, `UNKNOWN_MULTIPLICITY_ARTIFACT`, other `UNKNOWN_*` TypeC labels, and `COINCIDENTAL_SCHEMA_CHANGE` are excluded from `main_score_case_ids`.
 
 The manifest must distinguish headline evaluation cases from diagnostic/challenge cases. The main paper score should use `main_score_case_ids`, while `diagnostic_case_ids` should be reported separately.
 

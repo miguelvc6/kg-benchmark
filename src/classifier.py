@@ -43,6 +43,7 @@ from lib.utils import (
     utc_now_iso,
 )
 from lib.repair_state import pre_repair_target_raw_value
+from lib.repair_state import derive_value_change_summary
 
 DATE_ISO_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
@@ -60,6 +61,8 @@ ONE_OF_QIDS = {"Q21510859", "Q21502402"}  # one-of constraint (observed + legacy
 RANGE_QIDS = {"Q21510860"}  # range constraint
 TYPE_QIDS = {"Q21503250"}  # subject type constraint
 VALUE_TYPE_QIDS = {"Q21510865"}  # value-type constraint
+SELF_LINK_QIDS = {"Q21510862"}
+NONE_OF_QIDS = {"Q52558054"}
 
 ONE_OF_VALUE_QUALIFIER = "P2305"
 TYPE_VALUE_QUALIFIERS = ("P2308", "P2309")
@@ -81,6 +84,8 @@ VIOLATION_TO_CONSTRAINT_MAP = {
     "One of": "Q21510859",
     "Type": "Q21503250",
     "Value type": "Q21510865",
+    "Self link": "Q21510862",
+    "None of": "Q52558054",
     "Range": "Q21510860",
     "Diff within range": "Q21510861",
     "Quantity": "Q21510857",
@@ -658,18 +663,20 @@ def local_context_buckets(
     world_state_entry: Dict[str, Any],
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """
-    Builds separate buckets for local matching provenance:
-      - ids_neighbors: neighbor QIDs
-      - ids_focus_prerepair: pre-repair target-property QIDs on focus node
-      - text_focus: focus node label/description + pre-repair literals
-      - text_neighbors: neighbor labels/descriptions
+    Builds separate buckets for local matching provenance. Synthetic pre-repair target-property
+    values are intentionally kept separate from independent focus text.
     """
     ids_neighbors: set = set()
     ids_focus_prerepair: set = set()
     ids_focus_non_target: set = set()
     locally_referenced_ids: set = set()
-    text_focus: List[str] = []
-    text_neighbors: List[str] = []
+    ids_focus_qid: set = set()
+    text_focus_label: List[str] = []
+    text_focus_description: List[str] = []
+    text_focus_alias: List[str] = []
+    text_focus_prerepair_literals: List[str] = []
+    text_neighbor_label: List[str] = []
+    text_neighbor_description: List[str] = []
     text_focus_properties: List[str] = []
     text_l2_referenced: List[str] = []
     synth_info = {"used_pre_repair_value": False, "pre_repair_source": "missing", "tokens": []}
@@ -678,9 +685,16 @@ def local_context_buckets(
     # Focus node text
     q_label = repair_event.get("qid_label_en") or safe_get(world_state_entry, "L1_ego_node", "label")
     q_desc = repair_event.get("qid_description_en") or safe_get(world_state_entry, "L1_ego_node", "description")
-    for x in (q_label, q_desc):
-        if isinstance(x, str) and x.strip():
-            text_focus.append(x)
+    focus_qid = repair_event.get("qid") or safe_get(world_state_entry, "L1_ego_node", "qid")
+    if is_qid(focus_qid):
+        ids_focus_qid.add(focus_qid)
+    if isinstance(q_label, str) and q_label.strip():
+        text_focus_label.append(q_label)
+    if isinstance(q_desc, str) and q_desc.strip():
+        text_focus_description.append(q_desc)
+    aliases = safe_get(world_state_entry, "L1_ego_node", "aliases", default=[])
+    if isinstance(aliases, list):
+        text_focus_alias.extend([alias for alias in aliases if isinstance(alias, str) and alias.strip()])
 
     # Focus-node non-target properties. Target property values are intentionally excluded because
     # the frozen world state may contain the historical post-repair answer.
@@ -713,9 +727,9 @@ def local_context_buckets(
             tl = e.get("target_label")
             td = e.get("target_description")
             if isinstance(tl, str) and tl.strip():
-                text_neighbors.append(tl)
+                text_neighbor_label.append(tl)
             if isinstance(td, str) and td.strip():
-                text_neighbors.append(td)
+                text_neighbor_description.append(td)
 
     # Synthetic pre-repair values for the target property (A-Box only)
     rt = repair_event.get("repair_target", {}) if isinstance(repair_event.get("repair_target"), dict) else {}
@@ -731,7 +745,7 @@ def local_context_buckets(
                     ids_focus_prerepair.add(tok)
                     locally_referenced_ids.add(tok)
                 else:
-                    text_focus.append(str(tok))
+                    text_focus_prerepair_literals.append(str(tok))
         else:
             synth_info["pre_repair_source"] = pre_src
     else:
@@ -746,15 +760,20 @@ def local_context_buckets(
 
     buckets = {
         "ids_neighbors": ids_neighbors,
+        "ids_focus_qid": ids_focus_qid,
         "ids_focus_prerepair": ids_focus_prerepair,
         "ids_focus_non_target": ids_focus_non_target,
-        "text_focus_fields": text_focus,
-        "text_neighbor_fields": text_neighbors,
+        "text_focus_label_fields": text_focus_label,
+        "text_focus_description_fields": text_focus_description,
+        "text_focus_alias_fields": text_focus_alias,
+        "text_focus_prerepair_literal_fields": text_focus_prerepair_literals,
+        "text_neighbor_label_fields": text_neighbor_label,
+        "text_neighbor_description_fields": text_neighbor_description,
         "text_focus_property_fields": text_focus_properties,
         "text_l2_referenced_fields": text_l2_referenced,
         # Legacy aggregate fields remain for older tests/callers.
-        "text_focus": normalize_text(" \n ".join(text_focus + text_focus_properties)),
-        "text_neighbors": normalize_text(" \n ".join(text_neighbors + text_l2_referenced)),
+        "text_focus": normalize_text(" \n ".join(text_focus_label + text_focus_description + text_focus_alias + text_focus_properties)),
+        "text_neighbors": normalize_text(" \n ".join(text_neighbor_label + text_neighbor_description + text_l2_referenced)),
     }
     return buckets, synth_info
 
@@ -767,6 +786,39 @@ def report_type_normalized(repair_event: Dict[str, Any]) -> str:
     if not isinstance(t, str):
         return ""
     return normalize_text(t)
+
+
+def _is_format_report(repair_event: Dict[str, Any]) -> bool:
+    return report_type_normalized(repair_event) == "format"
+
+
+def _is_self_link_report(repair_event: Dict[str, Any]) -> bool:
+    return report_type_normalized(repair_event) == "self link"
+
+
+def _is_selection_report(repair_event: Dict[str, Any]) -> bool:
+    return report_type_normalized(repair_event) in {"single value", "unique value"}
+
+
+def _is_set_membership_report(repair_event: Dict[str, Any]) -> bool:
+    return report_type_normalized(repair_event) in {"one of", "none of"}
+
+
+def _classification_target_tokens(value_change: Any) -> Dict[str, Any]:
+    action = value_change.semantic_action
+    if action in {"CREATE_FROM_MISSING", "ADD_SUPERSET"}:
+        return {"role": "added", "tokens": list(value_change.added_unique_values or value_change.new_unique)}
+    if action == "DELETE_SUBSET":
+        return {"role": "removed", "tokens": list(value_change.removed_unique_values)}
+    if action == "DELETE_TO_MISSING":
+        return {"role": "removed", "tokens": list(value_change.removed_unique_values or value_change.old_unique)}
+    if action == "REPLACE_1_TO_1":
+        return {"role": "replacement_new", "tokens": list(value_change.new_unique)}
+    if action == "MIXED_UPDATE":
+        return {"role": "changed", "tokens": list(value_change.added_unique_values + value_change.removed_unique_values)}
+    if action.startswith("MULTIPLICITY_"):
+        return {"role": "multiplicity", "tokens": list(value_change.old_unique or value_change.new_unique)}
+    return {"role": "none", "tokens": []}
 
 
 def match_truth_locally(truth_tokens: List[str], buckets: Dict[str, Any]) -> Tuple[bool, Dict[str, Any]]:
@@ -789,24 +841,33 @@ def match_truth_locally(truth_tokens: List[str], buckets: Dict[str, Any]) -> Tup
     used_literal_substring = False
     sources_used: set = set()
 
-    ids_neighbors = buckets.get("ids_neighbors", set())
-    ids_focus_prerepair = buckets.get("ids_focus_prerepair", set())
-    ids_focus_non_target = buckets.get("ids_focus_non_target", set())
+    id_sources = [
+        ("FOCUS_QID", buckets.get("ids_focus_qid", set()), True),
+        ("FOCUS_PREREPAIR_TARGET_PROPERTY_QID", buckets.get("ids_focus_prerepair", set()), False),
+        ("FOCUS_NON_TARGET_PROPERTY", buckets.get("ids_focus_non_target", set()), True),
+        ("NEIGHBOR_ID", buckets.get("ids_neighbors", set()), True),
+    ]
 
-    def fields_for(source_key: str, legacy_key: str) -> List[str]:
+    def fields_for(source_key: str, legacy_key: str = "") -> List[str]:
         fields = buckets.get(source_key)
         if isinstance(fields, list):
             return [str(field) for field in fields if str(field).strip()]
+        if not legacy_key:
+            return []
         legacy = buckets.get(legacy_key, "")
         if isinstance(legacy, str) and legacy.strip():
             return [legacy]
         return []
 
     text_sources = [
-        ("FOCUS_TEXT", fields_for("text_focus_fields", "text_focus")),
-        ("NEIGHBOR_TEXT", fields_for("text_neighbor_fields", "text_neighbors")),
-        ("FOCUS_NON_TARGET_PROPERTY_TEXT", fields_for("text_focus_property_fields", "text_focus_properties")),
-        ("L2_REFERENCED_TEXT", fields_for("text_l2_referenced_fields", "text_l2_referenced")),
+        ("FOCUS_LABEL", fields_for("text_focus_label_fields", "text_focus"), True),
+        ("FOCUS_DESCRIPTION", fields_for("text_focus_description_fields"), True),
+        ("FOCUS_ALIAS", fields_for("text_focus_alias_fields"), True),
+        ("FOCUS_NON_TARGET_PROPERTY_TEXT", fields_for("text_focus_property_fields"), True),
+        ("FOCUS_PREREPAIR_TARGET_PROPERTY_LITERAL", fields_for("text_focus_prerepair_literal_fields"), False),
+        ("NEIGHBOR_LABEL", fields_for("text_neighbor_label_fields", "text_neighbors"), True),
+        ("NEIGHBOR_DESCRIPTION", fields_for("text_neighbor_description_fields"), True),
+        ("NEIGHBOR_PROPERTY_TEXT", fields_for("text_l2_referenced_fields"), True),
     ]
 
     def boundary_match(token_norm: str, field_norm: str) -> bool:
@@ -818,7 +879,7 @@ def match_truth_locally(truth_tokens: List[str], buckets: Dict[str, Any]) -> Tup
         tok_n = normalize_text(token)
         if not tok_n:
             return None
-        for source, fields in text_sources:
+        for source, fields, independent in text_sources:
             for raw_field in fields:
                 field_n = normalize_text(raw_field)
                 if not field_n:
@@ -828,11 +889,22 @@ def match_truth_locally(truth_tokens: List[str], buckets: Dict[str, Any]) -> Tup
                         "token": token,
                         "kind": "date_exact" if is_date else "literal_exact",
                         "source": source,
+                        "independent_of_target_property": independent,
                     }
                 if is_date and boundary_match(tok_n, field_n):
-                    return {"token": token, "kind": "date_boundary", "source": source}
+                    return {
+                        "token": token,
+                        "kind": "date_boundary",
+                        "source": source,
+                        "independent_of_target_property": independent,
+                    }
                 if not is_date and len(tok_n) >= 4 and boundary_match(tok_n, field_n):
-                    return {"token": token, "kind": "literal_boundary", "source": source}
+                    return {
+                        "token": token,
+                        "kind": "literal_boundary",
+                        "source": source,
+                        "independent_of_target_property": independent,
+                    }
         return None
 
     for tok in truth_tokens:
@@ -849,18 +921,19 @@ def match_truth_locally(truth_tokens: List[str], buckets: Dict[str, Any]) -> Tup
         needed += 1
 
         if is_qid(tok_s) or is_pid(tok_s):
-            if tok_s in ids_focus_prerepair:
-                found += 1
-                matches.append({"token": tok_s, "kind": "id_exact", "source": "FOCUS_PREREPAIR_PROPERTY"})
-                sources_used.add("FOCUS_PREREPAIR_PROPERTY")
-            elif tok_s in ids_focus_non_target:
-                found += 1
-                matches.append({"token": tok_s, "kind": "id_exact", "source": "FOCUS_NON_TARGET_PROPERTY"})
-                sources_used.add("FOCUS_NON_TARGET_PROPERTY")
-            elif tok_s in ids_neighbors:
-                found += 1
-                matches.append({"token": tok_s, "kind": "id_exact", "source": "NEIGHBOR_IDS"})
-                sources_used.add("NEIGHBOR_IDS")
+            for source, values, independent in id_sources:
+                if tok_s in values:
+                    found += 1
+                    matches.append(
+                        {
+                            "token": tok_s,
+                            "kind": "id_exact",
+                            "source": source,
+                            "independent_of_target_property": independent,
+                        }
+                    )
+                    sources_used.add(source)
+                    break
             continue
 
         text_match = match_text_token(tok_s, is_date=bool(DATE_ISO_RE.match(tok_s)))
@@ -879,7 +952,10 @@ def match_truth_locally(truth_tokens: List[str], buckets: Dict[str, Any]) -> Tup
         "matches": matches,
         "used_literal_substring": used_literal_substring,
         "sources_used": sorted(sources_used),
-        "local_ids_count": len(ids_neighbors) + len(ids_focus_prerepair) + len(ids_focus_non_target),
+        "local_ids_count": sum(len(values) for _, values, _ in id_sources),
+        "independent_match_count": sum(
+            1 for match in matches if isinstance(match, dict) and match.get("independent_of_target_property")
+        ),
     }
     return matched, evidence
 
@@ -892,19 +968,41 @@ def local_match_subtype(matches: List[Dict[str, Any]]) -> Optional[str]:
     if len(sources) > 1:
         return "LOCAL_MIXED"
     src = next(iter(sources))
-    if src == "NEIGHBOR_IDS":
+    if src == "FOCUS_QID":
+        return "LOCAL_FOCUS_QID"
+    if src == "NEIGHBOR_ID":
         return "LOCAL_NEIGHBOR_IDS"
-    if src == "FOCUS_PREREPAIR_PROPERTY":
+    if src == "FOCUS_PREREPAIR_TARGET_PROPERTY_QID":
         return "LOCAL_FOCUS_PREREPAIR_PROPERTY"
+    if src == "FOCUS_PREREPAIR_TARGET_PROPERTY_LITERAL":
+        return "LOCAL_TEXT"
     if src == "FOCUS_NON_TARGET_PROPERTY":
         return "LOCAL_FOCUS_NON_TARGET_PROPERTY"
     if src == "FOCUS_NON_TARGET_PROPERTY_TEXT":
         return "LOCAL_FOCUS_NON_TARGET_PROPERTY"
-    if src == "L2_REFERENCED_TEXT":
+    if src == "NEIGHBOR_PROPERTY_TEXT":
         return "LOCAL_L2_REFERENCED_TEXT"
-    if src in {"FOCUS_TEXT", "NEIGHBOR_TEXT"}:
-        return "LOCAL_TEXT"
+    if src in {"FOCUS_LABEL", "FOCUS_DESCRIPTION", "FOCUS_ALIAS", "NEIGHBOR_LABEL", "NEIGHBOR_DESCRIPTION"}:
+        return "LOCAL_TEXT_CONFIRMED"
     return "LOCAL_MIXED"
+
+
+def evidence_has_independent_support(evidence: Dict[str, Any]) -> bool:
+    matches = evidence.get("matches")
+    return isinstance(matches, list) and any(
+        isinstance(match, dict) and bool(match.get("independent_of_target_property")) for match in matches
+    )
+
+
+def evidence_only_prerepair_target_property(evidence: Dict[str, Any]) -> bool:
+    matches = evidence.get("matches")
+    if not isinstance(matches, list) or not matches:
+        return False
+    return all(
+        isinstance(match, dict)
+        and match.get("source") in {"FOCUS_PREREPAIR_TARGET_PROPERTY_QID", "FOCUS_PREREPAIR_TARGET_PROPERTY_LITERAL"}
+        for match in matches
+    )
 
 
 def _collapse_internal_whitespace(value: str) -> str:
@@ -922,6 +1020,16 @@ def _is_simple_format_normalization(old_value: str, new_value: str) -> Tuple[boo
         return True, "collapse_whitespace"
     if old_s.strip().rstrip(".,;:") == new_s:
         return True, "strip_trailing_punctuation"
+    if old_s.strip().rstrip("/\\") == new_s:
+        return True, "strip_trailing_slash"
+    if re.fullmatch(r"SCHEMBL\d+", old_s.strip(), flags=re.IGNORECASE) and new_s == re.sub(
+        r"(?i)^SCHEMBL", "", old_s.strip()
+    ):
+        return True, "strip_schembl_prefix"
+    if re.fullmatch(r"[A-Za-z]+[0-9]+", old_s.strip()) and re.fullmatch(r"[0-9]+", new_s):
+        prefix_stripped = re.sub(r"^[A-Za-z]+", "", old_s.strip())
+        if prefix_stripped == new_s and len(new_s) >= 3:
+            return True, "strip_alpha_prefix"
     if old_s.strip().lower() == new_s.lower() and old_s.strip() != new_s:
         return True, "normalize_case"
     old_date = _parse_date_boundary(old_s)
@@ -951,6 +1059,19 @@ def _format_normalization_detail(
         "old_value": pre_tokens[0],
         "new_value": truth_tokens[0],
     }
+
+
+def _format_normalization_from_delta(value_change: Any) -> Tuple[bool, Dict[str, Any]]:
+    if value_change.semantic_action != "REPLACE_1_TO_1":
+        return False, {"reason": "not_replace_1_to_1"}
+    if len(value_change.old_unique) != 1 or len(value_change.new_unique) != 1:
+        return False, {"reason": "format_repair_requires_single_old_and_new_value"}
+    old_value = value_change.old_unique[0]
+    new_value = value_change.new_unique[0]
+    if is_qid(old_value) or is_qid(new_value) or is_pid(old_value) or is_pid(new_value):
+        return False, {"reason": "format_normalization_requires_literals", "old_value": old_value, "new_value": new_value}
+    simple, kind = _is_simple_format_normalization(old_value, new_value)
+    return simple, {"normalization_kind": kind, "old_value": old_value, "new_value": new_value}
 
 
 def rule_deterministic_classification(
@@ -1060,21 +1181,149 @@ def _has_constraint_kind(constraint_types: List[Dict[str, Optional[str]]], kinds
     return False
 
 
+def _format_constraint_entries(world_state_entry: Dict[str, Any]) -> List[Dict[str, Any]]:
+    return [
+        entry
+        for entry in extract_constraint_entries(world_state_entry)
+        if constraint_kind(entry.get("constraint_type", {}) if isinstance(entry, dict) else {}) == "format"
+    ]
+
+
+def _format_regexes(world_state_entry: Dict[str, Any]) -> List[str]:
+    regexes: List[str] = []
+    for entry in _format_constraint_entries(world_state_entry):
+        qualifiers = entry.get("qualifiers")
+        if not isinstance(qualifiers, list):
+            continue
+        for qualifier in qualifiers:
+            if not isinstance(qualifier, dict) or qualifier.get("property_id") != "P1793":
+                continue
+            values = qualifier.get("values")
+            if isinstance(values, list):
+                regexes.extend([str(value) for value in values if value not in (None, "")])
+    return regexes
+
+
+def _passes_any_regex(value: str, regexes: List[str]) -> Optional[bool]:
+    if not regexes:
+        return None
+    for pattern in regexes:
+        try:
+            if re.fullmatch(pattern, value):
+                return True
+        except re.error:
+            continue
+    return False
+
+
+def _violation_report_values(repair_event: Dict[str, Any]) -> List[str]:
+    vc = repair_event.get("violation_context", {})
+    if not isinstance(vc, dict):
+        return []
+    out: List[str] = []
+    for key in ("value", "report_value", "violation_value"):
+        out.extend(flatten_truth(vc.get(key)))
+    seen = set()
+    uniq: List[str] = []
+    for value in out:
+        if value not in seen:
+            seen.add(value)
+            uniq.append(value)
+    return uniq
+
+
+def _format_value_pruning_detail(
+    repair_event: Dict[str, Any],
+    world_state_entry: Dict[str, Any],
+    value_change: Any,
+) -> Tuple[bool, str, Dict[str, Any]]:
+    if value_change.semantic_action != "DELETE_SUBSET" or not _is_format_report(repair_event):
+        return False, "", {"reason": "not_format_delete_subset"}
+    removed = list(value_change.removed_unique_values)
+    retained = list(value_change.retained_unique_values)
+    report_values = set(_violation_report_values(repair_event))
+    regexes = _format_regexes(world_state_entry)
+    removed_reported = bool(removed) and set(removed).issubset(report_values)
+    removed_fail_regex = all(_passes_any_regex(value, regexes) is False for value in removed) if regexes else False
+    retained_pass_regex = all(_passes_any_regex(value, regexes) is True for value in retained) if regexes else None
+    ok = removed_reported or (removed_fail_regex and retained_pass_regex is not False)
+    confidence = "high" if removed_fail_regex and retained_pass_regex else "medium"
+    return ok, confidence, {
+        "removed_values": removed,
+        "retained_values": retained,
+        "report_values": sorted(report_values),
+        "regexes_present": bool(regexes),
+        "removed_reported": removed_reported,
+        "removed_fail_regex": removed_fail_regex,
+        "retained_pass_regex": retained_pass_regex,
+    }
+
+
+def _set_membership_rejection_detail(
+    repair_event: Dict[str, Any],
+    world_state_entry: Dict[str, Any],
+    value_change: Any,
+) -> Tuple[bool, Dict[str, Any]]:
+    if not _is_set_membership_report(repair_event) or value_change.semantic_action not in {"DELETE_SUBSET", "DELETE_TO_MISSING"}:
+        return False, {"reason": "not_set_membership_delete"}
+    report = report_type_normalized(repair_event)
+    removed = set(value_change.removed_unique_values or value_change.old_unique)
+    allowed_or_forbidden: set[str] = set()
+    for entry in extract_constraint_entries(world_state_entry):
+        ctype = entry.get("constraint_type", {}) if isinstance(entry, dict) else {}
+        kind = constraint_kind(ctype)
+        qid = ctype.get("qid") if isinstance(ctype, dict) else None
+        if report == "one of" and kind == "one_of":
+            allowed_or_forbidden.update(_extract_allowed_values(entry))
+        elif report == "none of" and qid in NONE_OF_QIDS:
+            allowed_or_forbidden.update(_extract_allowed_values(entry))
+    if not removed or not allowed_or_forbidden:
+        return False, {"removed_values": sorted(removed), "known_set": sorted(allowed_or_forbidden)}
+    if report == "one of":
+        ok = removed.isdisjoint(allowed_or_forbidden)
+    else:
+        ok = removed.issubset(allowed_or_forbidden)
+    return ok, {"report_type": report, "removed_values": sorted(removed), "known_set": sorted(allowed_or_forbidden)}
+
+
 def classify_delete_action(
     repair_event: Dict[str, Any],
     constraint_types: List[Dict[str, Optional[str]]],
+    value_change: Any = None,
+    world_state_entry: Optional[Dict[str, Any]] = None,
 ) -> Tuple[str, str, str, Dict[str, Any]]:
     report_type = report_type_normalized(repair_event)
-    has_format = _has_constraint_kind(constraint_types, {"format"}) or report_type == "format"
-    if has_format:
+    removed_values = []
+    if value_change is not None:
+        removed_values = list(value_change.removed_unique_values or value_change.old_unique)
+
+    if _is_self_link_report(repair_event) and repair_event.get("qid") in removed_values:
+        return (
+            "SELF_LINK_REJECTION",
+            "high",
+            "A-Box DELETE removes the focus entity from a self-link violation.",
+            {"report_type": report_type, "delete_reason": "self_link", "removed_values": removed_values},
+        )
+
+    if report_type == "format":
         return (
             "REJECTION_FORMAT_INVALID",
             "high",
-            "A-Box DELETE removes a value made invalid by a format constraint.",
-            {"report_type": report_type, "delete_reason": "format_invalid"},
+            "A-Box DELETE removes a value reported as a format violation.",
+            {"report_type": report_type, "delete_reason": "format_invalid_report"},
         )
 
-    rule_invalid_reports = {"one of", "range", "type", "value type", "diff within range", "quantity"}
+    if world_state_entry is not None:
+        ok, detail = _set_membership_rejection_detail(repair_event, world_state_entry, value_change)
+        if ok:
+            return (
+                "SET_MEMBERSHIP_REJECTION",
+                "medium",
+                "A-Box DELETE removes a value proven invalid by one-of/none-of set membership.",
+                {"report_type": report_type, "delete_reason": "set_membership", **detail},
+            )
+
+    rule_invalid_reports = {"range", "type", "value type", "diff within range", "quantity"}
     if report_type in rule_invalid_reports:
         return (
             "REJECTION_RULE_INVALID",
@@ -1102,8 +1351,12 @@ def classify_delete_action(
 def local_context_is_sparse(buckets: Dict[str, Any]) -> bool:
     text_field_count = 0
     for key in (
-        "text_focus_fields",
-        "text_neighbor_fields",
+        "text_focus_label_fields",
+        "text_focus_description_fields",
+        "text_focus_alias_fields",
+        "text_focus_prerepair_literal_fields",
+        "text_neighbor_label_fields",
+        "text_neighbor_description_fields",
         "text_focus_property_fields",
         "text_l2_referenced_fields",
     ):
@@ -1111,7 +1364,7 @@ def local_context_is_sparse(buckets: Dict[str, Any]) -> bool:
         if isinstance(value, list):
             text_field_count += len([field for field in value if str(field).strip()])
     id_count = 0
-    for key in ("ids_neighbors", "ids_focus_prerepair", "ids_focus_non_target"):
+    for key in ("ids_neighbors", "ids_focus_qid", "ids_focus_prerepair", "ids_focus_non_target"):
         value = buckets.get(key)
         if isinstance(value, set):
             id_count += len(value)
@@ -1143,10 +1396,14 @@ def classify_one(
         }
 
     truth_tokens, truth_source, truth_applicable = get_truth_info(repair_event)
+    value_change = derive_value_change_summary(repair_event)
+    target_tokens = _classification_target_tokens(value_change)
     diagnostics = {
         "truth_applicable": truth_applicable,
         "truth_tokens": truth_tokens,
         "truth_source": truth_source,
+        "value_change_summary": value_change.as_dict(),
+        "classification_target_tokens": target_tokens,
     }
 
     if not isinstance(world_state_entry, dict):
@@ -1208,7 +1465,12 @@ def classify_one(
     # A-BOX delete => Type A rejection
     action = rt.get("action")
     if action == "DELETE":
-        subtype, conf, rationale, detail = classify_delete_action(repair_event, constraint_types)
+        subtype, conf, rationale, detail = classify_delete_action(
+            repair_event,
+            constraint_types,
+            value_change=value_change,
+            world_state_entry=world_state_entry,
+        )
         trace = [
             {"step": "is_delete", "result": True},
             {"step": "delete_classification", "result": subtype, "detail": detail},
@@ -1229,7 +1491,140 @@ def classify_one(
         classification["diagnostics"] = diagnostics
         return classification, None, {"missing_truth_tokens": False, "missing_old_value": False}
 
-    missing_truth = len(truth_tokens) == 0
+    if value_change.semantic_action == "MULTIPLICITY_DECREASE_SAME_UNIQUE":
+        trace = [
+            {"step": "is_delete", "result": False},
+            {"step": "value_delta", "result": value_change.semantic_action, "detail": value_change.as_dict()},
+            {"step": "rule_deterministic", "result": True, "kind": "MULTIPLICITY"},
+            {"step": "local_availability", "result": None},
+            {"step": "fallback_external", "result": False},
+            {"step": "branch", "result": "multiplicity_normalization"},
+        ]
+        classification = make(
+            "TypeA",
+            "MULTIPLICITY_NORMALIZATION",
+            "high",
+            trace,
+            "Unique values are unchanged and duplicate multiplicity decreases.",
+            constraint_types,
+        )
+        classification["local_subtype"] = None
+        classification["diagnostics"] = diagnostics
+        return classification, None, {"missing_truth_tokens": False, "missing_old_value": False}
+
+    if value_change.semantic_action in {"MULTIPLICITY_INCREASE_SAME_UNIQUE", "MULTIPLICITY_CHANGE_SAME_UNIQUE", "NO_CHANGE_OR_REORDER_ONLY"}:
+        trace = [
+            {"step": "is_delete", "result": False},
+            {"step": "value_delta", "result": value_change.semantic_action, "detail": value_change.as_dict()},
+            {"step": "rule_deterministic", "result": False},
+            {"step": "local_availability", "result": None},
+            {"step": "fallback_external", "result": False},
+            {"step": "branch", "result": "unknown_multiplicity_artifact"},
+        ]
+        classification = make(
+            "TypeC",
+            "UNKNOWN_MULTIPLICITY_ARTIFACT",
+            "low",
+            trace,
+            "Unique values are unchanged; the repair appears to be a multiplicity or reconstruction artifact.",
+            constraint_types,
+        )
+        classification["local_subtype"] = None
+        classification["diagnostics"] = diagnostics
+        return classification, None, {"missing_truth_tokens": False, "missing_old_value": False}
+
+    if value_change.semantic_action == "DELETE_SUBSET" and _is_self_link_report(repair_event) and repair_event.get("qid") in value_change.removed_unique_values:
+        trace = [
+            {"step": "is_delete", "result": False},
+            {"step": "value_delta", "result": value_change.semantic_action, "detail": value_change.as_dict()},
+            {"step": "rule_deterministic", "result": True, "kind": "SELF_LINK"},
+            {"step": "local_availability", "result": None},
+            {"step": "fallback_external", "result": False},
+            {"step": "branch", "result": "self_link_rejection"},
+        ]
+        classification = make(
+            "TypeA",
+            "SELF_LINK_REJECTION",
+            "high",
+            trace,
+            "Subset repair removes the focus entity from a self-link violation.",
+            constraint_types,
+        )
+        classification["local_subtype"] = None
+        classification["diagnostics"] = diagnostics
+        return classification, None, {"missing_truth_tokens": False, "missing_old_value": False}
+
+    if value_change.semantic_action == "DELETE_SUBSET":
+        ok, fmt_conf, fmt_detail = _format_value_pruning_detail(repair_event, world_state_entry, value_change)
+        if ok:
+            trace = [
+                {"step": "is_delete", "result": False},
+                {"step": "value_delta", "result": value_change.semantic_action, "detail": value_change.as_dict()},
+                {"step": "rule_deterministic", "result": True, "kind": "FORMAT_VALUE_PRUNING", "detail": fmt_detail},
+                {"step": "local_availability", "result": None},
+                {"step": "fallback_external", "result": False},
+                {"step": "branch", "result": "format_value_pruning"},
+            ]
+            classification = make(
+                "TypeA",
+                "FORMAT_VALUE_PRUNING",
+                fmt_conf,
+                trace,
+                "Subset repair removes the value indicated by a format violation.",
+                constraint_types,
+            )
+            classification["local_subtype"] = None
+            classification["diagnostics"] = diagnostics
+            return classification, None, {"missing_truth_tokens": False, "missing_old_value": False}
+        ok_set, set_detail = _set_membership_rejection_detail(repair_event, world_state_entry, value_change)
+        if ok_set:
+            trace = [
+                {"step": "is_delete", "result": False},
+                {"step": "value_delta", "result": value_change.semantic_action, "detail": value_change.as_dict()},
+                {"step": "rule_deterministic", "result": True, "kind": "SET_MEMBERSHIP_REJECTION", "detail": set_detail},
+                {"step": "local_availability", "result": None},
+                {"step": "fallback_external", "result": False},
+                {"step": "branch", "result": "set_membership_rejection"},
+            ]
+            classification = make(
+                "TypeA",
+                "SET_MEMBERSHIP_REJECTION",
+                "medium",
+                trace,
+                "Subset repair removes a value proven invalid by parsed one-of/none-of constraints.",
+                constraint_types,
+            )
+            classification["local_subtype"] = None
+            classification["diagnostics"] = diagnostics
+            return classification, None, {"missing_truth_tokens": False, "missing_old_value": False}
+
+    if _is_format_report(repair_event):
+        simple, fmt_detail = _format_normalization_from_delta(value_change)
+        if simple:
+            trace = [
+                {"step": "is_delete", "result": False},
+                {"step": "value_delta", "result": value_change.semantic_action, "detail": value_change.as_dict()},
+                {"step": "rule_deterministic", "result": True, "kind": "FORMAT_NORMALIZATION", "detail": fmt_detail},
+                {"step": "local_availability", "result": None},
+                {"step": "fallback_external", "result": False},
+                {"step": "branch", "result": "format_normalization"},
+            ]
+            classification = make(
+                "TypeA",
+                "FORMAT_NORMALIZATION",
+                "high",
+                trace,
+                "One-to-one literal update is a deterministic format normalization.",
+                constraint_types,
+            )
+            classification["local_subtype"] = None
+            classification["diagnostics"] = diagnostics
+            return classification, None, {"missing_truth_tokens": False, "missing_old_value": False}
+
+    classification_tokens = [str(token) for token in target_tokens.get("tokens", []) if token not in (None, "")]
+    if not classification_tokens and value_change.semantic_action not in {"DELETE_TO_MISSING", "DELETE_SUBSET"}:
+        classification_tokens = truth_tokens
+    missing_truth = len(truth_tokens) == 0 and truth_applicable
 
     if truth_source in CURRENT_VALUE_TRUTH_SOURCES:
         trace = [
@@ -1283,7 +1678,7 @@ def classify_one(
 
     # Rule-deterministic check (precedes local)
     det, det_kind, det_conf, det_detail = rule_deterministic_classification(
-        repair_event, world_state_entry, truth_tokens, truth_source
+        repair_event, world_state_entry, classification_tokens, target_tokens.get("role", truth_source)
     )
     if det:
         trace = [
@@ -1295,7 +1690,7 @@ def classify_one(
         ]
         classification = make(
             "TypeA",
-            "LOGICAL",
+            "FORMAT_NORMALIZATION" if det_kind == "FORMAT" else "LOGICAL",
             det_conf,
             trace,
             f"Rule-deterministic {det_kind.lower()} constraint fix.",
@@ -1310,8 +1705,75 @@ def classify_one(
         )
 
     buckets, synth_info = local_context_buckets(repair_event, world_state_entry)
-    matched, evidence = match_truth_locally(truth_tokens, buckets)
+
+    if value_change.semantic_action == "DELETE_SUBSET":
+        retained_tokens = list(value_change.retained_unique_values)
+        retained_matched, retained_evidence = match_truth_locally(retained_tokens, buckets)
+        if _is_selection_report(repair_event) and retained_matched and evidence_has_independent_support(retained_evidence):
+            trace = [
+                {"step": "is_delete", "result": False},
+                {"step": "value_delta", "result": value_change.semantic_action, "detail": value_change.as_dict()},
+                {"step": "rule_deterministic", "result": False, "detail": det_detail},
+                {"step": "local_availability", "result": True, "evidence": retained_evidence, "synthetic": synth_info},
+                {"step": "fallback_external", "result": False},
+                {"step": "branch", "result": "local_selection_confirmed"},
+            ]
+            classification = make(
+                "TypeB",
+                "LOCAL_SELECTION_CONFIRMED",
+                "medium",
+                trace,
+                "Retained value in a subset repair has independent local support; pre-repair target values alone are not counted.",
+                constraint_types,
+            )
+            classification["local_subtype"] = "LOCAL_SELECTION_CONFIRMED"
+            classification["diagnostics"] = diagnostics
+            return classification, None, {"missing_truth_tokens": False, "missing_old_value": False}
+        if retained_matched and evidence_only_prerepair_target_property(retained_evidence):
+            branch = "unknown_selection_ambiguous"
+            trace = [
+                {"step": "is_delete", "result": False},
+                {"step": "value_delta", "result": value_change.semantic_action, "detail": value_change.as_dict()},
+                {"step": "rule_deterministic", "result": False, "detail": det_detail},
+                {"step": "local_availability", "result": False, "evidence": retained_evidence, "synthetic": synth_info},
+                {"step": "fallback_external", "result": False},
+                {"step": "branch", "result": branch},
+            ]
+            classification = make(
+                "TypeC",
+                "UNKNOWN_SELECTION_AMBIGUOUS",
+                "low",
+                trace,
+                "Subset repair only shows retained values in the pre-repair target property; this is not independent local grounding.",
+                constraint_types,
+            )
+            classification["local_subtype"] = None
+            classification["diagnostics"] = diagnostics
+            return classification, None, {"missing_truth_tokens": False, "missing_old_value": False}
+
+    matched, evidence = match_truth_locally(classification_tokens, buckets)
     local_subtype = local_match_subtype(evidence.get("matches", []))
+
+    if matched and evidence_only_prerepair_target_property(evidence):
+        trace = [
+            {"step": "is_delete", "result": False},
+            {"step": "value_delta", "result": value_change.semantic_action, "detail": value_change.as_dict()},
+            {"step": "rule_deterministic", "result": False, "detail": det_detail},
+            {"step": "local_availability", "result": False, "evidence": evidence, "synthetic": synth_info},
+            {"step": "fallback_external", "result": False},
+            {"step": "branch", "result": "pre_repair_target_only_not_local"},
+        ]
+        classification = make(
+            "TypeC",
+            "UNKNOWN_SELECTION_AMBIGUOUS" if value_change.semantic_action in {"DELETE_SUBSET", "MIXED_UPDATE"} else "UNKNOWN_INCOMPLETE_LOCAL_CONTEXT",
+            "low",
+            trace,
+            "Only synthetic pre-repair target-property values matched; this is not independent local evidence.",
+            constraint_types,
+        )
+        classification["local_subtype"] = None
+        classification["diagnostics"] = diagnostics
+        return classification, None, {"missing_truth_tokens": False, "missing_old_value": synth_info.get("pre_repair_source") == "missing"}
 
     if matched:
         conf = "high"
@@ -1326,7 +1788,9 @@ def classify_one(
             {"step": "fallback_external", "result": False},
             {"step": "branch", "result": "local_match"},
         ]
-        if local_subtype == "LOCAL_FOCUS_PREREPAIR_PROPERTY":
+        if local_subtype == "LOCAL_FOCUS_QID":
+            rationale = "Repair target matched the focus entity id."
+        elif local_subtype == "LOCAL_FOCUS_PREREPAIR_PROPERTY":
             rationale = "Truth tokens matched synthetic pre-repair target property values."
         elif local_subtype == "LOCAL_FOCUS_NON_TARGET_PROPERTY":
             rationale = "Truth tokens matched non-target focus-node property values."
@@ -1334,8 +1798,8 @@ def classify_one(
             rationale = "Truth tokens matched neighbor identifiers."
         elif local_subtype == "LOCAL_L2_REFERENCED_TEXT":
             rationale = "Truth tokens matched labels or descriptions for locally referenced ids."
-        elif local_subtype == "LOCAL_TEXT":
-            rationale = "Truth tokens matched local text context."
+        elif local_subtype in {"LOCAL_TEXT", "LOCAL_TEXT_CONFIRMED"}:
+            rationale = "Truth tokens matched independent local text context."
         else:
             rationale = "Truth tokens matched multiple local sources."
         classification = make(

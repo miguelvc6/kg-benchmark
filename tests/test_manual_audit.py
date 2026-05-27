@@ -156,10 +156,10 @@ class ManualAuditTests(unittest.TestCase):
     def test_max_abox_group_cap_is_enforced(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             rows = [
-                _record(f"a{i}", "TypeB", "LOCAL_TEXT", qid="Q1", property_id="P1", truth_tokens=["label"])
+                _record(f"a{i}", "TypeB", "LOCAL_TEXT_CONFIRMED", qid="Q1", property_id="P1", truth_tokens=["label"])
                 for i in range(8)
             ]
-            sample, metadata = self._build(Path(tmp_dir), rows, {"TypeB_LOCAL_TEXT": 8}, abox_cap=2)
+            sample, metadata = self._build(Path(tmp_dir), rows, {"TypeB_LOCAL_TEXT_CONFIRMED": 8}, abox_cap=2)
 
             self.assertEqual(len(sample), 2)
             self.assertLessEqual(metadata["counts"]["max_abox_per_group"], 2)
@@ -222,8 +222,8 @@ class ManualAuditTests(unittest.TestCase):
                 **{field: "" for field in AUDIT_FIELDNAMES},
                 "case_id": "typeb",
                 "class": "TypeB",
-                "subtype": "LOCAL_TEXT",
-                "selection_stratum": "TypeB_LOCAL_TEXT",
+                "subtype": "LOCAL_TEXT_CONFIRMED",
+                "selection_stratum": "TypeB_LOCAL_TEXT_CONFIRMED",
                 "main_score": "True",
                 "typeb_judgment": "local_confirmed",
                 "core_recommendation": "diagnostic",

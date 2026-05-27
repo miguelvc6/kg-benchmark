@@ -72,17 +72,42 @@
       "numerator": 0,
       "rate": null
     },
+    "TypeA_FORMAT_NORMALIZATION": {
+      "denominator": 0,
+      "numerator": 0,
+      "rate": null
+    },
+    "TypeA_FORMAT_VALUE_PRUNING": {
+      "denominator": 0,
+      "numerator": 0,
+      "rate": null
+    },
+    "TypeA_MULTIPLICITY_NORMALIZATION": {
+      "denominator": 0,
+      "numerator": 0,
+      "rate": null
+    },
     "TypeA_REJECTION_FORMAT_INVALID": {
       "denominator": 0,
       "numerator": 0,
       "rate": null
     },
-    "TypeB_LOCAL_FOCUS_PREREPAIR_PROPERTY": {
+    "TypeA_SELF_LINK_REJECTION": {
       "denominator": 0,
       "numerator": 0,
       "rate": null
     },
-    "TypeB_LOCAL_TEXT": {
+    "TypeB_LOCAL_FOCUS_QID": {
+      "denominator": 0,
+      "numerator": 0,
+      "rate": null
+    },
+    "TypeB_LOCAL_SELECTION_CONFIRMED": {
+      "denominator": 0,
+      "numerator": 0,
+      "rate": null
+    },
+    "TypeB_LOCAL_TEXT_CONFIRMED": {
       "denominator": 0,
       "numerator": 0,
       "rate": null
@@ -97,7 +122,17 @@
       "numerator": 0,
       "rate": null
     },
+    "TypeC_UNKNOWN_MULTIPLICITY_ARTIFACT": {
+      "denominator": 0,
+      "numerator": 0,
+      "rate": null
+    },
     "TypeC_UNKNOWN_OR_SPARSE_DIAGNOSTIC": {
+      "denominator": 0,
+      "numerator": 0,
+      "rate": null
+    },
+    "TypeC_UNKNOWN_SELECTION_AMBIGUOUS": {
       "denominator": 0,
       "numerator": 0,
       "rate": null

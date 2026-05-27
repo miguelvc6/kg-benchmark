@@ -11,6 +11,7 @@ requires-python = ">=3.11"
 dependencies = [
     "ijson>=3.2",
     "mwclient>=0.11",
+    "openai>=2.38.0",
     "requests>=2.32",
     "tqdm>=4.66",
     "zstandard>=0.22",

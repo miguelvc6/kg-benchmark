@@ -37,10 +37,8 @@ Diagnostic cases may be evaluated by LLMs, but headline scores must be computed 
 
 Main-score cases include:
 
-- `TypeA / REJECTION_FORMAT_INVALID`
-- `TypeA / REJECTION_RULE_INVALID`
-- `TypeA / LOGICAL`
-- `TypeB / LOCAL_*`
+- refined TypeA labels such as `FORMAT_NORMALIZATION`, `FORMAT_VALUE_PRUNING`, `SELF_LINK_REJECTION`, `SET_MEMBERSHIP_REJECTION`, `MULTIPLICITY_NORMALIZATION`, `REJECTION_FORMAT_INVALID`, `REJECTION_RULE_INVALID`, and `LOGICAL`
+- refined TypeB labels such as `LOCAL_TEXT_CONFIRMED`, `LOCAL_SELECTION_CONFIRMED`, `LOCAL_FOCUS_QID`, `LOCAL_NEIGHBOR_IDS`, and other independently grounded local subtypes
 - `TypeC / EXTERNAL_BY_ELIMINATION`, reported as IC-E-elim/no-retrieval stress
 - `T_BOX / RELAXATION_SET_EXPANSION`
 - `T_BOX / RESTRICTION_SET_CONTRACTION`
@@ -62,7 +60,7 @@ Target size: 4,800.
 
 | Group | Subtype(s) | Quota | Main-score? |
 |---|---|---:|---|
-| IC-L clean rule/rejection | `REJECTION_FORMAT_INVALID`, `REJECTION_RULE_INVALID`, `LOGICAL` | 700 | yes |
+| IC-L clean rule/rejection | `FORMAT_NORMALIZATION`, `FORMAT_VALUE_PRUNING`, `SELF_LINK_REJECTION`, `SET_MEMBERSHIP_REJECTION`, `MULTIPLICITY_NORMALIZATION`, `REJECTION_FORMAT_INVALID`, `REJECTION_RULE_INVALID`, `LOGICAL` | 700 | yes |
 | Ambiguous delete diagnostic | `DELETE_AMBIGUOUS` | 250 | no |
 | IC-G local graph-grounded | all `LOCAL_*` subtypes | 1,150 | yes |
 | IC-E-elim stress | `EXTERNAL_BY_ELIMINATION` | 900 | yes, separately reported |
@@ -73,12 +71,12 @@ Detailed A-box quotas:
 
 | Stratum | Quota |
 |---|---:|
-| `TypeA_REJECTION_FORMAT_INVALID` | 640 |
+| refined TypeA clean/rejection strata | 640 |
 | `TypeA_REJECTION_RULE_INVALID` | 20 |
 | `TypeA_LOGICAL` | 40 |
 | `TypeA_DELETE_AMBIGUOUS` | 250 |
-| `TypeB_LOCAL_FOCUS_PREREPAIR_PROPERTY` | 520 |
-| `TypeB_LOCAL_TEXT` | 520 |
+| `TypeB_LOCAL_TEXT_CONFIRMED` | 520 |
+| `TypeB_LOCAL_SELECTION_CONFIRMED` and `TypeB_LOCAL_FOCUS_QID` | 500 |
 | `TypeB_LOCAL_FOCUS_NON_TARGET_PROPERTY` | 70 |
 | `TypeB_LOCAL_MIXED` | 38 |
 | `TypeB_LOCAL_NEIGHBOR_IDS` | 2 |
@@ -97,8 +95,8 @@ If a rare stratum underfills, the selector must record the underfill and backfil
 
 | Underfilled stratum | Backfill priority |
 |---|---|
-| `REJECTION_RULE_INVALID`, `LOGICAL` | `REJECTION_FORMAT_INVALID` |
-| `LOCAL_NEIGHBOR_IDS`, `LOCAL_MIXED`, `LOCAL_FOCUS_NON_TARGET_PROPERTY` | other `LOCAL_*`, prioritizing `LOCAL_TEXT` then `LOCAL_FOCUS_PREREPAIR_PROPERTY` |
+| rare TypeA clean strata | other refined TypeA clean strata |
+| rare TypeB local strata | independently grounded TypeB strata, prioritizing `LOCAL_TEXT_CONFIRMED` and `LOCAL_SELECTION_CONFIRMED` |
 | `RESTRICTION_SET_CONTRACTION` | `RELAXATION_SET_EXPANSION`, then `SCHEMA_UPDATE` |
 | `UNKNOWN_*` in dev/audit | `EXTERNAL_BY_ELIMINATION` with sparse/incomplete diagnostics if available |
 

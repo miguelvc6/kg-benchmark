@@ -20,14 +20,21 @@ DEFAULT_ABOX_CAP_PER_GROUP = 3
 AUDIT_QUOTAS: dict[str, int] = {
     "TypeC_EXTERNAL_BY_ELIMINATION_QID_TRUTH": 50,
     "TypeC_EXTERNAL_BY_ELIMINATION_LITERAL_TRUTH": 50,
-    "TypeC_UNKNOWN_OR_SPARSE_DIAGNOSTIC": 30,
-    "TypeA_REJECTION_FORMAT_INVALID": 50,
-    "TypeA_DELETE_AMBIGUOUS": 50,
-    "TypeB_LOCAL_TEXT": 50,
-    "TypeB_LOCAL_FOCUS_PREREPAIR_PROPERTY": 40,
-    "TBOX_SCHEMA_UPDATE": 50,
-    "TBOX_COINCIDENTAL_SCHEMA_CHANGE": 40,
-    "TBOX_DIRECTIONAL_RELAXATION_OR_RESTRICTION": 40,
+    "TypeC_UNKNOWN_SELECTION_AMBIGUOUS": 15,
+    "TypeC_UNKNOWN_MULTIPLICITY_ARTIFACT": 5,
+    "TypeC_UNKNOWN_OR_SPARSE_DIAGNOSTIC": 10,
+    "TypeA_FORMAT_NORMALIZATION": 35,
+    "TypeA_FORMAT_VALUE_PRUNING": 35,
+    "TypeA_REJECTION_FORMAT_INVALID": 30,
+    "TypeA_SELF_LINK_REJECTION": 20,
+    "TypeA_MULTIPLICITY_NORMALIZATION": 10,
+    "TypeA_DELETE_AMBIGUOUS": 40,
+    "TypeB_LOCAL_TEXT_CONFIRMED": 40,
+    "TypeB_LOCAL_SELECTION_CONFIRMED": 35,
+    "TypeB_LOCAL_FOCUS_QID": 15,
+    "TBOX_SCHEMA_UPDATE": 20,
+    "TBOX_COINCIDENTAL_SCHEMA_CHANGE": 20,
+    "TBOX_DIRECTIONAL_RELAXATION_OR_RESTRICTION": 20,
 }
 
 AUDIT_FIELDNAMES = [
@@ -237,16 +244,30 @@ def audit_stratum_for_record(record: dict[str, Any]) -> str | None:
         return "TypeC_EXTERNAL_BY_ELIMINATION_QID_TRUTH"
     if cls == "TypeC" and subtype == "EXTERNAL_BY_ELIMINATION" and truth_kind != "qid":
         return "TypeC_EXTERNAL_BY_ELIMINATION_LITERAL_TRUTH"
+    if cls == "TypeC" and subtype == "UNKNOWN_SELECTION_AMBIGUOUS":
+        return "TypeC_UNKNOWN_SELECTION_AMBIGUOUS"
+    if cls == "TypeC" and subtype == "UNKNOWN_MULTIPLICITY_ARTIFACT":
+        return "TypeC_UNKNOWN_MULTIPLICITY_ARTIFACT"
     if cls == "TypeC" and isinstance(subtype, str) and subtype.startswith("UNKNOWN_"):
         return "TypeC_UNKNOWN_OR_SPARSE_DIAGNOSTIC"
+    if cls == "TypeA" and subtype == "FORMAT_NORMALIZATION":
+        return "TypeA_FORMAT_NORMALIZATION"
+    if cls == "TypeA" and subtype == "FORMAT_VALUE_PRUNING":
+        return "TypeA_FORMAT_VALUE_PRUNING"
     if cls == "TypeA" and subtype == "REJECTION_FORMAT_INVALID":
         return "TypeA_REJECTION_FORMAT_INVALID"
+    if cls == "TypeA" and subtype == "SELF_LINK_REJECTION":
+        return "TypeA_SELF_LINK_REJECTION"
+    if cls == "TypeA" and subtype == "MULTIPLICITY_NORMALIZATION":
+        return "TypeA_MULTIPLICITY_NORMALIZATION"
     if cls == "TypeA" and subtype == "DELETE_AMBIGUOUS":
         return "TypeA_DELETE_AMBIGUOUS"
-    if cls == "TypeB" and subtype == "LOCAL_TEXT":
-        return "TypeB_LOCAL_TEXT"
-    if cls == "TypeB" and subtype == "LOCAL_FOCUS_PREREPAIR_PROPERTY":
-        return "TypeB_LOCAL_FOCUS_PREREPAIR_PROPERTY"
+    if cls == "TypeB" and subtype == "LOCAL_TEXT_CONFIRMED":
+        return "TypeB_LOCAL_TEXT_CONFIRMED"
+    if cls == "TypeB" and subtype == "LOCAL_SELECTION_CONFIRMED":
+        return "TypeB_LOCAL_SELECTION_CONFIRMED"
+    if cls == "TypeB" and subtype == "LOCAL_FOCUS_QID":
+        return "TypeB_LOCAL_FOCUS_QID"
     if cls == "T_BOX" and subtype == "SCHEMA_UPDATE":
         return "TBOX_SCHEMA_UPDATE"
     if cls == "T_BOX" and subtype == "COINCIDENTAL_SCHEMA_CHANGE":

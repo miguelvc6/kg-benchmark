@@ -310,25 +310,32 @@
   "sampling_metadata": {
     "counts": {
       "by_selection_stratum": {
-        "TBOX_COINCIDENTAL_SCHEMA_CHANGE": 40,
-        "TBOX_DIRECTIONAL_RELAXATION_OR_RESTRICTION": 40,
-        "TBOX_SCHEMA_UPDATE": 50,
-        "TypeA_DELETE_AMBIGUOUS": 50,
-        "TypeA_REJECTION_FORMAT_INVALID": 50,
-        "TypeB_LOCAL_FOCUS_PREREPAIR_PROPERTY": 40,
-        "TypeB_LOCAL_TEXT": 50,
+        "TBOX_COINCIDENTAL_SCHEMA_CHANGE": 20,
+        "TBOX_DIRECTIONAL_RELAXATION_OR_RESTRICTION": 20,
+        "TBOX_SCHEMA_UPDATE": 20,
+        "TypeA_DELETE_AMBIGUOUS": 40,
+        "TypeA_FORMAT_NORMALIZATION": 35,
+        "TypeA_FORMAT_VALUE_PRUNING": 35,
+        "TypeA_MULTIPLICITY_NORMALIZATION": 10,
+        "TypeA_REJECTION_FORMAT_INVALID": 30,
+        "TypeA_SELF_LINK_REJECTION": 20,
+        "TypeB_LOCAL_FOCUS_QID": 15,
+        "TypeB_LOCAL_SELECTION_CONFIRMED": 35,
+        "TypeB_LOCAL_TEXT_CONFIRMED": 40,
         "TypeC_EXTERNAL_BY_ELIMINATION_LITERAL_TRUTH": 50,
         "TypeC_EXTERNAL_BY_ELIMINATION_QID_TRUTH": 50,
-        "TypeC_UNKNOWN_OR_SPARSE_DIAGNOSTIC": 30
+        "TypeC_UNKNOWN_MULTIPLICITY_ARTIFACT": 5,
+        "TypeC_UNKNOWN_OR_SPARSE_DIAGNOSTIC": 10,
+        "TypeC_UNKNOWN_SELECTION_AMBIGUOUS": 15
       },
-      "candidate_records": 535183,
+      "candidate_records": 526265,
       "dev_overlap": 0,
       "input_records_scanned": 535570,
       "max_abox_per_group": 1,
       "max_tbox_per_revision": 5,
       "selected": 450
     },
-    "created_at_utc": "2026-05-22T12:47:25.823344Z",
+    "created_at_utc": "2026-05-26T17:09:51.878733Z",
     "inputs": {
       "classified_benchmark": "data/04_classified_benchmark.jsonl",
       "core_manifest": "reports/benchmark_selection/core_v1_seed_13.json",
@@ -337,29 +344,27 @@
     "manifest_type": "manual_audit_sample",
     "policy_version": "phase_d_v1",
     "quotas": {
-      "TBOX_COINCIDENTAL_SCHEMA_CHANGE": 40,
-      "TBOX_DIRECTIONAL_RELAXATION_OR_RESTRICTION": 40,
-      "TBOX_SCHEMA_UPDATE": 50,
-      "TypeA_DELETE_AMBIGUOUS": 50,
-      "TypeA_REJECTION_FORMAT_INVALID": 50,
-      "TypeB_LOCAL_FOCUS_PREREPAIR_PROPERTY": 40,
-      "TypeB_LOCAL_TEXT": 50,
+      "TBOX_COINCIDENTAL_SCHEMA_CHANGE": 20,
+      "TBOX_DIRECTIONAL_RELAXATION_OR_RESTRICTION": 20,
+      "TBOX_SCHEMA_UPDATE": 20,
+      "TypeA_DELETE_AMBIGUOUS": 40,
+      "TypeA_FORMAT_NORMALIZATION": 35,
+      "TypeA_FORMAT_VALUE_PRUNING": 35,
+      "TypeA_MULTIPLICITY_NORMALIZATION": 10,
+      "TypeA_REJECTION_FORMAT_INVALID": 30,
+      "TypeA_SELF_LINK_REJECTION": 20,
+      "TypeB_LOCAL_FOCUS_QID": 15,
+      "TypeB_LOCAL_SELECTION_CONFIRMED": 35,
+      "TypeB_LOCAL_TEXT_CONFIRMED": 40,
       "TypeC_EXTERNAL_BY_ELIMINATION_LITERAL_TRUTH": 50,
       "TypeC_EXTERNAL_BY_ELIMINATION_QID_TRUTH": 50,
-      "TypeC_UNKNOWN_OR_SPARSE_DIAGNOSTIC": 30
+      "TypeC_UNKNOWN_MULTIPLICITY_ARTIFACT": 5,
+      "TypeC_UNKNOWN_OR_SPARSE_DIAGNOSTIC": 10,
+      "TypeC_UNKNOWN_SELECTION_AMBIGUOUS": 15
     },
     "seed": 13,
-    "underfilled_quotas": [
-      {
-        "quota": 30,
-        "selected": 0,
-        "selection_stratum": "TypeC_UNKNOWN_OR_SPARSE_DIAGNOSTIC"
-      }
-    ],
-    "warnings": [
-      "TypeC_UNKNOWN_OR_SPARSE_DIAGNOSTIC underfilled: selected 0 of requested 30.",
-      "TypeC_UNKNOWN_OR_SPARSE_DIAGNOSTIC underfilled; backfilled with weakest TypeC_EXTERNAL_BY_ELIMINATION local-context diagnostics."
-    ]
+    "underfilled_quotas": [],
+    "warnings": []
   },
   "title": "WikidataRepairEval Phase D manual audit row",
   "type": "object"
