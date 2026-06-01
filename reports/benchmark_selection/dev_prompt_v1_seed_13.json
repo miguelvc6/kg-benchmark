@@ -127,7 +127,7 @@
     },
     "reform_Q103946447_P4275_2356827847": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_restriction_required_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q103946447_P4275_2356827847",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -527,7 +527,7 @@
     },
     "reform_Q107164796_P950_2330325818": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q107164796_P950_2330325818",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -677,7 +677,7 @@
     },
     "reform_Q109105025_P6570_2392822749": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q109105025_P6570_2392822749",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -752,7 +752,7 @@
     },
     "reform_Q109655729_P950_2330325818": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q109655729_P950_2330325818",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -902,7 +902,7 @@
     },
     "reform_Q11361159_P4275_2356827847": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_restriction_required_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q11361159_P4275_2356827847",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -1077,7 +1077,7 @@
     },
     "reform_Q115411530_P9058_2216480186": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q115411530_P9058_2216480186",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -1427,7 +1427,7 @@
     },
     "reform_Q12407420_P268_2317147423": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q12407420_P268_2317147423",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -1652,7 +1652,7 @@
     },
     "reform_Q130389142_P4275_2356827847": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_restriction_required_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q130389142_P4275_2356827847",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -1802,7 +1802,7 @@
     },
     "reform_Q132112_P2605_2351781179": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q132112_P2605_2351781179",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -1902,7 +1902,7 @@
     },
     "reform_Q136240163_P5476_2404580674": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q136240163_P5476_2404580674",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -1927,7 +1927,7 @@
     },
     "reform_Q136241104_P5476_2404580674": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q136241104_P5476_2404580674",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -1952,7 +1952,7 @@
     },
     "reform_Q136242364_P5476_2404580674": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q136242364_P5476_2404580674",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -2177,7 +2177,7 @@
     },
     "reform_Q153455_P7699_2336073995": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q153455_P7699_2336073995",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -2227,7 +2227,7 @@
     },
     "reform_Q1545340_P2605_2351781179": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q1545340_P2605_2351781179",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -2527,7 +2527,7 @@
     },
     "reform_Q1767760_P4529_2172698999": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q1767760_P4529_2172698999",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -2827,7 +2827,7 @@
     },
     "reform_Q2088074_P2605_2351781179": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q2088074_P2605_2351781179",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -2927,7 +2927,7 @@
     },
     "reform_Q214317_P1368_2329221897": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q214317_P1368_2329221897",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -3302,7 +3302,7 @@
     },
     "reform_Q2344312_P268_2317147423": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q2344312_P268_2317147423",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -3327,7 +3327,7 @@
     },
     "reform_Q238616_P7699_2336073995": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q238616_P7699_2336073995",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -3577,7 +3577,7 @@
     },
     "reform_Q26486_P7699_2336073995": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q26486_P7699_2336073995",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -3877,7 +3877,7 @@
     },
     "reform_Q29482974_P4658_2385185076": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q29482974_P4658_2385185076",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -3902,7 +3902,7 @@
     },
     "reform_Q29487616_P4658_2385185076": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q29487616_P4658_2385185076",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -3927,7 +3927,7 @@
     },
     "reform_Q29504386_P4658_2385185076": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q29504386_P4658_2385185076",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -4052,7 +4052,7 @@
     },
     "reform_Q3290762_P4529_2172698999": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q3290762_P4529_2172698999",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -4127,7 +4127,7 @@
     },
     "reform_Q3403851_P347_2436835478": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_required_set_contraction",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q3403851_P347_2436835478",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -4202,7 +4202,7 @@
     },
     "reform_Q3520827_P4529_2172698999": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q3520827_P4529_2172698999",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -4252,7 +4252,7 @@
     },
     "reform_Q364189_P1368_2329221897": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q364189_P1368_2329221897",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -4277,7 +4277,7 @@
     },
     "reform_Q36995024_P3370_2381040789": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q36995024_P3370_2381040789",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -4302,7 +4302,7 @@
     },
     "reform_Q37070489_P3370_2381040789": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q37070489_P3370_2381040789",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -4327,7 +4327,7 @@
     },
     "reform_Q37073262_P3370_2381040789": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q37073262_P3370_2381040789",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -4477,7 +4477,7 @@
     },
     "reform_Q4109733_P480_2387684055": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q4109733_P480_2387684055",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -4502,7 +4502,7 @@
     },
     "reform_Q4214270_P268_2317147423": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q4214270_P268_2317147423",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -4752,7 +4752,7 @@
     },
     "reform_Q513185_P1368_2329221897": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q513185_P1368_2329221897",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -5552,7 +5552,7 @@
     },
     "reform_Q7310061_P480_2387684055": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q7310061_P480_2387684055",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -5652,7 +5652,7 @@
     },
     "reform_Q8050263_P480_2387684055": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q8050263_P480_2387684055",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -5727,7 +5727,7 @@
     },
     "reform_Q9374112_P1006_2407207080": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q9374112_P1006_2407207080",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -5752,7 +5752,7 @@
     },
     "reform_Q95217667_P950_2330325818": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q95217667_P950_2330325818",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -5802,7 +5802,7 @@
     },
     "reform_Q97664834_P4381_2418670693": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q97664834_P4381_2418670693",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -5827,7 +5827,7 @@
     },
     "reform_Q97693694_P4381_2418670693": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q97693694_P4381_2418670693",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -5852,7 +5852,7 @@
     },
     "reform_Q97736651_P4381_2418670693": {
       "analysis_slice": "main_tbox_schema_update",
-      "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+      "analysis_slice_precise": "main_tbox_schema_update",
       "case_id": "reform_Q97736651_P4381_2418670693",
       "class": "T_BOX",
       "classification_rule_family": "tbox_schema_causality",
@@ -15083,7 +15083,7 @@
     "main_score": 481,
     "selected": 600
   },
-  "created_at_utc": "2026-05-30T14:08:59.580243Z",
+  "created_at_utc": "2026-06-01T09:27:19.089812Z",
   "diagnostic_case_ids": [
     "reform_Q1016312_P18_2402814023",
     "reform_Q105681359_P1346_1580835843",

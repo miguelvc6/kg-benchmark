@@ -1,13 +1,13 @@
 # Phase D Manual Audit Case Cards by Stratum
 
-Generated: 2026-05-30T14:32:52.038289Z
+Generated: 2026-06-01T09:36:22.351159Z
 
 Audit CSV: `reports/manual_audit/audit_phase_d_v1_seed_13.csv`
 Stage 4 benchmark: `data/04_classified_benchmark.jsonl`
 
 Open one stratum file at a time. Enter final annotations in the CSV copy, not in these Markdown files.
 
-For T-box cards, prefer the compact diff summary and causality block. Lean Stage 4 may prune full constraint signatures; public directional subtypes are coarse, while `directional_subtype_precise` carries polarity-specific semantics.
+For T-box cards, prefer the compact diff summary and causality block. Lean Stage 4 may prune full constraint signatures; public directional subtypes are coarse, while active `directional_subtype_precise` carries polarity-specific semantics only for final directional labels. Non-directional schema updates may show `potential_directional_*` debugging fields.
 
 | Order | Stratum | Cases | File | Size |
 |---:|---|---:|---|---:|
@@ -30,7 +30,7 @@ For T-box cards, prefer the compact diff summary and causality block. Lean Stage
 | 18 | `TypeA_SELF_LINK_REJECTION` | 15 | [18_TypeA_SELF_LINK_REJECTION.md](18_TypeA_SELF_LINK_REJECTION.md) | 139,748 bytes |
 | 19 | `TypeA_SET_MEMBERSHIP_REJECTION` | 26 | [19_TypeA_SET_MEMBERSHIP_REJECTION.md](19_TypeA_SET_MEMBERSHIP_REJECTION.md) | 193,877 bytes |
 | 20 | `TypeA_MULTIPLICITY_NORMALIZATION` | 10 | [20_TypeA_MULTIPLICITY_NORMALIZATION.md](20_TypeA_MULTIPLICITY_NORMALIZATION.md) | 70,461 bytes |
-| 21 | `TBOX_SCHEMA_UPDATE` | 26 | [21_TBOX_SCHEMA_UPDATE.md](21_TBOX_SCHEMA_UPDATE.md) | 422,741 bytes |
-| 22 | `TBOX_COINCIDENTAL_SCHEMA_CHANGE` | 27 | [22_TBOX_COINCIDENTAL_SCHEMA_CHANGE.md](22_TBOX_COINCIDENTAL_SCHEMA_CHANGE.md) | 344,820 bytes |
-| 23 | `TBOX_DIRECTIONAL_RELAXATION_OR_RESTRICTION` | 25 | [23_TBOX_DIRECTIONAL_RELAXATION_OR_RESTRICTION.md](23_TBOX_DIRECTIONAL_RELAXATION_OR_RESTRICTION.md) | 402,659 bytes |
-| 24 | `TBOX_UNKNOWN_TBOX_CAUSALITY` | 30 | [24_TBOX_UNKNOWN_TBOX_CAUSALITY.md](24_TBOX_UNKNOWN_TBOX_CAUSALITY.md) | 400,151 bytes |
+| 21 | `TBOX_SCHEMA_UPDATE` | 26 | [21_TBOX_SCHEMA_UPDATE.md](21_TBOX_SCHEMA_UPDATE.md) | 458,448 bytes |
+| 22 | `TBOX_COINCIDENTAL_SCHEMA_CHANGE` | 27 | [22_TBOX_COINCIDENTAL_SCHEMA_CHANGE.md](22_TBOX_COINCIDENTAL_SCHEMA_CHANGE.md) | 354,891 bytes |
+| 23 | `TBOX_DIRECTIONAL_RELAXATION_OR_RESTRICTION` | 25 | [23_TBOX_DIRECTIONAL_RELAXATION_OR_RESTRICTION.md](23_TBOX_DIRECTIONAL_RELAXATION_OR_RESTRICTION.md) | 411,734 bytes |
+| 24 | `TBOX_UNKNOWN_TBOX_CAUSALITY` | 30 | [24_TBOX_UNKNOWN_TBOX_CAUSALITY.md](24_TBOX_UNKNOWN_TBOX_CAUSALITY.md) | 411,341 bytes |

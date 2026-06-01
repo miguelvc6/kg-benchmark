@@ -230,11 +230,11 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
-  "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+  "analysis_slice_precise": "main_tbox_schema_update",
   "candidate_violation_mappings_preview": [
     {
       "candidate_causality_match_level": "exact_constraint_family_only",
@@ -262,8 +262,8 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "compatible_property_overlap_with_report_pids": [],
   "compatible_scope_overlap_with_report_values": [],
   "compatible_value_overlap_with_report_qids": [],
-  "directional_subtype_basis": "allowed set expansion",
-  "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+  "directional_subtype_basis": null,
+  "directional_subtype_precise": null,
   "ignored_added_values": [],
   "ignored_changed_qualifier_properties": [],
   "ignored_removed_values": [],
@@ -277,8 +277,14 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_violation_constraint_label": "value-type constraint",
   "mapped_violation_constraint_qid": "Q21510865",
   "mapped_violation_family": "value_type",
-  "polarity": "relaxation",
-  "polarity_basis": "allowed set gained values",
+  "polarity": "unknown",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "allowed set expansion",
+  "potential_directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+  "potential_polarity": "relaxation",
+  "potential_polarity_basis": "allowed set gained values",
+  "potential_set_operation": "expansion",
+  "potential_set_semantics": "allowed",
   "property_overlap_with_report_pids": [],
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "scope_overlap_with_report_values": [],
@@ -313,7 +319,7 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "added_values": [
     "Q1656682"
   ],
-  "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+  "analysis_slice_precise": "main_tbox_schema_update",
   "changed_constraint_qids_all": [
     "Q21510865"
   ],
@@ -326,7 +332,7 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   ],
   "compatible_overlap_reason": "no_type_compatible_overlap",
   "compatible_overlap_used": false,
-  "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+  "directional_subtype_precise": null,
   "ignored_added_values": [],
   "ignored_changed_qualifier_properties": [],
   "ignored_removed_values": [],
@@ -336,8 +342,14 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_constraint_label": "value-type constraint",
   "mapped_report_constraint_qid": "Q21510865",
   "mapped_report_family": "value_type",
-  "polarity": "relaxation",
-  "polarity_basis": "allowed set gained values",
+  "polarity": "unknown",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "allowed set expansion",
+  "potential_directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+  "potential_polarity": "relaxation",
+  "potential_polarity_basis": "allowed set gained values",
+  "potential_set_operation": "expansion",
+  "potential_set_semantics": "allowed",
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -402,10 +414,17 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
-    "directional_subtype_basis": "allowed set expansion",
-    "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
-    "polarity": "relaxation",
-    "polarity_basis": "allowed set gained values",
+    "analysis_slice_precise": "main_tbox_schema_update",
+    "directional_subtype_basis": null,
+    "directional_subtype_precise": null,
+    "polarity": "unknown",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "allowed set expansion",
+    "potential_directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+    "potential_polarity": "relaxation",
+    "potential_polarity_basis": "allowed set gained values",
+    "potential_set_operation": "expansion",
+    "potential_set_semantics": "allowed",
     "property_ids": [
       "P2308"
     ],
@@ -413,15 +432,14 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "SCHEMA_UPDATE",
     "set_operation": "expansion",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "RELAXATION_SET_EXPANSION"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
     "added_values": [
       "Q1656682"
     ],
-    "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+    "analysis_slice_precise": "main_tbox_schema_update",
     "candidate_violation_mappings_preview": [
       {
         "candidate_causality_match_level": "exact_constraint_family_only",
@@ -452,8 +470,8 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "compatible_property_overlap_with_report_pids": [],
     "compatible_scope_overlap_with_report_values": [],
     "compatible_value_overlap_with_report_qids": [],
-    "directional_subtype_basis": "allowed set expansion",
-    "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+    "directional_subtype_basis": null,
+    "directional_subtype_precise": null,
     "ignored_added_values": [],
     "ignored_changed_qualifier_properties": [],
     "ignored_removed_values": [],
@@ -468,8 +486,14 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "mapped_violation_constraint_qid": "Q21510865",
     "mapped_violation_family": "value_type",
     "mapped_violation_reason": "value_type_prefix_mapping",
-    "polarity": "relaxation",
-    "polarity_basis": "allowed set gained values",
+    "polarity": "unknown",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "allowed set expansion",
+    "potential_directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+    "potential_polarity": "relaxation",
+    "potential_polarity_basis": "allowed set gained values",
+    "potential_set_operation": "expansion",
+    "potential_set_semantics": "allowed",
     "property_overlap_with_report_pids": [],
     "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
     "relevant_qualifier_properties": [
@@ -493,7 +517,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "expansion",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "RELAXATION_SET_EXPANSION",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "value-type constraint",
@@ -736,11 +759,11 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
-  "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+  "analysis_slice_precise": "main_tbox_schema_update",
   "candidate_violation_mappings_preview": [
     {
       "candidate_causality_match_level": "exact_constraint_family_only",
@@ -768,8 +791,8 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "compatible_property_overlap_with_report_pids": [],
   "compatible_scope_overlap_with_report_values": [],
   "compatible_value_overlap_with_report_qids": [],
-  "directional_subtype_basis": "allowed set expansion",
-  "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+  "directional_subtype_basis": null,
+  "directional_subtype_precise": null,
   "ignored_added_values": [],
   "ignored_changed_qualifier_properties": [],
   "ignored_removed_values": [],
@@ -783,8 +806,14 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_violation_constraint_label": "value-type constraint",
   "mapped_violation_constraint_qid": "Q21510865",
   "mapped_violation_family": "value_type",
-  "polarity": "relaxation",
-  "polarity_basis": "allowed set gained values",
+  "polarity": "unknown",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "allowed set expansion",
+  "potential_directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+  "potential_polarity": "relaxation",
+  "potential_polarity_basis": "allowed set gained values",
+  "potential_set_operation": "expansion",
+  "potential_set_semantics": "allowed",
   "property_overlap_with_report_pids": [],
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "scope_overlap_with_report_values": [],
@@ -819,7 +848,7 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "added_values": [
     "Q1656682"
   ],
-  "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+  "analysis_slice_precise": "main_tbox_schema_update",
   "changed_constraint_qids_all": [
     "Q21510865"
   ],
@@ -832,7 +861,7 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   ],
   "compatible_overlap_reason": "no_type_compatible_overlap",
   "compatible_overlap_used": false,
-  "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+  "directional_subtype_precise": null,
   "ignored_added_values": [],
   "ignored_changed_qualifier_properties": [],
   "ignored_removed_values": [],
@@ -842,8 +871,14 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_constraint_label": "value-type constraint",
   "mapped_report_constraint_qid": "Q21510865",
   "mapped_report_family": "value_type",
-  "polarity": "relaxation",
-  "polarity_basis": "allowed set gained values",
+  "polarity": "unknown",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "allowed set expansion",
+  "potential_directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+  "potential_polarity": "relaxation",
+  "potential_polarity_basis": "allowed set gained values",
+  "potential_set_operation": "expansion",
+  "potential_set_semantics": "allowed",
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -908,10 +943,17 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
-    "directional_subtype_basis": "allowed set expansion",
-    "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
-    "polarity": "relaxation",
-    "polarity_basis": "allowed set gained values",
+    "analysis_slice_precise": "main_tbox_schema_update",
+    "directional_subtype_basis": null,
+    "directional_subtype_precise": null,
+    "polarity": "unknown",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "allowed set expansion",
+    "potential_directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+    "potential_polarity": "relaxation",
+    "potential_polarity_basis": "allowed set gained values",
+    "potential_set_operation": "expansion",
+    "potential_set_semantics": "allowed",
     "property_ids": [
       "P2308"
     ],
@@ -919,15 +961,14 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "SCHEMA_UPDATE",
     "set_operation": "expansion",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "RELAXATION_SET_EXPANSION"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
     "added_values": [
       "Q1656682"
     ],
-    "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+    "analysis_slice_precise": "main_tbox_schema_update",
     "candidate_violation_mappings_preview": [
       {
         "candidate_causality_match_level": "exact_constraint_family_only",
@@ -958,8 +999,8 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "compatible_property_overlap_with_report_pids": [],
     "compatible_scope_overlap_with_report_values": [],
     "compatible_value_overlap_with_report_qids": [],
-    "directional_subtype_basis": "allowed set expansion",
-    "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+    "directional_subtype_basis": null,
+    "directional_subtype_precise": null,
     "ignored_added_values": [],
     "ignored_changed_qualifier_properties": [],
     "ignored_removed_values": [],
@@ -974,8 +1015,14 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "mapped_violation_constraint_qid": "Q21510865",
     "mapped_violation_family": "value_type",
     "mapped_violation_reason": "value_type_prefix_mapping",
-    "polarity": "relaxation",
-    "polarity_basis": "allowed set gained values",
+    "polarity": "unknown",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "allowed set expansion",
+    "potential_directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+    "potential_polarity": "relaxation",
+    "potential_polarity_basis": "allowed set gained values",
+    "potential_set_operation": "expansion",
+    "potential_set_semantics": "allowed",
     "property_overlap_with_report_pids": [],
     "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
     "relevant_qualifier_properties": [
@@ -999,7 +1046,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "expansion",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "RELAXATION_SET_EXPANSION",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "value-type constraint",
@@ -1227,7 +1273,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -1271,7 +1317,7 @@ _Public directional subtype is coarse for backward compatibility; use `direction
     "Q515",
     "Q7930989"
   ],
-  "directional_subtype_basis": "mixed qualifier-value change",
+  "directional_subtype_basis": null,
   "directional_subtype_precise": null,
   "ignored_added_values": [],
   "ignored_changed_qualifier_properties": [],
@@ -1287,7 +1333,13 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_violation_constraint_qid": "Q21503250",
   "mapped_violation_family": "type",
   "polarity": "unknown",
-  "polarity_basis": "both_added_and_removed_values",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "mixed qualifier-value change",
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": "unknown",
+  "potential_polarity_basis": "both_added_and_removed_values",
+  "potential_set_operation": "mixed",
+  "potential_set_semantics": "allowed",
   "property_overlap_with_report_pids": [],
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "scope_overlap_with_report_values": [],
@@ -1354,7 +1406,13 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_constraint_qid": "Q21503250",
   "mapped_report_family": "type",
   "polarity": "unknown",
-  "polarity_basis": "both_added_and_removed_values",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "mixed qualifier-value change",
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": "unknown",
+  "potential_polarity_basis": "both_added_and_removed_values",
+  "potential_set_operation": "mixed",
+  "potential_set_semantics": "allowed",
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 3,
   "removed_values": [
@@ -1427,10 +1485,17 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
-    "directional_subtype_basis": "mixed qualifier-value change",
+    "analysis_slice_precise": "main_tbox_schema_update",
+    "directional_subtype_basis": null,
     "directional_subtype_precise": null,
     "polarity": "unknown",
-    "polarity_basis": "both_added_and_removed_values",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "mixed qualifier-value change",
+    "potential_directional_subtype_precise": null,
+    "potential_polarity": "unknown",
+    "potential_polarity_basis": "both_added_and_removed_values",
+    "potential_set_operation": "mixed",
+    "potential_set_semantics": "allowed",
     "property_ids": [
       "P2308"
     ],
@@ -1438,8 +1503,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "SCHEMA_UPDATE",
     "set_operation": "mixed",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "SCHEMA_UPDATE"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
@@ -1489,7 +1553,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
       "Q515",
       "Q7930989"
     ],
-    "directional_subtype_basis": "mixed qualifier-value change",
+    "directional_subtype_basis": null,
     "directional_subtype_precise": null,
     "ignored_added_values": [],
     "ignored_changed_qualifier_properties": [],
@@ -1506,7 +1570,13 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "mapped_violation_family": "type",
     "mapped_violation_reason": "type_prefix_mapping",
     "polarity": "unknown",
-    "polarity_basis": "both_added_and_removed_values",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "mixed qualifier-value change",
+    "potential_directional_subtype_precise": null,
+    "potential_polarity": "unknown",
+    "potential_polarity_basis": "both_added_and_removed_values",
+    "potential_set_operation": "mixed",
+    "potential_set_semantics": "allowed",
     "property_overlap_with_report_pids": [],
     "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
     "relevant_qualifier_properties": [
@@ -1538,7 +1608,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "mixed",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "SCHEMA_UPDATE",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "type constraint",
@@ -1736,11 +1805,11 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
-  "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+  "analysis_slice_precise": "main_tbox_schema_update",
   "candidate_violation_mappings_preview": [
     {
       "candidate_causality_match_level": "exact_constraint_family_only",
@@ -1784,8 +1853,8 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "compatible_property_overlap_with_report_pids": [],
   "compatible_scope_overlap_with_report_values": [],
   "compatible_value_overlap_with_report_qids": [],
-  "directional_subtype_basis": "allowed set expansion",
-  "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+  "directional_subtype_basis": null,
+  "directional_subtype_precise": null,
   "ignored_added_values": [],
   "ignored_changed_qualifier_properties": [],
   "ignored_removed_values": [],
@@ -1799,8 +1868,14 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_violation_constraint_label": "label-in-language constraint",
   "mapped_violation_constraint_qid": "Q108139345",
   "mapped_violation_family": "label_in_language",
-  "polarity": "relaxation",
-  "polarity_basis": "allowed set gained values",
+  "polarity": "unknown",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "allowed set expansion",
+  "potential_directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+  "potential_polarity": "relaxation",
+  "potential_polarity_basis": "allowed set gained values",
+  "potential_set_operation": "expansion",
+  "potential_set_semantics": "allowed",
   "property_overlap_with_report_pids": [],
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "scope_overlap_with_report_values": [],
@@ -1839,7 +1914,7 @@ _Public directional subtype is coarse for backward compatibility; use `direction
     "ko",
     "vi"
   ],
-  "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+  "analysis_slice_precise": "main_tbox_schema_update",
   "changed_constraint_qids_all": [
     "Q108139345"
   ],
@@ -1852,7 +1927,7 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   ],
   "compatible_overlap_reason": "no_type_compatible_overlap",
   "compatible_overlap_used": false,
-  "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+  "directional_subtype_precise": null,
   "ignored_added_values": [],
   "ignored_changed_qualifier_properties": [],
   "ignored_removed_values": [],
@@ -1862,8 +1937,14 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_constraint_label": "label-in-language constraint",
   "mapped_report_constraint_qid": "Q108139345",
   "mapped_report_family": "label_in_language",
-  "polarity": "relaxation",
-  "polarity_basis": "allowed set gained values",
+  "polarity": "unknown",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "allowed set expansion",
+  "potential_directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+  "potential_polarity": "relaxation",
+  "potential_polarity_basis": "allowed set gained values",
+  "potential_set_operation": "expansion",
+  "potential_set_semantics": "allowed",
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -1930,10 +2011,17 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 3,
-    "directional_subtype_basis": "allowed set expansion",
-    "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
-    "polarity": "relaxation",
-    "polarity_basis": "allowed set gained values",
+    "analysis_slice_precise": "main_tbox_schema_update",
+    "directional_subtype_basis": null,
+    "directional_subtype_precise": null,
+    "polarity": "unknown",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "allowed set expansion",
+    "potential_directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+    "potential_polarity": "relaxation",
+    "potential_polarity_basis": "allowed set gained values",
+    "potential_set_operation": "expansion",
+    "potential_set_semantics": "allowed",
     "property_ids": [
       "P424"
     ],
@@ -1941,8 +2029,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "SCHEMA_UPDATE",
     "set_operation": "expansion",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "RELAXATION_SET_EXPANSION"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 3,
@@ -1951,7 +2038,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
       "ko",
       "vi"
     ],
-    "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+    "analysis_slice_precise": "main_tbox_schema_update",
     "candidate_violation_mappings_preview": [
       {
         "candidate_causality_match_level": "exact_constraint_family_only",
@@ -1998,8 +2085,8 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "compatible_property_overlap_with_report_pids": [],
     "compatible_scope_overlap_with_report_values": [],
     "compatible_value_overlap_with_report_qids": [],
-    "directional_subtype_basis": "allowed set expansion",
-    "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+    "directional_subtype_basis": null,
+    "directional_subtype_precise": null,
     "ignored_added_values": [],
     "ignored_changed_qualifier_properties": [],
     "ignored_removed_values": [],
@@ -2014,8 +2101,14 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "mapped_violation_constraint_qid": "Q108139345",
     "mapped_violation_family": "label_in_language",
     "mapped_violation_reason": "label_language_report_mapping",
-    "polarity": "relaxation",
-    "polarity_basis": "allowed set gained values",
+    "polarity": "unknown",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "allowed set expansion",
+    "potential_directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+    "potential_polarity": "relaxation",
+    "potential_polarity_basis": "allowed set gained values",
+    "potential_set_operation": "expansion",
+    "potential_set_semantics": "allowed",
     "property_overlap_with_report_pids": [],
     "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
     "relevant_qualifier_properties": [
@@ -2040,7 +2133,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "expansion",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "RELAXATION_SET_EXPANSION",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "label-in-language constraint",
@@ -2229,7 +2321,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -2269,7 +2361,7 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "compatible_property_overlap_with_report_pids": [],
   "compatible_scope_overlap_with_report_values": [],
   "compatible_value_overlap_with_report_qids": [],
-  "directional_subtype_basis": "mixed qualifier-value change",
+  "directional_subtype_basis": null,
   "directional_subtype_precise": null,
   "ignored_added_values": [],
   "ignored_changed_qualifier_properties": [],
@@ -2285,7 +2377,13 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_violation_constraint_qid": "Q21502404",
   "mapped_violation_family": "format",
   "polarity": "unknown",
-  "polarity_basis": "both_added_and_removed_values",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "mixed qualifier-value change",
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": "unknown",
+  "potential_polarity_basis": "both_added_and_removed_values",
+  "potential_set_operation": "mixed",
+  "potential_set_semantics": "unknown",
   "property_overlap_with_report_pids": [],
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "scope_overlap_with_report_values": [],
@@ -2346,7 +2444,13 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_constraint_qid": "Q21502404",
   "mapped_report_family": "format",
   "polarity": "unknown",
-  "polarity_basis": "both_added_and_removed_values",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "mixed qualifier-value change",
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": "unknown",
+  "potential_polarity_basis": "both_added_and_removed_values",
+  "potential_set_operation": "mixed",
+  "potential_set_semantics": "unknown",
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 1,
   "removed_values": [
@@ -2415,10 +2519,17 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
-    "directional_subtype_basis": "mixed qualifier-value change",
+    "analysis_slice_precise": "main_tbox_schema_update",
+    "directional_subtype_basis": null,
     "directional_subtype_precise": null,
     "polarity": "unknown",
-    "polarity_basis": "both_added_and_removed_values",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "mixed qualifier-value change",
+    "potential_directional_subtype_precise": null,
+    "potential_polarity": "unknown",
+    "potential_polarity_basis": "both_added_and_removed_values",
+    "potential_set_operation": "mixed",
+    "potential_set_semantics": "unknown",
     "property_ids": [
       "P1793"
     ],
@@ -2426,8 +2537,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "SCHEMA_UPDATE",
     "set_operation": "mixed",
     "set_semantics": "unknown",
-    "step": "set_semantics",
-    "subtype": "SCHEMA_UPDATE"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
@@ -2473,7 +2583,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "compatible_property_overlap_with_report_pids": [],
     "compatible_scope_overlap_with_report_values": [],
     "compatible_value_overlap_with_report_qids": [],
-    "directional_subtype_basis": "mixed qualifier-value change",
+    "directional_subtype_basis": null,
     "directional_subtype_precise": null,
     "ignored_added_values": [],
     "ignored_changed_qualifier_properties": [],
@@ -2490,7 +2600,13 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "mapped_violation_family": "format",
     "mapped_violation_reason": "exact_violation_type_mapping",
     "polarity": "unknown",
-    "polarity_basis": "both_added_and_removed_values",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "mixed qualifier-value change",
+    "potential_directional_subtype_precise": null,
+    "potential_polarity": "unknown",
+    "potential_polarity_basis": "both_added_and_removed_values",
+    "potential_set_operation": "mixed",
+    "potential_set_semantics": "unknown",
     "property_overlap_with_report_pids": [],
     "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
     "relevant_qualifier_properties": [
@@ -2517,7 +2633,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "mixed",
     "set_semantics": "unknown",
     "step": "tbox_causality",
-    "subtype": "SCHEMA_UPDATE",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "format constraint",
@@ -2745,7 +2860,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -2789,7 +2904,7 @@ _Public directional subtype is coarse for backward compatibility; use `direction
     "Q515",
     "Q7930989"
   ],
-  "directional_subtype_basis": "mixed qualifier-value change",
+  "directional_subtype_basis": null,
   "directional_subtype_precise": null,
   "ignored_added_values": [],
   "ignored_changed_qualifier_properties": [],
@@ -2805,7 +2920,13 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_violation_constraint_qid": "Q21503250",
   "mapped_violation_family": "type",
   "polarity": "unknown",
-  "polarity_basis": "both_added_and_removed_values",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "mixed qualifier-value change",
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": "unknown",
+  "potential_polarity_basis": "both_added_and_removed_values",
+  "potential_set_operation": "mixed",
+  "potential_set_semantics": "allowed",
   "property_overlap_with_report_pids": [],
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "scope_overlap_with_report_values": [],
@@ -2872,7 +2993,13 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_constraint_qid": "Q21503250",
   "mapped_report_family": "type",
   "polarity": "unknown",
-  "polarity_basis": "both_added_and_removed_values",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "mixed qualifier-value change",
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": "unknown",
+  "potential_polarity_basis": "both_added_and_removed_values",
+  "potential_set_operation": "mixed",
+  "potential_set_semantics": "allowed",
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 3,
   "removed_values": [
@@ -2945,10 +3072,17 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
-    "directional_subtype_basis": "mixed qualifier-value change",
+    "analysis_slice_precise": "main_tbox_schema_update",
+    "directional_subtype_basis": null,
     "directional_subtype_precise": null,
     "polarity": "unknown",
-    "polarity_basis": "both_added_and_removed_values",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "mixed qualifier-value change",
+    "potential_directional_subtype_precise": null,
+    "potential_polarity": "unknown",
+    "potential_polarity_basis": "both_added_and_removed_values",
+    "potential_set_operation": "mixed",
+    "potential_set_semantics": "allowed",
     "property_ids": [
       "P2308"
     ],
@@ -2956,8 +3090,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "SCHEMA_UPDATE",
     "set_operation": "mixed",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "SCHEMA_UPDATE"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
@@ -3007,7 +3140,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
       "Q515",
       "Q7930989"
     ],
-    "directional_subtype_basis": "mixed qualifier-value change",
+    "directional_subtype_basis": null,
     "directional_subtype_precise": null,
     "ignored_added_values": [],
     "ignored_changed_qualifier_properties": [],
@@ -3024,7 +3157,13 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "mapped_violation_family": "type",
     "mapped_violation_reason": "type_prefix_mapping",
     "polarity": "unknown",
-    "polarity_basis": "both_added_and_removed_values",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "mixed qualifier-value change",
+    "potential_directional_subtype_precise": null,
+    "potential_polarity": "unknown",
+    "potential_polarity_basis": "both_added_and_removed_values",
+    "potential_set_operation": "mixed",
+    "potential_set_semantics": "allowed",
     "property_overlap_with_report_pids": [],
     "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
     "relevant_qualifier_properties": [
@@ -3056,7 +3195,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "mixed",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "SCHEMA_UPDATE",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "type constraint",
@@ -3258,7 +3396,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -3290,7 +3428,7 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "compatible_property_overlap_with_report_pids": [],
   "compatible_scope_overlap_with_report_values": [],
   "compatible_value_overlap_with_report_qids": [],
-  "directional_subtype_basis": "causal family match without interpretable polarity",
+  "directional_subtype_basis": null,
   "directional_subtype_precise": null,
   "ignored_added_values": [
     "Use \"album\" (Q482994) with \"instance of\" (P31), use the specific form with \"form of creative work\" (P7937).@en"
@@ -3312,7 +3450,13 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_violation_constraint_qid": "Q52558054",
   "mapped_violation_family": "none_of",
   "polarity": "unknown",
-  "polarity_basis": "unknown constraint-family polarity",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "causal family match without interpretable polarity",
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": "unknown",
+  "potential_polarity_basis": "unknown constraint-family polarity",
+  "potential_set_operation": "unchanged",
+  "potential_set_semantics": "forbidden",
   "property_overlap_with_report_pids": [],
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "scope_overlap_with_report_values": [],
@@ -3369,7 +3513,13 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_constraint_qid": "Q52558054",
   "mapped_report_family": "none_of",
   "polarity": "unknown",
-  "polarity_basis": "unknown constraint-family polarity",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "causal family match without interpretable polarity",
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": "unknown",
+  "potential_polarity_basis": "unknown constraint-family polarity",
+  "potential_set_operation": "unchanged",
+  "potential_set_semantics": "forbidden",
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -3430,17 +3580,23 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 0,
-    "directional_subtype_basis": "causal family match without interpretable polarity",
+    "analysis_slice_precise": "main_tbox_schema_update",
+    "directional_subtype_basis": null,
     "directional_subtype_precise": null,
     "polarity": "unknown",
-    "polarity_basis": "unknown constraint-family polarity",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "causal family match without interpretable polarity",
+    "potential_directional_subtype_precise": null,
+    "potential_polarity": "unknown",
+    "potential_polarity_basis": "unknown constraint-family polarity",
+    "potential_set_operation": "unchanged",
+    "potential_set_semantics": "forbidden",
     "property_ids": [],
     "removed_value_count": 0,
     "result": "SCHEMA_UPDATE",
     "set_operation": "unchanged",
     "set_semantics": "forbidden",
-    "step": "set_semantics",
-    "subtype": "SCHEMA_UPDATE"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 0,
@@ -3474,7 +3630,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "compatible_property_overlap_with_report_pids": [],
     "compatible_scope_overlap_with_report_values": [],
     "compatible_value_overlap_with_report_qids": [],
-    "directional_subtype_basis": "causal family match without interpretable polarity",
+    "directional_subtype_basis": null,
     "directional_subtype_precise": null,
     "ignored_added_values": [
       "Use \"album\" (Q482994) with \"instance of\" (P31), use the specific form with \"form of creative work\" (P7937).@en"
@@ -3497,7 +3653,13 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "mapped_violation_family": "none_of",
     "mapped_violation_reason": "exact_violation_type_mapping",
     "polarity": "unknown",
-    "polarity_basis": "unknown constraint-family polarity",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "causal family match without interpretable polarity",
+    "potential_directional_subtype_precise": null,
+    "potential_polarity": "unknown",
+    "potential_polarity_basis": "unknown constraint-family polarity",
+    "potential_set_operation": "unchanged",
+    "potential_set_semantics": "forbidden",
     "property_overlap_with_report_pids": [],
     "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
     "relevant_qualifier_properties": [
@@ -3516,7 +3678,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "unchanged",
     "set_semantics": "forbidden",
     "step": "tbox_causality",
-    "subtype": "SCHEMA_UPDATE",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "none-of constraint",
@@ -3710,11 +3871,11 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
-  "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+  "analysis_slice_precise": "main_tbox_schema_update",
   "candidate_violation_mappings_preview": [
     {
       "candidate_causality_match_level": "exact_constraint_family_only",
@@ -3758,8 +3919,8 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "compatible_property_overlap_with_report_pids": [],
   "compatible_scope_overlap_with_report_values": [],
   "compatible_value_overlap_with_report_qids": [],
-  "directional_subtype_basis": "allowed set expansion",
-  "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+  "directional_subtype_basis": null,
+  "directional_subtype_precise": null,
   "ignored_added_values": [],
   "ignored_changed_qualifier_properties": [],
   "ignored_removed_values": [],
@@ -3773,8 +3934,14 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_violation_constraint_label": "label-in-language constraint",
   "mapped_violation_constraint_qid": "Q108139345",
   "mapped_violation_family": "label_in_language",
-  "polarity": "relaxation",
-  "polarity_basis": "allowed set gained values",
+  "polarity": "unknown",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "allowed set expansion",
+  "potential_directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+  "potential_polarity": "relaxation",
+  "potential_polarity_basis": "allowed set gained values",
+  "potential_set_operation": "expansion",
+  "potential_set_semantics": "allowed",
   "property_overlap_with_report_pids": [],
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "scope_overlap_with_report_values": [],
@@ -3813,7 +3980,7 @@ _Public directional subtype is coarse for backward compatibility; use `direction
     "ko",
     "vi"
   ],
-  "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+  "analysis_slice_precise": "main_tbox_schema_update",
   "changed_constraint_qids_all": [
     "Q108139345"
   ],
@@ -3826,7 +3993,7 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   ],
   "compatible_overlap_reason": "no_type_compatible_overlap",
   "compatible_overlap_used": false,
-  "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+  "directional_subtype_precise": null,
   "ignored_added_values": [],
   "ignored_changed_qualifier_properties": [],
   "ignored_removed_values": [],
@@ -3836,8 +4003,14 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_constraint_label": "label-in-language constraint",
   "mapped_report_constraint_qid": "Q108139345",
   "mapped_report_family": "label_in_language",
-  "polarity": "relaxation",
-  "polarity_basis": "allowed set gained values",
+  "polarity": "unknown",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "allowed set expansion",
+  "potential_directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+  "potential_polarity": "relaxation",
+  "potential_polarity_basis": "allowed set gained values",
+  "potential_set_operation": "expansion",
+  "potential_set_semantics": "allowed",
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -3904,10 +4077,17 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 3,
-    "directional_subtype_basis": "allowed set expansion",
-    "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
-    "polarity": "relaxation",
-    "polarity_basis": "allowed set gained values",
+    "analysis_slice_precise": "main_tbox_schema_update",
+    "directional_subtype_basis": null,
+    "directional_subtype_precise": null,
+    "polarity": "unknown",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "allowed set expansion",
+    "potential_directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+    "potential_polarity": "relaxation",
+    "potential_polarity_basis": "allowed set gained values",
+    "potential_set_operation": "expansion",
+    "potential_set_semantics": "allowed",
     "property_ids": [
       "P424"
     ],
@@ -3915,8 +4095,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "SCHEMA_UPDATE",
     "set_operation": "expansion",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "RELAXATION_SET_EXPANSION"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 3,
@@ -3925,7 +4104,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
       "ko",
       "vi"
     ],
-    "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+    "analysis_slice_precise": "main_tbox_schema_update",
     "candidate_violation_mappings_preview": [
       {
         "candidate_causality_match_level": "exact_constraint_family_only",
@@ -3972,8 +4151,8 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "compatible_property_overlap_with_report_pids": [],
     "compatible_scope_overlap_with_report_values": [],
     "compatible_value_overlap_with_report_qids": [],
-    "directional_subtype_basis": "allowed set expansion",
-    "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+    "directional_subtype_basis": null,
+    "directional_subtype_precise": null,
     "ignored_added_values": [],
     "ignored_changed_qualifier_properties": [],
     "ignored_removed_values": [],
@@ -3988,8 +4167,14 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "mapped_violation_constraint_qid": "Q108139345",
     "mapped_violation_family": "label_in_language",
     "mapped_violation_reason": "label_language_report_mapping",
-    "polarity": "relaxation",
-    "polarity_basis": "allowed set gained values",
+    "polarity": "unknown",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "allowed set expansion",
+    "potential_directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+    "potential_polarity": "relaxation",
+    "potential_polarity_basis": "allowed set gained values",
+    "potential_set_operation": "expansion",
+    "potential_set_semantics": "allowed",
     "property_overlap_with_report_pids": [],
     "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
     "relevant_qualifier_properties": [
@@ -4014,7 +4199,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "expansion",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "RELAXATION_SET_EXPANSION",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "label-in-language constraint",
@@ -4285,11 +4469,11 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
-  "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+  "analysis_slice_precise": "main_tbox_schema_update",
   "candidate_violation_mappings_preview": [
     {
       "candidate_causality_match_level": "exact_constraint_family_only",
@@ -4317,8 +4501,8 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "compatible_property_overlap_with_report_pids": [],
   "compatible_scope_overlap_with_report_values": [],
   "compatible_value_overlap_with_report_qids": [],
-  "directional_subtype_basis": "allowed set expansion",
-  "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+  "directional_subtype_basis": null,
+  "directional_subtype_precise": null,
   "ignored_added_values": [],
   "ignored_changed_qualifier_properties": [],
   "ignored_removed_values": [],
@@ -4332,8 +4516,14 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_violation_constraint_label": "type constraint",
   "mapped_violation_constraint_qid": "Q21503250",
   "mapped_violation_family": "type",
-  "polarity": "relaxation",
-  "polarity_basis": "allowed set gained values",
+  "polarity": "unknown",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "allowed set expansion",
+  "potential_directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+  "potential_polarity": "relaxation",
+  "potential_polarity_basis": "allowed set gained values",
+  "potential_set_operation": "expansion",
+  "potential_set_semantics": "allowed",
   "property_overlap_with_report_pids": [],
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "scope_overlap_with_report_values": [],
@@ -4368,7 +4558,7 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "added_values": [
     "Q3249551"
   ],
-  "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+  "analysis_slice_precise": "main_tbox_schema_update",
   "changed_constraint_qids_all": [
     "Q21503250"
   ],
@@ -4381,7 +4571,7 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   ],
   "compatible_overlap_reason": "no_type_compatible_overlap",
   "compatible_overlap_used": false,
-  "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+  "directional_subtype_precise": null,
   "ignored_added_values": [],
   "ignored_changed_qualifier_properties": [],
   "ignored_removed_values": [],
@@ -4391,8 +4581,14 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_constraint_label": "type constraint",
   "mapped_report_constraint_qid": "Q21503250",
   "mapped_report_family": "type",
-  "polarity": "relaxation",
-  "polarity_basis": "allowed set gained values",
+  "polarity": "unknown",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "allowed set expansion",
+  "potential_directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+  "potential_polarity": "relaxation",
+  "potential_polarity_basis": "allowed set gained values",
+  "potential_set_operation": "expansion",
+  "potential_set_semantics": "allowed",
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -4457,10 +4653,17 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
-    "directional_subtype_basis": "allowed set expansion",
-    "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
-    "polarity": "relaxation",
-    "polarity_basis": "allowed set gained values",
+    "analysis_slice_precise": "main_tbox_schema_update",
+    "directional_subtype_basis": null,
+    "directional_subtype_precise": null,
+    "polarity": "unknown",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "allowed set expansion",
+    "potential_directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+    "potential_polarity": "relaxation",
+    "potential_polarity_basis": "allowed set gained values",
+    "potential_set_operation": "expansion",
+    "potential_set_semantics": "allowed",
     "property_ids": [
       "P2308"
     ],
@@ -4468,15 +4671,14 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "SCHEMA_UPDATE",
     "set_operation": "expansion",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "RELAXATION_SET_EXPANSION"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
     "added_values": [
       "Q3249551"
     ],
-    "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+    "analysis_slice_precise": "main_tbox_schema_update",
     "candidate_violation_mappings_preview": [
       {
         "candidate_causality_match_level": "exact_constraint_family_only",
@@ -4507,8 +4709,8 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "compatible_property_overlap_with_report_pids": [],
     "compatible_scope_overlap_with_report_values": [],
     "compatible_value_overlap_with_report_qids": [],
-    "directional_subtype_basis": "allowed set expansion",
-    "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+    "directional_subtype_basis": null,
+    "directional_subtype_precise": null,
     "ignored_added_values": [],
     "ignored_changed_qualifier_properties": [],
     "ignored_removed_values": [],
@@ -4523,8 +4725,14 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "mapped_violation_constraint_qid": "Q21503250",
     "mapped_violation_family": "type",
     "mapped_violation_reason": "type_prefix_mapping",
-    "polarity": "relaxation",
-    "polarity_basis": "allowed set gained values",
+    "polarity": "unknown",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "allowed set expansion",
+    "potential_directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+    "potential_polarity": "relaxation",
+    "potential_polarity_basis": "allowed set gained values",
+    "potential_set_operation": "expansion",
+    "potential_set_semantics": "allowed",
     "property_overlap_with_report_pids": [],
     "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
     "relevant_qualifier_properties": [
@@ -4548,7 +4756,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "expansion",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "RELAXATION_SET_EXPANSION",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "type constraint",
@@ -4773,7 +4980,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -4807,7 +5014,7 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "compatible_value_overlap_with_report_qids": [
     "Q115537581"
   ],
-  "directional_subtype_basis": "mixed qualifier-value change",
+  "directional_subtype_basis": null,
   "directional_subtype_precise": null,
   "ignored_added_values": [],
   "ignored_changed_qualifier_properties": [],
@@ -4823,7 +5030,13 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_violation_constraint_qid": "Q21510865",
   "mapped_violation_family": "value_type",
   "polarity": "unknown",
-  "polarity_basis": "both_added_and_removed_values",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "mixed qualifier-value change",
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": "unknown",
+  "potential_polarity_basis": "both_added_and_removed_values",
+  "potential_set_operation": "mixed",
+  "potential_set_semantics": "allowed",
   "property_overlap_with_report_pids": [],
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "scope_overlap_with_report_values": [],
@@ -4886,7 +5099,13 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_constraint_qid": "Q21510865",
   "mapped_report_family": "value_type",
   "polarity": "unknown",
-  "polarity_basis": "both_added_and_removed_values",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "mixed qualifier-value change",
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": "unknown",
+  "potential_polarity_basis": "both_added_and_removed_values",
+  "potential_set_operation": "mixed",
+  "potential_set_semantics": "allowed",
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 1,
   "removed_values": [
@@ -4955,10 +5174,17 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
-    "directional_subtype_basis": "mixed qualifier-value change",
+    "analysis_slice_precise": "main_tbox_schema_update",
+    "directional_subtype_basis": null,
     "directional_subtype_precise": null,
     "polarity": "unknown",
-    "polarity_basis": "both_added_and_removed_values",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "mixed qualifier-value change",
+    "potential_directional_subtype_precise": null,
+    "potential_polarity": "unknown",
+    "potential_polarity_basis": "both_added_and_removed_values",
+    "potential_set_operation": "mixed",
+    "potential_set_semantics": "allowed",
     "property_ids": [
       "P2308"
     ],
@@ -4966,8 +5192,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "SCHEMA_UPDATE",
     "set_operation": "mixed",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "SCHEMA_UPDATE"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
@@ -5007,7 +5232,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "compatible_value_overlap_with_report_qids": [
       "Q115537581"
     ],
-    "directional_subtype_basis": "mixed qualifier-value change",
+    "directional_subtype_basis": null,
     "directional_subtype_precise": null,
     "ignored_added_values": [],
     "ignored_changed_qualifier_properties": [],
@@ -5024,7 +5249,13 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "mapped_violation_family": "value_type",
     "mapped_violation_reason": "value_type_prefix_mapping",
     "polarity": "unknown",
-    "polarity_basis": "both_added_and_removed_values",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "mixed qualifier-value change",
+    "potential_directional_subtype_precise": null,
+    "potential_polarity": "unknown",
+    "potential_polarity_basis": "both_added_and_removed_values",
+    "potential_set_operation": "mixed",
+    "potential_set_semantics": "allowed",
     "property_overlap_with_report_pids": [],
     "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
     "relevant_qualifier_properties": [
@@ -5052,7 +5283,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "mixed",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "SCHEMA_UPDATE",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "value-type constraint",
@@ -5251,7 +5481,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -5283,7 +5513,7 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "compatible_property_overlap_with_report_pids": [],
   "compatible_scope_overlap_with_report_values": [],
   "compatible_value_overlap_with_report_qids": [],
-  "directional_subtype_basis": "causal family match without interpretable polarity",
+  "directional_subtype_basis": null,
   "directional_subtype_precise": null,
   "ignored_added_values": [
     "Q2994765",
@@ -5304,7 +5534,13 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_violation_constraint_qid": "Q21502410",
   "mapped_violation_family": "distinct_values",
   "polarity": "unknown",
-  "polarity_basis": "unknown constraint-family polarity",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "causal family match without interpretable polarity",
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": "unknown",
+  "potential_polarity_basis": "unknown constraint-family polarity",
+  "potential_set_operation": "unchanged",
+  "potential_set_semantics": "allowed",
   "property_overlap_with_report_pids": [],
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "scope_overlap_with_report_values": [],
@@ -5360,7 +5596,13 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_constraint_qid": "Q21502410",
   "mapped_report_family": "distinct_values",
   "polarity": "unknown",
-  "polarity_basis": "unknown constraint-family polarity",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "causal family match without interpretable polarity",
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": "unknown",
+  "potential_polarity_basis": "unknown constraint-family polarity",
+  "potential_set_operation": "unchanged",
+  "potential_set_semantics": "allowed",
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -5421,17 +5663,23 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 0,
-    "directional_subtype_basis": "causal family match without interpretable polarity",
+    "analysis_slice_precise": "main_tbox_schema_update",
+    "directional_subtype_basis": null,
     "directional_subtype_precise": null,
     "polarity": "unknown",
-    "polarity_basis": "unknown constraint-family polarity",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "causal family match without interpretable polarity",
+    "potential_directional_subtype_precise": null,
+    "potential_polarity": "unknown",
+    "potential_polarity_basis": "unknown constraint-family polarity",
+    "potential_set_operation": "unchanged",
+    "potential_set_semantics": "allowed",
     "property_ids": [],
     "removed_value_count": 0,
     "result": "SCHEMA_UPDATE",
     "set_operation": "unchanged",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "SCHEMA_UPDATE"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 0,
@@ -5465,7 +5713,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "compatible_property_overlap_with_report_pids": [],
     "compatible_scope_overlap_with_report_values": [],
     "compatible_value_overlap_with_report_qids": [],
-    "directional_subtype_basis": "causal family match without interpretable polarity",
+    "directional_subtype_basis": null,
     "directional_subtype_precise": null,
     "ignored_added_values": [
       "Q2994765",
@@ -5487,7 +5735,13 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "mapped_violation_family": "distinct_values",
     "mapped_violation_reason": "exact_violation_type_mapping",
     "polarity": "unknown",
-    "polarity_basis": "unknown constraint-family polarity",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "causal family match without interpretable polarity",
+    "potential_directional_subtype_precise": null,
+    "potential_polarity": "unknown",
+    "potential_polarity_basis": "unknown constraint-family polarity",
+    "potential_set_operation": "unchanged",
+    "potential_set_semantics": "allowed",
     "property_overlap_with_report_pids": [],
     "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
     "relevant_qualifier_properties": [
@@ -5506,7 +5760,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "unchanged",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "SCHEMA_UPDATE",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "distinct-values constraint",
@@ -5704,7 +5957,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -5736,7 +5989,7 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "compatible_property_overlap_with_report_pids": [],
   "compatible_scope_overlap_with_report_values": [],
   "compatible_value_overlap_with_report_qids": [],
-  "directional_subtype_basis": "causal family match without interpretable polarity",
+  "directional_subtype_basis": null,
   "directional_subtype_precise": null,
   "ignored_added_values": [
     "Q54828449"
@@ -5756,7 +6009,13 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_violation_constraint_qid": "Q53869507",
   "mapped_violation_family": "property_scope",
   "polarity": "unknown",
-  "polarity_basis": "unknown constraint-family polarity",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "causal family match without interpretable polarity",
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": "unknown",
+  "potential_polarity_basis": "unknown constraint-family polarity",
+  "potential_set_operation": "unchanged",
+  "potential_set_semantics": "allowed",
   "property_overlap_with_report_pids": [],
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "scope_overlap_with_report_values": [],
@@ -5811,7 +6070,13 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_constraint_qid": "Q53869507",
   "mapped_report_family": "property_scope",
   "polarity": "unknown",
-  "polarity_basis": "unknown constraint-family polarity",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "causal family match without interpretable polarity",
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": "unknown",
+  "potential_polarity_basis": "unknown constraint-family polarity",
+  "potential_set_operation": "unchanged",
+  "potential_set_semantics": "allowed",
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -5872,17 +6137,23 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 0,
-    "directional_subtype_basis": "causal family match without interpretable polarity",
+    "analysis_slice_precise": "main_tbox_schema_update",
+    "directional_subtype_basis": null,
     "directional_subtype_precise": null,
     "polarity": "unknown",
-    "polarity_basis": "unknown constraint-family polarity",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "causal family match without interpretable polarity",
+    "potential_directional_subtype_precise": null,
+    "potential_polarity": "unknown",
+    "potential_polarity_basis": "unknown constraint-family polarity",
+    "potential_set_operation": "unchanged",
+    "potential_set_semantics": "allowed",
     "property_ids": [],
     "removed_value_count": 0,
     "result": "SCHEMA_UPDATE",
     "set_operation": "unchanged",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "SCHEMA_UPDATE"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 0,
@@ -5916,7 +6187,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "compatible_property_overlap_with_report_pids": [],
     "compatible_scope_overlap_with_report_values": [],
     "compatible_value_overlap_with_report_qids": [],
-    "directional_subtype_basis": "causal family match without interpretable polarity",
+    "directional_subtype_basis": null,
     "directional_subtype_precise": null,
     "ignored_added_values": [
       "Q54828449"
@@ -5937,7 +6208,13 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "mapped_violation_family": "property_scope",
     "mapped_violation_reason": "exact_violation_type_mapping",
     "polarity": "unknown",
-    "polarity_basis": "unknown constraint-family polarity",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "causal family match without interpretable polarity",
+    "potential_directional_subtype_precise": null,
+    "potential_polarity": "unknown",
+    "potential_polarity_basis": "unknown constraint-family polarity",
+    "potential_set_operation": "unchanged",
+    "potential_set_semantics": "allowed",
     "property_overlap_with_report_pids": [],
     "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
     "relevant_qualifier_properties": [
@@ -5956,7 +6233,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "unchanged",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "SCHEMA_UPDATE",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "property scope constraint",
@@ -6229,7 +6505,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -6263,7 +6539,7 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "compatible_value_overlap_with_report_qids": [
     "Q246672"
   ],
-  "directional_subtype_basis": "mixed qualifier-value change",
+  "directional_subtype_basis": null,
   "directional_subtype_precise": null,
   "ignored_added_values": [],
   "ignored_changed_qualifier_properties": [],
@@ -6279,7 +6555,13 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_violation_constraint_qid": "Q21510865",
   "mapped_violation_family": "value_type",
   "polarity": "unknown",
-  "polarity_basis": "both_added_and_removed_values",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "mixed qualifier-value change",
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": "unknown",
+  "potential_polarity_basis": "both_added_and_removed_values",
+  "potential_set_operation": "mixed",
+  "potential_set_semantics": "allowed",
   "property_overlap_with_report_pids": [],
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "scope_overlap_with_report_values": [],
@@ -6342,7 +6624,13 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_constraint_qid": "Q21510865",
   "mapped_report_family": "value_type",
   "polarity": "unknown",
-  "polarity_basis": "both_added_and_removed_values",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "mixed qualifier-value change",
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": "unknown",
+  "potential_polarity_basis": "both_added_and_removed_values",
+  "potential_set_operation": "mixed",
+  "potential_set_semantics": "allowed",
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 1,
   "removed_values": [
@@ -6411,10 +6699,17 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
-    "directional_subtype_basis": "mixed qualifier-value change",
+    "analysis_slice_precise": "main_tbox_schema_update",
+    "directional_subtype_basis": null,
     "directional_subtype_precise": null,
     "polarity": "unknown",
-    "polarity_basis": "both_added_and_removed_values",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "mixed qualifier-value change",
+    "potential_directional_subtype_precise": null,
+    "potential_polarity": "unknown",
+    "potential_polarity_basis": "both_added_and_removed_values",
+    "potential_set_operation": "mixed",
+    "potential_set_semantics": "allowed",
     "property_ids": [
       "P2308"
     ],
@@ -6422,8 +6717,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "SCHEMA_UPDATE",
     "set_operation": "mixed",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "SCHEMA_UPDATE"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
@@ -6463,7 +6757,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "compatible_value_overlap_with_report_qids": [
       "Q246672"
     ],
-    "directional_subtype_basis": "mixed qualifier-value change",
+    "directional_subtype_basis": null,
     "directional_subtype_precise": null,
     "ignored_added_values": [],
     "ignored_changed_qualifier_properties": [],
@@ -6480,7 +6774,13 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "mapped_violation_family": "value_type",
     "mapped_violation_reason": "value_type_prefix_mapping",
     "polarity": "unknown",
-    "polarity_basis": "both_added_and_removed_values",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "mixed qualifier-value change",
+    "potential_directional_subtype_precise": null,
+    "potential_polarity": "unknown",
+    "potential_polarity_basis": "both_added_and_removed_values",
+    "potential_set_operation": "mixed",
+    "potential_set_semantics": "allowed",
     "property_overlap_with_report_pids": [],
     "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
     "relevant_qualifier_properties": [
@@ -6508,7 +6808,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "mixed",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "SCHEMA_UPDATE",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "value-type constraint",
@@ -6699,7 +6998,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -6731,7 +7030,7 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "compatible_property_overlap_with_report_pids": [],
   "compatible_scope_overlap_with_report_values": [],
   "compatible_value_overlap_with_report_qids": [],
-  "directional_subtype_basis": "mixed qualifier-value change",
+  "directional_subtype_basis": null,
   "directional_subtype_precise": null,
   "ignored_added_values": [],
   "ignored_changed_qualifier_properties": [],
@@ -6747,7 +7046,13 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_violation_constraint_qid": "Q21502404",
   "mapped_violation_family": "format",
   "polarity": "unknown",
-  "polarity_basis": "both_added_and_removed_values",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "mixed qualifier-value change",
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": "unknown",
+  "potential_polarity_basis": "both_added_and_removed_values",
+  "potential_set_operation": "mixed",
+  "potential_set_semantics": "unknown",
   "property_overlap_with_report_pids": [],
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "scope_overlap_with_report_values": [],
@@ -6808,7 +7113,13 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_constraint_qid": "Q21502404",
   "mapped_report_family": "format",
   "polarity": "unknown",
-  "polarity_basis": "both_added_and_removed_values",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "mixed qualifier-value change",
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": "unknown",
+  "potential_polarity_basis": "both_added_and_removed_values",
+  "potential_set_operation": "mixed",
+  "potential_set_semantics": "unknown",
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 1,
   "removed_values": [
@@ -6877,10 +7188,17 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
-    "directional_subtype_basis": "mixed qualifier-value change",
+    "analysis_slice_precise": "main_tbox_schema_update",
+    "directional_subtype_basis": null,
     "directional_subtype_precise": null,
     "polarity": "unknown",
-    "polarity_basis": "both_added_and_removed_values",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "mixed qualifier-value change",
+    "potential_directional_subtype_precise": null,
+    "potential_polarity": "unknown",
+    "potential_polarity_basis": "both_added_and_removed_values",
+    "potential_set_operation": "mixed",
+    "potential_set_semantics": "unknown",
     "property_ids": [
       "P1793"
     ],
@@ -6888,8 +7206,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "SCHEMA_UPDATE",
     "set_operation": "mixed",
     "set_semantics": "unknown",
-    "step": "set_semantics",
-    "subtype": "SCHEMA_UPDATE"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
@@ -6927,7 +7244,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "compatible_property_overlap_with_report_pids": [],
     "compatible_scope_overlap_with_report_values": [],
     "compatible_value_overlap_with_report_qids": [],
-    "directional_subtype_basis": "mixed qualifier-value change",
+    "directional_subtype_basis": null,
     "directional_subtype_precise": null,
     "ignored_added_values": [],
     "ignored_changed_qualifier_properties": [],
@@ -6944,7 +7261,13 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "mapped_violation_family": "format",
     "mapped_violation_reason": "exact_violation_type_mapping",
     "polarity": "unknown",
-    "polarity_basis": "both_added_and_removed_values",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "mixed qualifier-value change",
+    "potential_directional_subtype_precise": null,
+    "potential_polarity": "unknown",
+    "potential_polarity_basis": "both_added_and_removed_values",
+    "potential_set_operation": "mixed",
+    "potential_set_semantics": "unknown",
     "property_overlap_with_report_pids": [],
     "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
     "relevant_qualifier_properties": [
@@ -6971,7 +7294,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "mixed",
     "set_semantics": "unknown",
     "step": "tbox_causality",
-    "subtype": "SCHEMA_UPDATE",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "format constraint",
@@ -7242,11 +7564,11 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
-  "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+  "analysis_slice_precise": "main_tbox_schema_update",
   "candidate_violation_mappings_preview": [
     {
       "candidate_causality_match_level": "exact_constraint_family_only",
@@ -7274,8 +7596,8 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "compatible_property_overlap_with_report_pids": [],
   "compatible_scope_overlap_with_report_values": [],
   "compatible_value_overlap_with_report_qids": [],
-  "directional_subtype_basis": "allowed set expansion",
-  "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+  "directional_subtype_basis": null,
+  "directional_subtype_precise": null,
   "ignored_added_values": [],
   "ignored_changed_qualifier_properties": [],
   "ignored_removed_values": [],
@@ -7289,8 +7611,14 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_violation_constraint_label": "type constraint",
   "mapped_violation_constraint_qid": "Q21503250",
   "mapped_violation_family": "type",
-  "polarity": "relaxation",
-  "polarity_basis": "allowed set gained values",
+  "polarity": "unknown",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "allowed set expansion",
+  "potential_directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+  "potential_polarity": "relaxation",
+  "potential_polarity_basis": "allowed set gained values",
+  "potential_set_operation": "expansion",
+  "potential_set_semantics": "allowed",
   "property_overlap_with_report_pids": [],
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "scope_overlap_with_report_values": [],
@@ -7325,7 +7653,7 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "added_values": [
     "Q3249551"
   ],
-  "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+  "analysis_slice_precise": "main_tbox_schema_update",
   "changed_constraint_qids_all": [
     "Q21503250"
   ],
@@ -7338,7 +7666,7 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   ],
   "compatible_overlap_reason": "no_type_compatible_overlap",
   "compatible_overlap_used": false,
-  "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+  "directional_subtype_precise": null,
   "ignored_added_values": [],
   "ignored_changed_qualifier_properties": [],
   "ignored_removed_values": [],
@@ -7348,8 +7676,14 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_constraint_label": "type constraint",
   "mapped_report_constraint_qid": "Q21503250",
   "mapped_report_family": "type",
-  "polarity": "relaxation",
-  "polarity_basis": "allowed set gained values",
+  "polarity": "unknown",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "allowed set expansion",
+  "potential_directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+  "potential_polarity": "relaxation",
+  "potential_polarity_basis": "allowed set gained values",
+  "potential_set_operation": "expansion",
+  "potential_set_semantics": "allowed",
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -7414,10 +7748,17 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
-    "directional_subtype_basis": "allowed set expansion",
-    "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
-    "polarity": "relaxation",
-    "polarity_basis": "allowed set gained values",
+    "analysis_slice_precise": "main_tbox_schema_update",
+    "directional_subtype_basis": null,
+    "directional_subtype_precise": null,
+    "polarity": "unknown",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "allowed set expansion",
+    "potential_directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+    "potential_polarity": "relaxation",
+    "potential_polarity_basis": "allowed set gained values",
+    "potential_set_operation": "expansion",
+    "potential_set_semantics": "allowed",
     "property_ids": [
       "P2308"
     ],
@@ -7425,15 +7766,14 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "SCHEMA_UPDATE",
     "set_operation": "expansion",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "RELAXATION_SET_EXPANSION"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
     "added_values": [
       "Q3249551"
     ],
-    "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+    "analysis_slice_precise": "main_tbox_schema_update",
     "candidate_violation_mappings_preview": [
       {
         "candidate_causality_match_level": "exact_constraint_family_only",
@@ -7464,8 +7804,8 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "compatible_property_overlap_with_report_pids": [],
     "compatible_scope_overlap_with_report_values": [],
     "compatible_value_overlap_with_report_qids": [],
-    "directional_subtype_basis": "allowed set expansion",
-    "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+    "directional_subtype_basis": null,
+    "directional_subtype_precise": null,
     "ignored_added_values": [],
     "ignored_changed_qualifier_properties": [],
     "ignored_removed_values": [],
@@ -7480,8 +7820,14 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "mapped_violation_constraint_qid": "Q21503250",
     "mapped_violation_family": "type",
     "mapped_violation_reason": "type_prefix_mapping",
-    "polarity": "relaxation",
-    "polarity_basis": "allowed set gained values",
+    "polarity": "unknown",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "allowed set expansion",
+    "potential_directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+    "potential_polarity": "relaxation",
+    "potential_polarity_basis": "allowed set gained values",
+    "potential_set_operation": "expansion",
+    "potential_set_semantics": "allowed",
     "property_overlap_with_report_pids": [],
     "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
     "relevant_qualifier_properties": [
@@ -7505,7 +7851,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "expansion",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "RELAXATION_SET_EXPANSION",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "type constraint",
@@ -7700,11 +8045,11 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
-  "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+  "analysis_slice_precise": "main_tbox_schema_update",
   "candidate_violation_mappings_preview": [
     {
       "candidate_causality_match_level": "exact_constraint_family_only",
@@ -7756,8 +8101,8 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "compatible_property_overlap_with_report_pids": [],
   "compatible_scope_overlap_with_report_values": [],
   "compatible_value_overlap_with_report_qids": [],
-  "directional_subtype_basis": "allowed set expansion",
-  "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+  "directional_subtype_basis": null,
+  "directional_subtype_precise": null,
   "ignored_added_values": [],
   "ignored_changed_qualifier_properties": [],
   "ignored_removed_values": [],
@@ -7771,8 +8116,14 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_violation_constraint_label": "label-in-language constraint",
   "mapped_violation_constraint_qid": "Q108139345",
   "mapped_violation_family": "label_in_language",
-  "polarity": "relaxation",
-  "polarity_basis": "allowed set gained values",
+  "polarity": "unknown",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "allowed set expansion",
+  "potential_directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+  "potential_polarity": "relaxation",
+  "potential_polarity_basis": "allowed set gained values",
+  "potential_set_operation": "expansion",
+  "potential_set_semantics": "allowed",
   "property_overlap_with_report_pids": [],
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "scope_overlap_with_report_values": [],
@@ -7807,7 +8158,7 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "added_values": [
     "mul"
   ],
-  "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+  "analysis_slice_precise": "main_tbox_schema_update",
   "changed_constraint_qids_all": [
     "Q108139345"
   ],
@@ -7820,7 +8171,7 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   ],
   "compatible_overlap_reason": "no_type_compatible_overlap",
   "compatible_overlap_used": false,
-  "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+  "directional_subtype_precise": null,
   "ignored_added_values": [],
   "ignored_changed_qualifier_properties": [],
   "ignored_removed_values": [],
@@ -7830,8 +8181,14 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_constraint_label": "label-in-language constraint",
   "mapped_report_constraint_qid": "Q108139345",
   "mapped_report_family": "label_in_language",
-  "polarity": "relaxation",
-  "polarity_basis": "allowed set gained values",
+  "polarity": "unknown",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "allowed set expansion",
+  "potential_directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+  "potential_polarity": "relaxation",
+  "potential_polarity_basis": "allowed set gained values",
+  "potential_set_operation": "expansion",
+  "potential_set_semantics": "allowed",
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -7896,10 +8253,17 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
-    "directional_subtype_basis": "allowed set expansion",
-    "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
-    "polarity": "relaxation",
-    "polarity_basis": "allowed set gained values",
+    "analysis_slice_precise": "main_tbox_schema_update",
+    "directional_subtype_basis": null,
+    "directional_subtype_precise": null,
+    "polarity": "unknown",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "allowed set expansion",
+    "potential_directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+    "potential_polarity": "relaxation",
+    "potential_polarity_basis": "allowed set gained values",
+    "potential_set_operation": "expansion",
+    "potential_set_semantics": "allowed",
     "property_ids": [
       "P424"
     ],
@@ -7907,15 +8271,14 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "SCHEMA_UPDATE",
     "set_operation": "expansion",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "RELAXATION_SET_EXPANSION"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
     "added_values": [
       "mul"
     ],
-    "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+    "analysis_slice_precise": "main_tbox_schema_update",
     "candidate_violation_mappings_preview": [
       {
         "candidate_causality_match_level": "exact_constraint_family_only",
@@ -7970,8 +8333,8 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "compatible_property_overlap_with_report_pids": [],
     "compatible_scope_overlap_with_report_values": [],
     "compatible_value_overlap_with_report_qids": [],
-    "directional_subtype_basis": "allowed set expansion",
-    "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+    "directional_subtype_basis": null,
+    "directional_subtype_precise": null,
     "ignored_added_values": [],
     "ignored_changed_qualifier_properties": [],
     "ignored_removed_values": [],
@@ -7986,8 +8349,14 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "mapped_violation_constraint_qid": "Q108139345",
     "mapped_violation_family": "label_in_language",
     "mapped_violation_reason": "label_language_report_mapping",
-    "polarity": "relaxation",
-    "polarity_basis": "allowed set gained values",
+    "polarity": "unknown",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "allowed set expansion",
+    "potential_directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+    "potential_polarity": "relaxation",
+    "potential_polarity_basis": "allowed set gained values",
+    "potential_set_operation": "expansion",
+    "potential_set_semantics": "allowed",
     "property_overlap_with_report_pids": [],
     "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
     "relevant_qualifier_properties": [
@@ -8010,7 +8379,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "expansion",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "RELAXATION_SET_EXPANSION",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "label-in-language constraint",
@@ -8196,7 +8564,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -8228,7 +8596,7 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "compatible_property_overlap_with_report_pids": [],
   "compatible_scope_overlap_with_report_values": [],
   "compatible_value_overlap_with_report_qids": [],
-  "directional_subtype_basis": "causal family match without interpretable polarity",
+  "directional_subtype_basis": null,
   "directional_subtype_precise": null,
   "ignored_added_values": [],
   "ignored_changed_qualifier_properties": [
@@ -8254,7 +8622,13 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_violation_constraint_qid": "Q21502410",
   "mapped_violation_family": "distinct_values",
   "polarity": "unknown",
-  "polarity_basis": "unknown constraint-family polarity",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "causal family match without interpretable polarity",
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": "unknown",
+  "potential_polarity_basis": "unknown constraint-family polarity",
+  "potential_set_operation": "unchanged",
+  "potential_set_semantics": "allowed",
   "property_overlap_with_report_pids": [],
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "scope_overlap_with_report_values": [],
@@ -8315,7 +8689,13 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_constraint_qid": "Q21502410",
   "mapped_report_family": "distinct_values",
   "polarity": "unknown",
-  "polarity_basis": "unknown constraint-family polarity",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "causal family match without interpretable polarity",
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": "unknown",
+  "potential_polarity_basis": "unknown constraint-family polarity",
+  "potential_set_operation": "unchanged",
+  "potential_set_semantics": "allowed",
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -8376,17 +8756,23 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 0,
-    "directional_subtype_basis": "causal family match without interpretable polarity",
+    "analysis_slice_precise": "main_tbox_schema_update",
+    "directional_subtype_basis": null,
     "directional_subtype_precise": null,
     "polarity": "unknown",
-    "polarity_basis": "unknown constraint-family polarity",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "causal family match without interpretable polarity",
+    "potential_directional_subtype_precise": null,
+    "potential_polarity": "unknown",
+    "potential_polarity_basis": "unknown constraint-family polarity",
+    "potential_set_operation": "unchanged",
+    "potential_set_semantics": "allowed",
     "property_ids": [],
     "removed_value_count": 0,
     "result": "SCHEMA_UPDATE",
     "set_operation": "unchanged",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "SCHEMA_UPDATE"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 0,
@@ -8420,7 +8806,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "compatible_property_overlap_with_report_pids": [],
     "compatible_scope_overlap_with_report_values": [],
     "compatible_value_overlap_with_report_qids": [],
-    "directional_subtype_basis": "causal family match without interpretable polarity",
+    "directional_subtype_basis": null,
     "directional_subtype_precise": null,
     "ignored_added_values": [],
     "ignored_changed_qualifier_properties": [
@@ -8447,7 +8833,13 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "mapped_violation_family": "distinct_values",
     "mapped_violation_reason": "exact_violation_type_mapping",
     "polarity": "unknown",
-    "polarity_basis": "unknown constraint-family polarity",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "causal family match without interpretable polarity",
+    "potential_directional_subtype_precise": null,
+    "potential_polarity": "unknown",
+    "potential_polarity_basis": "unknown constraint-family polarity",
+    "potential_set_operation": "unchanged",
+    "potential_set_semantics": "allowed",
     "property_overlap_with_report_pids": [],
     "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
     "relevant_qualifier_properties": [
@@ -8466,7 +8858,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "unchanged",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "SCHEMA_UPDATE",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "distinct-values constraint",
@@ -8664,7 +9055,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -8696,7 +9087,7 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "compatible_property_overlap_with_report_pids": [],
   "compatible_scope_overlap_with_report_values": [],
   "compatible_value_overlap_with_report_qids": [],
-  "directional_subtype_basis": "causal family match without interpretable polarity",
+  "directional_subtype_basis": null,
   "directional_subtype_precise": null,
   "ignored_added_values": [
     "Q54828449"
@@ -8716,7 +9107,13 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_violation_constraint_qid": "Q53869507",
   "mapped_violation_family": "property_scope",
   "polarity": "unknown",
-  "polarity_basis": "unknown constraint-family polarity",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "causal family match without interpretable polarity",
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": "unknown",
+  "potential_polarity_basis": "unknown constraint-family polarity",
+  "potential_set_operation": "unchanged",
+  "potential_set_semantics": "allowed",
   "property_overlap_with_report_pids": [],
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "scope_overlap_with_report_values": [],
@@ -8771,7 +9168,13 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_constraint_qid": "Q53869507",
   "mapped_report_family": "property_scope",
   "polarity": "unknown",
-  "polarity_basis": "unknown constraint-family polarity",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "causal family match without interpretable polarity",
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": "unknown",
+  "potential_polarity_basis": "unknown constraint-family polarity",
+  "potential_set_operation": "unchanged",
+  "potential_set_semantics": "allowed",
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -8832,17 +9235,23 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 0,
-    "directional_subtype_basis": "causal family match without interpretable polarity",
+    "analysis_slice_precise": "main_tbox_schema_update",
+    "directional_subtype_basis": null,
     "directional_subtype_precise": null,
     "polarity": "unknown",
-    "polarity_basis": "unknown constraint-family polarity",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "causal family match without interpretable polarity",
+    "potential_directional_subtype_precise": null,
+    "potential_polarity": "unknown",
+    "potential_polarity_basis": "unknown constraint-family polarity",
+    "potential_set_operation": "unchanged",
+    "potential_set_semantics": "allowed",
     "property_ids": [],
     "removed_value_count": 0,
     "result": "SCHEMA_UPDATE",
     "set_operation": "unchanged",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "SCHEMA_UPDATE"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 0,
@@ -8876,7 +9285,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "compatible_property_overlap_with_report_pids": [],
     "compatible_scope_overlap_with_report_values": [],
     "compatible_value_overlap_with_report_qids": [],
-    "directional_subtype_basis": "causal family match without interpretable polarity",
+    "directional_subtype_basis": null,
     "directional_subtype_precise": null,
     "ignored_added_values": [
       "Q54828449"
@@ -8897,7 +9306,13 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "mapped_violation_family": "property_scope",
     "mapped_violation_reason": "exact_violation_type_mapping",
     "polarity": "unknown",
-    "polarity_basis": "unknown constraint-family polarity",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "causal family match without interpretable polarity",
+    "potential_directional_subtype_precise": null,
+    "potential_polarity": "unknown",
+    "potential_polarity_basis": "unknown constraint-family polarity",
+    "potential_set_operation": "unchanged",
+    "potential_set_semantics": "allowed",
     "property_overlap_with_report_pids": [],
     "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
     "relevant_qualifier_properties": [
@@ -8916,7 +9331,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "unchanged",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "SCHEMA_UPDATE",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "property scope constraint",
@@ -9113,7 +9527,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -9145,7 +9559,7 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "compatible_property_overlap_with_report_pids": [],
   "compatible_scope_overlap_with_report_values": [],
   "compatible_value_overlap_with_report_qids": [],
-  "directional_subtype_basis": "causal family match without interpretable polarity",
+  "directional_subtype_basis": null,
   "directional_subtype_precise": null,
   "ignored_added_values": [
     "Q863516"
@@ -9165,7 +9579,13 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_violation_constraint_qid": "Q52558054",
   "mapped_violation_family": "none_of",
   "polarity": "unknown",
-  "polarity_basis": "unknown constraint-family polarity",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "causal family match without interpretable polarity",
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": "unknown",
+  "potential_polarity_basis": "unknown constraint-family polarity",
+  "potential_set_operation": "unchanged",
+  "potential_set_semantics": "forbidden",
   "property_overlap_with_report_pids": [],
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "scope_overlap_with_report_values": [],
@@ -9220,7 +9640,13 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_constraint_qid": "Q52558054",
   "mapped_report_family": "none_of",
   "polarity": "unknown",
-  "polarity_basis": "unknown constraint-family polarity",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "causal family match without interpretable polarity",
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": "unknown",
+  "potential_polarity_basis": "unknown constraint-family polarity",
+  "potential_set_operation": "unchanged",
+  "potential_set_semantics": "forbidden",
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -9281,17 +9707,23 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 0,
-    "directional_subtype_basis": "causal family match without interpretable polarity",
+    "analysis_slice_precise": "main_tbox_schema_update",
+    "directional_subtype_basis": null,
     "directional_subtype_precise": null,
     "polarity": "unknown",
-    "polarity_basis": "unknown constraint-family polarity",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "causal family match without interpretable polarity",
+    "potential_directional_subtype_precise": null,
+    "potential_polarity": "unknown",
+    "potential_polarity_basis": "unknown constraint-family polarity",
+    "potential_set_operation": "unchanged",
+    "potential_set_semantics": "forbidden",
     "property_ids": [],
     "removed_value_count": 0,
     "result": "SCHEMA_UPDATE",
     "set_operation": "unchanged",
     "set_semantics": "forbidden",
-    "step": "set_semantics",
-    "subtype": "SCHEMA_UPDATE"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 0,
@@ -9325,7 +9757,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "compatible_property_overlap_with_report_pids": [],
     "compatible_scope_overlap_with_report_values": [],
     "compatible_value_overlap_with_report_qids": [],
-    "directional_subtype_basis": "causal family match without interpretable polarity",
+    "directional_subtype_basis": null,
     "directional_subtype_precise": null,
     "ignored_added_values": [
       "Q863516"
@@ -9346,7 +9778,13 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "mapped_violation_family": "none_of",
     "mapped_violation_reason": "exact_violation_type_mapping",
     "polarity": "unknown",
-    "polarity_basis": "unknown constraint-family polarity",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "causal family match without interpretable polarity",
+    "potential_directional_subtype_precise": null,
+    "potential_polarity": "unknown",
+    "potential_polarity_basis": "unknown constraint-family polarity",
+    "potential_set_operation": "unchanged",
+    "potential_set_semantics": "forbidden",
     "property_overlap_with_report_pids": [],
     "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
     "relevant_qualifier_properties": [
@@ -9365,7 +9803,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "unchanged",
     "set_semantics": "forbidden",
     "step": "tbox_causality",
-    "subtype": "SCHEMA_UPDATE",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "none-of constraint",
@@ -9564,11 +10001,11 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
-  "analysis_slice_precise": "main_tbox_restriction_forbidden_set_expansion",
+  "analysis_slice_precise": "main_tbox_schema_update",
   "candidate_violation_mappings_preview": [
     {
       "candidate_causality_match_level": "exact_constraint_family_only",
@@ -9596,8 +10033,8 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "compatible_property_overlap_with_report_pids": [],
   "compatible_scope_overlap_with_report_values": [],
   "compatible_value_overlap_with_report_qids": [],
-  "directional_subtype_basis": "forbidden set expansion",
-  "directional_subtype_precise": "RESTRICTION_FORBIDDEN_SET_EXPANSION",
+  "directional_subtype_basis": null,
+  "directional_subtype_precise": null,
   "ignored_added_values": [],
   "ignored_changed_qualifier_properties": [],
   "ignored_removed_values": [],
@@ -9611,8 +10048,14 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_violation_constraint_label": "conflicts-with constraint",
   "mapped_violation_constraint_qid": "Q21502838",
   "mapped_violation_family": "conflicts_with",
-  "polarity": "restriction",
-  "polarity_basis": "forbidden set gained prohibited values",
+  "polarity": "unknown",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "forbidden set expansion",
+  "potential_directional_subtype_precise": "RESTRICTION_FORBIDDEN_SET_EXPANSION",
+  "potential_polarity": "restriction",
+  "potential_polarity_basis": "forbidden set gained prohibited values",
+  "potential_set_operation": "expansion",
+  "potential_set_semantics": "forbidden",
   "property_overlap_with_report_pids": [],
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "scope_overlap_with_report_values": [],
@@ -9653,7 +10096,7 @@ _Public directional subtype is coarse for backward compatibility; use `direction
     "Q20871353",
     "Q253326"
   ],
-  "analysis_slice_precise": "main_tbox_restriction_forbidden_set_expansion",
+  "analysis_slice_precise": "main_tbox_schema_update",
   "changed_constraint_qids_all": [
     "Q21502838"
   ],
@@ -9666,7 +10109,7 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   ],
   "compatible_overlap_reason": "no_type_compatible_overlap",
   "compatible_overlap_used": false,
-  "directional_subtype_precise": "RESTRICTION_FORBIDDEN_SET_EXPANSION",
+  "directional_subtype_precise": null,
   "ignored_added_values": [],
   "ignored_changed_qualifier_properties": [],
   "ignored_removed_values": [],
@@ -9676,8 +10119,14 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_constraint_label": "conflicts-with constraint",
   "mapped_report_constraint_qid": "Q21502838",
   "mapped_report_family": "conflicts_with",
-  "polarity": "restriction",
-  "polarity_basis": "forbidden set gained prohibited values",
+  "polarity": "unknown",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "forbidden set expansion",
+  "potential_directional_subtype_precise": "RESTRICTION_FORBIDDEN_SET_EXPANSION",
+  "potential_polarity": "restriction",
+  "potential_polarity_basis": "forbidden set gained prohibited values",
+  "potential_set_operation": "expansion",
+  "potential_set_semantics": "forbidden",
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -9745,10 +10194,17 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 4,
-    "directional_subtype_basis": "forbidden set expansion",
-    "directional_subtype_precise": "RESTRICTION_FORBIDDEN_SET_EXPANSION",
-    "polarity": "restriction",
-    "polarity_basis": "forbidden set gained prohibited values",
+    "analysis_slice_precise": "main_tbox_schema_update",
+    "directional_subtype_basis": null,
+    "directional_subtype_precise": null,
+    "polarity": "unknown",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "forbidden set expansion",
+    "potential_directional_subtype_precise": "RESTRICTION_FORBIDDEN_SET_EXPANSION",
+    "potential_polarity": "restriction",
+    "potential_polarity_basis": "forbidden set gained prohibited values",
+    "potential_set_operation": "expansion",
+    "potential_set_semantics": "forbidden",
     "property_ids": [
       "P2305"
     ],
@@ -9756,8 +10212,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "SCHEMA_UPDATE",
     "set_operation": "expansion",
     "set_semantics": "forbidden",
-    "step": "set_semantics",
-    "subtype": "RESTRICTION_SET_CONTRACTION"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 4,
@@ -9767,7 +10222,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
       "Q20871353",
       "Q253326"
     ],
-    "analysis_slice_precise": "main_tbox_restriction_forbidden_set_expansion",
+    "analysis_slice_precise": "main_tbox_schema_update",
     "candidate_violation_mappings_preview": [
       {
         "candidate_causality_match_level": "exact_constraint_family_only",
@@ -9798,8 +10253,8 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "compatible_property_overlap_with_report_pids": [],
     "compatible_scope_overlap_with_report_values": [],
     "compatible_value_overlap_with_report_qids": [],
-    "directional_subtype_basis": "forbidden set expansion",
-    "directional_subtype_precise": "RESTRICTION_FORBIDDEN_SET_EXPANSION",
+    "directional_subtype_basis": null,
+    "directional_subtype_precise": null,
     "ignored_added_values": [],
     "ignored_changed_qualifier_properties": [],
     "ignored_removed_values": [],
@@ -9814,8 +10269,14 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "mapped_violation_constraint_qid": "Q21502838",
     "mapped_violation_family": "conflicts_with",
     "mapped_violation_reason": "conflicts_with_prefix_mapping",
-    "polarity": "restriction",
-    "polarity_basis": "forbidden set gained prohibited values",
+    "polarity": "unknown",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "forbidden set expansion",
+    "potential_directional_subtype_precise": "RESTRICTION_FORBIDDEN_SET_EXPANSION",
+    "potential_polarity": "restriction",
+    "potential_polarity_basis": "forbidden set gained prohibited values",
+    "potential_set_operation": "expansion",
+    "potential_set_semantics": "forbidden",
     "property_overlap_with_report_pids": [],
     "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
     "relevant_qualifier_properties": [
@@ -9842,7 +10303,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "expansion",
     "set_semantics": "forbidden",
     "step": "tbox_causality",
-    "subtype": "RESTRICTION_SET_CONTRACTION",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "conflicts-with constraint",
@@ -10037,7 +10497,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -10069,7 +10529,7 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "compatible_property_overlap_with_report_pids": [],
   "compatible_scope_overlap_with_report_values": [],
   "compatible_value_overlap_with_report_qids": [],
-  "directional_subtype_basis": "causal family match without interpretable polarity",
+  "directional_subtype_basis": null,
   "directional_subtype_precise": null,
   "ignored_added_values": [
     "Q54828449"
@@ -10089,7 +10549,13 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_violation_constraint_qid": "Q53869507",
   "mapped_violation_family": "property_scope",
   "polarity": "unknown",
-  "polarity_basis": "unknown constraint-family polarity",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "causal family match without interpretable polarity",
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": "unknown",
+  "potential_polarity_basis": "unknown constraint-family polarity",
+  "potential_set_operation": "unchanged",
+  "potential_set_semantics": "allowed",
   "property_overlap_with_report_pids": [],
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "scope_overlap_with_report_values": [],
@@ -10144,7 +10610,13 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_constraint_qid": "Q53869507",
   "mapped_report_family": "property_scope",
   "polarity": "unknown",
-  "polarity_basis": "unknown constraint-family polarity",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "causal family match without interpretable polarity",
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": "unknown",
+  "potential_polarity_basis": "unknown constraint-family polarity",
+  "potential_set_operation": "unchanged",
+  "potential_set_semantics": "allowed",
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -10205,17 +10677,23 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 0,
-    "directional_subtype_basis": "causal family match without interpretable polarity",
+    "analysis_slice_precise": "main_tbox_schema_update",
+    "directional_subtype_basis": null,
     "directional_subtype_precise": null,
     "polarity": "unknown",
-    "polarity_basis": "unknown constraint-family polarity",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "causal family match without interpretable polarity",
+    "potential_directional_subtype_precise": null,
+    "potential_polarity": "unknown",
+    "potential_polarity_basis": "unknown constraint-family polarity",
+    "potential_set_operation": "unchanged",
+    "potential_set_semantics": "allowed",
     "property_ids": [],
     "removed_value_count": 0,
     "result": "SCHEMA_UPDATE",
     "set_operation": "unchanged",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "SCHEMA_UPDATE"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 0,
@@ -10249,7 +10727,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "compatible_property_overlap_with_report_pids": [],
     "compatible_scope_overlap_with_report_values": [],
     "compatible_value_overlap_with_report_qids": [],
-    "directional_subtype_basis": "causal family match without interpretable polarity",
+    "directional_subtype_basis": null,
     "directional_subtype_precise": null,
     "ignored_added_values": [
       "Q54828449"
@@ -10270,7 +10748,13 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "mapped_violation_family": "property_scope",
     "mapped_violation_reason": "exact_violation_type_mapping",
     "polarity": "unknown",
-    "polarity_basis": "unknown constraint-family polarity",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "causal family match without interpretable polarity",
+    "potential_directional_subtype_precise": null,
+    "potential_polarity": "unknown",
+    "potential_polarity_basis": "unknown constraint-family polarity",
+    "potential_set_operation": "unchanged",
+    "potential_set_semantics": "allowed",
     "property_overlap_with_report_pids": [],
     "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
     "relevant_qualifier_properties": [
@@ -10289,7 +10773,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "unchanged",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "SCHEMA_UPDATE",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "property scope constraint",
@@ -10476,7 +10959,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -10508,7 +10991,7 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "compatible_property_overlap_with_report_pids": [],
   "compatible_scope_overlap_with_report_values": [],
   "compatible_value_overlap_with_report_qids": [],
-  "directional_subtype_basis": "mixed qualifier-value change",
+  "directional_subtype_basis": null,
   "directional_subtype_precise": null,
   "ignored_added_values": [],
   "ignored_changed_qualifier_properties": [],
@@ -10524,7 +11007,13 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_violation_constraint_qid": "Q21510859",
   "mapped_violation_family": "one_of",
   "polarity": "unknown",
-  "polarity_basis": "both_added_and_removed_values",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "mixed qualifier-value change",
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": "unknown",
+  "potential_polarity_basis": "both_added_and_removed_values",
+  "potential_set_operation": "mixed",
+  "potential_set_semantics": "allowed",
   "property_overlap_with_report_pids": [],
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "scope_overlap_with_report_values": [],
@@ -10585,7 +11074,13 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_constraint_qid": "Q21510859",
   "mapped_report_family": "one_of",
   "polarity": "unknown",
-  "polarity_basis": "both_added_and_removed_values",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "mixed qualifier-value change",
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": "unknown",
+  "potential_polarity_basis": "both_added_and_removed_values",
+  "potential_set_operation": "mixed",
+  "potential_set_semantics": "allowed",
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 1,
   "removed_values": [
@@ -10654,10 +11149,17 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
-    "directional_subtype_basis": "mixed qualifier-value change",
+    "analysis_slice_precise": "main_tbox_schema_update",
+    "directional_subtype_basis": null,
     "directional_subtype_precise": null,
     "polarity": "unknown",
-    "polarity_basis": "both_added_and_removed_values",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "mixed qualifier-value change",
+    "potential_directional_subtype_precise": null,
+    "potential_polarity": "unknown",
+    "potential_polarity_basis": "both_added_and_removed_values",
+    "potential_set_operation": "mixed",
+    "potential_set_semantics": "allowed",
     "property_ids": [
       "P2305"
     ],
@@ -10665,8 +11167,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "SCHEMA_UPDATE",
     "set_operation": "mixed",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "SCHEMA_UPDATE"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
@@ -10704,7 +11205,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "compatible_property_overlap_with_report_pids": [],
     "compatible_scope_overlap_with_report_values": [],
     "compatible_value_overlap_with_report_qids": [],
-    "directional_subtype_basis": "mixed qualifier-value change",
+    "directional_subtype_basis": null,
     "directional_subtype_precise": null,
     "ignored_added_values": [],
     "ignored_changed_qualifier_properties": [],
@@ -10721,7 +11222,13 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "mapped_violation_family": "one_of",
     "mapped_violation_reason": "exact_violation_type_mapping",
     "polarity": "unknown",
-    "polarity_basis": "both_added_and_removed_values",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "mixed qualifier-value change",
+    "potential_directional_subtype_precise": null,
+    "potential_polarity": "unknown",
+    "potential_polarity_basis": "both_added_and_removed_values",
+    "potential_set_operation": "mixed",
+    "potential_set_semantics": "allowed",
     "property_overlap_with_report_pids": [],
     "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
     "relevant_qualifier_properties": [
@@ -10748,7 +11255,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "mixed",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "SCHEMA_UPDATE",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "one-of constraint",
@@ -10934,7 +11440,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -10974,7 +11480,7 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "compatible_property_overlap_with_report_pids": [],
   "compatible_scope_overlap_with_report_values": [],
   "compatible_value_overlap_with_report_qids": [],
-  "directional_subtype_basis": "causal family match without interpretable polarity",
+  "directional_subtype_basis": null,
   "directional_subtype_precise": null,
   "ignored_added_values": [],
   "ignored_changed_qualifier_properties": [],
@@ -10990,7 +11496,13 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_violation_constraint_qid": "Q19474404",
   "mapped_violation_family": "single_value",
   "polarity": "unknown",
-  "polarity_basis": "unknown constraint-family polarity",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "causal family match without interpretable polarity",
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": "unknown",
+  "potential_polarity_basis": "unknown constraint-family polarity",
+  "potential_set_operation": "unchanged",
+  "potential_set_semantics": "allowed",
   "property_overlap_with_report_pids": [],
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "scope_overlap_with_report_values": [],
@@ -11041,7 +11553,13 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_constraint_qid": "Q19474404",
   "mapped_report_family": "single_value",
   "polarity": "unknown",
-  "polarity_basis": "unknown constraint-family polarity",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "causal family match without interpretable polarity",
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": "unknown",
+  "potential_polarity_basis": "unknown constraint-family polarity",
+  "potential_set_operation": "unchanged",
+  "potential_set_semantics": "allowed",
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -11104,17 +11622,23 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 0,
-    "directional_subtype_basis": "causal family match without interpretable polarity",
+    "analysis_slice_precise": "main_tbox_schema_update",
+    "directional_subtype_basis": null,
     "directional_subtype_precise": null,
     "polarity": "unknown",
-    "polarity_basis": "unknown constraint-family polarity",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "causal family match without interpretable polarity",
+    "potential_directional_subtype_precise": null,
+    "potential_polarity": "unknown",
+    "potential_polarity_basis": "unknown constraint-family polarity",
+    "potential_set_operation": "unchanged",
+    "potential_set_semantics": "allowed",
     "property_ids": [],
     "removed_value_count": 0,
     "result": "SCHEMA_UPDATE",
     "set_operation": "unchanged",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "SCHEMA_UPDATE"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 0,
@@ -11156,7 +11680,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "compatible_property_overlap_with_report_pids": [],
     "compatible_scope_overlap_with_report_values": [],
     "compatible_value_overlap_with_report_qids": [],
-    "directional_subtype_basis": "causal family match without interpretable polarity",
+    "directional_subtype_basis": null,
     "directional_subtype_precise": null,
     "ignored_added_values": [],
     "ignored_changed_qualifier_properties": [],
@@ -11173,7 +11697,13 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "mapped_violation_family": "single_value",
     "mapped_violation_reason": "exact_violation_type_mapping",
     "polarity": "unknown",
-    "polarity_basis": "unknown constraint-family polarity",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "causal family match without interpretable polarity",
+    "potential_directional_subtype_precise": null,
+    "potential_polarity": "unknown",
+    "potential_polarity_basis": "unknown constraint-family polarity",
+    "potential_set_operation": "unchanged",
+    "potential_set_semantics": "allowed",
     "property_overlap_with_report_pids": [],
     "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
     "relevant_qualifier_properties": [
@@ -11192,7 +11722,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "unchanged",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "SCHEMA_UPDATE",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "single-value constraint",
@@ -11467,7 +11996,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -11501,7 +12030,7 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "compatible_value_overlap_with_report_qids": [
     "Q15265344"
   ],
-  "directional_subtype_basis": "mixed qualifier-value change",
+  "directional_subtype_basis": null,
   "directional_subtype_precise": null,
   "ignored_added_values": [],
   "ignored_changed_qualifier_properties": [],
@@ -11517,7 +12046,13 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_violation_constraint_qid": "Q21510865",
   "mapped_violation_family": "value_type",
   "polarity": "unknown",
-  "polarity_basis": "both_added_and_removed_values",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "mixed qualifier-value change",
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": "unknown",
+  "potential_polarity_basis": "both_added_and_removed_values",
+  "potential_set_operation": "mixed",
+  "potential_set_semantics": "allowed",
   "property_overlap_with_report_pids": [],
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "scope_overlap_with_report_values": [],
@@ -11583,7 +12118,13 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_constraint_qid": "Q21510865",
   "mapped_report_family": "value_type",
   "polarity": "unknown",
-  "polarity_basis": "both_added_and_removed_values",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "mixed qualifier-value change",
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": "unknown",
+  "potential_polarity_basis": "both_added_and_removed_values",
+  "potential_set_operation": "mixed",
+  "potential_set_semantics": "allowed",
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 4,
   "removed_values": [
@@ -11658,10 +12199,17 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
-    "directional_subtype_basis": "mixed qualifier-value change",
+    "analysis_slice_precise": "main_tbox_schema_update",
+    "directional_subtype_basis": null,
     "directional_subtype_precise": null,
     "polarity": "unknown",
-    "polarity_basis": "both_added_and_removed_values",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "mixed qualifier-value change",
+    "potential_directional_subtype_precise": null,
+    "potential_polarity": "unknown",
+    "potential_polarity_basis": "both_added_and_removed_values",
+    "potential_set_operation": "mixed",
+    "potential_set_semantics": "allowed",
     "property_ids": [
       "P2308"
     ],
@@ -11669,8 +12217,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "SCHEMA_UPDATE",
     "set_operation": "mixed",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "SCHEMA_UPDATE"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
@@ -11710,7 +12257,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "compatible_value_overlap_with_report_qids": [
       "Q15265344"
     ],
-    "directional_subtype_basis": "mixed qualifier-value change",
+    "directional_subtype_basis": null,
     "directional_subtype_precise": null,
     "ignored_added_values": [],
     "ignored_changed_qualifier_properties": [],
@@ -11727,7 +12274,13 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "mapped_violation_family": "value_type",
     "mapped_violation_reason": "value_type_prefix_mapping",
     "polarity": "unknown",
-    "polarity_basis": "both_added_and_removed_values",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "mixed qualifier-value change",
+    "potential_directional_subtype_precise": null,
+    "potential_polarity": "unknown",
+    "potential_polarity_basis": "both_added_and_removed_values",
+    "potential_set_operation": "mixed",
+    "potential_set_semantics": "allowed",
     "property_overlap_with_report_pids": [],
     "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
     "relevant_qualifier_properties": [
@@ -11761,7 +12314,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "mixed",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "SCHEMA_UPDATE",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "value-type constraint",
@@ -11921,7 +12473,7 @@ _empty_
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -11953,7 +12505,7 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "compatible_property_overlap_with_report_pids": [],
   "compatible_scope_overlap_with_report_values": [],
   "compatible_value_overlap_with_report_qids": [],
-  "directional_subtype_basis": "causal family match without interpretable polarity",
+  "directional_subtype_basis": null,
   "directional_subtype_precise": null,
   "ignored_added_values": [],
   "ignored_changed_qualifier_properties": [],
@@ -11969,7 +12521,13 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_violation_constraint_qid": "Q52004125",
   "mapped_violation_family": "allowed_entity_types",
   "polarity": "unknown",
-  "polarity_basis": "unknown constraint-family polarity",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "causal family match without interpretable polarity",
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": "unknown",
+  "potential_polarity_basis": "unknown constraint-family polarity",
+  "potential_set_operation": "unchanged",
+  "potential_set_semantics": "allowed",
   "property_overlap_with_report_pids": [],
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "scope_overlap_with_report_values": [],
@@ -12020,7 +12578,13 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_constraint_qid": "Q52004125",
   "mapped_report_family": "allowed_entity_types",
   "polarity": "unknown",
-  "polarity_basis": "unknown constraint-family polarity",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "causal family match without interpretable polarity",
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": "unknown",
+  "potential_polarity_basis": "unknown constraint-family polarity",
+  "potential_set_operation": "unchanged",
+  "potential_set_semantics": "allowed",
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -12083,17 +12647,23 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 0,
-    "directional_subtype_basis": "causal family match without interpretable polarity",
+    "analysis_slice_precise": "main_tbox_schema_update",
+    "directional_subtype_basis": null,
     "directional_subtype_precise": null,
     "polarity": "unknown",
-    "polarity_basis": "unknown constraint-family polarity",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "causal family match without interpretable polarity",
+    "potential_directional_subtype_precise": null,
+    "potential_polarity": "unknown",
+    "potential_polarity_basis": "unknown constraint-family polarity",
+    "potential_set_operation": "unchanged",
+    "potential_set_semantics": "allowed",
     "property_ids": [],
     "removed_value_count": 0,
     "result": "SCHEMA_UPDATE",
     "set_operation": "unchanged",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "SCHEMA_UPDATE"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 0,
@@ -12127,7 +12697,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "compatible_property_overlap_with_report_pids": [],
     "compatible_scope_overlap_with_report_values": [],
     "compatible_value_overlap_with_report_qids": [],
-    "directional_subtype_basis": "causal family match without interpretable polarity",
+    "directional_subtype_basis": null,
     "directional_subtype_precise": null,
     "ignored_added_values": [],
     "ignored_changed_qualifier_properties": [],
@@ -12144,7 +12714,13 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "mapped_violation_family": "allowed_entity_types",
     "mapped_violation_reason": "exact_violation_type_mapping",
     "polarity": "unknown",
-    "polarity_basis": "unknown constraint-family polarity",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "causal family match without interpretable polarity",
+    "potential_directional_subtype_precise": null,
+    "potential_polarity": "unknown",
+    "potential_polarity_basis": "unknown constraint-family polarity",
+    "potential_set_operation": "unchanged",
+    "potential_set_semantics": "allowed",
     "property_overlap_with_report_pids": [],
     "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
     "relevant_qualifier_properties": [
@@ -12164,7 +12740,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "unchanged",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "SCHEMA_UPDATE",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "allowed entity types constraint",
@@ -12439,11 +13014,11 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
-  "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+  "analysis_slice_precise": "main_tbox_schema_update",
   "candidate_violation_mappings_preview": [
     {
       "candidate_causality_match_level": "exact_constraint_family_only",
@@ -12471,8 +13046,8 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "compatible_property_overlap_with_report_pids": [],
   "compatible_scope_overlap_with_report_values": [],
   "compatible_value_overlap_with_report_qids": [],
-  "directional_subtype_basis": "allowed set expansion",
-  "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+  "directional_subtype_basis": null,
+  "directional_subtype_precise": null,
   "ignored_added_values": [],
   "ignored_changed_qualifier_properties": [],
   "ignored_removed_values": [],
@@ -12486,8 +13061,14 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_violation_constraint_label": "type constraint",
   "mapped_violation_constraint_qid": "Q21503250",
   "mapped_violation_family": "type",
-  "polarity": "relaxation",
-  "polarity_basis": "allowed set gained values",
+  "polarity": "unknown",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "allowed set expansion",
+  "potential_directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+  "potential_polarity": "relaxation",
+  "potential_polarity_basis": "allowed set gained values",
+  "potential_set_operation": "expansion",
+  "potential_set_semantics": "allowed",
   "property_overlap_with_report_pids": [],
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "scope_overlap_with_report_values": [],
@@ -12522,7 +13103,7 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "added_values": [
     "Q8274"
   ],
-  "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+  "analysis_slice_precise": "main_tbox_schema_update",
   "changed_constraint_qids_all": [
     "Q21503250"
   ],
@@ -12535,7 +13116,7 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   ],
   "compatible_overlap_reason": "no_type_compatible_overlap",
   "compatible_overlap_used": false,
-  "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+  "directional_subtype_precise": null,
   "ignored_added_values": [],
   "ignored_changed_qualifier_properties": [],
   "ignored_removed_values": [],
@@ -12545,8 +13126,14 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_constraint_label": "type constraint",
   "mapped_report_constraint_qid": "Q21503250",
   "mapped_report_family": "type",
-  "polarity": "relaxation",
-  "polarity_basis": "allowed set gained values",
+  "polarity": "unknown",
+  "polarity_basis": "not active because final T-box subtype is non-directional",
+  "potential_directional_subtype_basis": "allowed set expansion",
+  "potential_directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+  "potential_polarity": "relaxation",
+  "potential_polarity_basis": "allowed set gained values",
+  "potential_set_operation": "expansion",
+  "potential_set_semantics": "allowed",
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -12611,10 +13198,17 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
-    "directional_subtype_basis": "allowed set expansion",
-    "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
-    "polarity": "relaxation",
-    "polarity_basis": "allowed set gained values",
+    "analysis_slice_precise": "main_tbox_schema_update",
+    "directional_subtype_basis": null,
+    "directional_subtype_precise": null,
+    "polarity": "unknown",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "allowed set expansion",
+    "potential_directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+    "potential_polarity": "relaxation",
+    "potential_polarity_basis": "allowed set gained values",
+    "potential_set_operation": "expansion",
+    "potential_set_semantics": "allowed",
     "property_ids": [
       "P2308"
     ],
@@ -12622,15 +13216,14 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "SCHEMA_UPDATE",
     "set_operation": "expansion",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "RELAXATION_SET_EXPANSION"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
     "added_values": [
       "Q8274"
     ],
-    "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+    "analysis_slice_precise": "main_tbox_schema_update",
     "candidate_violation_mappings_preview": [
       {
         "candidate_causality_match_level": "exact_constraint_family_only",
@@ -12661,8 +13254,8 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "compatible_property_overlap_with_report_pids": [],
     "compatible_scope_overlap_with_report_values": [],
     "compatible_value_overlap_with_report_qids": [],
-    "directional_subtype_basis": "allowed set expansion",
-    "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+    "directional_subtype_basis": null,
+    "directional_subtype_precise": null,
     "ignored_added_values": [],
     "ignored_changed_qualifier_properties": [],
     "ignored_removed_values": [],
@@ -12677,8 +13270,14 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "mapped_violation_constraint_qid": "Q21503250",
     "mapped_violation_family": "type",
     "mapped_violation_reason": "type_prefix_mapping",
-    "polarity": "relaxation",
-    "polarity_basis": "allowed set gained values",
+    "polarity": "unknown",
+    "polarity_basis": "not active because final T-box subtype is non-directional",
+    "potential_directional_subtype_basis": "allowed set expansion",
+    "potential_directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+    "potential_polarity": "relaxation",
+    "potential_polarity_basis": "allowed set gained values",
+    "potential_set_operation": "expansion",
+    "potential_set_semantics": "allowed",
     "property_overlap_with_report_pids": [],
     "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
     "relevant_qualifier_properties": [
@@ -12702,7 +13301,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "expansion",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "RELAXATION_SET_EXPANSION",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "type constraint",

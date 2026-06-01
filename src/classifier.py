@@ -996,6 +996,45 @@ def _analysis_slice_precise_for_tbox(step: Dict[str, Any]) -> str:
     return f"main_tbox_{str(subtype).lower()}" if subtype else ""
 
 
+DIRECTIONAL_TBOX_PUBLIC_SUBTYPES = {"RELAXATION_SET_EXPANSION", "RESTRICTION_SET_CONTRACTION"}
+
+
+def _active_and_potential_tbox_direction_details(
+    result: str,
+    polarity_detail: Dict[str, Any],
+) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    if result in DIRECTIONAL_TBOX_PUBLIC_SUBTYPES:
+        active = {
+            "set_semantics": polarity_detail.get("set_semantics"),
+            "set_operation": polarity_detail.get("set_operation"),
+            "polarity": polarity_detail.get("polarity"),
+            "polarity_basis": polarity_detail.get("polarity_basis"),
+            "directional_subtype_basis": polarity_detail.get("directional_subtype_basis"),
+            "directional_subtype_precise": polarity_detail.get("directional_subtype_precise"),
+        }
+        active["analysis_slice_precise"] = _analysis_slice_precise_for_tbox({"result": result, **active})
+        return active, {}
+
+    active = {
+        "set_semantics": polarity_detail.get("set_semantics"),
+        "set_operation": polarity_detail.get("set_operation"),
+        "polarity": "unknown",
+        "polarity_basis": "not active because final T-box subtype is non-directional",
+        "directional_subtype_basis": None,
+        "directional_subtype_precise": None,
+        "analysis_slice_precise": _analysis_slice_precise_for_tbox({"result": result}),
+    }
+    potential = {
+        "potential_set_semantics": polarity_detail.get("set_semantics"),
+        "potential_set_operation": polarity_detail.get("set_operation"),
+        "potential_polarity": polarity_detail.get("polarity"),
+        "potential_polarity_basis": polarity_detail.get("polarity_basis"),
+        "potential_directional_subtype_basis": polarity_detail.get("directional_subtype_basis"),
+        "potential_directional_subtype_precise": polarity_detail.get("directional_subtype_precise"),
+    }
+    return active, potential
+
+
 def _polarity_from_delta(
     *,
     qid: str,
@@ -1457,6 +1496,10 @@ class ConstraintDiffer:
         )
         semantic_has_values = bool(semantic_summary["semantic_added_values"] or semantic_summary["semantic_removed_values"])
         result = polarity_detail["subtype"] if directional_allowed and semantic_has_values else "SCHEMA_UPDATE"
+        active_direction_detail, potential_direction_detail = _active_and_potential_tbox_direction_details(
+            result,
+            polarity_detail,
+        )
         trace.append(
             {
                 "step": "set_semantics",
@@ -1464,7 +1507,8 @@ class ConstraintDiffer:
                 "property_ids": semantic_summary.get("semantic_changed_qualifier_properties"),
                 "added_value_count": len(semantic_summary["semantic_added_values"]),
                 "removed_value_count": len(semantic_summary["semantic_removed_values"]),
-                **polarity_detail,
+                **active_direction_detail,
+                **potential_direction_detail,
             }
         )
         trace.append(
@@ -1476,9 +1520,9 @@ class ConstraintDiffer:
                 "added_value_count": len(semantic_summary["semantic_added_values"]),
                 "removed_value_count": len(semantic_summary["semantic_removed_values"]),
                 "changed_qualifier_properties": semantic_summary.get("semantic_changed_qualifier_properties", []),
-                **polarity_detail,
+                **active_direction_detail,
+                **potential_direction_detail,
                 **causality_detail,
-                "analysis_slice_precise": _analysis_slice_precise_for_tbox({"result": result, **polarity_detail}),
             }
         )
         rationale = (
@@ -1519,6 +1563,12 @@ def _compact_tbox_diff_summary(trace: List[Dict[str, Any]]) -> Dict[str, Any]:
         "polarity_basis": step.get("polarity_basis"),
         "directional_subtype_precise": step.get("directional_subtype_precise"),
         "analysis_slice_precise": step.get("analysis_slice_precise"),
+        "potential_set_semantics": step.get("potential_set_semantics"),
+        "potential_set_operation": step.get("potential_set_operation"),
+        "potential_polarity": step.get("potential_polarity"),
+        "potential_polarity_basis": step.get("potential_polarity_basis"),
+        "potential_directional_subtype_basis": step.get("potential_directional_subtype_basis"),
+        "potential_directional_subtype_precise": step.get("potential_directional_subtype_precise"),
         "semantic_changed_qualifier_properties": step.get("semantic_changed_qualifier_properties"),
         "ignored_changed_qualifier_properties": step.get("ignored_changed_qualifier_properties"),
         "semantic_added_values": step.get("semantic_added_values"),

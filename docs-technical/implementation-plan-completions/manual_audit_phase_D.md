@@ -92,7 +92,7 @@ The audit CSV/JSONL must contain the following columns.
 | `external_evidence_required` | `yes`, `no`, `maybe`, `unclear`, `not_applicable` |
 | `typec_judgment` | `external_confirmed`, `external_by_elimination_ok`, `local_missed`, `unknown_or_incomplete`, `bad_target`, `not_typec` |
 | `typea_judgment` | `clean_rule_or_format`, `delete_ambiguous_ok`, `needs_local_evidence`, `needs_external_evidence`, `overclaimed`, `not_typea` |
-| `typeb_judgment` | `local_confirmed`, `local_false_positive`, `leakage_suspected`, `weak_literal_match`, `not_typeb` |
+| `typeb_judgment` | `local_confirmed`, `local_derived_confirmed`, `local_false_positive`, `leakage_suspected`, `weak_literal_match`, `not_typeb` |
 | `tbox_judgment` | `causal_schema_repair`, `plausible_schema_update`, `coincidental_or_weak`, `causal_confirmed`, `causal_plausible`, `coincidental_confirmed`, `unknown_causality`, `wrong_polarity`, `wrong_constraint_family`, `needs_discussion`, `not_tbox` |
 | `core_recommendation` | `main`, `diagnostic`, `exclude`, `needs_discussion` |
 | `notes` | free text |
@@ -118,6 +118,8 @@ Mark `needs_local_evidence` or `needs_external_evidence` when the delete/update 
 ### TypeB
 
 Mark `local_confirmed` only when the target is clearly available in local graph context.
+
+Mark `local_derived_confirmed` when the target literal is not directly present in local text but is deterministically derived from independent local text. Example: a P8726 Irish Statute Book ID derived from a local description such as `S.I. No. 483/2007` into `2007/si/483/made`.
 
 Mark `weak_literal_match` when local evidence exists only as a short or ambiguous substring.
 

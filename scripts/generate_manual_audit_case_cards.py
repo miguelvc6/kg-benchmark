@@ -260,6 +260,12 @@ def tbox_causality_summary(record: dict[str, Any]) -> dict[str, Any]:
         "directional_subtype_basis",
         "directional_subtype_precise",
         "analysis_slice_precise",
+        "potential_set_semantics",
+        "potential_set_operation",
+        "potential_polarity",
+        "potential_polarity_basis",
+        "potential_directional_subtype_basis",
+        "potential_directional_subtype_precise",
     ]
     return {key: step.get(key) for key in keys if key in step}
 
@@ -296,6 +302,12 @@ def tbox_compact_diff_summary(record: dict[str, Any]) -> dict[str, Any]:
         "polarity_basis": step.get("polarity_basis"),
         "directional_subtype_precise": step.get("directional_subtype_precise"),
         "analysis_slice_precise": step.get("analysis_slice_precise"),
+        "potential_set_semantics": step.get("potential_set_semantics"),
+        "potential_set_operation": step.get("potential_set_operation"),
+        "potential_polarity": step.get("potential_polarity"),
+        "potential_polarity_basis": step.get("potential_polarity_basis"),
+        "potential_directional_subtype_basis": step.get("potential_directional_subtype_basis"),
+        "potential_directional_subtype_precise": step.get("potential_directional_subtype_precise"),
         "semantic_changed_qualifier_properties": step.get("semantic_changed_qualifier_properties"),
         "ignored_changed_qualifier_properties": step.get("ignored_changed_qualifier_properties"),
         "semantic_added_values": step.get("semantic_added_values"),
@@ -627,7 +639,7 @@ def write_stratum_file(
                 [
                     "### T-box Causality",
                     "",
-                    "_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._",
+                    "_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._",
                     "",
                     json_block(tbox_causality_summary(record), max_items=max_list_items),
                     "",
@@ -703,7 +715,7 @@ def main() -> int:
         "",
         "Open one stratum file at a time. Enter final annotations in the CSV copy, not in these Markdown files.",
         "",
-        "For T-box cards, prefer the compact diff summary and causality block. Lean Stage 4 may prune full constraint signatures; public directional subtypes are coarse, while `directional_subtype_precise` carries polarity-specific semantics.",
+        "For T-box cards, prefer the compact diff summary and causality block. Lean Stage 4 may prune full constraint signatures; public directional subtypes are coarse, while active `directional_subtype_precise` carries polarity-specific semantics only for final directional labels. Non-directional schema updates may show `potential_directional_*` debugging fields.",
         "",
         "| Order | Stratum | Cases | File | Size |",
         "|---:|---|---:|---|---:|",

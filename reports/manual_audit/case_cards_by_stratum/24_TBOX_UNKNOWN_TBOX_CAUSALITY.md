@@ -193,7 +193,7 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -302,6 +302,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "required_statement",
   "polarity": null,
   "polarity_basis": null,
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "removed_value_count": null,
   "removed_values": null,
@@ -627,7 +633,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -710,6 +716,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "unknown",
   "polarity": null,
   "polarity_basis": null,
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": null,
   "removed_value_count": null,
   "removed_values": null,
@@ -996,7 +1008,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -1103,6 +1115,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "required_statement",
   "polarity": null,
   "polarity_basis": null,
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "removed_value_count": null,
   "removed_values": null,
@@ -1411,7 +1429,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -1518,6 +1536,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "required_statement",
   "polarity": null,
   "polarity_basis": null,
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "removed_value_count": null,
   "removed_values": null,
@@ -1826,7 +1850,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -1933,6 +1957,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "required_statement",
   "polarity": null,
   "polarity_basis": null,
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "removed_value_count": null,
   "removed_values": null,
@@ -2241,7 +2271,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -2348,6 +2378,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "required_statement",
   "polarity": null,
   "polarity_basis": null,
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "removed_value_count": null,
   "removed_values": null,
@@ -2738,7 +2774,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -2839,6 +2875,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "value_type",
   "polarity": null,
   "polarity_basis": null,
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "removed_value_count": null,
   "removed_values": null,
@@ -3170,7 +3212,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -3271,6 +3313,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "type",
   "polarity": null,
   "polarity_basis": null,
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "removed_value_count": null,
   "removed_values": null,
@@ -3576,7 +3624,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -3683,6 +3731,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "required_statement",
   "polarity": null,
   "polarity_basis": null,
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "removed_value_count": null,
   "removed_values": null,
@@ -4070,7 +4124,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -4171,6 +4225,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "value_type",
   "polarity": null,
   "polarity_basis": null,
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "removed_value_count": null,
   "removed_values": null,
@@ -4530,7 +4590,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -4631,6 +4691,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "type",
   "polarity": null,
   "polarity_basis": null,
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "removed_value_count": null,
   "removed_values": null,
@@ -4954,7 +5020,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -5037,6 +5103,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "unknown",
   "polarity": null,
   "polarity_basis": null,
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": null,
   "removed_value_count": null,
   "removed_values": null,
@@ -5325,7 +5397,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -5408,6 +5480,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "unknown",
   "polarity": null,
   "polarity_basis": null,
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": null,
   "removed_value_count": null,
   "removed_values": null,
@@ -5689,7 +5767,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -5790,6 +5868,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "required_statement",
   "polarity": null,
   "polarity_basis": null,
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "removed_value_count": null,
   "removed_values": null,
@@ -6109,7 +6193,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -6210,6 +6294,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "required_statement",
   "polarity": null,
   "polarity_basis": null,
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "removed_value_count": null,
   "removed_values": null,
@@ -6538,7 +6628,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -6621,6 +6711,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "unknown",
   "polarity": null,
   "polarity_basis": null,
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": null,
   "removed_value_count": null,
   "removed_values": null,
@@ -6999,7 +7095,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -7100,6 +7196,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "type",
   "polarity": null,
   "polarity_basis": null,
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "removed_value_count": null,
   "removed_values": null,
@@ -7429,7 +7531,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -7530,6 +7632,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "type",
   "polarity": null,
   "polarity_basis": null,
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "removed_value_count": null,
   "removed_values": null,
@@ -7849,7 +7957,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -7950,6 +8058,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "required_statement",
   "polarity": null,
   "polarity_basis": null,
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "removed_value_count": null,
   "removed_values": null,
@@ -8347,7 +8461,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -8448,6 +8562,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "type",
   "polarity": null,
   "polarity_basis": null,
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "removed_value_count": null,
   "removed_values": null,
@@ -8747,7 +8867,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -8848,6 +8968,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "required_statement",
   "polarity": null,
   "polarity_basis": null,
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "removed_value_count": null,
   "removed_values": null,
@@ -9167,7 +9293,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -9268,6 +9394,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "required_statement",
   "polarity": null,
   "polarity_basis": null,
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "removed_value_count": null,
   "removed_values": null,
@@ -9570,7 +9702,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -9671,6 +9803,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "required_statement",
   "polarity": null,
   "polarity_basis": null,
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "removed_value_count": null,
   "removed_values": null,
@@ -9998,7 +10136,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -10081,6 +10219,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "unknown",
   "polarity": null,
   "polarity_basis": null,
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": null,
   "removed_value_count": null,
   "removed_values": null,
@@ -10387,7 +10531,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -10470,6 +10614,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "unknown",
   "polarity": null,
   "polarity_basis": null,
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": null,
   "removed_value_count": null,
   "removed_values": null,
@@ -10783,7 +10933,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -10884,6 +11034,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "type",
   "polarity": null,
   "polarity_basis": null,
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "removed_value_count": null,
   "removed_values": null,
@@ -11197,7 +11353,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -11298,6 +11454,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "conflicts_with",
   "polarity": null,
   "polarity_basis": null,
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "removed_value_count": null,
   "removed_values": null,
@@ -11623,7 +11785,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -11706,6 +11868,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "unknown",
   "polarity": null,
   "polarity_basis": null,
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": null,
   "removed_value_count": null,
   "removed_values": null,
@@ -11986,7 +12154,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -12087,6 +12255,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "required_statement",
   "polarity": null,
   "polarity_basis": null,
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "removed_value_count": null,
   "removed_values": null,
@@ -12404,7 +12578,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -12505,6 +12679,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "required_statement",
   "polarity": null,
   "polarity_basis": null,
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_metadata_or_irrelevant_for_family",
   "removed_value_count": null,
   "removed_values": null,

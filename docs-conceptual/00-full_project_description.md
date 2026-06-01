@@ -159,7 +159,7 @@ For T-box cases, the classifier assigns schema-change subtypes such as:
 - coincidental schema change;
 - unknown T-box causality when the reported violation does not map to the changed constraint family or changed qualifier values.
 
-T-box main-score labels require causal constraint-family alignment or type-compatible value/property/language/scope overlap on semantic qualifier changes. Metadata-only qualifier changes, such as constraint status changes, can show that a constraint revision occurred but are not treated as semantic polarity evidence. Directional labels additionally require interpretable polarity for the changed target constraint family; the public directional subtype is coarse, while `directional_subtype_precise` records allowed, forbidden, required, or exception set semantics for analysis.
+T-box main-score labels require causal constraint-family alignment or type-compatible value/property/language/scope overlap on semantic qualifier changes. Metadata-only qualifier changes, such as constraint status changes, can show that a constraint revision occurred but are not treated as semantic polarity evidence. Directional labels additionally require interpretable polarity for the changed target constraint family; the public directional subtype is coarse, while active `directional_subtype_precise` records allowed, forbidden, required, or exception set semantics only for final directional labels.
 
 ### Stage 5. Splits and selection manifests
 

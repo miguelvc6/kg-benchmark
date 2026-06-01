@@ -104,6 +104,12 @@ AUDIT_FIELDNAMES = [
     "set_operation",
     "polarity",
     "polarity_basis",
+    "potential_directional_subtype_precise",
+    "potential_set_semantics",
+    "potential_set_operation",
+    "potential_polarity",
+    "potential_polarity_basis",
+    "potential_directional_subtype_basis",
     "repair_locus_correct",
     "historical_target_well_defined",
     "target_visible_locally",
@@ -250,6 +256,12 @@ def _tbox_metadata_fields(record: dict[str, Any]) -> dict[str, str]:
         "set_operation",
         "polarity",
         "polarity_basis",
+        "potential_directional_subtype_precise",
+        "potential_set_semantics",
+        "potential_set_operation",
+        "potential_polarity",
+        "potential_polarity_basis",
+        "potential_directional_subtype_basis",
     ]
     return {key: _audit_json(step.get(key)) for key in keys}
 

@@ -240,6 +240,24 @@
       ],
       "type": "string"
     },
+    "potential_directional_subtype_basis": {
+      "type": "string"
+    },
+    "potential_directional_subtype_precise": {
+      "type": "string"
+    },
+    "potential_polarity": {
+      "type": "string"
+    },
+    "potential_polarity_basis": {
+      "type": "string"
+    },
+    "potential_set_operation": {
+      "type": "string"
+    },
+    "potential_set_semantics": {
+      "type": "string"
+    },
     "property": {
       "type": "string"
     },
@@ -455,6 +473,12 @@
     "set_operation",
     "polarity",
     "polarity_basis",
+    "potential_directional_subtype_precise",
+    "potential_set_semantics",
+    "potential_set_operation",
+    "potential_polarity",
+    "potential_polarity_basis",
+    "potential_directional_subtype_basis",
     "repair_locus_correct",
     "historical_target_well_defined",
     "target_visible_locally",
@@ -503,7 +527,7 @@
       "max_tbox_per_revision": 5,
       "selected": 450
     },
-    "created_at_utc": "2026-05-30T14:14:54.214079Z",
+    "created_at_utc": "2026-06-01T09:33:42.515528Z",
     "inputs": {
       "classified_benchmark": "data/04_classified_benchmark.jsonl",
       "core_manifest": "reports/benchmark_selection/core_v1_seed_13.json",

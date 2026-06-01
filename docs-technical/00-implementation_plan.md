@@ -17,8 +17,8 @@ The project should proceed with the following decisions fixed unless strong evid
 
 ## 1. Phase A — Project alignment and paper scope
 
-**Completion status:** complete on 2026-05-21  
-**Deliverable:** `00-phase_A_completion.md`  
+**Completion status:** complete on 2026-05-21
+**Deliverable:** `00-phase_A_completion.md`
 **Narrative update:** Section 4 of `00-kg_llm_benchmark.md` has been updated with the finalized operational RQs/hypotheses.
 
 ### Phase A decision summary
@@ -27,9 +27,9 @@ Task A3 should **not** reuse the original hypotheses from `00-kg_llm_benchmark.m
 
 ### Task A1 — Freeze paper 1 scope
 
-**Type:** Research planning / writing  
-**Dependencies:** none  
-**Output:** short internal scope note  
+**Type:** Research planning / writing
+**Dependencies:** none
+**Output:** short internal scope note
 **Status:** complete
 
 Define paper 1 as:
@@ -46,20 +46,20 @@ Explicitly exclude full RAG and Guardian from paper 1 except as future work or c
 
 ### Task A2 — Adopt prior taxonomy vocabulary
 
-**Type:** Research planning / writing  
-**Dependencies:** A1  
-**Output:** taxonomy mapping note  
+**Type:** Research planning / writing
+**Dependencies:** A1
+**Output:** taxonomy mapping note
 **Status:** complete
 
 Create a table mapping repository terms to paper-facing terms:
 
-| Repository term | Paper-facing term | Notes |
-|---|---|---|
-| A_BOX | A-box / instance-level repair | Use prior taxonomy nomenclature. |
-| T_BOX | T-box / schema-level repair | Use prior taxonomy nomenclature. |
-| TypeA | IC-L / rule-implied information condition | Keep TypeA in code if needed. |
-| TypeB | IC-G / local graph-grounded information condition | Keep TypeB in code if needed. |
-| TypeC | IC-E-elim / IC-U / post-audit `EXTERNAL_CONFIRMED` | Must split/qualify. |
+| Repository term | Paper-facing term                                    | Notes                            |
+| --------------- | ---------------------------------------------------- | -------------------------------- |
+| A_BOX           | A-box / instance-level repair                        | Use prior taxonomy nomenclature. |
+| T_BOX           | T-box / schema-level repair                          | Use prior taxonomy nomenclature. |
+| TypeA           | IC-L / rule-implied information condition            | Keep TypeA in code if needed.    |
+| TypeB           | IC-G / local graph-grounded information condition    | Keep TypeB in code if needed.    |
+| TypeC           | IC-E-elim / IC-U / post-audit `EXTERNAL_CONFIRMED` | Must split/qualify.              |
 
 **Acceptance criteria:**
 
@@ -68,8 +68,8 @@ Create a table mapping repository terms to paper-facing terms:
 
 ### Task A3 — Finalize research questions and hypotheses
 
-**Type:** Research planning / writing  
-**Dependencies:** A1, A2  
+**Type:** Research planning / writing
+**Dependencies:** A1, A2
 **Output:** RQ/Hypothesis document section
 
 Use these research questions:
@@ -99,8 +99,8 @@ The redesigned classifier keeps the repository-facing `TypeA`/`TypeB`/`TypeC` la
 
 ### Task B1 — Create classifier audit branch and snapshot current counts
 
-**Type:** Repository implementation / evaluation  
-**Dependencies:** A2  
+**Type:** Repository implementation / evaluation
+**Dependencies:** A2
 **Output:** baseline classifier count report
 **Status:** complete
 
@@ -131,22 +131,22 @@ complete
 
 ### Task B2 — Split Type C subtypes
 
-**Type:** Repository implementation  
-**Dependencies:** B1  
+**Type:** Repository implementation
+**Dependencies:** B1
 **Output:** updated classifier and schema/docs
 **Status:** complete
 
 Replace ordinary TypeC/EXTERNAL fallback with more precise subtypes:
 
-| New subtype | Trigger |
-|---|---|
-| EXTERNAL_BY_ELIMINATION | Historical truth exists, local/rule checks fail, context is sufficient enough for negative evidence. |
-| UNKNOWN_MISSING_WORLD_STATE | No usable world-state context. |
-| UNKNOWN_MISSING_TRUTH | No usable historical truth tokens. |
-| UNKNOWN_CURRENT_VALUE_FALLBACK | Truth was taken from 2026/current-value fallback. |
-| UNKNOWN_UNSUPPORTED_VALUE_SHAPE | Truth exists but cannot be compared by current logic. |
-| UNKNOWN_INCOMPLETE_LOCAL_CONTEXT | Local context is too sparse to claim externality. |
-| EXTERNAL_CONFIRMED | Reserved for manual audit or retrieval-confirmed cases. |
+| New subtype                      | Trigger                                                                                              |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| EXTERNAL_BY_ELIMINATION          | Historical truth exists, local/rule checks fail, context is sufficient enough for negative evidence. |
+| UNKNOWN_MISSING_WORLD_STATE      | No usable world-state context.                                                                       |
+| UNKNOWN_MISSING_TRUTH            | No usable historical truth tokens.                                                                   |
+| UNKNOWN_CURRENT_VALUE_FALLBACK   | Truth was taken from 2026/current-value fallback.                                                    |
+| UNKNOWN_UNSUPPORTED_VALUE_SHAPE  | Truth exists but cannot be compared by current logic.                                                |
+| UNKNOWN_INCOMPLETE_LOCAL_CONTEXT | Local context is too sparse to claim externality.                                                    |
+| EXTERNAL_CONFIRMED               | Reserved for manual audit or retrieval-confirmed cases.                                              |
 
 **Metrics:**
 
@@ -163,8 +163,8 @@ complete
 
 ### Task B3 — Remove or quarantine 2026 truth fallbacks
 
-**Type:** Repository implementation  
-**Dependencies:** B2  
+**Type:** Repository implementation
+**Dependencies:** B2
 **Output:** updated truth extraction function
 **Status:** complete
 
@@ -192,8 +192,8 @@ complete
 
 ### Task B4 — Expand local evidence extraction
 
-**Type:** Repository implementation  
-**Dependencies:** B2  
+**Type:** Repository implementation
+**Dependencies:** B2
 **Output:** updated local context buckets
 **Status:** complete
 
@@ -223,20 +223,20 @@ complete
 
 ### Task B5 — Tighten local literal matching
 
-**Type:** Repository implementation  
-**Dependencies:** B4  
+**Type:** Repository implementation
+**Dependencies:** B4
 **Output:** updated matcher and tests
 **Status:** complete
 
 Implement stricter matching:
 
-| Value type | Rule |
-|---|---|
-| QID/PID | Exact id match only, unless label resolution is explicitly proven. |
-| Full ISO date | Exact date match at sufficient precision. |
-| Short literal < 4 chars | Exact field equality, not substring. |
-| Longer literal | Token-boundary match or exact normalized field match. |
-| Label-resolved QID | Optional, but record resolution source and confidence. |
+| Value type              | Rule                                                               |
+| ----------------------- | ------------------------------------------------------------------ |
+| QID/PID                 | Exact id match only, unless label resolution is explicitly proven. |
+| Full ISO date           | Exact date match at sufficient precision.                          |
+| Short literal < 4 chars | Exact field equality, not substring.                               |
+| Longer literal          | Token-boundary match or exact normalized field match.              |
+| Label-resolved QID      | Optional, but record resolution source and confidence.             |
 
 **Metrics:**
 
@@ -252,20 +252,20 @@ complete
 
 ### Task B6 — Refine Type A delete logic
 
-**Type:** Repository implementation / classifier design  
-**Dependencies:** B2  
+**Type:** Repository implementation / classifier design
+**Dependencies:** B2
 **Output:** delete subtype redesign
 **Status:** complete
 
 Replace unconditional high-confidence TypeA/REJECTION for every delete with refined delete categories:
 
-| Subtype | Meaning |
-|---|---|
-| REJECTION_RULE_INVALID | Rule identifies the value as invalid. |
-| REJECTION_FORMAT_INVALID | Format invalidity justifies deletion or trivial rejection. |
-| DELETE_SELECTION_LOCAL | Choosing what to delete requires local evidence. |
-| DELETE_SELECTION_EXTERNAL | Choosing what to delete requires external evidence. |
-| DELETE_AMBIGUOUS | Not enough evidence to classify confidently. |
+| Subtype                   | Meaning                                                    |
+| ------------------------- | ---------------------------------------------------------- |
+| REJECTION_RULE_INVALID    | Rule identifies the value as invalid.                      |
+| REJECTION_FORMAT_INVALID  | Format invalidity justifies deletion or trivial rejection. |
+| DELETE_SELECTION_LOCAL    | Choosing what to delete requires local evidence.           |
+| DELETE_SELECTION_EXTERNAL | Choosing what to delete requires external evidence.        |
+| DELETE_AMBIGUOUS          | Not enough evidence to classify confidently.               |
 
 **Metrics:**
 
@@ -281,8 +281,8 @@ complete
 
 ### Task B7 — Refine format repair logic
 
-**Type:** Repository implementation / classifier design  
-**Dependencies:** B2  
+**Type:** Repository implementation / classifier design
+**Dependencies:** B2
 **Output:** format subtype redesign
 **Status:** complete
 
@@ -309,21 +309,21 @@ complete
 
 ### Task B8 — Fix/verify range and type/value-type handling
 
-**Type:** Repository implementation / tests  
-**Dependencies:** B2  
+**Type:** Repository implementation / tests
+**Dependencies:** B2
 **Output:** corrected constraint handling and tests
 **Status:** complete
 
 Implement explicit qualifier handling:
 
-| Constraint element | Property |
-|---|---|
-| Minimum quantity/value | P2313 |
-| Maximum quantity/value | P2312 |
-| Minimum date | P2310 |
-| Maximum date | P2311 |
-| Type/value class | P2308 |
-| Type/value relation | P2309 |
+| Constraint element     | Property |
+| ---------------------- | -------- |
+| Minimum quantity/value | P2313    |
+| Maximum quantity/value | P2312    |
+| Minimum date           | P2310    |
+| Maximum date           | P2311    |
+| Type/value class       | P2308    |
+| Type/value relation    | P2309    |
 
 Handle both:
 
@@ -344,8 +344,8 @@ complete
 
 ### Task B9 — Add classifier unit tests
 
-**Type:** Repository implementation / tests  
-**Dependencies:** B2–B8  
+**Type:** Repository implementation / tests
+**Dependencies:** B2–B8
 **Output:** unit-test suite
 **Status:** complete
 
@@ -376,19 +376,19 @@ complete
 
 ### Task B10 — Generate classifier transition matrix
 
-**Type:** Evaluation / analysis  
-**Dependencies:** B2–B9  
+**Type:** Evaluation / analysis
+**Dependencies:** B2–B9
 **Output:** classifier transition report
 **Status:** complete
 
 Compare old and new classifications:
 
-| Transition | Interpretation |
-|---|---|
-| TypeC -> TypeB | Old classifier missed local evidence. |
-| TypeC -> TypeA | Old classifier missed rule evidence. |
-| TypeC -> UNKNOWN | Old classifier overclaimed externality. |
-| TypeA -> TypeB | Old classifier overclaimed logical determinism. |
+| Transition             | Interpretation                                           |
+| ---------------------- | -------------------------------------------------------- |
+| TypeC -> TypeB         | Old classifier missed local evidence.                    |
+| TypeC -> TypeA         | Old classifier missed rule evidence.                     |
+| TypeC -> UNKNOWN       | Old classifier overclaimed externality.                  |
+| TypeA -> TypeB         | Old classifier overclaimed logical determinism.          |
 | TypeA -> TypeC/UNKNOWN | Old classifier overclassified delete/format/range cases. |
 
 **Metrics:**
@@ -421,9 +421,9 @@ Phase B is completed in [`implementation-plan-completions/00-phase_B_completion.
 
 ### Task C1 — Define full/core/dev tier policy
 
-**Type:** Evaluation design / repository implementation  
-**Dependencies:** B10  
-**Output:** tier policy document  
+**Type:** Evaluation design / repository implementation
+**Dependencies:** B10
+**Output:** tier policy document
 **Status:** complete
 
 The full/core/dev/audit policy is defined in `dataset_tiers_and_selection.md`.
@@ -438,22 +438,22 @@ Core v1 is a fixed 4,800-case measurement suite, not a random downsample. It bal
 
 ### Task C2 — Implement core selection manifest
 
-**Type:** Repository implementation  
-**Dependencies:** C1  
-**Output:** `reports/benchmark_selection/core_v1_seed_13.json`  
+**Type:** Repository implementation
+**Dependencies:** C1
+**Output:** `reports/benchmark_selection/core_v1_seed_13.json`
 **Status:** complete
 
 Core v1 target quotas:
 
-| Core group | Quota | Main-score policy |
-|---|---:|---|
-| TypeA clean rule/rejection | 700 | main |
-| TypeA ambiguous delete | 250 | diagnostic only |
-| TypeB local graph-grounded | 1,150 | main |
-| TypeC / `EXTERNAL_BY_ELIMINATION` | 900 | main stress slice, reported as IC-E-elim |
-| T-box directional/schema reform | 1,500 | main, with schema-update separated from directional reforms |
-| T-box coincidental schema change | 300 | diagnostic only |
-| **Total** | **4,800** | mixed |
+| Core group                         |           Quota | Main-score policy                                           |
+| ---------------------------------- | --------------: | ----------------------------------------------------------- |
+| TypeA clean rule/rejection         |             700 | main                                                        |
+| TypeA ambiguous delete             |             250 | diagnostic only                                             |
+| TypeB local graph-grounded         |           1,150 | main                                                        |
+| TypeC /`EXTERNAL_BY_ELIMINATION` |             900 | main stress slice, reported as IC-E-elim                    |
+| T-box directional/schema reform    |           1,500 | main, with schema-update separated from directional reforms |
+| T-box coincidental schema change   |             300 | diagnostic only                                             |
+| **Total**                    | **4,800** | mixed                                                       |
 
 Core caps:
 
@@ -478,24 +478,24 @@ Core caps:
 
 ### Task C3 — Implement dev/pilot selection manifest
 
-**Type:** Repository implementation / prompt development support  
-**Dependencies:** C1  
-**Output:** `reports/benchmark_selection/dev_prompt_v1_seed_13.json`  
+**Type:** Repository implementation / prompt development support
+**Dependencies:** C1
+**Output:** `reports/benchmark_selection/dev_prompt_v1_seed_13.json`
 **Status:** complete
 
 Dev/Pilot v1 target quotas:
 
-| Dev group | Quota |
-|---|---:|
-| TypeA clean rule/rejection | 70 |
-| TypeA ambiguous delete | 40 |
-| TypeB local graph-grounded | 130 |
-| TypeC / `EXTERNAL_BY_ELIMINATION` or `UNKNOWN_*` diagnostic | 120 |
-| T-box relaxation expansion | 80 |
-| T-box restriction contraction | 40 |
-| T-box schema update | 80 |
-| T-box coincidental diagnostic | 40 |
-| **Total** | **600** |
+| Dev group                                                      |         Quota |
+| -------------------------------------------------------------- | ------------: |
+| TypeA clean rule/rejection                                     |            70 |
+| TypeA ambiguous delete                                         |            40 |
+| TypeB local graph-grounded                                     |           130 |
+| TypeC /`EXTERNAL_BY_ELIMINATION` or `UNKNOWN_*` diagnostic |           120 |
+| T-box relaxation expansion                                     |            80 |
+| T-box restriction contraction                                  |            40 |
+| T-box schema update                                            |            80 |
+| T-box coincidental diagnostic                                  |            40 |
+| **Total**                                                | **600** |
 
 Dev is selected before core. Core selection must exclude dev case ids and dev T-box property-revision groups.
 
@@ -514,19 +514,19 @@ Dev is selected before core. Core selection must exclude dev case ids and dev T-
 
 ### Task C4 — Update splitter if needed
 
-**Type:** Repository implementation  
-**Dependencies:** C1–C3  
-**Output:** deterministic group-aware split artifact  
+**Type:** Repository implementation
+**Dependencies:** C1–C3
+**Output:** deterministic group-aware split artifact
 **Status:** complete
 
 Decision: the splitter must become group-aware for any train/dev/test or few-shot exemplar split.
 
 Required group keys:
 
-| Record type | Group key |
-|---|---|
-| T-box | `TBOX::{property}::{property_revision_id}` with fallbacks. |
-| A-box | `ABOX::{qid}::{property}`. |
+| Record type | Group key                                                    |
+| ----------- | ------------------------------------------------------------ |
+| T-box       | `TBOX::{property}::{property_revision_id}` with fallbacks. |
+| A-box       | `ABOX::{qid}::{property}`.                                 |
 
 Required stratification keys:
 
@@ -548,26 +548,26 @@ Required stratification keys:
 
 Phase C is completed in `00-phase_C_completion.md`. The repository implementation is in `src/lib/benchmark_selection.py`, `src/select_benchmark_cases.py`, and the group-key bridge in `src/splitter.py`. The Phase D readiness prompt remains in `00-codex_phase_D_audit.md`.
 
-## 4. Phase D — Manual audit
+## 4. Phase D — Classification audit
 
 ### Task D1 — Build audit sample
 
-**Type:** Manual audit / repository support  
-**Dependencies:** B10, C1  
+**Type:** Manual audit / repository support
+**Dependencies:** B10, C1
 **Output:** audit sample JSONL/CSV
 
 Sample 300–500 cases:
 
-| Stratum | Target count |
-|---|---:|
-| TypeC / EXTERNAL_BY_ELIMINATION, QID truth | 50 |
-| TypeC / EXTERNAL_BY_ELIMINATION, literal truth | 50 |
-| TypeC sparse local graph | 50 |
-| TypeC current-value fallback | all or 50 |
-| TypeA format update | 50 |
-| TypeA delete under single/unique-value constraints | 50 |
-| TypeB local text | 50 |
-| T-box generic schema update | 50 |
+| Stratum                                            | Target count |
+| -------------------------------------------------- | -----------: |
+| TypeC / EXTERNAL_BY_ELIMINATION, QID truth         |           50 |
+| TypeC / EXTERNAL_BY_ELIMINATION, literal truth     |           50 |
+| TypeC sparse local graph                           |           50 |
+| TypeC current-value fallback                       |    all or 50 |
+| TypeA format update                                |           50 |
+| TypeA delete under single/unique-value constraints |           50 |
+| TypeB local text                                   |           50 |
+| T-box generic schema update                        |           50 |
 
 **Metrics:**
 
@@ -581,8 +581,8 @@ Sample 300–500 cases:
 
 ### Task D2 — Create annotation template
 
-**Type:** Manual audit  
-**Dependencies:** D1  
+**Type:** Manual audit
+**Dependencies:** D1
 **Output:** audit spreadsheet or JSON schema
 
 Fields:
@@ -609,10 +609,10 @@ Fields:
 
 - Template supports direct computation of label precision and transition suggestions.
 
-### Task D3 — Execute manual audit
+### Task D3 — Execute classification audit
 
-**Type:** Manual audit  
-**Dependencies:** D2  
+**Type:** Manual audit
+**Dependencies:** D2
 **Output:** audit labels and notes
 
 Audit each sampled case.
@@ -632,8 +632,8 @@ Audit each sampled case.
 
 ### Task D4 — Apply audit-informed filtering/reporting policy
 
-**Type:** Evaluation design / repository implementation  
-**Dependencies:** D3  
+**Type:** Evaluation design / repository implementation
+**Dependencies:** D3
 **Output:** updated core inclusion policy
 
 Define which cases count in main core vs challenge/diagnostic:
@@ -657,8 +657,8 @@ Define which cases count in main core vs challenge/diagnostic:
 
 ### Task E1 — Implement majority and constant-track baselines
 
-**Type:** Repository implementation / evaluation  
-**Dependencies:** C2  
+**Type:** Repository implementation / evaluation
+**Dependencies:** C2
 **Output:** baseline diagnosis predictions
 
 Baselines:
@@ -682,8 +682,8 @@ Baselines:
 
 ### Task E2 — Implement constraint-only Type A baseline
 
-**Type:** Repository implementation / evaluation  
-**Dependencies:** B8, C2  
+**Type:** Repository implementation / evaluation
+**Dependencies:** B8, C2
 **Output:** symbolic repair proposals for supported TypeA cases
 
 Baseline solves only supported deterministic cases:
@@ -706,8 +706,8 @@ Baseline solves only supported deterministic cases:
 
 ### Task E3 — Implement local lookup oracle
 
-**Type:** Repository implementation / evaluation  
-**Dependencies:** B4, C2  
+**Type:** Repository implementation / evaluation
+**Dependencies:** B4, C2
 **Output:** local lookup proposals or oracle labels
 
 This baseline checks whether TypeB labels are operational:
@@ -728,8 +728,8 @@ This baseline checks whether TypeB labels are operational:
 
 ### Task E4 — Implement invalid/do-nothing baseline
 
-**Type:** Repository implementation / evaluation sanity check  
-**Dependencies:** C2  
+**Type:** Repository implementation / evaluation sanity check
+**Dependencies:** C2
 **Output:** invalid or empty proposals
 
 **Metrics:**
@@ -745,21 +745,21 @@ This baseline checks whether TypeB labels are operational:
 
 ### Task F1 — Build prompt-development run matrix
 
-**Type:** Prompt development / evaluation design  
-**Dependencies:** C3, E1–E4  
+**Type:** Prompt development / evaluation design
+**Dependencies:** C3, E1–E4
 **Output:** prompt dev experiment matrix
 
 Use 300–800 dev cases.
 
 Axes:
 
-| Axis | Values |
-|---|---|
-| Representation | hybrid JSON+NL, pure NL, compact table/list, optional Turtle/RDF. |
-| Examples | zero-shot, random same-task 2-shot, same-track 2-shot, matched 2-shot. |
-| Context | logic_only, local_graph, optional minimal_case. |
-| Task | track diagnosis, repair proposal. |
-| Track mode | oracle for proposal dev; diagnosis_routed after diagnosis prompt is stable. |
+| Axis           | Values                                                                      |
+| -------------- | --------------------------------------------------------------------------- |
+| Representation | hybrid JSON+NL, pure NL, compact table/list, optional Turtle/RDF.           |
+| Examples       | zero-shot, random same-task 2-shot, same-track 2-shot, matched 2-shot.      |
+| Context        | logic_only, local_graph, optional minimal_case.                             |
+| Task           | track diagnosis, repair proposal.                                           |
+| Track mode     | oracle for proposal dev; diagnosis_routed after diagnosis prompt is stable. |
 
 **Metrics:**
 
@@ -784,8 +784,8 @@ Axes:
 
 ### Task F2 — Test representation variants
 
-**Type:** Prompt development  
-**Dependencies:** F1  
+**Type:** Prompt development
+**Dependencies:** F1
 **Output:** representation comparison report
 
 Compare:
@@ -815,8 +815,8 @@ Compare:
 
 ### Task F3 — Test example policies
 
-**Type:** Prompt development / few-shot design  
-**Dependencies:** F1, F2  
+**Type:** Prompt development / few-shot design
+**Dependencies:** F1, F2
 **Output:** few-shot policy comparison
 
 Compare:
@@ -859,8 +859,8 @@ Hard exclusions:
 
 ### Task F4 — Test abstention prompt if implemented
 
-**Type:** Prompt development / repository implementation  
-**Dependencies:** B2, F2  
+**Type:** Prompt development / repository implementation
+**Dependencies:** B2, F2
 **Output:** abstention schema and dev results
 
 Add structured abstention for insufficient-evidence cases.
@@ -880,8 +880,8 @@ Add structured abstention for insufficient-evidence cases.
 
 ### Task F5 — Freeze final prompts
 
-**Type:** Prompt development / reproducibility  
-**Dependencies:** F2–F4  
+**Type:** Prompt development / reproducibility
+**Dependencies:** F2–F4
 **Output:** final prompt templates and prompt version id
 
 Freeze:
@@ -903,8 +903,8 @@ Freeze:
 
 ### Task G1 — Dry run on 50–100 cases
 
-**Type:** Evaluation / execution  
-**Dependencies:** F5, C2  
+**Type:** Evaluation / execution
+**Dependencies:** F5, C2
 **Output:** dry-run report
 
 Run final prompts on a tiny stratified sample.
@@ -924,8 +924,8 @@ Run final prompts on a tiny stratified sample.
 
 ### Task G2 — Pilot run on 1,000–1,500 cases
 
-**Type:** Evaluation / execution  
-**Dependencies:** G1  
+**Type:** Evaluation / execution
+**Dependencies:** G1
 **Output:** pilot reasoning-floor summary
 
 Run one local model across:
@@ -950,20 +950,20 @@ Run one local model across:
 
 ### Task G3 — Main local-model run on core
 
-**Type:** Evaluation / execution  
-**Dependencies:** G2  
+**Type:** Evaluation / execution
+**Dependencies:** G2
 **Output:** main local-model results
 
 Run two or three local models on the core dataset.
 
 Axes:
 
-| Axis | Values |
-|---|---|
-| Context | logic_only, local_graph. |
-| Track mode | oracle, diagnosis_routed. |
-| Prompt | final zero-shot contract prompt. |
-| Model | small, medium, and possibly large local instruction models. |
+| Axis       | Values                                                      |
+| ---------- | ----------------------------------------------------------- |
+| Context    | logic_only, local_graph.                                    |
+| Track mode | oracle, diagnosis_routed.                                   |
+| Prompt     | final zero-shot contract prompt.                            |
+| Model      | small, medium, and possibly large local instruction models. |
 
 **Metrics:**
 
@@ -986,8 +986,8 @@ Axes:
 
 ### Task G4 — API reference subset
 
-**Type:** Evaluation / execution  
-**Dependencies:** G2  
+**Type:** Evaluation / execution
+**Dependencies:** G2
 **Output:** API calibration results
 
 Run one API model on 500–1,000 stratified cases.
@@ -1006,8 +1006,8 @@ Run one API model on 500–1,000 stratified cases.
 
 ### Task G5 — Few-shot ablation on core subset
 
-**Type:** Evaluation / prompt ablation  
-**Dependencies:** F3, G3  
+**Type:** Evaluation / prompt ablation
+**Dependencies:** F3, G3
 **Output:** few-shot ablation results
 
 Run zero-shot vs selected few-shot policies on a representative subset or full core if affordable.
@@ -1029,8 +1029,8 @@ Run zero-shot vs selected few-shot policies on a representative subset or full c
 
 ### Task H1 — Aggregate main results
 
-**Type:** Analysis  
-**Dependencies:** G3–G5  
+**Type:** Analysis
+**Dependencies:** G3–G5
 **Output:** main tables
 
 Tables:
@@ -1053,8 +1053,8 @@ Tables:
 
 ### Task H2 — Statistical testing
 
-**Type:** Analysis  
-**Dependencies:** H1  
+**Type:** Analysis
+**Dependencies:** H1
 **Output:** confidence intervals and significance notes
 
 Use:
@@ -1078,8 +1078,8 @@ Use:
 
 ### Task H3 — Failure taxonomy analysis
 
-**Type:** Analysis / manual review  
-**Dependencies:** H1  
+**Type:** Analysis / manual review
+**Dependencies:** H1
 **Output:** failure taxonomy table and examples
 
 Code failures into:
@@ -1110,8 +1110,8 @@ Code failures into:
 
 ### Task H4 — Classifier audit report
 
-**Type:** Analysis / writing  
-**Dependencies:** D3, B10  
+**Type:** Analysis / writing
+**Dependencies:** D3, B10
 **Output:** classifier validation section or appendix
 
 Report:
@@ -1129,8 +1129,8 @@ Report:
 
 ### Task H5 — Dataset card and benchmark documentation
 
-**Type:** Writing / repository documentation  
-**Dependencies:** C2, D4, H1  
+**Type:** Writing / repository documentation
+**Dependencies:** C2, D4, H1
 **Output:** dataset card
 
 Include:
@@ -1155,8 +1155,8 @@ Include:
 
 ### Task I1 — Draft introduction and narrative
 
-**Type:** Writing  
-**Dependencies:** A1–A3, H1  
+**Type:** Writing
+**Dependencies:** A1–A3, H1
 **Output:** introduction draft
 
 Core story:
@@ -1170,8 +1170,8 @@ Core story:
 
 ### Task I2 — Draft benchmark construction section
 
-**Type:** Writing  
-**Dependencies:** B10, C2, D4  
+**Type:** Writing
+**Dependencies:** B10, C2, D4
 **Output:** methods section draft
 
 Include:
@@ -1190,8 +1190,8 @@ Include:
 
 ### Task I3 — Draft tasks and evaluation section
 
-**Type:** Writing  
-**Dependencies:** F5, H1  
+**Type:** Writing
+**Dependencies:** F5, H1
 **Output:** tasks/evaluation section
 
 Include:
@@ -1213,8 +1213,8 @@ Include:
 
 ### Task I4 — Draft experiments section
 
-**Type:** Writing  
-**Dependencies:** G3–G5  
+**Type:** Writing
+**Dependencies:** G3–G5
 **Output:** experiments section
 
 Include:
@@ -1234,8 +1234,8 @@ Include:
 
 ### Task I5 — Draft results and discussion
 
-**Type:** Writing / analysis  
-**Dependencies:** H1–H3  
+**Type:** Writing / analysis
+**Dependencies:** H1–H3
 **Output:** results section
 
 Organize by RQ:
@@ -1255,7 +1255,7 @@ Organize by RQ:
 
 ### Task I6 — Draft limitations
 
-**Type:** Writing  
+**Type:** Writing
 **Dependencies:** all analysis tasks
 **Output:** limitations section
 
@@ -1276,8 +1276,8 @@ Include:
 
 ### Task I7 — Prepare figures and tables
 
-**Type:** Analysis / writing  
-**Dependencies:** H1–H3  
+**Type:** Analysis / writing
+**Dependencies:** H1–H3
 **Output:** camera-ready figures/tables
 
 Recommended figures:
@@ -1305,8 +1305,8 @@ Recommended tables:
 
 ### Task I8 — Internal review and submission package
 
-**Type:** Writing / project management  
-**Dependencies:** I1–I7  
+**Type:** Writing / project management
+**Dependencies:** I1–I7
 **Output:** submission-ready paper and artifacts
 
 Prepare:
@@ -1330,8 +1330,8 @@ Prepare:
 
 ### Task J1 — Guardian-lite contingency experiment
 
-**Type:** Repository implementation / evaluation  
-**Dependencies:** G3, H3  
+**Type:** Repository implementation / evaluation
+**Dependencies:** G3, H3
 **Output:** small verifier-retry experiment, only if needed
 
 Use only if reviews or internal assessment suggest benchmark alone is too weak.
@@ -1362,8 +1362,8 @@ Use 300–500 core cases.
 
 ### Task J2 — Paper 2 design memo
 
-**Type:** Research planning  
-**Dependencies:** H3, J1 optional  
+**Type:** Research planning
+**Dependencies:** H3, J1 optional
 **Output:** RAG/Guardian paper outline
 
 Paper 2 question:
@@ -1372,13 +1372,13 @@ Paper 2 question:
 
 Compare:
 
-| System | Retrieval | Verifier | Retry loop |
-|---|---:|---:|---:|
-| LLM zero-shot | no | no | no |
-| LLM + RAG | yes | no | no |
-| LLM + verifier | no | yes | yes |
-| LLM + RAG + verifier | yes | yes | yes |
-| Symbolic heuristic | no | yes | no |
+| System               | Retrieval | Verifier | Retry loop |
+| -------------------- | --------: | -------: | ---------: |
+| LLM zero-shot        |        no |       no |         no |
+| LLM + RAG            |       yes |       no |         no |
+| LLM + verifier       |        no |      yes |        yes |
+| LLM + RAG + verifier |       yes |      yes |        yes |
+| Symbolic heuristic   |        no |      yes |         no |
 
 **Metrics:**
 

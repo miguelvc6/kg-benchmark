@@ -185,7 +185,7 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -305,6 +305,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "type",
   "polarity": "relaxation",
   "polarity_basis": "allowed set gained values",
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -371,6 +377,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 3,
+    "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
     "directional_subtype_basis": "allowed set expansion",
     "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
     "polarity": "relaxation",
@@ -382,8 +389,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "RELAXATION_SET_EXPANSION",
     "set_operation": "expansion",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "RELAXATION_SET_EXPANSION"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 3,
@@ -470,7 +476,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "expansion",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "RELAXATION_SET_EXPANSION",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "type constraint",
@@ -672,7 +677,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -780,6 +785,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "allowed_qualifier",
   "polarity": "relaxation",
   "polarity_basis": "allowed set gained values",
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -844,6 +855,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
+    "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
     "directional_subtype_basis": "allowed set expansion",
     "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
     "polarity": "relaxation",
@@ -855,8 +867,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "RELAXATION_SET_EXPANSION",
     "set_operation": "expansion",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "RELAXATION_SET_EXPANSION"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
@@ -934,7 +945,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "expansion",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "RELAXATION_SET_EXPANSION",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "allowed qualifiers constraint",
@@ -1115,7 +1125,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -1227,6 +1237,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "allowed_qualifier",
   "polarity": "relaxation",
   "polarity_basis": "allowed set gained values",
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -1293,6 +1309,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 3,
+    "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
     "directional_subtype_basis": "allowed set expansion",
     "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
     "polarity": "relaxation",
@@ -1304,8 +1321,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "RELAXATION_SET_EXPANSION",
     "set_operation": "expansion",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "RELAXATION_SET_EXPANSION"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 3,
@@ -1387,7 +1403,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "expansion",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "RELAXATION_SET_EXPANSION",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "allowed qualifiers constraint",
@@ -1582,7 +1597,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -1690,6 +1705,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "allowed_qualifier",
   "polarity": "relaxation",
   "polarity_basis": "allowed set gained values",
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -1754,6 +1775,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
+    "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
     "directional_subtype_basis": "allowed set expansion",
     "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
     "polarity": "relaxation",
@@ -1765,8 +1787,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "RELAXATION_SET_EXPANSION",
     "set_operation": "expansion",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "RELAXATION_SET_EXPANSION"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
@@ -1844,7 +1865,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "expansion",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "RELAXATION_SET_EXPANSION",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "allowed qualifiers constraint",
@@ -2033,7 +2053,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -2149,6 +2169,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "allowed_qualifier",
   "polarity": "relaxation",
   "polarity_basis": "allowed set gained values",
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -2213,6 +2239,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
+    "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
     "directional_subtype_basis": "allowed set expansion",
     "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
     "polarity": "relaxation",
@@ -2224,8 +2251,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "RELAXATION_SET_EXPANSION",
     "set_operation": "expansion",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "RELAXATION_SET_EXPANSION"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
@@ -2311,7 +2337,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "expansion",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "RELAXATION_SET_EXPANSION",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "allowed qualifiers constraint",
@@ -2508,7 +2533,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -2616,6 +2641,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "allowed_qualifier",
   "polarity": "relaxation",
   "polarity_basis": "allowed set gained values",
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -2680,6 +2711,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
+    "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
     "directional_subtype_basis": "allowed set expansion",
     "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
     "polarity": "relaxation",
@@ -2691,8 +2723,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "RELAXATION_SET_EXPANSION",
     "set_operation": "expansion",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "RELAXATION_SET_EXPANSION"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
@@ -2770,7 +2801,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "expansion",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "RELAXATION_SET_EXPANSION",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "allowed qualifiers constraint",
@@ -2990,7 +3020,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -3110,6 +3140,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "type",
   "polarity": "relaxation",
   "polarity_basis": "allowed set gained values",
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -3174,6 +3210,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
+    "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
     "directional_subtype_basis": "allowed set expansion",
     "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
     "polarity": "relaxation",
@@ -3185,8 +3222,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "RELAXATION_SET_EXPANSION",
     "set_operation": "expansion",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "RELAXATION_SET_EXPANSION"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
@@ -3275,7 +3311,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "expansion",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "RELAXATION_SET_EXPANSION",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "type constraint",
@@ -3472,7 +3507,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -3580,6 +3615,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "allowed_qualifier",
   "polarity": "relaxation",
   "polarity_basis": "allowed set gained values",
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -3644,6 +3685,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
+    "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
     "directional_subtype_basis": "allowed set expansion",
     "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
     "polarity": "relaxation",
@@ -3655,8 +3697,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "RELAXATION_SET_EXPANSION",
     "set_operation": "expansion",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "RELAXATION_SET_EXPANSION"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
@@ -3734,7 +3775,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "expansion",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "RELAXATION_SET_EXPANSION",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "allowed qualifiers constraint",
@@ -3975,7 +4015,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -4087,6 +4127,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "type",
   "polarity": "relaxation",
   "polarity_basis": "allowed set gained values",
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -4151,6 +4197,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
+    "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
     "directional_subtype_basis": "allowed set expansion",
     "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
     "polarity": "relaxation",
@@ -4162,8 +4209,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "RELAXATION_SET_EXPANSION",
     "set_operation": "expansion",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "RELAXATION_SET_EXPANSION"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
@@ -4244,7 +4290,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "expansion",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "RELAXATION_SET_EXPANSION",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "type constraint",
@@ -4445,7 +4490,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -4553,6 +4598,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "allowed_qualifier",
   "polarity": "relaxation",
   "polarity_basis": "allowed set gained values",
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -4617,6 +4668,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
+    "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
     "directional_subtype_basis": "allowed set expansion",
     "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
     "polarity": "relaxation",
@@ -4628,8 +4680,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "RELAXATION_SET_EXPANSION",
     "set_operation": "expansion",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "RELAXATION_SET_EXPANSION"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
@@ -4707,7 +4758,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "expansion",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "RELAXATION_SET_EXPANSION",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "allowed qualifiers constraint",
@@ -4948,7 +4998,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -5060,6 +5110,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "type",
   "polarity": "relaxation",
   "polarity_basis": "allowed set gained values",
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -5124,6 +5180,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
+    "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
     "directional_subtype_basis": "allowed set expansion",
     "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
     "polarity": "relaxation",
@@ -5135,8 +5192,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "RELAXATION_SET_EXPANSION",
     "set_operation": "expansion",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "RELAXATION_SET_EXPANSION"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
@@ -5217,7 +5273,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "expansion",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "RELAXATION_SET_EXPANSION",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "type constraint",
@@ -5438,7 +5493,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -5546,6 +5601,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "allowed_qualifier",
   "polarity": "relaxation",
   "polarity_basis": "allowed set gained values",
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -5610,6 +5671,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
+    "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
     "directional_subtype_basis": "allowed set expansion",
     "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
     "polarity": "relaxation",
@@ -5621,8 +5683,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "RELAXATION_SET_EXPANSION",
     "set_operation": "expansion",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "RELAXATION_SET_EXPANSION"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
@@ -5700,7 +5761,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "expansion",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "RELAXATION_SET_EXPANSION",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "allowed qualifiers constraint",
@@ -5941,7 +6001,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -6053,6 +6113,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "type",
   "polarity": "relaxation",
   "polarity_basis": "allowed set gained values",
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -6117,6 +6183,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
+    "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
     "directional_subtype_basis": "allowed set expansion",
     "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
     "polarity": "relaxation",
@@ -6128,8 +6195,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "RELAXATION_SET_EXPANSION",
     "set_operation": "expansion",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "RELAXATION_SET_EXPANSION"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
@@ -6210,7 +6276,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "expansion",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "RELAXATION_SET_EXPANSION",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "type constraint",
@@ -6453,7 +6518,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -6565,6 +6630,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "type",
   "polarity": "relaxation",
   "polarity_basis": "allowed set gained values",
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -6629,6 +6700,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
+    "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
     "directional_subtype_basis": "allowed set expansion",
     "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
     "polarity": "relaxation",
@@ -6640,8 +6712,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "RELAXATION_SET_EXPANSION",
     "set_operation": "expansion",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "RELAXATION_SET_EXPANSION"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
@@ -6722,7 +6793,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "expansion",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "RELAXATION_SET_EXPANSION",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "type constraint",
@@ -6923,7 +6993,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -7031,6 +7101,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "allowed_qualifier",
   "polarity": "relaxation",
   "polarity_basis": "allowed set gained values",
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -7095,6 +7171,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
+    "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
     "directional_subtype_basis": "allowed set expansion",
     "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
     "polarity": "relaxation",
@@ -7106,8 +7183,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "RELAXATION_SET_EXPANSION",
     "set_operation": "expansion",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "RELAXATION_SET_EXPANSION"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
@@ -7185,7 +7261,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "expansion",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "RELAXATION_SET_EXPANSION",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "allowed qualifiers constraint",
@@ -7460,7 +7535,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -7572,6 +7647,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "type",
   "polarity": "relaxation",
   "polarity_basis": "allowed set gained values",
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -7636,6 +7717,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
+    "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
     "directional_subtype_basis": "allowed set expansion",
     "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
     "polarity": "relaxation",
@@ -7647,8 +7729,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "RELAXATION_SET_EXPANSION",
     "set_operation": "expansion",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "RELAXATION_SET_EXPANSION"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
@@ -7729,7 +7810,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "expansion",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "RELAXATION_SET_EXPANSION",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "type constraint",
@@ -7913,7 +7993,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -8021,6 +8101,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "single_value",
   "polarity": "relaxation",
   "polarity_basis": "allowed set gained values",
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -8085,6 +8171,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
+    "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
     "directional_subtype_basis": "allowed set expansion",
     "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
     "polarity": "relaxation",
@@ -8096,8 +8183,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "RELAXATION_SET_EXPANSION",
     "set_operation": "expansion",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "RELAXATION_SET_EXPANSION"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
@@ -8175,7 +8261,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "expansion",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "RELAXATION_SET_EXPANSION",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "single-value constraint",
@@ -8421,7 +8506,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -8533,6 +8618,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "value_type",
   "polarity": "relaxation",
   "polarity_basis": "allowed set gained values",
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -8597,6 +8688,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
+    "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
     "directional_subtype_basis": "allowed set expansion",
     "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
     "polarity": "relaxation",
@@ -8608,8 +8700,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "RELAXATION_SET_EXPANSION",
     "set_operation": "expansion",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "RELAXATION_SET_EXPANSION"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
@@ -8690,7 +8781,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "expansion",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "RELAXATION_SET_EXPANSION",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "value-type constraint",
@@ -8890,7 +8980,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -8998,6 +9088,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "allowed_qualifier",
   "polarity": "relaxation",
   "polarity_basis": "allowed set gained values",
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -9062,6 +9158,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
+    "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
     "directional_subtype_basis": "allowed set expansion",
     "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
     "polarity": "relaxation",
@@ -9073,8 +9170,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "RELAXATION_SET_EXPANSION",
     "set_operation": "expansion",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "RELAXATION_SET_EXPANSION"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
@@ -9152,7 +9248,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "expansion",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "RELAXATION_SET_EXPANSION",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "allowed qualifiers constraint",
@@ -9393,7 +9488,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -9505,6 +9600,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "type",
   "polarity": "relaxation",
   "polarity_basis": "allowed set gained values",
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -9569,6 +9670,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
+    "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
     "directional_subtype_basis": "allowed set expansion",
     "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
     "polarity": "relaxation",
@@ -9580,8 +9682,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "RELAXATION_SET_EXPANSION",
     "set_operation": "expansion",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "RELAXATION_SET_EXPANSION"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
@@ -9662,7 +9763,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "expansion",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "RELAXATION_SET_EXPANSION",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "type constraint",
@@ -9906,7 +10006,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -10018,6 +10118,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "type",
   "polarity": "relaxation",
   "polarity_basis": "allowed set gained values",
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -10082,6 +10188,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
+    "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
     "directional_subtype_basis": "allowed set expansion",
     "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
     "polarity": "relaxation",
@@ -10093,8 +10200,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "RELAXATION_SET_EXPANSION",
     "set_operation": "expansion",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "RELAXATION_SET_EXPANSION"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
@@ -10175,7 +10281,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "expansion",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "RELAXATION_SET_EXPANSION",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "type constraint",
@@ -10452,7 +10557,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -10564,6 +10669,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "type",
   "polarity": "relaxation",
   "polarity_basis": "allowed set gained values",
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -10628,6 +10739,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
+    "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
     "directional_subtype_basis": "allowed set expansion",
     "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
     "polarity": "relaxation",
@@ -10639,8 +10751,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "RELAXATION_SET_EXPANSION",
     "set_operation": "expansion",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "RELAXATION_SET_EXPANSION"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
@@ -10721,7 +10832,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "expansion",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "RELAXATION_SET_EXPANSION",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "type constraint",
@@ -11010,7 +11120,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -11122,6 +11232,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "value_type",
   "polarity": "relaxation",
   "polarity_basis": "allowed set gained values",
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -11186,6 +11302,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
+    "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
     "directional_subtype_basis": "allowed set expansion",
     "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
     "polarity": "relaxation",
@@ -11197,8 +11314,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "RELAXATION_SET_EXPANSION",
     "set_operation": "expansion",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "RELAXATION_SET_EXPANSION"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
@@ -11279,7 +11395,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "expansion",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "RELAXATION_SET_EXPANSION",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "value-type constraint",
@@ -11467,7 +11582,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -11575,6 +11690,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "allowed_qualifier",
   "polarity": "relaxation",
   "polarity_basis": "allowed set gained values",
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -11639,6 +11760,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
+    "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
     "directional_subtype_basis": "allowed set expansion",
     "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
     "polarity": "relaxation",
@@ -11650,8 +11772,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "RELAXATION_SET_EXPANSION",
     "set_operation": "expansion",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "RELAXATION_SET_EXPANSION"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
@@ -11729,7 +11850,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "expansion",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "RELAXATION_SET_EXPANSION",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "allowed qualifiers constraint",
@@ -11915,7 +12035,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
 
 ### T-box Causality
 
-_Public directional subtype is coarse for backward compatibility; use `directional_subtype_precise` for polarity-specific analysis._
+_Public directional subtype is coarse for backward compatibility. Use active `directional_subtype_precise` for polarity-specific analysis only when the final subtype is directional; `potential_directional_*` fields are debugging context for non-directional schema updates._
 
 ```json
 {
@@ -12023,6 +12143,12 @@ _Public directional subtype is coarse for backward compatibility; use `direction
   "mapped_report_family": "single_value",
   "polarity": "relaxation",
   "polarity_basis": "allowed set gained values",
+  "potential_directional_subtype_basis": null,
+  "potential_directional_subtype_precise": null,
+  "potential_polarity": null,
+  "potential_polarity_basis": null,
+  "potential_set_operation": null,
+  "potential_set_semantics": null,
   "qualifier_filter_reason": "all_changed_qualifiers_are_semantic_for_family",
   "removed_value_count": 0,
   "removed_values": [],
@@ -12087,6 +12213,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
   },
   {
     "added_value_count": 1,
+    "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
     "directional_subtype_basis": "allowed set expansion",
     "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
     "polarity": "relaxation",
@@ -12098,8 +12225,7 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "result": "RELAXATION_SET_EXPANSION",
     "set_operation": "expansion",
     "set_semantics": "allowed",
-    "step": "set_semantics",
-    "subtype": "RELAXATION_SET_EXPANSION"
+    "step": "set_semantics"
   },
   {
     "added_value_count": 1,
@@ -12177,7 +12303,6 @@ _Lean Stage 4 may prune full constraint signatures. Prefer the compact diff summ
     "set_operation": "expansion",
     "set_semantics": "allowed",
     "step": "tbox_causality",
-    "subtype": "RELAXATION_SET_EXPANSION",
     "target_constraint_is_changed": true,
     "target_constraint_is_related_family": false,
     "target_constraint_label": "single-value constraint",

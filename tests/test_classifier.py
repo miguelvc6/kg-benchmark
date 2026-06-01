@@ -1022,7 +1022,7 @@ class ClassifierPhaseBTests(unittest.TestCase):
                 "kind": "T_BOX",
                 "constraint_delta": {
                     "changed_constraint_types": ["Q21510865"],
-                    "signature_before": [{"constraint_qid": "Q21510865", "qualifiers": [{"property_id": "P2308", "values": ["Q5"]}]}],
+                    "signature_before": [{"constraint_qid": "Q21510865", "qualifiers": []}],
                     "signature_after": [{"constraint_qid": "Q21510865", "qualifiers": [{"property_id": "P2308", "values": ["Q5", "Q42"]}, {"property_id": "P2316", "values": ["Q1"]}]}],
                 },
             },
@@ -1043,7 +1043,7 @@ class ClassifierPhaseBTests(unittest.TestCase):
                 "kind": "T_BOX",
                 "constraint_delta": {
                     "changed_constraint_types": ["Q21510865"],
-                    "signature_before": [{"constraint_qid": "Q21510865", "qualifiers": [{"property_id": "P2308", "values": ["Q5"]}]}],
+                    "signature_before": [{"constraint_qid": "Q21510865", "qualifiers": []}],
                     "signature_after": [{"constraint_qid": "Q21510865", "qualifiers": [{"property_id": "P2308", "values": ["Q6"]}]}],
                 },
             },
@@ -1057,6 +1057,10 @@ class ClassifierPhaseBTests(unittest.TestCase):
         self.assertEqual(classification["confidence"], "medium")
         self.assertTrue(causality["value_specific_without_overlap"])
         self.assertEqual(causality["causality_match_level"], "exact_constraint_family_only_no_compatible_overlap")
+        self.assertIsNone(causality["directional_subtype_precise"])
+        self.assertEqual(classification["analysis_slice_precise"], "main_tbox_schema_update")
+        self.assertEqual(causality["analysis_slice_precise"], "main_tbox_schema_update")
+        self.assertEqual(causality["potential_directional_subtype_precise"], "RELAXATION_ALLOWED_SET_EXPANSION")
 
     def test_tbox_related_allowed_entity_target_selected_for_subject_type_report(self):
         repair = _base_repair(
@@ -1135,6 +1139,7 @@ class ClassifierPhaseBTests(unittest.TestCase):
 
         self.assertEqual(causality["directional_subtype_precise"], "RELAXATION_ALLOWED_SET_EXPANSION")
         self.assertEqual(classification["analysis_slice_precise"], "main_tbox_relaxation_allowed_set_expansion")
+        self.assertEqual(causality["analysis_slice_precise"], "main_tbox_relaxation_allowed_set_expansion")
 
     def test_tbox_symmetric_mapping_uses_symmetric_constraint_not_self_link(self):
         repair = _base_repair(

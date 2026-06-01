@@ -1,5 +1,5 @@
 {
-  "build_utc": "2026-05-30T13:05:32Z",
+  "build_utc": "2026-06-01T08:19:50Z",
   "inputs": {
     "repairs": "data/02_wikidata_repairs.json",
     "world_state": "data/03_world_state.json",

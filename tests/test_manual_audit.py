@@ -134,6 +134,28 @@ def _write_jsonl(path: Path, rows: list[dict]) -> None:
             handle.write(json.dumps(row) + "\n")
 
 
+def _schema_update_tbox_record(case_id: str = "schema") -> dict:
+    record = _record(case_id, "T_BOX", "SCHEMA_UPDATE", revision_id="schema-r1")
+    record["classification"]["analysis_slice_precise"] = "main_tbox_schema_update"
+    step = record["classification"]["decision_trace"][-1]
+    step.update(
+        {
+            "result": "SCHEMA_UPDATE",
+            "directional_subtype_precise": None,
+            "analysis_slice_precise": "main_tbox_schema_update",
+            "polarity": "unknown",
+            "polarity_basis": "not active because final T-box subtype is non-directional",
+            "potential_directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+            "potential_set_semantics": "allowed",
+            "potential_set_operation": "expansion",
+            "potential_polarity": "relaxation",
+            "potential_polarity_basis": "allowed set gained values",
+            "potential_directional_subtype_basis": "allowed set expansion",
+        }
+    )
+    return record
+
+
 def _write_manifest(path: Path, rows: list[dict]) -> None:
     annotations = {}
     ids = []
@@ -244,6 +266,27 @@ class ManualAuditTests(unittest.TestCase):
             self.assertEqual(sample[0]["semantic_changed_qualifier_properties"], "[\"P2305\"]")
             self.assertEqual(sample[0]["ignored_changed_qualifier_properties"], "[\"P2316\"]")
             self.assertEqual(sample[0]["compatible_overlap_used"], "true")
+
+    def test_schema_update_audit_row_does_not_expose_active_precise_direction(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            rows = [_schema_update_tbox_record("t-schema")]
+            sample, _ = self._build(Path(tmp_dir), rows, {"TBOX_SCHEMA_UPDATE": 1})
+
+            self.assertEqual(sample[0]["analysis_slice_precise"], "main_tbox_schema_update")
+            self.assertEqual(sample[0]["directional_subtype_precise"], "")
+            self.assertEqual(sample[0]["potential_directional_subtype_precise"], "RELAXATION_ALLOWED_SET_EXPANSION")
+
+    def test_schema_update_case_card_keeps_potential_direction_separate(self) -> None:
+        record = _schema_update_tbox_record("t-schema")
+
+        causality = case_card_module.tbox_causality_summary(record)
+        compact = case_card_module.tbox_compact_diff_summary(record)
+
+        self.assertIsNone(causality["directional_subtype_precise"])
+        self.assertEqual(causality["analysis_slice_precise"], "main_tbox_schema_update")
+        self.assertEqual(causality["potential_directional_subtype_precise"], "RELAXATION_ALLOWED_SET_EXPANSION")
+        self.assertIsNone(compact["directional_subtype_precise"])
+        self.assertEqual(compact["analysis_slice_precise"], "main_tbox_schema_update")
 
     def test_max_tbox_revision_cap_is_enforced(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
