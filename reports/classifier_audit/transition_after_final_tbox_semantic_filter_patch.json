@@ -1,0 +1,70 @@
+{
+  "errors_total": 0,
+  "examples": {},
+  "input": "data/04_classified_benchmark.jsonl",
+  "key_counts": {
+    "COINCIDENTAL_SCHEMA_CHANGE": 233429,
+    "EXTERNAL": 0,
+    "EXTERNAL_BY_ELIMINATION": 19430,
+    "FORMAT_NORMALIZATION": 12807,
+    "FORMAT_VALUE_PRUNING": 4930,
+    "LOCAL_FOCUS_PREREPAIR_PROPERTY": 0,
+    "LOCAL_FOCUS_QID": 0,
+    "LOCAL_SELECTION_CONFIRMED": 656,
+    "LOCAL_TEXT": 0,
+    "LOCAL_TEXT_CONFIRMED": 88,
+    "LOCAL_TEXT_DERIVED": 4993,
+    "MULTIPLICITY_NORMALIZATION": 310,
+    "RELAXATION_SET_EXPANSION": 19118,
+    "RESTRICTION_SET_CONTRACTION": 26602,
+    "SCHEMA_UPDATE": 138799,
+    "SET_MEMBERSHIP_REJECTION": 8971,
+    "TARGET_REQUIRED_CLAIM": 760,
+    "UNKNOWN_BAD_TARGET_OR_CONTEXT": 3712,
+    "UNKNOWN_FOCUS_QID_DOMAIN_REASONING": 8,
+    "UNKNOWN_MULTIPLICITY_ARTIFACT": 157,
+    "UNKNOWN_TBOX_CAUSALITY": 38646
+  },
+  "new_tbox_diagnostics": {
+    "cases_where_mapped_report_constraint_differs_from_target": 0,
+    "cases_with_ignored_qualifier_properties": 64923,
+    "cases_with_incompatible_overlap_ignored": 2,
+    "cases_with_value_specific_without_overlap": 101913,
+    "directional_cases_by_directional_subtype_precise": {
+      "RELAXATION_ALLOWED_SET_EXPANSION": 65987,
+      "RELAXATION_FORBIDDEN_SET_CONTRACTION": 2888,
+      "RELAXATION_REQUIRED_SET_CONTRACTION": 12322,
+      "RESTRICTION_ALLOWED_SET_CONTRACTION": 13991,
+      "RESTRICTION_FORBIDDEN_SET_EXPANSION": 138,
+      "RESTRICTION_REQUIRED_SET_EXPANSION": 16501
+    },
+    "directional_cases_by_directional_subtype_precise_note": "public_directional_cases_by_directional_subtype_precise counts only T_BOX public RELAXATION_SET_EXPANSION/RESTRICTION_SET_CONTRACTION records; directional_cases_by_directional_subtype_precise includes all records carrying precise polarity metadata, including SCHEMA_UPDATE downgrades.",
+    "public_directional_cases_by_directional_subtype_precise": {
+      "RELAXATION_ALLOWED_SET_EXPANSION": 4008,
+      "RELAXATION_FORBIDDEN_SET_CONTRACTION": 2881,
+      "RELAXATION_REQUIRED_SET_CONTRACTION": 12229,
+      "RESTRICTION_ALLOWED_SET_CONTRACTION": 12690,
+      "RESTRICTION_FORBIDDEN_SET_EXPANSION": 1,
+      "RESTRICTION_REQUIRED_SET_EXPANSION": 13911
+    }
+  },
+  "notes": [
+    "Lean Stage 4 was regenerated with --no-full-output; data/04_classified_benchmark.jsonl is canonical."
+  ],
+  "records_scanned": 535570,
+  "regression_checks": {
+    "FORMAT_VALUE_PRUNING_retained_pass_regex_false": 0,
+    "P2316_status_only_directional": 0,
+    "P2316_status_only_directional_note": "checked with both semantic_added_values and semantic_removed_values empty",
+    "P8726_LOCAL_TEXT_DERIVED": 4993,
+    "TypeB/LOCAL_FOCUS_PREREPAIR_PROPERTY": 0,
+    "TypeB/LOCAL_TEXT": 0,
+    "TypeC/EXTERNAL": 0,
+    "UNKNOWN_FOCUS_QID_DOMAIN_REASONING": 8,
+    "mixed_SCHEMBL_external_by_elimination": 0,
+    "multiplicity_noncardinality_typea_main": 0,
+    "single_value_multiple_new_external_by_elimination": 0
+  },
+  "report_type": "classifier_delta_transition",
+  "stats": "reports/classifier_stats.json"
+}

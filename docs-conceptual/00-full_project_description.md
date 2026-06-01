@@ -63,19 +63,22 @@ The Phase B classifier redesign materially changed the benchmark interpretation.
 | Full classified records | 535,570 |
 | A-box instance-data repair cases | 78,976 |
 | T-box schema-reform cases | 456,594 |
-| TypeA cases | 17,556 |
-| TypeB local-context cases | 22,409 |
-| TypeC / `EXTERNAL_BY_ELIMINATION` cases | 39,011 |
-| TypeA / `REJECTION_FORMAT_INVALID` | 8,675 |
-| TypeA / `REJECTION_RULE_INVALID` | 34 |
-| TypeA / `LOGICAL` | 31 |
-| TypeA / `DELETE_AMBIGUOUS` | 8,816 |
-| TypeB / `LOCAL_FOCUS_PREREPAIR_PROPERTY` | 12,541 |
-| TypeB / `LOCAL_TEXT` | 9,546 |
-| T-box / `RELAXATION_SET_EXPANSION` | 86,876 |
-| T-box / `RESTRICTION_SET_CONTRACTION` | 2,023 |
-| T-box / `SCHEMA_UPDATE` | 213,802 |
-| T-box / `COINCIDENTAL_SCHEMA_CHANGE` | 153,893 |
+| TypeA cases | 48,085 |
+| TypeB local-context cases | 6,059 |
+| TypeC / `EXTERNAL_BY_ELIMINATION` cases | 19,430 |
+| TypeA / `FORMAT_NORMALIZATION` | 12,807 |
+| TypeA / `FORMAT_VALUE_PRUNING` | 4,930 |
+| TypeA / `SET_MEMBERSHIP_REJECTION` | 8,971 |
+| TypeA / `TARGET_REQUIRED_CLAIM` | 760 |
+| TypeA / `DELETE_AMBIGUOUS` | 16,739 |
+| TypeB / `LOCAL_TEXT_CONFIRMED` | 88 |
+| TypeB / `LOCAL_TEXT_DERIVED` | 4,993 |
+| TypeB / `LOCAL_SELECTION_CONFIRMED` | 656 |
+| T-box / `RELAXATION_SET_EXPANSION` | 19,118 |
+| T-box / `RESTRICTION_SET_CONTRACTION` | 26,602 |
+| T-box / `SCHEMA_UPDATE` | 138,799 |
+| T-box / `COINCIDENTAL_SCHEMA_CHANGE` | 233,429 |
+| T-box / `UNKNOWN_TBOX_CAUSALITY` | 38,646 |
 
 This snapshot has two consequences for the paper:
 
@@ -153,7 +156,10 @@ For T-box cases, the classifier assigns schema-change subtypes such as:
 - allowed set expanded;
 - allowed set contracted;
 - generic schema update;
-- coincidental schema change.
+- coincidental schema change;
+- unknown T-box causality when the reported violation does not map to the changed constraint family or changed qualifier values.
+
+T-box main-score labels require causal constraint-family alignment or type-compatible value/property/language/scope overlap on semantic qualifier changes. Metadata-only qualifier changes, such as constraint status changes, can show that a constraint revision occurred but are not treated as semantic polarity evidence. Directional labels additionally require interpretable polarity for the changed target constraint family; the public directional subtype is coarse, while `directional_subtype_precise` records allowed, forbidden, required, or exception set semantics for analysis.
 
 ### Stage 5. Splits and selection manifests
 
@@ -267,18 +273,17 @@ Phase B status: deletes are no longer automatically treated as clean TypeA rejec
 
 ### Type B: local graph-grounded
 
-Type B repairs are cases where the target truth is available in the focus node or immediate graph neighborhood.
+Type B repairs are cases where the target truth is independently available in the focus node or immediate graph neighborhood.
 
 Local evidence sources include:
 
-- reconstructed pre-repair target-property values;
 - non-target focus-node properties;
 - one-hop neighbor ids;
 - focus-node labels or descriptions;
 - neighbor labels or descriptions;
 - labels for locally referenced ids.
 
-Phase B status: local evidence extraction now includes synthetic pre-repair target-property values, non-target focus-node properties, one-hop neighbor ids, and labels/descriptions for locally referenced ids. TypeB remains an audit target, especially `LOCAL_TEXT` and rare local subtypes.
+Synthetic pre-repair target-property values remain visible in diagnostics, but retained old target-property values are not independent local support. TypeB remains an audit target through refined subtypes such as `LOCAL_TEXT_CONFIRMED`, `LOCAL_TEXT_DERIVED`, and `LOCAL_SELECTION_CONFIRMED`. Rare focus-QID availability is only TypeB when focus identity itself is sufficient; otherwise it is routed to diagnostic `UNKNOWN_FOCUS_QID_DOMAIN_REASONING`.
 
 ### TypeC: `EXTERNAL_BY_ELIMINATION` / IC-U unresolved non-local evidence
 
@@ -302,6 +307,9 @@ Phase B TypeC vocabulary:
 | `UNKNOWN_MISSING_TRUTH` | Historical target truth tokens are unavailable. | Diagnostic or excluded from main score. |
 | `UNKNOWN_CURRENT_VALUE_FALLBACK` | Target would require current-value fallback. | Diagnostic or excluded from main score. |
 | `UNKNOWN_INCOMPLETE_LOCAL_CONTEXT` | Local context is too sparse to interpret the label. | Diagnostic or excluded from main score. |
+| `UNKNOWN_BAD_TARGET_OR_CONTEXT` | Report shape and repaired target conflict, such as single-value reports with multiple new values. | Diagnostic or excluded from main score. |
+| `UNKNOWN_MULTIPLICITY_ARTIFACT` | Multiplicity changed under an unrelated/non-cardinality report. | Diagnostic or excluded from main score. |
+| `UNKNOWN_FORMAT_PRUNING_RETAINED_UNVERIFIED` | Format pruning removed an invalid-looking value but retained values were not regex-verified. | Diagnostic or excluded from main score. |
 | `EXTERNAL_CONFIRMED` | Manual audit or retrieval confirms non-local evidence need. | Future/audit-upgraded label. |
 
 ---

@@ -1,4 +1,5 @@
 import csv
+import importlib.util
 import json
 import tempfile
 import unittest
@@ -15,6 +16,14 @@ from lib.manual_audit import (
     summarize_annotations,
     write_audit_csv,
 )
+
+CASE_CARD_SPEC = importlib.util.spec_from_file_location(
+    "generate_manual_audit_case_cards",
+    Path(__file__).resolve().parents[1] / "scripts" / "generate_manual_audit_case_cards.py",
+)
+case_card_module = importlib.util.module_from_spec(CASE_CARD_SPEC)
+assert CASE_CARD_SPEC and CASE_CARD_SPEC.loader
+CASE_CARD_SPEC.loader.exec_module(case_card_module)
 
 
 def _record(
@@ -63,6 +72,11 @@ def _record(
                 {"step": "branch", "result": branch},
             ],
             "constraint_types": [{"qid": "Q21503250"}],
+            "classification_rule_family": "local_evidence" if cls == "TypeB" else "test",
+            "classification_rule_subfamily": subtype.lower(),
+            "decision_constraint_type_qid": "Q21503250",
+            "decision_constraint_type_label": "type constraint",
+            "decision_constraint_source": "test_fixture",
             "diagnostics": {
                 "truth_source": "repair_target.new_value" if truth_tokens else "none_expected",
                 "truth_tokens": truth_tokens or [],
@@ -72,6 +86,45 @@ def _record(
     }
     if track == "T_BOX":
         record["repair_target"] = {"kind": "T_BOX", "property_revision_id": revision_id}
+        record["classification"]["analysis_slice_precise"] = "main_tbox_relaxation_allowed_set_expansion"
+        record["classification"]["decision_trace"].append(
+            {
+                "step": "tbox_causality",
+                "result": subtype,
+                "selected_violation_name": "One of",
+                "candidate_violation_names": ["One of"],
+                "mapped_report_constraint_qid": "Q21510859",
+                "mapped_report_constraint_label": "one-of constraint",
+                "mapped_report_family": "one_of",
+                "target_constraint_qid": "Q21510859",
+                "target_constraint_label": "one-of constraint",
+                "target_constraint_selection_reason": "mapped_violation_constraint_changed",
+                "target_constraint_selection_confidence": "high",
+                "target_constraint_is_changed": True,
+                "target_constraint_is_related_family": False,
+                "compatible_value_overlap_with_report_qids": ["Q1"],
+                "compatible_property_overlap_with_report_pids": [],
+                "compatible_language_overlap_with_report_langs": [],
+                "compatible_scope_overlap_with_report_values": [],
+                "incompatible_overlap_ignored": {},
+                "value_specific_without_overlap": False,
+                "compatible_overlap_used": True,
+                "compatible_overlap_reason": "one_of_compatible_report_argument_overlap",
+                "semantic_changed_qualifier_properties": ["P2305"],
+                "ignored_changed_qualifier_properties": ["P2316"],
+                "semantic_added_values": ["Q1"],
+                "semantic_removed_values": [],
+                "ignored_added_values": ["Q2"],
+                "ignored_removed_values": [],
+                "qualifier_filter_reason": "family_relevant_qualifiers_kept_metadata_or_irrelevant_qualifiers_ignored",
+                "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+                "set_semantics": "allowed",
+                "set_operation": "expansion",
+                "polarity": "relaxation",
+                "polarity_basis": "allowed set gained values",
+                "analysis_slice_precise": "main_tbox_relaxation_allowed_set_expansion",
+            }
+        )
     return record
 
 
@@ -142,6 +195,56 @@ class ManualAuditTests(unittest.TestCase):
             self.assertEqual(metadata["underfilled_quotas"][0]["selection_stratum"], "TypeA_REJECTION_FORMAT_INVALID")
             self.assertTrue(metadata["warnings"])
 
+    def test_set_membership_rejection_audit_stratum_and_underfill(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            rows = [_record("c1", "TypeA", "SET_MEMBERSHIP_REJECTION")]
+            sample, metadata = self._build(Path(tmp_dir), rows, {"TypeA_SET_MEMBERSHIP_REJECTION": 2})
+
+            self.assertEqual(len(sample), 1)
+            self.assertEqual(sample[0]["selection_stratum"], "TypeA_SET_MEMBERSHIP_REJECTION")
+            self.assertEqual(metadata["underfilled_quotas"][0]["selection_stratum"], "TypeA_SET_MEMBERSHIP_REJECTION")
+
+    def test_local_text_derived_audit_stratum(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            rows = [_record("c1", "TypeB", "LOCAL_TEXT_DERIVED", truth_tokens=["2007/si/483/made"])]
+            sample, _ = self._build(Path(tmp_dir), rows, {"TypeB_LOCAL_TEXT_DERIVED": 1})
+
+            self.assertEqual(sample[0]["selection_stratum"], "TypeB_LOCAL_TEXT_DERIVED")
+            self.assertEqual(sample[0]["classification_rule_family"], "local_evidence")
+
+    def test_tbox_unknown_causality_audit_stratum(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            rows = [_record("t1", "T_BOX", "UNKNOWN_TBOX_CAUSALITY", revision_id="r1")]
+            sample, _ = self._build(Path(tmp_dir), rows, {"TBOX_UNKNOWN_TBOX_CAUSALITY": 1})
+
+            self.assertEqual(sample[0]["selection_stratum"], "TBOX_UNKNOWN_TBOX_CAUSALITY")
+
+    def test_tbox_case_card_compact_diff_summary_uses_diagnostics(self) -> None:
+        record = _record("t1", "T_BOX", "RELAXATION_SET_EXPANSION", revision_id="r1")
+        record["classification"]["diagnostics"]["tbox_diff_summary"] = {
+            "lean_stage4_pruned_full_signatures": True,
+            "target_constraint_qid": "Q21510865",
+            "changed_constraint_qids_all": ["Q21510865"],
+            "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+        }
+
+        summary = case_card_module.tbox_compact_diff_summary(record)
+
+        self.assertTrue(summary["lean_stage4_pruned_full_signatures"])
+        self.assertEqual(summary["target_constraint_qid"], "Q21510865")
+        self.assertEqual(summary["directional_subtype_precise"], "RELAXATION_ALLOWED_SET_EXPANSION")
+
+    def test_audit_row_includes_new_tbox_metadata_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            rows = [_record("t1", "T_BOX", "RELAXATION_SET_EXPANSION", revision_id="r1")]
+            sample, _ = self._build(Path(tmp_dir), rows, {"TBOX_DIRECTIONAL_RELAXATION_OR_RESTRICTION": 1})
+
+            self.assertIn("analysis_slice_precise", sample[0])
+            self.assertEqual(sample[0]["directional_subtype_precise"], "RELAXATION_ALLOWED_SET_EXPANSION")
+            self.assertEqual(sample[0]["semantic_changed_qualifier_properties"], "[\"P2305\"]")
+            self.assertEqual(sample[0]["ignored_changed_qualifier_properties"], "[\"P2316\"]")
+            self.assertEqual(sample[0]["compatible_overlap_used"], "true")
+
     def test_max_tbox_revision_cap_is_enforced(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             rows = [
@@ -198,6 +301,7 @@ class ManualAuditTests(unittest.TestCase):
             schema = audit_annotation_schema(metadata)
             row = dict(sample[0])
             row["typea_judgment"] = "clean_rule_or_format"
+            row["tbox_judgment"] = "unknown_causality"
             row["core_recommendation"] = "main"
 
             validate(instance=row, schema=schema)

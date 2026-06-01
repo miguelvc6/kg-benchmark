@@ -41,7 +41,13 @@
       "causal_schema_repair",
       "plausible_schema_update",
       "coincidental_or_weak",
+      "causal_confirmed",
+      "causal_plausible",
+      "coincidental_confirmed",
+      "unknown_causality",
+      "wrong_polarity",
       "wrong_constraint_family",
+      "needs_discussion",
       "not_tbox"
     ],
     "typea_judgment": [
@@ -54,6 +60,7 @@
     ],
     "typeb_judgment": [
       "local_confirmed",
+      "local_derived_confirmed",
       "local_false_positive",
       "leakage_suspected",
       "weak_literal_match",
@@ -72,16 +79,46 @@
     "analysis_slice": {
       "type": "string"
     },
+    "analysis_slice_precise": {
+      "type": "string"
+    },
     "annotation_timestamp_utc": {
       "type": "string"
     },
     "annotator_id": {
       "type": "string"
     },
+    "candidate_violation_names": {
+      "type": "string"
+    },
     "case_id": {
       "type": "string"
     },
     "class": {
+      "type": "string"
+    },
+    "classification_rule_family": {
+      "type": "string"
+    },
+    "classification_rule_subfamily": {
+      "type": "string"
+    },
+    "compatible_language_overlap_with_report_langs": {
+      "type": "string"
+    },
+    "compatible_overlap_reason": {
+      "type": "string"
+    },
+    "compatible_overlap_used": {
+      "type": "string"
+    },
+    "compatible_property_overlap_with_report_pids": {
+      "type": "string"
+    },
+    "compatible_scope_overlap_with_report_values": {
+      "type": "string"
+    },
+    "compatible_value_overlap_with_report_qids": {
       "type": "string"
     },
     "confidence": {
@@ -104,8 +141,20 @@
     "decision_branch": {
       "type": "string"
     },
+    "decision_constraint_source": {
+      "type": "string"
+    },
+    "decision_constraint_type_label": {
+      "type": "string"
+    },
+    "decision_constraint_type_qid": {
+      "type": "string"
+    },
     "diagnostic_only": {
       "type": "boolean"
+    },
+    "directional_subtype_precise": {
+      "type": "string"
     },
     "external_evidence_required": {
       "enum": [
@@ -143,6 +192,18 @@
       ],
       "type": "string"
     },
+    "ignored_added_values": {
+      "type": "string"
+    },
+    "ignored_changed_qualifier_properties": {
+      "type": "string"
+    },
+    "ignored_removed_values": {
+      "type": "string"
+    },
+    "incompatible_overlap_ignored": {
+      "type": "string"
+    },
     "local_match_kind": {
       "type": "string"
     },
@@ -152,7 +213,22 @@
     "main_score": {
       "type": "boolean"
     },
+    "mapped_report_constraint_label": {
+      "type": "string"
+    },
+    "mapped_report_constraint_qid": {
+      "type": "string"
+    },
+    "mapped_report_family": {
+      "type": "string"
+    },
     "notes": {
+      "type": "string"
+    },
+    "polarity": {
+      "type": "string"
+    },
+    "polarity_basis": {
       "type": "string"
     },
     "popularity_bucket": {
@@ -170,6 +246,9 @@
     "qid": {
       "type": "string"
     },
+    "qualifier_filter_reason": {
+      "type": "string"
+    },
     "repair_locus_correct": {
       "enum": [
         "yes",
@@ -180,10 +259,46 @@
       ],
       "type": "string"
     },
+    "selected_violation_name": {
+      "type": "string"
+    },
     "selection_stratum": {
       "type": "string"
     },
+    "semantic_added_values": {
+      "type": "string"
+    },
+    "semantic_changed_qualifier_properties": {
+      "type": "string"
+    },
+    "semantic_removed_values": {
+      "type": "string"
+    },
+    "set_operation": {
+      "type": "string"
+    },
+    "set_semantics": {
+      "type": "string"
+    },
     "subtype": {
+      "type": "string"
+    },
+    "target_constraint_is_changed": {
+      "type": "string"
+    },
+    "target_constraint_is_related_family": {
+      "type": "string"
+    },
+    "target_constraint_label": {
+      "type": "string"
+    },
+    "target_constraint_qid": {
+      "type": "string"
+    },
+    "target_constraint_selection_confidence": {
+      "type": "string"
+    },
+    "target_constraint_selection_reason": {
       "type": "string"
     },
     "target_visible_locally": {
@@ -202,7 +317,13 @@
         "causal_schema_repair",
         "plausible_schema_update",
         "coincidental_or_weak",
+        "causal_confirmed",
+        "causal_plausible",
+        "coincidental_confirmed",
+        "unknown_causality",
+        "wrong_polarity",
         "wrong_constraint_family",
+        "needs_discussion",
         "not_tbox",
         "unannotated",
         ""
@@ -248,6 +369,7 @@
     "typeb_judgment": {
       "enum": [
         "local_confirmed",
+        "local_derived_confirmed",
         "local_false_positive",
         "leakage_suspected",
         "weak_literal_match",
@@ -269,6 +391,9 @@
         ""
       ],
       "type": "string"
+    },
+    "value_specific_without_overlap": {
+      "type": "string"
     }
   },
   "required": [
@@ -281,10 +406,16 @@
     "confidence",
     "selection_stratum",
     "analysis_slice",
+    "analysis_slice_precise",
     "main_score",
     "diagnostic_only",
     "popularity_bucket",
     "constraint_family",
+    "decision_constraint_type_qid",
+    "decision_constraint_type_label",
+    "decision_constraint_source",
+    "classification_rule_family",
+    "classification_rule_subfamily",
     "truth_source",
     "truth_token_kind",
     "truth_tokens_preview",
@@ -293,6 +424,37 @@
     "local_match_source",
     "tbox_revision_key",
     "group_key",
+    "selected_violation_name",
+    "candidate_violation_names",
+    "mapped_report_constraint_qid",
+    "mapped_report_constraint_label",
+    "mapped_report_family",
+    "target_constraint_qid",
+    "target_constraint_label",
+    "target_constraint_selection_reason",
+    "target_constraint_selection_confidence",
+    "target_constraint_is_changed",
+    "target_constraint_is_related_family",
+    "compatible_value_overlap_with_report_qids",
+    "compatible_property_overlap_with_report_pids",
+    "compatible_language_overlap_with_report_langs",
+    "compatible_scope_overlap_with_report_values",
+    "incompatible_overlap_ignored",
+    "value_specific_without_overlap",
+    "compatible_overlap_used",
+    "compatible_overlap_reason",
+    "semantic_changed_qualifier_properties",
+    "ignored_changed_qualifier_properties",
+    "semantic_added_values",
+    "semantic_removed_values",
+    "ignored_added_values",
+    "ignored_removed_values",
+    "qualifier_filter_reason",
+    "directional_subtype_precise",
+    "set_semantics",
+    "set_operation",
+    "polarity",
+    "polarity_basis",
     "repair_locus_correct",
     "historical_target_well_defined",
     "target_visible_locally",
@@ -310,32 +472,38 @@
   "sampling_metadata": {
     "counts": {
       "by_selection_stratum": {
-        "TBOX_COINCIDENTAL_SCHEMA_CHANGE": 20,
-        "TBOX_DIRECTIONAL_RELAXATION_OR_RESTRICTION": 20,
-        "TBOX_SCHEMA_UPDATE": 20,
-        "TypeA_DELETE_AMBIGUOUS": 40,
-        "TypeA_FORMAT_NORMALIZATION": 35,
-        "TypeA_FORMAT_VALUE_PRUNING": 35,
+        "TBOX_COINCIDENTAL_SCHEMA_CHANGE": 27,
+        "TBOX_DIRECTIONAL_RELAXATION_OR_RESTRICTION": 25,
+        "TBOX_SCHEMA_UPDATE": 26,
+        "TBOX_UNKNOWN_TBOX_CAUSALITY": 30,
+        "TypeA_DELETE_AMBIGUOUS": 27,
+        "TypeA_FORMAT_NORMALIZATION": 26,
+        "TypeA_FORMAT_VALUE_PRUNING": 26,
         "TypeA_MULTIPLICITY_NORMALIZATION": 10,
-        "TypeA_REJECTION_FORMAT_INVALID": 30,
-        "TypeA_SELF_LINK_REJECTION": 20,
-        "TypeB_LOCAL_FOCUS_QID": 15,
-        "TypeB_LOCAL_SELECTION_CONFIRMED": 35,
-        "TypeB_LOCAL_TEXT_CONFIRMED": 40,
-        "TypeC_EXTERNAL_BY_ELIMINATION_LITERAL_TRUTH": 50,
-        "TypeC_EXTERNAL_BY_ELIMINATION_QID_TRUTH": 50,
+        "TypeA_REJECTION_FORMAT_INVALID": 23,
+        "TypeA_SELF_LINK_REJECTION": 15,
+        "TypeA_SET_MEMBERSHIP_REJECTION": 26,
+        "TypeA_TARGET_REQUIRED_CLAIM": 10,
+        "TypeB_LOCAL_SELECTION_CONFIRMED": 30,
+        "TypeB_LOCAL_TEXT_CONFIRMED": 25,
+        "TypeB_LOCAL_TEXT_DERIVED": 22,
+        "TypeC_EXTERNAL_BY_ELIMINATION_LITERAL_TRUTH": 31,
+        "TypeC_EXTERNAL_BY_ELIMINATION_QID_TRUTH": 31,
+        "TypeC_UNKNOWN_BAD_TARGET_OR_CONTEXT": 10,
+        "TypeC_UNKNOWN_FOCUS_QID_DOMAIN_REASONING": 8,
+        "TypeC_UNKNOWN_FORMAT_PRUNING_RETAINED_UNVERIFIED": 2,
         "TypeC_UNKNOWN_MULTIPLICITY_ARTIFACT": 5,
-        "TypeC_UNKNOWN_OR_SPARSE_DIAGNOSTIC": 10,
-        "TypeC_UNKNOWN_SELECTION_AMBIGUOUS": 15
+        "TypeC_UNKNOWN_OR_SPARSE_DIAGNOSTIC": 5,
+        "TypeC_UNKNOWN_SELECTION_AMBIGUOUS": 10
       },
-      "candidate_records": 526265,
+      "candidate_records": 535246,
       "dev_overlap": 0,
       "input_records_scanned": 535570,
       "max_abox_per_group": 1,
       "max_tbox_per_revision": 5,
       "selected": 450
     },
-    "created_at_utc": "2026-05-26T17:09:51.878733Z",
+    "created_at_utc": "2026-05-30T14:14:54.214079Z",
     "inputs": {
       "classified_benchmark": "data/04_classified_benchmark.jsonl",
       "core_manifest": "reports/benchmark_selection/core_v1_seed_13.json",
@@ -344,27 +512,54 @@
     "manifest_type": "manual_audit_sample",
     "policy_version": "phase_d_v1",
     "quotas": {
-      "TBOX_COINCIDENTAL_SCHEMA_CHANGE": 20,
-      "TBOX_DIRECTIONAL_RELAXATION_OR_RESTRICTION": 20,
-      "TBOX_SCHEMA_UPDATE": 20,
-      "TypeA_DELETE_AMBIGUOUS": 40,
-      "TypeA_FORMAT_NORMALIZATION": 35,
-      "TypeA_FORMAT_VALUE_PRUNING": 35,
+      "TBOX_COINCIDENTAL_SCHEMA_CHANGE": 25,
+      "TBOX_DIRECTIONAL_RELAXATION_OR_RESTRICTION": 25,
+      "TBOX_SCHEMA_UPDATE": 25,
+      "TBOX_UNKNOWN_TBOX_CAUSALITY": 30,
+      "TypeA_DELETE_AMBIGUOUS": 25,
+      "TypeA_FORMAT_NORMALIZATION": 25,
+      "TypeA_FORMAT_VALUE_PRUNING": 25,
       "TypeA_MULTIPLICITY_NORMALIZATION": 10,
-      "TypeA_REJECTION_FORMAT_INVALID": 30,
-      "TypeA_SELF_LINK_REJECTION": 20,
-      "TypeB_LOCAL_FOCUS_QID": 15,
-      "TypeB_LOCAL_SELECTION_CONFIRMED": 35,
-      "TypeB_LOCAL_TEXT_CONFIRMED": 40,
-      "TypeC_EXTERNAL_BY_ELIMINATION_LITERAL_TRUTH": 50,
-      "TypeC_EXTERNAL_BY_ELIMINATION_QID_TRUTH": 50,
+      "TypeA_REJECTION_FORMAT_INVALID": 20,
+      "TypeA_SELF_LINK_REJECTION": 15,
+      "TypeA_SET_MEMBERSHIP_REJECTION": 25,
+      "TypeA_TARGET_REQUIRED_CLAIM": 10,
+      "TypeB_LOCAL_FOCUS_QID": 10,
+      "TypeB_LOCAL_SELECTION_CONFIRMED": 30,
+      "TypeB_LOCAL_TEXT_CONFIRMED": 25,
+      "TypeB_LOCAL_TEXT_DERIVED": 20,
+      "TypeC_EXTERNAL_BY_ELIMINATION_LITERAL_TRUTH": 30,
+      "TypeC_EXTERNAL_BY_ELIMINATION_QID_TRUTH": 30,
+      "TypeC_UNKNOWN_BAD_TARGET_OR_CONTEXT": 10,
+      "TypeC_UNKNOWN_FOCUS_QID_DOMAIN_REASONING": 10,
+      "TypeC_UNKNOWN_FORMAT_PRUNING_RETAINED_UNVERIFIED": 5,
       "TypeC_UNKNOWN_MULTIPLICITY_ARTIFACT": 5,
-      "TypeC_UNKNOWN_OR_SPARSE_DIAGNOSTIC": 10,
-      "TypeC_UNKNOWN_SELECTION_AMBIGUOUS": 15
+      "TypeC_UNKNOWN_OR_SPARSE_DIAGNOSTIC": 5,
+      "TypeC_UNKNOWN_SELECTION_AMBIGUOUS": 10
     },
     "seed": 13,
-    "underfilled_quotas": [],
-    "warnings": []
+    "underfilled_quotas": [
+      {
+        "quota": 5,
+        "selected": 2,
+        "selection_stratum": "TypeC_UNKNOWN_FORMAT_PRUNING_RETAINED_UNVERIFIED"
+      },
+      {
+        "quota": 10,
+        "selected": 8,
+        "selection_stratum": "TypeC_UNKNOWN_FOCUS_QID_DOMAIN_REASONING"
+      },
+      {
+        "quota": 10,
+        "selected": 0,
+        "selection_stratum": "TypeB_LOCAL_FOCUS_QID"
+      }
+    ],
+    "warnings": [
+      "TypeC_UNKNOWN_FORMAT_PRUNING_RETAINED_UNVERIFIED underfilled: selected 2 of requested 5.",
+      "TypeC_UNKNOWN_FOCUS_QID_DOMAIN_REASONING underfilled: selected 8 of requested 10.",
+      "TypeB_LOCAL_FOCUS_QID underfilled: selected 0 of requested 10."
+    ]
   },
   "title": "WikidataRepairEval Phase D manual audit row",
   "type": "object"

@@ -14,10 +14,25 @@ from classifier import WorldStateStore, classify_one
 TARGET_OLD = {
     ("TypeB", "LOCAL_TEXT"),
     ("TypeB", "LOCAL_FOCUS_PREREPAIR_PROPERTY"),
+    ("TypeB", "LOCAL_TEXT_CONFIRMED"),
+    ("TypeB", "LOCAL_FOCUS_QID"),
+    ("TypeB", "LOCAL_TEXT_DERIVED"),
     ("TypeC", "EXTERNAL_BY_ELIMINATION"),
+    ("TypeC", "UNKNOWN_BAD_TARGET_OR_CONTEXT"),
+    ("TypeC", "UNKNOWN_SELECTION_AMBIGUOUS"),
+    ("TypeC", "UNKNOWN_FOCUS_QID_DOMAIN_REASONING"),
     ("TypeA", "REJECTION_FORMAT_INVALID"),
     ("TypeA", "DELETE_AMBIGUOUS"),
+    ("TypeA", "FORMAT_VALUE_PRUNING"),
+    ("TypeA", "FORMAT_NORMALIZATION"),
+    ("TypeA", "MULTIPLICITY_NORMALIZATION"),
+    ("T_BOX", "SCHEMA_UPDATE"),
+    ("T_BOX", "COINCIDENTAL_SCHEMA_CHANGE"),
+    ("T_BOX", "RELAXATION_SET_EXPANSION"),
+    ("T_BOX", "RESTRICTION_SET_CONTRACTION"),
+    ("T_BOX", "UNKNOWN_TBOX_CAUSALITY"),
 }
+TARGET_SUBTYPE_MARKERS = tuple(f'"subtype": "{subtype}"' for _, subtype in sorted(TARGET_OLD))
 
 
 def truth_kind(record: dict[str, Any]) -> str:
@@ -52,21 +67,30 @@ def main() -> int:
     by_bucket: Counter[str] = Counter()
     scanned = 0
     considered = 0
-    with WorldStateStore(Path(args.world_state), logger) as store:
+    store: WorldStateStore | None = None
+    try:
         with Path(args.input).open("r", encoding="utf-8") as handle:
             for line_number, line in enumerate(handle, start=1):
                 if args.progress_every > 0 and line_number % args.progress_every == 0:
-                    print(f"[progress] scanned={line_number:,} considered={considered:,}")
+                    print(f"[progress] scanned={line_number:,} considered={considered:,}", flush=True)
                 if not line.strip():
                     continue
                 scanned += 1
+                if not any(marker in line for marker in TARGET_SUBTYPE_MARKERS):
+                    continue
                 old_record = json.loads(line)
                 old_cls = old_record.get("classification", {}).get("class")
                 old_subtype = old_record.get("classification", {}).get("subtype")
                 if (old_cls, old_subtype) not in TARGET_OLD:
                     continue
                 considered += 1
-                ws_entry = store.get(old_record["id"])
+                if old_cls == "T_BOX":
+                    ws_entry = {}
+                else:
+                    if store is None:
+                        store = WorldStateStore(Path(args.world_state), logger)
+                        store.open()
+                    ws_entry = store.get(old_record["id"])
                 new_classification, _, _ = classify_one(old_record, ws_entry)
                 new_cls = new_classification.get("class")
                 new_subtype = new_classification.get("subtype")
@@ -75,6 +99,9 @@ def main() -> int:
                     old_key = f"{old_key}/{truth_kind(old_record)}_truth"
                 transitions[f"{old_key} -> {new_cls}/{new_subtype}"] += 1
                 by_bucket[old_key] += 1
+    finally:
+        if store is not None:
+            store.close()
 
     report = {
         "report_type": "classifier_delta_transition",

@@ -23,19 +23,23 @@ Target size: **450 cases**.
 
 | Audit stratum | Target count | Purpose |
 |---|---:|---|
-| `TypeC / EXTERNAL_BY_ELIMINATION`, QID truth | 50 | Test whether QID target is absent from local context and needs non-local evidence or memory. |
-| `TypeC / EXTERNAL_BY_ELIMINATION`, literal/date/numeric truth | 50 | Test whether literal matching missed local evidence. |
-| `TypeC / UNKNOWN_*` or sparse/incomplete diagnostics if present | 30 | Validate unknown/fallback behavior. |
-| `TypeA / REJECTION_FORMAT_INVALID` | 50 | Check that deterministic format rejection is not overclaimed. |
-| `TypeA / DELETE_AMBIGUOUS` | 50 | Check delete ambiguity and whether local/external evidence is needed to choose deletion. |
-| `TypeB / LOCAL_TEXT` | 50 | Check local-text evidence quality and false-positive substring matches. |
-| `TypeB / LOCAL_FOCUS_PREREPAIR_PROPERTY` | 40 | Check pre-repair target-state reconstruction and leakage controls. |
-| `T_BOX / SCHEMA_UPDATE` | 50 | Check schema-change causal plausibility. |
-| `T_BOX / COINCIDENTAL_SCHEMA_CHANGE` | 40 | Estimate low-causality diagnostic precision. |
-| `T_BOX / RELAXATION_SET_EXPANSION` or `RESTRICTION_SET_CONTRACTION` | 40 | Check directional T-box reform labels. |
+| `TypeC / EXTERNAL_BY_ELIMINATION`, QID truth | 30 | Test whether QID target is absent from local context and needs non-local evidence or memory. |
+| `TypeC / EXTERNAL_BY_ELIMINATION`, literal/date/numeric truth | 30 | Test whether literal matching missed local evidence. |
+| `TypeC / UNKNOWN_*` diagnostics, including bad-target/context, focus-QID domain reasoning, and multiplicity artifacts | 45 | Validate unknown/fallback behavior. |
+| `TypeA / FORMAT_NORMALIZATION` and `FORMAT_VALUE_PRUNING` | 50 | Check deterministic format normalization and pruning. |
+| `TypeA / REJECTION_FORMAT_INVALID`, `SELF_LINK_REJECTION`, `TARGET_REQUIRED_CLAIM`, and `MULTIPLICITY_NORMALIZATION` | 55 | Check rule/format claims are not overclaimed. |
+| `TypeA / SET_MEMBERSHIP_REJECTION` | 25 | Check whether the removed value is directly ruled out by a set-membership constraint or whether selection needs evidence. |
+| `TypeA / DELETE_AMBIGUOUS` | 25 | Check delete ambiguity and whether local/external evidence is needed to choose deletion. |
+| `TypeB / LOCAL_TEXT_CONFIRMED`, `LOCAL_TEXT_DERIVED`, `LOCAL_SELECTION_CONFIRMED`, and rare `LOCAL_FOCUS_QID` | 85 | Check independent local grounding, deterministic local derivation, and leakage controls. |
+| `T_BOX / SCHEMA_UPDATE` | 25 | Check schema-change causal plausibility. |
+| `T_BOX / COINCIDENTAL_SCHEMA_CHANGE` | 25 | Estimate low-causality diagnostic precision. |
+| `T_BOX / RELAXATION_SET_EXPANSION` or `RESTRICTION_SET_CONTRACTION` | 25 | Check directional T-box reform labels, selected violation mapping, type-compatible overlap, and polarity. |
+| `T_BOX / UNKNOWN_TBOX_CAUSALITY` | 30 | Check cases where changed constraints do not establish a causal link. |
 | **Total** | **450** |  |
 
 The audit sample should be disjoint from dev if dev is used for prompt tuning. It may overlap core because its purpose is to validate core labels. If overlap is used, the manifest must record it.
+
+T-box case cards show the selected violation candidate, candidate mapping preview, mapped-report constraint, changed target constraint, compatible and incompatible overlap fields, semantic vs ignored qualifier changes, precise directional subtype, and a compact diff summary. Metadata/status qualifiers such as `P2316` may show that a constraint changed but should not be treated as semantic polarity evidence. In lean Stage 4, full T-box signatures are intentionally pruned, so annotators should prefer the compact diff summary and causality block over the older full-signature diff section.
 
 ## 3. Annotation fields
 
@@ -58,6 +62,11 @@ The audit CSV/JSONL must contain the following columns.
 | `diagnostic_only` | boolean | yes | Whether the current policy treats this as diagnostic-only. |
 | `popularity_bucket` | string | yes | `head`, `mid`, `tail`, or `unknown`. |
 | `constraint_family` | string/null | yes | Constraint-family id or label if available. |
+| `decision_constraint_type_qid` | string/null | yes | Constraint type selected by the classifier rule, if any. |
+| `decision_constraint_type_label` | string/null | yes | Human-readable label for the decision constraint. |
+| `decision_constraint_source` | string/null | yes | Why/how the decision constraint was selected. |
+| `classification_rule_family` | string/null | yes | Classifier rule family such as `format`, `local_evidence`, or `tbox_schema_causality`. |
+| `classification_rule_subfamily` | string/null | yes | More specific rule subfamily. |
 
 ### Classifier diagnostics shown to annotator
 
@@ -84,7 +93,7 @@ The audit CSV/JSONL must contain the following columns.
 | `typec_judgment` | `external_confirmed`, `external_by_elimination_ok`, `local_missed`, `unknown_or_incomplete`, `bad_target`, `not_typec` |
 | `typea_judgment` | `clean_rule_or_format`, `delete_ambiguous_ok`, `needs_local_evidence`, `needs_external_evidence`, `overclaimed`, `not_typea` |
 | `typeb_judgment` | `local_confirmed`, `local_false_positive`, `leakage_suspected`, `weak_literal_match`, `not_typeb` |
-| `tbox_judgment` | `causal_schema_repair`, `plausible_schema_update`, `coincidental_or_weak`, `wrong_constraint_family`, `not_tbox` |
+| `tbox_judgment` | `causal_schema_repair`, `plausible_schema_update`, `coincidental_or_weak`, `causal_confirmed`, `causal_plausible`, `coincidental_confirmed`, `unknown_causality`, `wrong_polarity`, `wrong_constraint_family`, `needs_discussion`, `not_tbox` |
 | `core_recommendation` | `main`, `diagnostic`, `exclude`, `needs_discussion` |
 | `notes` | free text |
 | `annotator_id` | string |

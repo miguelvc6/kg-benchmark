@@ -1,6 +1,6 @@
 # TypeB_LOCAL_TEXT_CONFIRMED
 
-Cases: 40
+Cases: 25
 
 Use this file for evidence review. Enter final annotations in the CSV copy, not here.
 
@@ -16,6 +16,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | analysis_slice | main_ic_g_local_text_confirmed |
 | popularity_bucket | mid |
 | constraint_family | Q21502838 |
+| classification_rule_family | local_evidence |
+| classification_rule_subfamily | local_text_raw |
+| decision_constraint_type |   |
 | group_key | ABOX::Q117320046::P373 |
 | tbox_revision_key |  |
 
@@ -23,8 +26,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 - Decide whether the recorded local match actually supports the historical target.
 - For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
+- For LOCAL_TEXT_DERIVED, verify that the target is deterministically derived from independent local text.
 - For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
+- For LOCAL_FOCUS_QID, confirm that focus identity alone is sufficient and no domain-specific reasoning is missing.
 
 ### Classifier Summary
 
@@ -33,12 +37,55 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | truth_source | repair_target.new_value |
 | truth_token_kind | literal |
 | truth_tokens_preview | ["Gavansky Residential Complex for Workers"] |
+| classification_target_tokens | ["Gavansky Residential Complex for Workers"] |
+| classification_target_reason | one-to-one replacement is classified from the replacement relation |
 | decision_branch | local_match |
 | rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
+| local_match_kind | literal_exact_raw |
 | local_match_source | NEIGHBOR_LABEL |
 
 ### What Changed
+
+#### Delta Summary
+
+```json
+{
+  "added_unique_values": [
+    "Gavansky Residential Complex for Workers"
+  ],
+  "classification_target_reason": "one-to-one replacement is classified from the replacement relation",
+  "classification_target_role": "replacement_new",
+  "classification_target_tokens": [
+    "Gavansky Residential Complex for Workers"
+  ],
+  "new_changed_value": null,
+  "old_changed_value": null,
+  "removed_target_tokens": [
+    "Gavansky Residental Complex for Workers"
+  ],
+  "removed_unique_values": [
+    "Gavansky Residental Complex for Workers"
+  ],
+  "retained_support_tokens": [],
+  "retained_unique_values": [],
+  "semantic_action": "REPLACE_1_TO_1"
+}
+```
+
+#### Classifier Rule Metadata
+
+```json
+{
+  "classification_rule_family": "local_evidence",
+  "classification_rule_subfamily": "local_text_raw",
+  "constraint_family": null,
+  "decision_constraint_source": "local_context",
+  "decision_constraint_type_label": null,
+  "decision_constraint_type_qid": null
+}
+```
+
+#### Repair Target
 
 ```json
 {
@@ -56,31 +103,40 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
     "Gavansky Residential Complex for Workers"
   ],
   "value_change_summary": {
-    "action": "UPDATE",
     "added_unique_values": [
       "Gavansky Residential Complex for Workers"
     ],
-    "deleted_value": [],
     "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
+    "new_counts": {
+      "Gavansky Residential Complex for Workers": 1
+    },
     "new_unique": [
       "Gavansky Residential Complex for Workers"
     ],
-    "new_value": [
+    "new_values": [
+      "Gavansky Residential Complex for Workers"
+    ],
+    "new_values_raw": [
       "Gavansky Residential Complex for Workers"
     ],
     "normalized_unique_values_unchanged": false,
-    "old_count": 1,
+    "old_counts": {
+      "Gavansky Residental Complex for Workers": 1
+    },
     "old_unique": [
       "Gavansky Residental Complex for Workers"
     ],
-    "old_value": [
+    "old_values": [
+      "Gavansky Residental Complex for Workers"
+    ],
+    "old_values_raw": [
       "Gavansky Residental Complex for Workers"
     ],
     "removed_unique_values": [
       "Gavansky Residental Complex for Workers"
     ],
+    "retained_unique_values": [],
+    "semantic_action": "REPLACE_1_TO_1",
     "value_multiplicity_changes": {
       "Gavansky Residental Complex for Workers": {
         "new": 0,
@@ -120,11 +176,14 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   "found": 1,
   "local_availability_result": true,
   "local_ids_count": 13,
+  "local_support_for_retained_value": [],
   "matched": true,
   "matches": [
     {
       "independent_of_target_property": true,
-      "kind": "literal_exact",
+      "kind": "literal_exact_raw",
+      "normalized_match_text": "gavansky residential complex for workers",
+      "raw_match_text": "Gavansky Residential Complex for Workers",
       "source": "NEIGHBOR_LABEL",
       "token": "Gavansky Residential Complex for Workers"
     }
@@ -206,254 +265,53 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   },
   {
     "detail": {
-      "constraint_type": null,
-      "signal": "L4_constraints"
-    },
-    "result": false,
-    "step": "rule_deterministic"
-  },
-  {
-    "evidence": {
-      "found": 1,
-      "independent_match_count": 1,
-      "local_ids_count": 13,
-      "matched": true,
-      "matches": [
-        {
-          "independent_of_target_property": true,
-          "kind": "literal_exact",
-          "source": "NEIGHBOR_LABEL",
-          "token": "Gavansky Residential Complex for Workers"
-        }
+      "added_unique_values": [
+        "Gavansky Residential Complex for Workers"
       ],
-      "needed": 1,
-      "sources_used": [
-        "NEIGHBOR_LABEL"
+      "exact_value_lists_unchanged": false,
+      "new_counts": {
+        "Gavansky Residential Complex for Workers": 1
+      },
+      "new_unique": [
+        "Gavansky Residential Complex for Workers"
       ],
-      "used_literal_substring": false
-    },
-    "result": true,
-    "step": "local_availability",
-    "synthetic": {
-      "pre_repair_source": "repair_target.old_value",
-      "tokens": [
+      "new_values": [
+        "Gavansky Residential Complex for Workers"
+      ],
+      "new_values_raw": [
+        "Gavansky Residential Complex for Workers"
+      ],
+      "normalized_unique_values_unchanged": false,
+      "old_counts": {
+        "Gavansky Residental Complex for Workers": 1
+      },
+      "old_unique": [
         "Gavansky Residental Complex for Workers"
       ],
-      "used_pre_repair_value": true
-    }
-  },
-  {
-    "result": false,
-    "step": "fallback_external"
-  },
-  {
-    "result": "local_match",
-    "step": "branch"
-  }
-]
-```
-
----
-
-## 002. `repair_Q117320047_2446824555`
-
-| Field | Value |
-|---|---|
-| qid | Q117320047 |
-| property | P373 |
-| track | A_BOX |
-| class / subtype / confidence | TypeB / LOCAL_TEXT_CONFIRMED / high |
-| main_score / diagnostic_only | True / False |
-| analysis_slice | main_ic_g_local_text_confirmed |
-| popularity_bucket | mid |
-| constraint_family | Q21502838 |
-| group_key | ABOX::Q117320047::P373 |
-| tbox_revision_key |  |
-
-### Annotation Focus
-
-- Decide whether the recorded local match actually supports the historical target.
-- For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
-- For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
-
-### Classifier Summary
-
-| Field | Value |
-|---|---|
-| truth_source | repair_target.new_value |
-| truth_token_kind | literal |
-| truth_tokens_preview | ["Gavansky Residential Complex for Workers"] |
-| decision_branch | local_match |
-| rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
-| local_match_source | NEIGHBOR_LABEL |
-
-### What Changed
-
-```json
-{
-  "action": "UPDATE",
-  "author": "Екатерина Борисова",
-  "kind": "A_BOX",
-  "new_value": [
-    "Gavansky Residential Complex for Workers"
-  ],
-  "old_value": [
-    "Gavansky Residental Complex for Workers"
-  ],
-  "revision_id": 2446824555,
-  "value": [
-    "Gavansky Residential Complex for Workers"
-  ],
-  "value_change_summary": {
-    "action": "UPDATE",
-    "added_unique_values": [
-      "Gavansky Residential Complex for Workers"
-    ],
-    "deleted_value": [],
-    "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
-    "new_unique": [
-      "Gavansky Residential Complex for Workers"
-    ],
-    "new_value": [
-      "Gavansky Residential Complex for Workers"
-    ],
-    "normalized_unique_values_unchanged": false,
-    "old_count": 1,
-    "old_unique": [
-      "Gavansky Residental Complex for Workers"
-    ],
-    "old_value": [
-      "Gavansky Residental Complex for Workers"
-    ],
-    "removed_unique_values": [
-      "Gavansky Residental Complex for Workers"
-    ],
-    "value_multiplicity_changes": {
-      "Gavansky Residental Complex for Workers": {
-        "new": 0,
-        "old": 1
-      },
-      "Gavansky Residential Complex for Workers": {
-        "new": 1,
-        "old": 0
+      "old_values": [
+        "Gavansky Residental Complex for Workers"
+      ],
+      "old_values_raw": [
+        "Gavansky Residental Complex for Workers"
+      ],
+      "removed_unique_values": [
+        "Gavansky Residental Complex for Workers"
+      ],
+      "retained_unique_values": [],
+      "semantic_action": "REPLACE_1_TO_1",
+      "value_multiplicity_changes": {
+        "Gavansky Residental Complex for Workers": {
+          "new": 0,
+          "old": 1
+        },
+        "Gavansky Residential Complex for Workers": {
+          "new": 1,
+          "old": 0
+        }
       }
-    }
-  }
-}
-```
-
-### Violation Context
-
-```json
-{
-  "report_fix_date": "2025-12-26T13:06:48",
-  "report_page_title": "Wikidata:Database reports/Constraint violations/P373",
-  "report_revision_new": 2447382517,
-  "report_revision_old": 2447067079,
-  "report_violation_type": "Commons link",
-  "report_violation_type_normalized": "Commons link",
-  "report_violation_type_qids": [],
-  "report_violation_type_raw": "Commons link",
-  "value": [
-    "Gavansky Residental Complex for Workers"
-  ]
-}
-```
-
-### Local Evidence
-
-```json
-{
-  "found": 1,
-  "local_availability_result": true,
-  "local_ids_count": 13,
-  "matched": true,
-  "matches": [
-    {
-      "independent_of_target_property": true,
-      "kind": "literal_exact",
-      "source": "NEIGHBOR_LABEL",
-      "token": "Gavansky Residential Complex for Workers"
-    }
-  ],
-  "needed": 1,
-  "sources_used": [
-    "NEIGHBOR_LABEL"
-  ],
-  "synthetic_pre_repair": {
-    "pre_repair_source": "repair_target.old_value",
-    "tokens": [
-      "Gavansky Residental Complex for Workers"
-    ],
-    "used_pre_repair_value": true
-  },
-  "truth_tokens": [
-    "Gavansky Residential Complex for Workers"
-  ],
-  "truth_tokens_in_recorded_matches": [
-    "Gavansky Residential Complex for Workers"
-  ],
-  "used_literal_substring": false
-}
-```
-
-### Labels / Human-Readable Context
-
-```json
-{
-  "property": {
-    "description": "name of the Wikimedia Commons category containing files related to this item (without the prefix \"Category:\")",
-    "label": "Commons category"
-  },
-  "qid": {
-    "description": null,
-    "label": "Жилой корпус"
-  }
-}
-```
-
-### Constraint Types
-
-```json
-[
-  {
-    "label_en": "conflicts-with constraint",
-    "qid": "Q21502838"
-  },
-  {
-    "label_en": "property scope constraint",
-    "qid": "Q53869507"
-  },
-  {
-    "label_en": "single-value constraint",
-    "qid": "Q19474404"
-  },
-  {
-    "label_en": "allowed-entity-types constraint",
-    "qid": "Q52004125"
-  },
-  {
-    "label_en": "Commons link constraint",
-    "qid": "Q21510852"
-  },
-  {
-    "label_en": "format constraint",
-    "qid": "Q21502404"
-  }
-]
-```
-
-### Decision Trace
-
-```json
-[
-  {
-    "result": false,
-    "step": "is_delete"
+    },
+    "result": "REPLACE_1_TO_1",
+    "step": "value_delta"
   },
   {
     "detail": {
@@ -472,7 +330,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
       "matches": [
         {
           "independent_of_target_property": true,
-          "kind": "literal_exact",
+          "kind": "literal_exact_raw",
+          "normalized_match_text": "gavansky residential complex for workers",
+          "raw_match_text": "Gavansky Residential Complex for Workers",
           "source": "NEIGHBOR_LABEL",
           "token": "Gavansky Residential Complex for Workers"
         }
@@ -506,7 +366,7 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 ---
 
-## 003. `repair_Q117320048_2446824658`
+## 002. `repair_Q117320048_2446824658`
 
 | Field | Value |
 |---|---|
@@ -518,6 +378,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | analysis_slice | main_ic_g_local_text_confirmed |
 | popularity_bucket | mid |
 | constraint_family | Q21502838 |
+| classification_rule_family | local_evidence |
+| classification_rule_subfamily | local_text_raw |
+| decision_constraint_type |   |
 | group_key | ABOX::Q117320048::P373 |
 | tbox_revision_key |  |
 
@@ -525,8 +388,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 - Decide whether the recorded local match actually supports the historical target.
 - For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
+- For LOCAL_TEXT_DERIVED, verify that the target is deterministically derived from independent local text.
 - For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
+- For LOCAL_FOCUS_QID, confirm that focus identity alone is sufficient and no domain-specific reasoning is missing.
 
 ### Classifier Summary
 
@@ -535,12 +399,55 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | truth_source | repair_target.new_value |
 | truth_token_kind | literal |
 | truth_tokens_preview | ["Gavansky Residential Complex for Workers"] |
+| classification_target_tokens | ["Gavansky Residential Complex for Workers"] |
+| classification_target_reason | one-to-one replacement is classified from the replacement relation |
 | decision_branch | local_match |
 | rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
+| local_match_kind | literal_exact_raw |
 | local_match_source | NEIGHBOR_LABEL |
 
 ### What Changed
+
+#### Delta Summary
+
+```json
+{
+  "added_unique_values": [
+    "Gavansky Residential Complex for Workers"
+  ],
+  "classification_target_reason": "one-to-one replacement is classified from the replacement relation",
+  "classification_target_role": "replacement_new",
+  "classification_target_tokens": [
+    "Gavansky Residential Complex for Workers"
+  ],
+  "new_changed_value": null,
+  "old_changed_value": null,
+  "removed_target_tokens": [
+    "Gavansky Residental Complex for Workers"
+  ],
+  "removed_unique_values": [
+    "Gavansky Residental Complex for Workers"
+  ],
+  "retained_support_tokens": [],
+  "retained_unique_values": [],
+  "semantic_action": "REPLACE_1_TO_1"
+}
+```
+
+#### Classifier Rule Metadata
+
+```json
+{
+  "classification_rule_family": "local_evidence",
+  "classification_rule_subfamily": "local_text_raw",
+  "constraint_family": null,
+  "decision_constraint_source": "local_context",
+  "decision_constraint_type_label": null,
+  "decision_constraint_type_qid": null
+}
+```
+
+#### Repair Target
 
 ```json
 {
@@ -558,31 +465,40 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
     "Gavansky Residential Complex for Workers"
   ],
   "value_change_summary": {
-    "action": "UPDATE",
     "added_unique_values": [
       "Gavansky Residential Complex for Workers"
     ],
-    "deleted_value": [],
     "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
+    "new_counts": {
+      "Gavansky Residential Complex for Workers": 1
+    },
     "new_unique": [
       "Gavansky Residential Complex for Workers"
     ],
-    "new_value": [
+    "new_values": [
+      "Gavansky Residential Complex for Workers"
+    ],
+    "new_values_raw": [
       "Gavansky Residential Complex for Workers"
     ],
     "normalized_unique_values_unchanged": false,
-    "old_count": 1,
+    "old_counts": {
+      "Gavansky Residental Complex for Workers": 1
+    },
     "old_unique": [
       "Gavansky Residental Complex for Workers"
     ],
-    "old_value": [
+    "old_values": [
+      "Gavansky Residental Complex for Workers"
+    ],
+    "old_values_raw": [
       "Gavansky Residental Complex for Workers"
     ],
     "removed_unique_values": [
       "Gavansky Residental Complex for Workers"
     ],
+    "retained_unique_values": [],
+    "semantic_action": "REPLACE_1_TO_1",
     "value_multiplicity_changes": {
       "Gavansky Residental Complex for Workers": {
         "new": 0,
@@ -622,11 +538,14 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   "found": 1,
   "local_availability_result": true,
   "local_ids_count": 13,
+  "local_support_for_retained_value": [],
   "matched": true,
   "matches": [
     {
       "independent_of_target_property": true,
-      "kind": "literal_exact",
+      "kind": "literal_exact_raw",
+      "normalized_match_text": "gavansky residential complex for workers",
+      "raw_match_text": "Gavansky Residential Complex for Workers",
       "source": "NEIGHBOR_LABEL",
       "token": "Gavansky Residential Complex for Workers"
     }
@@ -708,6 +627,56 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   },
   {
     "detail": {
+      "added_unique_values": [
+        "Gavansky Residential Complex for Workers"
+      ],
+      "exact_value_lists_unchanged": false,
+      "new_counts": {
+        "Gavansky Residential Complex for Workers": 1
+      },
+      "new_unique": [
+        "Gavansky Residential Complex for Workers"
+      ],
+      "new_values": [
+        "Gavansky Residential Complex for Workers"
+      ],
+      "new_values_raw": [
+        "Gavansky Residential Complex for Workers"
+      ],
+      "normalized_unique_values_unchanged": false,
+      "old_counts": {
+        "Gavansky Residental Complex for Workers": 1
+      },
+      "old_unique": [
+        "Gavansky Residental Complex for Workers"
+      ],
+      "old_values": [
+        "Gavansky Residental Complex for Workers"
+      ],
+      "old_values_raw": [
+        "Gavansky Residental Complex for Workers"
+      ],
+      "removed_unique_values": [
+        "Gavansky Residental Complex for Workers"
+      ],
+      "retained_unique_values": [],
+      "semantic_action": "REPLACE_1_TO_1",
+      "value_multiplicity_changes": {
+        "Gavansky Residental Complex for Workers": {
+          "new": 0,
+          "old": 1
+        },
+        "Gavansky Residential Complex for Workers": {
+          "new": 1,
+          "old": 0
+        }
+      }
+    },
+    "result": "REPLACE_1_TO_1",
+    "step": "value_delta"
+  },
+  {
+    "detail": {
       "constraint_type": null,
       "signal": "L4_constraints"
     },
@@ -723,7 +692,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
       "matches": [
         {
           "independent_of_target_property": true,
-          "kind": "literal_exact",
+          "kind": "literal_exact_raw",
+          "normalized_match_text": "gavansky residential complex for workers",
+          "raw_match_text": "Gavansky Residential Complex for Workers",
           "source": "NEIGHBOR_LABEL",
           "token": "Gavansky Residential Complex for Workers"
         }
@@ -757,7 +728,7 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 ---
 
-## 004. `repair_Q123734475_2447259961`
+## 003. `repair_Q123734475_2447259961`
 
 | Field | Value |
 |---|---|
@@ -769,6 +740,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | analysis_slice | main_ic_g_local_text_confirmed |
 | popularity_bucket | tail |
 | constraint_family | Q21502838 |
+| classification_rule_family | local_evidence |
+| classification_rule_subfamily | local_text_raw |
+| decision_constraint_type |   |
 | group_key | ABOX::Q123734475::P373 |
 | tbox_revision_key |  |
 
@@ -776,8 +750,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 - Decide whether the recorded local match actually supports the historical target.
 - For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
+- For LOCAL_TEXT_DERIVED, verify that the target is deterministically derived from independent local text.
 - For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
+- For LOCAL_FOCUS_QID, confirm that focus identity alone is sufficient and no domain-specific reasoning is missing.
 
 ### Classifier Summary
 
@@ -786,12 +761,55 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | truth_source | repair_target.new_value |
 | truth_token_kind | literal |
 | truth_tokens_preview | ["Frosinone Calcio v US Città di Palermo, 16 June 2018"] |
+| classification_target_tokens | ["Frosinone Calcio v US Città di Palermo, 16 June 2018"] |
+| classification_target_reason | one-to-one replacement is classified from the replacement relation |
 | decision_branch | local_match |
 | rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
+| local_match_kind | literal_exact_raw |
 | local_match_source | FOCUS_LABEL |
 
 ### What Changed
+
+#### Delta Summary
+
+```json
+{
+  "added_unique_values": [
+    "Frosinone Calcio v US Città di Palermo, 16 June 2018"
+  ],
+  "classification_target_reason": "one-to-one replacement is classified from the replacement relation",
+  "classification_target_role": "replacement_new",
+  "classification_target_tokens": [
+    "Frosinone Calcio v US Città di Palermo, 16 June 2018"
+  ],
+  "new_changed_value": null,
+  "old_changed_value": null,
+  "removed_target_tokens": [
+    "2017-18 Serie B - Frosinone Calcio v Palermo (finale Play-off)"
+  ],
+  "removed_unique_values": [
+    "2017-18 Serie B - Frosinone Calcio v Palermo (finale Play-off)"
+  ],
+  "retained_support_tokens": [],
+  "retained_unique_values": [],
+  "semantic_action": "REPLACE_1_TO_1"
+}
+```
+
+#### Classifier Rule Metadata
+
+```json
+{
+  "classification_rule_family": "local_evidence",
+  "classification_rule_subfamily": "local_text_raw",
+  "constraint_family": null,
+  "decision_constraint_source": "local_context",
+  "decision_constraint_type_label": null,
+  "decision_constraint_type_qid": null
+}
+```
+
+#### Repair Target
 
 ```json
 {
@@ -809,31 +827,40 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
     "Frosinone Calcio v US Città di Palermo, 16 June 2018"
   ],
   "value_change_summary": {
-    "action": "UPDATE",
     "added_unique_values": [
       "Frosinone Calcio v US Città di Palermo, 16 June 2018"
     ],
-    "deleted_value": [],
     "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
+    "new_counts": {
+      "Frosinone Calcio v US Città di Palermo, 16 June 2018": 1
+    },
     "new_unique": [
       "Frosinone Calcio v US Città di Palermo, 16 June 2018"
     ],
-    "new_value": [
+    "new_values": [
+      "Frosinone Calcio v US Città di Palermo, 16 June 2018"
+    ],
+    "new_values_raw": [
       "Frosinone Calcio v US Città di Palermo, 16 June 2018"
     ],
     "normalized_unique_values_unchanged": false,
-    "old_count": 1,
+    "old_counts": {
+      "2017-18 Serie B - Frosinone Calcio v Palermo (finale Play-off)": 1
+    },
     "old_unique": [
       "2017-18 Serie B - Frosinone Calcio v Palermo (finale Play-off)"
     ],
-    "old_value": [
+    "old_values": [
+      "2017-18 Serie B - Frosinone Calcio v Palermo (finale Play-off)"
+    ],
+    "old_values_raw": [
       "2017-18 Serie B - Frosinone Calcio v Palermo (finale Play-off)"
     ],
     "removed_unique_values": [
       "2017-18 Serie B - Frosinone Calcio v Palermo (finale Play-off)"
     ],
+    "retained_unique_values": [],
+    "semantic_action": "REPLACE_1_TO_1",
     "value_multiplicity_changes": {
       "2017-18 Serie B - Frosinone Calcio v Palermo (finale Play-off)": {
         "new": 0,
@@ -873,11 +900,14 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   "found": 1,
   "local_availability_result": true,
   "local_ids_count": 5,
+  "local_support_for_retained_value": [],
   "matched": true,
   "matches": [
     {
       "independent_of_target_property": true,
-      "kind": "literal_exact",
+      "kind": "literal_exact_raw",
+      "normalized_match_text": "frosinone calcio v us città di palermo 16 june 2018",
+      "raw_match_text": "Frosinone Calcio v US Città di Palermo, 16 June 2018",
       "source": "FOCUS_LABEL",
       "token": "Frosinone Calcio v US Città di Palermo, 16 June 2018"
     }
@@ -959,6 +989,56 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   },
   {
     "detail": {
+      "added_unique_values": [
+        "Frosinone Calcio v US Città di Palermo, 16 June 2018"
+      ],
+      "exact_value_lists_unchanged": false,
+      "new_counts": {
+        "Frosinone Calcio v US Città di Palermo, 16 June 2018": 1
+      },
+      "new_unique": [
+        "Frosinone Calcio v US Città di Palermo, 16 June 2018"
+      ],
+      "new_values": [
+        "Frosinone Calcio v US Città di Palermo, 16 June 2018"
+      ],
+      "new_values_raw": [
+        "Frosinone Calcio v US Città di Palermo, 16 June 2018"
+      ],
+      "normalized_unique_values_unchanged": false,
+      "old_counts": {
+        "2017-18 Serie B - Frosinone Calcio v Palermo (finale Play-off)": 1
+      },
+      "old_unique": [
+        "2017-18 Serie B - Frosinone Calcio v Palermo (finale Play-off)"
+      ],
+      "old_values": [
+        "2017-18 Serie B - Frosinone Calcio v Palermo (finale Play-off)"
+      ],
+      "old_values_raw": [
+        "2017-18 Serie B - Frosinone Calcio v Palermo (finale Play-off)"
+      ],
+      "removed_unique_values": [
+        "2017-18 Serie B - Frosinone Calcio v Palermo (finale Play-off)"
+      ],
+      "retained_unique_values": [],
+      "semantic_action": "REPLACE_1_TO_1",
+      "value_multiplicity_changes": {
+        "2017-18 Serie B - Frosinone Calcio v Palermo (finale Play-off)": {
+          "new": 0,
+          "old": 1
+        },
+        "Frosinone Calcio v US Città di Palermo, 16 June 2018": {
+          "new": 1,
+          "old": 0
+        }
+      }
+    },
+    "result": "REPLACE_1_TO_1",
+    "step": "value_delta"
+  },
+  {
+    "detail": {
       "constraint_type": null,
       "signal": "L4_constraints"
     },
@@ -974,7 +1054,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
       "matches": [
         {
           "independent_of_target_property": true,
-          "kind": "literal_exact",
+          "kind": "literal_exact_raw",
+          "normalized_match_text": "frosinone calcio v us città di palermo 16 june 2018",
+          "raw_match_text": "Frosinone Calcio v US Città di Palermo, 16 June 2018",
           "source": "FOCUS_LABEL",
           "token": "Frosinone Calcio v US Città di Palermo, 16 June 2018"
         }
@@ -1008,258 +1090,7 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 ---
 
-## 005. `repair_Q123749072_2447260069`
-
-| Field | Value |
-|---|---|
-| qid | Q123749072 |
-| property | P373 |
-| track | A_BOX |
-| class / subtype / confidence | TypeB / LOCAL_TEXT_CONFIRMED / high |
-| main_score / diagnostic_only | True / False |
-| analysis_slice | main_ic_g_local_text_confirmed |
-| popularity_bucket | tail |
-| constraint_family | Q21502838 |
-| group_key | ABOX::Q123749072::P373 |
-| tbox_revision_key |  |
-
-### Annotation Focus
-
-- Decide whether the recorded local match actually supports the historical target.
-- For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
-- For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
-
-### Classifier Summary
-
-| Field | Value |
-|---|---|
-| truth_source | repair_target.new_value |
-| truth_token_kind | literal |
-| truth_tokens_preview | ["Paris Saint-Germain FC v ASJ Soyaux-Charente, 25 August 2019"] |
-| decision_branch | local_match |
-| rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
-| local_match_source | FOCUS_LABEL |
-
-### What Changed
-
-```json
-{
-  "action": "UPDATE",
-  "author": "Pi bot",
-  "kind": "A_BOX",
-  "new_value": [
-    "Paris Saint-Germain FC v ASJ Soyaux-Charente, 25 August 2019"
-  ],
-  "old_value": [
-    "PSG - Soyaux, 25 August 2019"
-  ],
-  "revision_id": 2447260069,
-  "value": [
-    "Paris Saint-Germain FC v ASJ Soyaux-Charente, 25 August 2019"
-  ],
-  "value_change_summary": {
-    "action": "UPDATE",
-    "added_unique_values": [
-      "Paris Saint-Germain FC v ASJ Soyaux-Charente, 25 August 2019"
-    ],
-    "deleted_value": [],
-    "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
-    "new_unique": [
-      "Paris Saint-Germain FC v ASJ Soyaux-Charente, 25 August 2019"
-    ],
-    "new_value": [
-      "Paris Saint-Germain FC v ASJ Soyaux-Charente, 25 August 2019"
-    ],
-    "normalized_unique_values_unchanged": false,
-    "old_count": 1,
-    "old_unique": [
-      "PSG - Soyaux, 25 August 2019"
-    ],
-    "old_value": [
-      "PSG - Soyaux, 25 August 2019"
-    ],
-    "removed_unique_values": [
-      "PSG - Soyaux, 25 August 2019"
-    ],
-    "value_multiplicity_changes": {
-      "PSG - Soyaux, 25 August 2019": {
-        "new": 0,
-        "old": 1
-      },
-      "Paris Saint-Germain FC v ASJ Soyaux-Charente, 25 August 2019": {
-        "new": 1,
-        "old": 0
-      }
-    }
-  }
-}
-```
-
-### Violation Context
-
-```json
-{
-  "report_fix_date": "2025-12-27T12:35:05",
-  "report_page_title": "Wikidata:Database reports/Constraint violations/P373",
-  "report_revision_new": 2447772714,
-  "report_revision_old": 2447382517,
-  "report_violation_type": "Commons link",
-  "report_violation_type_normalized": "Commons link",
-  "report_violation_type_qids": [],
-  "report_violation_type_raw": "Commons link",
-  "value": [
-    "PSG - Soyaux, 25 August 2019"
-  ]
-}
-```
-
-### Local Evidence
-
-```json
-{
-  "found": 1,
-  "local_availability_result": true,
-  "local_ids_count": 3,
-  "matched": true,
-  "matches": [
-    {
-      "independent_of_target_property": true,
-      "kind": "literal_exact",
-      "source": "FOCUS_LABEL",
-      "token": "Paris Saint-Germain FC v ASJ Soyaux-Charente, 25 August 2019"
-    }
-  ],
-  "needed": 1,
-  "sources_used": [
-    "FOCUS_LABEL"
-  ],
-  "synthetic_pre_repair": {
-    "pre_repair_source": "repair_target.old_value",
-    "tokens": [
-      "PSG - Soyaux, 25 August 2019"
-    ],
-    "used_pre_repair_value": true
-  },
-  "truth_tokens": [
-    "Paris Saint-Germain FC v ASJ Soyaux-Charente, 25 August 2019"
-  ],
-  "truth_tokens_in_recorded_matches": [
-    "Paris Saint-Germain FC v ASJ Soyaux-Charente, 25 August 2019"
-  ],
-  "used_literal_substring": false
-}
-```
-
-### Labels / Human-Readable Context
-
-```json
-{
-  "property": {
-    "description": "name of the Wikimedia Commons category containing files related to this item (without the prefix \"Category:\")",
-    "label": "Commons category"
-  },
-  "qid": {
-    "description": null,
-    "label": "Paris Saint-Germain FC v ASJ Soyaux-Charente, 25 August 2019"
-  }
-}
-```
-
-### Constraint Types
-
-```json
-[
-  {
-    "label_en": "conflicts-with constraint",
-    "qid": "Q21502838"
-  },
-  {
-    "label_en": "property scope constraint",
-    "qid": "Q53869507"
-  },
-  {
-    "label_en": "single-value constraint",
-    "qid": "Q19474404"
-  },
-  {
-    "label_en": "allowed-entity-types constraint",
-    "qid": "Q52004125"
-  },
-  {
-    "label_en": "Commons link constraint",
-    "qid": "Q21510852"
-  },
-  {
-    "label_en": "format constraint",
-    "qid": "Q21502404"
-  }
-]
-```
-
-### Decision Trace
-
-```json
-[
-  {
-    "result": false,
-    "step": "is_delete"
-  },
-  {
-    "detail": {
-      "constraint_type": null,
-      "signal": "L4_constraints"
-    },
-    "result": false,
-    "step": "rule_deterministic"
-  },
-  {
-    "evidence": {
-      "found": 1,
-      "independent_match_count": 1,
-      "local_ids_count": 3,
-      "matched": true,
-      "matches": [
-        {
-          "independent_of_target_property": true,
-          "kind": "literal_exact",
-          "source": "FOCUS_LABEL",
-          "token": "Paris Saint-Germain FC v ASJ Soyaux-Charente, 25 August 2019"
-        }
-      ],
-      "needed": 1,
-      "sources_used": [
-        "FOCUS_LABEL"
-      ],
-      "used_literal_substring": false
-    },
-    "result": true,
-    "step": "local_availability",
-    "synthetic": {
-      "pre_repair_source": "repair_target.old_value",
-      "tokens": [
-        "PSG - Soyaux, 25 August 2019"
-      ],
-      "used_pre_repair_value": true
-    }
-  },
-  {
-    "result": false,
-    "step": "fallback_external"
-  },
-  {
-    "result": "local_match",
-    "step": "branch"
-  }
-]
-```
-
----
-
-## 006. `repair_Q137217940_2439242692`
+## 004. `repair_Q137217940_2439242692`
 
 | Field | Value |
 |---|---|
@@ -1271,6 +1102,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | analysis_slice | main_ic_g_local_text_confirmed |
 | popularity_bucket | tail |
 | constraint_family | Q21502838 |
+| classification_rule_family | local_evidence |
+| classification_rule_subfamily | local_text_raw |
+| decision_constraint_type |   |
 | group_key | ABOX::Q137217940::P225 |
 | tbox_revision_key |  |
 
@@ -1278,8 +1112,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 - Decide whether the recorded local match actually supports the historical target.
 - For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
+- For LOCAL_TEXT_DERIVED, verify that the target is deterministically derived from independent local text.
 - For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
+- For LOCAL_FOCUS_QID, confirm that focus identity alone is sufficient and no domain-specific reasoning is missing.
 
 ### Classifier Summary
 
@@ -1288,12 +1123,55 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | truth_source | repair_target.new_value |
 | truth_token_kind | literal |
 | truth_tokens_preview | ["Magnadigita"] |
+| classification_target_tokens | ["Magnadigita"] |
+| classification_target_reason | one-to-one replacement is classified from the replacement relation |
 | decision_branch | local_match |
 | rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
+| local_match_kind | literal_exact_raw |
 | local_match_source | FOCUS_LABEL |
 
 ### What Changed
+
+#### Delta Summary
+
+```json
+{
+  "added_unique_values": [
+    "Magnadigita"
+  ],
+  "classification_target_reason": "one-to-one replacement is classified from the replacement relation",
+  "classification_target_role": "replacement_new",
+  "classification_target_tokens": [
+    "Magnadigita"
+  ],
+  "new_changed_value": null,
+  "old_changed_value": null,
+  "removed_target_tokens": [
+    "Bolitoglossa"
+  ],
+  "removed_unique_values": [
+    "Bolitoglossa"
+  ],
+  "retained_support_tokens": [],
+  "retained_unique_values": [],
+  "semantic_action": "REPLACE_1_TO_1"
+}
+```
+
+#### Classifier Rule Metadata
+
+```json
+{
+  "classification_rule_family": "local_evidence",
+  "classification_rule_subfamily": "local_text_raw",
+  "constraint_family": null,
+  "decision_constraint_source": "local_context",
+  "decision_constraint_type_label": null,
+  "decision_constraint_type_qid": null
+}
+```
+
+#### Repair Target
 
 ```json
 {
@@ -1311,31 +1189,40 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
     "Magnadigita"
   ],
   "value_change_summary": {
-    "action": "UPDATE",
     "added_unique_values": [
       "Magnadigita"
     ],
-    "deleted_value": [],
     "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
+    "new_counts": {
+      "Magnadigita": 1
+    },
     "new_unique": [
       "Magnadigita"
     ],
-    "new_value": [
+    "new_values": [
+      "Magnadigita"
+    ],
+    "new_values_raw": [
       "Magnadigita"
     ],
     "normalized_unique_values_unchanged": false,
-    "old_count": 1,
+    "old_counts": {
+      "Bolitoglossa": 1
+    },
     "old_unique": [
       "Bolitoglossa"
     ],
-    "old_value": [
+    "old_values": [
+      "Bolitoglossa"
+    ],
+    "old_values_raw": [
       "Bolitoglossa"
     ],
     "removed_unique_values": [
       "Bolitoglossa"
     ],
+    "retained_unique_values": [],
+    "semantic_action": "REPLACE_1_TO_1",
     "value_multiplicity_changes": {
       "Bolitoglossa": {
         "new": 0,
@@ -1379,11 +1266,14 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   "found": 1,
   "local_availability_result": true,
   "local_ids_count": 7,
+  "local_support_for_retained_value": [],
   "matched": true,
   "matches": [
     {
       "independent_of_target_property": true,
-      "kind": "literal_exact",
+      "kind": "literal_exact_raw",
+      "normalized_match_text": "magnadigita",
+      "raw_match_text": "Magnadigita",
       "source": "FOCUS_LABEL",
       "token": "Magnadigita"
     }
@@ -1473,6 +1363,56 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   },
   {
     "detail": {
+      "added_unique_values": [
+        "Magnadigita"
+      ],
+      "exact_value_lists_unchanged": false,
+      "new_counts": {
+        "Magnadigita": 1
+      },
+      "new_unique": [
+        "Magnadigita"
+      ],
+      "new_values": [
+        "Magnadigita"
+      ],
+      "new_values_raw": [
+        "Magnadigita"
+      ],
+      "normalized_unique_values_unchanged": false,
+      "old_counts": {
+        "Bolitoglossa": 1
+      },
+      "old_unique": [
+        "Bolitoglossa"
+      ],
+      "old_values": [
+        "Bolitoglossa"
+      ],
+      "old_values_raw": [
+        "Bolitoglossa"
+      ],
+      "removed_unique_values": [
+        "Bolitoglossa"
+      ],
+      "retained_unique_values": [],
+      "semantic_action": "REPLACE_1_TO_1",
+      "value_multiplicity_changes": {
+        "Bolitoglossa": {
+          "new": 0,
+          "old": 1
+        },
+        "Magnadigita": {
+          "new": 1,
+          "old": 0
+        }
+      }
+    },
+    "result": "REPLACE_1_TO_1",
+    "step": "value_delta"
+  },
+  {
+    "detail": {
       "constraint_type": null,
       "signal": "L4_constraints"
     },
@@ -1488,7 +1428,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
       "matches": [
         {
           "independent_of_target_property": true,
-          "kind": "literal_exact",
+          "kind": "literal_exact_raw",
+          "normalized_match_text": "magnadigita",
+          "raw_match_text": "Magnadigita",
           "source": "FOCUS_LABEL",
           "token": "Magnadigita"
         }
@@ -1522,529 +1464,7 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 ---
 
-## 007. `repair_Q137217945_2439242986`
-
-| Field | Value |
-|---|---|
-| qid | Q137217945 |
-| property | P225 |
-| track | A_BOX |
-| class / subtype / confidence | TypeB / LOCAL_TEXT_CONFIRMED / high |
-| main_score / diagnostic_only | True / False |
-| analysis_slice | main_ic_g_local_text_confirmed |
-| popularity_bucket | tail |
-| constraint_family | Q21502838 |
-| group_key | ABOX::Q137217945::P225 |
-| tbox_revision_key |  |
-
-### Annotation Focus
-
-- Decide whether the recorded local match actually supports the historical target.
-- For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
-- For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
-
-### Classifier Summary
-
-| Field | Value |
-|---|---|
-| truth_source | repair_target.new_value |
-| truth_token_kind | literal |
-| truth_tokens_preview | ["Mayamandra"] |
-| decision_branch | local_match |
-| rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
-| local_match_source | FOCUS_LABEL |
-
-### What Changed
-
-```json
-{
-  "action": "UPDATE",
-  "author": "PieterJanR",
-  "kind": "A_BOX",
-  "new_value": [
-    "Mayamandra"
-  ],
-  "old_value": [
-    "Bolitoglossa"
-  ],
-  "revision_id": 2439242986,
-  "value": [
-    "Mayamandra"
-  ],
-  "value_change_summary": {
-    "action": "UPDATE",
-    "added_unique_values": [
-      "Mayamandra"
-    ],
-    "deleted_value": [],
-    "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
-    "new_unique": [
-      "Mayamandra"
-    ],
-    "new_value": [
-      "Mayamandra"
-    ],
-    "normalized_unique_values_unchanged": false,
-    "old_count": 1,
-    "old_unique": [
-      "Bolitoglossa"
-    ],
-    "old_value": [
-      "Bolitoglossa"
-    ],
-    "removed_unique_values": [
-      "Bolitoglossa"
-    ],
-    "value_multiplicity_changes": {
-      "Bolitoglossa": {
-        "new": 0,
-        "old": 1
-      },
-      "Mayamandra": {
-        "new": 1,
-        "old": 0
-      }
-    }
-  }
-}
-```
-
-### Violation Context
-
-```json
-{
-  "report_fix_date": "2025-12-09T12:33:44",
-  "report_page_title": "Wikidata:Database reports/Constraint violations/P225",
-  "report_revision_new": 2440014373,
-  "report_revision_old": 2439564746,
-  "report_violation_type": "Unique value",
-  "report_violation_type_normalized": "Unique value",
-  "report_violation_type_qids": [],
-  "report_violation_type_raw": "Unique value",
-  "report_violation_types": [
-    "Unique value",
-    "Item P|105"
-  ],
-  "value": [
-    "Bolitoglossa"
-  ]
-}
-```
-
-### Local Evidence
-
-```json
-{
-  "found": 1,
-  "local_availability_result": true,
-  "local_ids_count": 7,
-  "matched": true,
-  "matches": [
-    {
-      "independent_of_target_property": true,
-      "kind": "literal_exact",
-      "source": "FOCUS_LABEL",
-      "token": "Mayamandra"
-    }
-  ],
-  "needed": 1,
-  "sources_used": [
-    "FOCUS_LABEL"
-  ],
-  "synthetic_pre_repair": {
-    "pre_repair_source": "repair_target.old_value",
-    "tokens": [
-      "Bolitoglossa"
-    ],
-    "used_pre_repair_value": true
-  },
-  "truth_tokens": [
-    "Mayamandra"
-  ],
-  "truth_tokens_in_recorded_matches": [
-    "Mayamandra"
-  ],
-  "used_literal_substring": false
-}
-```
-
-### Labels / Human-Readable Context
-
-```json
-{
-  "property": {
-    "description": "correct scientific name of a taxon (according to the reference given)",
-    "label": "taxon name"
-  },
-  "qid": {
-    "description": "subgenus of Bolitoglossa",
-    "label": "Mayamandra"
-  }
-}
-```
-
-### Constraint Types
-
-```json
-[
-  {
-    "label_en": "conflicts-with constraint",
-    "qid": "Q21502838"
-  },
-  {
-    "label_en": "item-requires-statement constraint",
-    "qid": "Q21503247"
-  },
-  {
-    "label_en": "subject type constraint",
-    "qid": "Q21503250"
-  },
-  {
-    "label_en": "allowed qualifiers constraint",
-    "qid": "Q21510851"
-  },
-  {
-    "label_en": "allowed-entity-types constraint",
-    "qid": "Q52004125"
-  },
-  {
-    "label_en": "property scope constraint",
-    "qid": "Q53869507"
-  },
-  {
-    "label_en": "distinct-values constraint",
-    "qid": "Q21502410"
-  },
-  {
-    "label_en": "single-value constraint",
-    "qid": "Q19474404"
-  }
-]
-```
-
-### Decision Trace
-
-```json
-[
-  {
-    "result": false,
-    "step": "is_delete"
-  },
-  {
-    "detail": {
-      "constraint_type": null,
-      "signal": "L4_constraints"
-    },
-    "result": false,
-    "step": "rule_deterministic"
-  },
-  {
-    "evidence": {
-      "found": 1,
-      "independent_match_count": 1,
-      "local_ids_count": 7,
-      "matched": true,
-      "matches": [
-        {
-          "independent_of_target_property": true,
-          "kind": "literal_exact",
-          "source": "FOCUS_LABEL",
-          "token": "Mayamandra"
-        }
-      ],
-      "needed": 1,
-      "sources_used": [
-        "FOCUS_LABEL"
-      ],
-      "used_literal_substring": false
-    },
-    "result": true,
-    "step": "local_availability",
-    "synthetic": {
-      "pre_repair_source": "repair_target.old_value",
-      "tokens": [
-        "Bolitoglossa"
-      ],
-      "used_pre_repair_value": true
-    }
-  },
-  {
-    "result": false,
-    "step": "fallback_external"
-  },
-  {
-    "result": "local_match",
-    "step": "branch"
-  }
-]
-```
-
----
-
-## 008. `repair_Q137219619_2438468445`
-
-| Field | Value |
-|---|---|
-| qid | Q137219619 |
-| property | P225 |
-| track | A_BOX |
-| class / subtype / confidence | TypeB / LOCAL_TEXT_CONFIRMED / high |
-| main_score / diagnostic_only | True / False |
-| analysis_slice | main_ic_g_local_text_confirmed |
-| popularity_bucket | tail |
-| constraint_family | Q21502838 |
-| group_key | ABOX::Q137219619::P225 |
-| tbox_revision_key |  |
-
-### Annotation Focus
-
-- Decide whether the recorded local match actually supports the historical target.
-- For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
-- For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
-
-### Classifier Summary
-
-| Field | Value |
-|---|---|
-| truth_source | repair_target.new_value |
-| truth_token_kind | literal |
-| truth_tokens_preview | ["Hypnum parietinum"] |
-| decision_branch | local_match |
-| rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
-| local_match_source | FOCUS_LABEL |
-
-### What Changed
-
-```json
-{
-  "action": "CREATE",
-  "author": "FL0RA 1234",
-  "kind": "A_BOX",
-  "new_value": [
-    "Hypnum parietinum"
-  ],
-  "old_value": [
-    "MISSING"
-  ],
-  "revision_id": 2438468445,
-  "value": [
-    "Hypnum parietinum"
-  ],
-  "value_change_summary": {
-    "action": "CREATE",
-    "added_unique_values": [
-      "Hypnum parietinum"
-    ],
-    "deleted_value": [],
-    "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
-    "new_unique": [
-      "Hypnum parietinum"
-    ],
-    "new_value": [
-      "Hypnum parietinum"
-    ],
-    "normalized_unique_values_unchanged": false,
-    "old_count": 1,
-    "old_unique": [
-      "MISSING"
-    ],
-    "old_value": [
-      "MISSING"
-    ],
-    "removed_unique_values": [
-      "MISSING"
-    ],
-    "value_multiplicity_changes": {
-      "Hypnum parietinum": {
-        "new": 1,
-        "old": 0
-      },
-      "MISSING": {
-        "new": 0,
-        "old": 1
-      }
-    }
-  }
-}
-```
-
-### Violation Context
-
-```json
-{
-  "report_fix_date": "2025-12-09T12:33:44",
-  "report_page_title": "Wikidata:Database reports/Constraint violations/P225",
-  "report_revision_new": 2440014373,
-  "report_revision_old": 2439564746,
-  "report_violation_type": "Item P|105",
-  "report_violation_type_normalized": "Item P|105",
-  "report_violation_type_qids": [],
-  "report_violation_type_raw": "Item P|105",
-  "value": [
-    "MISSING"
-  ]
-}
-```
-
-### Local Evidence
-
-```json
-{
-  "found": 1,
-  "local_availability_result": true,
-  "local_ids_count": 5,
-  "matched": true,
-  "matches": [
-    {
-      "independent_of_target_property": true,
-      "kind": "literal_exact",
-      "source": "FOCUS_LABEL",
-      "token": "Hypnum parietinum"
-    }
-  ],
-  "needed": 1,
-  "sources_used": [
-    "FOCUS_LABEL"
-  ],
-  "synthetic_pre_repair": {
-    "pre_repair_source": "repair_target.old_value",
-    "tokens": [
-      "MISSING"
-    ],
-    "used_pre_repair_value": true
-  },
-  "truth_tokens": [
-    "Hypnum parietinum"
-  ],
-  "truth_tokens_in_recorded_matches": [
-    "Hypnum parietinum"
-  ],
-  "used_literal_substring": false
-}
-```
-
-### Labels / Human-Readable Context
-
-```json
-{
-  "property": {
-    "description": "correct scientific name of a taxon (according to the reference given)",
-    "label": "taxon name"
-  },
-  "qid": {
-    "description": "species of the genus Hypnum",
-    "label": "Hypnum parietinum"
-  }
-}
-```
-
-### Constraint Types
-
-```json
-[
-  {
-    "label_en": "conflicts-with constraint",
-    "qid": "Q21502838"
-  },
-  {
-    "label_en": "item-requires-statement constraint",
-    "qid": "Q21503247"
-  },
-  {
-    "label_en": "subject type constraint",
-    "qid": "Q21503250"
-  },
-  {
-    "label_en": "allowed qualifiers constraint",
-    "qid": "Q21510851"
-  },
-  {
-    "label_en": "allowed-entity-types constraint",
-    "qid": "Q52004125"
-  },
-  {
-    "label_en": "property scope constraint",
-    "qid": "Q53869507"
-  },
-  {
-    "label_en": "distinct-values constraint",
-    "qid": "Q21502410"
-  },
-  {
-    "label_en": "single-value constraint",
-    "qid": "Q19474404"
-  }
-]
-```
-
-### Decision Trace
-
-```json
-[
-  {
-    "result": false,
-    "step": "is_delete"
-  },
-  {
-    "detail": {
-      "constraint_type": null,
-      "signal": "L4_constraints"
-    },
-    "result": false,
-    "step": "rule_deterministic"
-  },
-  {
-    "evidence": {
-      "found": 1,
-      "independent_match_count": 1,
-      "local_ids_count": 5,
-      "matched": true,
-      "matches": [
-        {
-          "independent_of_target_property": true,
-          "kind": "literal_exact",
-          "source": "FOCUS_LABEL",
-          "token": "Hypnum parietinum"
-        }
-      ],
-      "needed": 1,
-      "sources_used": [
-        "FOCUS_LABEL"
-      ],
-      "used_literal_substring": false
-    },
-    "result": true,
-    "step": "local_availability",
-    "synthetic": {
-      "pre_repair_source": "repair_target.old_value",
-      "tokens": [
-        "MISSING"
-      ],
-      "used_pre_repair_value": true
-    }
-  },
-  {
-    "result": false,
-    "step": "fallback_external"
-  },
-  {
-    "result": "local_match",
-    "step": "branch"
-  }
-]
-```
-
----
-
-## 009. `repair_Q137288654_2440360795`
+## 005. `repair_Q137288654_2440360795`
 
 | Field | Value |
 |---|---|
@@ -2056,6 +1476,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | analysis_slice | main_ic_g_local_text_confirmed |
 | popularity_bucket | tail |
 | constraint_family | Q21502838 |
+| classification_rule_family | local_evidence |
+| classification_rule_subfamily | local_text_raw |
+| decision_constraint_type |   |
 | group_key | ABOX::Q137288654::P373 |
 | tbox_revision_key |  |
 
@@ -2063,8 +1486,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 - Decide whether the recorded local match actually supports the historical target.
 - For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
+- For LOCAL_TEXT_DERIVED, verify that the target is deterministically derived from independent local text.
 - For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
+- For LOCAL_FOCUS_QID, confirm that focus identity alone is sufficient and no domain-specific reasoning is missing.
 
 ### Classifier Summary
 
@@ -2073,12 +1497,55 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | truth_source | repair_target.new_value |
 | truth_token_kind | literal |
 | truth_tokens_preview | ["Ruinas de la presa de la Estanca"] |
+| classification_target_tokens | ["Ruinas de la presa de la Estanca"] |
+| classification_target_reason | one-to-one replacement is classified from the replacement relation |
 | decision_branch | local_match |
 | rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
+| local_match_kind | literal_exact_raw |
 | local_match_source | FOCUS_LABEL |
 
 ### What Changed
+
+#### Delta Summary
+
+```json
+{
+  "added_unique_values": [
+    "Ruinas de la presa de la Estanca"
+  ],
+  "classification_target_reason": "one-to-one replacement is classified from the replacement relation",
+  "classification_target_role": "replacement_new",
+  "classification_target_tokens": [
+    "Ruinas de la presa de la Estanca"
+  ],
+  "new_changed_value": null,
+  "old_changed_value": null,
+  "removed_target_tokens": [
+    "Ruinas de la presa de la Estanca (Cascante)"
+  ],
+  "removed_unique_values": [
+    "Ruinas de la presa de la Estanca (Cascante)"
+  ],
+  "retained_support_tokens": [],
+  "retained_unique_values": [],
+  "semantic_action": "REPLACE_1_TO_1"
+}
+```
+
+#### Classifier Rule Metadata
+
+```json
+{
+  "classification_rule_family": "local_evidence",
+  "classification_rule_subfamily": "local_text_raw",
+  "constraint_family": null,
+  "decision_constraint_source": "local_context",
+  "decision_constraint_type_label": null,
+  "decision_constraint_type_qid": null
+}
+```
+
+#### Repair Target
 
 ```json
 {
@@ -2096,31 +1563,40 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
     "Ruinas de la presa de la Estanca"
   ],
   "value_change_summary": {
-    "action": "UPDATE",
     "added_unique_values": [
       "Ruinas de la presa de la Estanca"
     ],
-    "deleted_value": [],
     "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
+    "new_counts": {
+      "Ruinas de la presa de la Estanca": 1
+    },
     "new_unique": [
       "Ruinas de la presa de la Estanca"
     ],
-    "new_value": [
+    "new_values": [
+      "Ruinas de la presa de la Estanca"
+    ],
+    "new_values_raw": [
       "Ruinas de la presa de la Estanca"
     ],
     "normalized_unique_values_unchanged": false,
-    "old_count": 1,
+    "old_counts": {
+      "Ruinas de la presa de la Estanca (Cascante)": 1
+    },
     "old_unique": [
       "Ruinas de la presa de la Estanca (Cascante)"
     ],
-    "old_value": [
+    "old_values": [
+      "Ruinas de la presa de la Estanca (Cascante)"
+    ],
+    "old_values_raw": [
       "Ruinas de la presa de la Estanca (Cascante)"
     ],
     "removed_unique_values": [
       "Ruinas de la presa de la Estanca (Cascante)"
     ],
+    "retained_unique_values": [],
+    "semantic_action": "REPLACE_1_TO_1",
     "value_multiplicity_changes": {
       "Ruinas de la presa de la Estanca": {
         "new": 1,
@@ -2160,11 +1636,14 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   "found": 1,
   "local_availability_result": true,
   "local_ids_count": 7,
+  "local_support_for_retained_value": [],
   "matched": true,
   "matches": [
     {
       "independent_of_target_property": true,
-      "kind": "literal_exact",
+      "kind": "literal_exact_raw",
+      "normalized_match_text": "ruinas de la presa de la estanca",
+      "raw_match_text": "Ruinas de la presa de la Estanca",
       "source": "FOCUS_LABEL",
       "token": "Ruinas de la presa de la Estanca"
     }
@@ -2246,6 +1725,56 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   },
   {
     "detail": {
+      "added_unique_values": [
+        "Ruinas de la presa de la Estanca"
+      ],
+      "exact_value_lists_unchanged": false,
+      "new_counts": {
+        "Ruinas de la presa de la Estanca": 1
+      },
+      "new_unique": [
+        "Ruinas de la presa de la Estanca"
+      ],
+      "new_values": [
+        "Ruinas de la presa de la Estanca"
+      ],
+      "new_values_raw": [
+        "Ruinas de la presa de la Estanca"
+      ],
+      "normalized_unique_values_unchanged": false,
+      "old_counts": {
+        "Ruinas de la presa de la Estanca (Cascante)": 1
+      },
+      "old_unique": [
+        "Ruinas de la presa de la Estanca (Cascante)"
+      ],
+      "old_values": [
+        "Ruinas de la presa de la Estanca (Cascante)"
+      ],
+      "old_values_raw": [
+        "Ruinas de la presa de la Estanca (Cascante)"
+      ],
+      "removed_unique_values": [
+        "Ruinas de la presa de la Estanca (Cascante)"
+      ],
+      "retained_unique_values": [],
+      "semantic_action": "REPLACE_1_TO_1",
+      "value_multiplicity_changes": {
+        "Ruinas de la presa de la Estanca": {
+          "new": 1,
+          "old": 0
+        },
+        "Ruinas de la presa de la Estanca (Cascante)": {
+          "new": 0,
+          "old": 1
+        }
+      }
+    },
+    "result": "REPLACE_1_TO_1",
+    "step": "value_delta"
+  },
+  {
+    "detail": {
       "constraint_type": null,
       "signal": "L4_constraints"
     },
@@ -2261,7 +1790,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
       "matches": [
         {
           "independent_of_target_property": true,
-          "kind": "literal_exact",
+          "kind": "literal_exact_raw",
+          "normalized_match_text": "ruinas de la presa de la estanca",
+          "raw_match_text": "Ruinas de la presa de la Estanca",
           "source": "FOCUS_LABEL",
           "token": "Ruinas de la presa de la Estanca"
         }
@@ -2295,517 +1826,7 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 ---
 
-## 010. `repair_Q137366682_2443217037`
-
-| Field | Value |
-|---|---|
-| qid | Q137366682 |
-| property | P373 |
-| track | A_BOX |
-| class / subtype / confidence | TypeB / LOCAL_TEXT_CONFIRMED / high |
-| main_score / diagnostic_only | True / False |
-| analysis_slice | main_ic_g_local_text_confirmed |
-| popularity_bucket | head |
-| constraint_family | Q21502838 |
-| group_key | ABOX::Q137366682::P373 |
-| tbox_revision_key |  |
-
-### Annotation Focus
-
-- Decide whether the recorded local match actually supports the historical target.
-- For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
-- For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
-
-### Classifier Summary
-
-| Field | Value |
-|---|---|
-| truth_source | repair_target.new_value |
-| truth_token_kind | literal |
-| truth_tokens_preview | ["2025 Bulgarian budget protests"] |
-| decision_branch | local_match |
-| rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
-| local_match_source | FOCUS_LABEL |
-
-### What Changed
-
-```json
-{
-  "action": "UPDATE",
-  "author": "KrBot",
-  "kind": "A_BOX",
-  "new_value": [
-    "2025 Bulgarian budget protests"
-  ],
-  "old_value": [
-    "Category:2025 Bulgarian budget protests"
-  ],
-  "revision_id": 2443217037,
-  "value": [
-    "2025 Bulgarian budget protests"
-  ],
-  "value_change_summary": {
-    "action": "UPDATE",
-    "added_unique_values": [
-      "2025 Bulgarian budget protests"
-    ],
-    "deleted_value": [],
-    "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
-    "new_unique": [
-      "2025 Bulgarian budget protests"
-    ],
-    "new_value": [
-      "2025 Bulgarian budget protests"
-    ],
-    "normalized_unique_values_unchanged": false,
-    "old_count": 1,
-    "old_unique": [
-      "Category:2025 Bulgarian budget protests"
-    ],
-    "old_value": [
-      "Category:2025 Bulgarian budget protests"
-    ],
-    "removed_unique_values": [
-      "Category:2025 Bulgarian budget protests"
-    ],
-    "value_multiplicity_changes": {
-      "2025 Bulgarian budget protests": {
-        "new": 1,
-        "old": 0
-      },
-      "Category:2025 Bulgarian budget protests": {
-        "new": 0,
-        "old": 1
-      }
-    }
-  }
-}
-```
-
-### Violation Context
-
-```json
-{
-  "report_fix_date": "2025-12-18T18:54:22",
-  "report_page_title": "Wikidata:Database reports/Constraint violations/P373",
-  "report_revision_new": 2443834913,
-  "report_revision_old": 2443399922,
-  "report_violation_type": "Format",
-  "report_violation_type_normalized": "Format",
-  "report_violation_type_qids": [],
-  "report_violation_type_raw": "Format",
-  "report_violation_types": [
-    "Format",
-    "Commons link"
-  ],
-  "value": [
-    "Category:2025 Bulgarian budget protests"
-  ]
-}
-```
-
-### Local Evidence
-
-```json
-{
-  "found": 1,
-  "local_availability_result": true,
-  "local_ids_count": 33,
-  "matched": true,
-  "matches": [
-    {
-      "independent_of_target_property": true,
-      "kind": "literal_exact",
-      "source": "FOCUS_LABEL",
-      "token": "2025 Bulgarian budget protests"
-    }
-  ],
-  "needed": 1,
-  "sources_used": [
-    "FOCUS_LABEL"
-  ],
-  "synthetic_pre_repair": {
-    "pre_repair_source": "repair_target.old_value",
-    "tokens": [
-      "Category:2025 Bulgarian budget protests"
-    ],
-    "used_pre_repair_value": true
-  },
-  "truth_tokens": [
-    "2025 Bulgarian budget protests"
-  ],
-  "truth_tokens_in_recorded_matches": [
-    "2025 Bulgarian budget protests"
-  ],
-  "used_literal_substring": false
-}
-```
-
-### Labels / Human-Readable Context
-
-```json
-{
-  "property": {
-    "description": "name of the Wikimedia Commons category containing files related to this item (without the prefix \"Category:\")",
-    "label": "Commons category"
-  },
-  "qid": {
-    "description": "Gen Z protests over increasing taxes",
-    "label": "2025 Bulgarian budget protests"
-  }
-}
-```
-
-### Constraint Types
-
-```json
-[
-  {
-    "label_en": "conflicts-with constraint",
-    "qid": "Q21502838"
-  },
-  {
-    "label_en": "property scope constraint",
-    "qid": "Q53869507"
-  },
-  {
-    "label_en": "single-value constraint",
-    "qid": "Q19474404"
-  },
-  {
-    "label_en": "allowed-entity-types constraint",
-    "qid": "Q52004125"
-  },
-  {
-    "label_en": "Commons link constraint",
-    "qid": "Q21510852"
-  },
-  {
-    "label_en": "format constraint",
-    "qid": "Q21502404"
-  }
-]
-```
-
-### Decision Trace
-
-```json
-[
-  {
-    "result": false,
-    "step": "is_delete"
-  },
-  {
-    "detail": {
-      "constraint_type": null,
-      "signal": "L4_constraints"
-    },
-    "result": false,
-    "step": "rule_deterministic"
-  },
-  {
-    "evidence": {
-      "found": 1,
-      "independent_match_count": 1,
-      "local_ids_count": 33,
-      "matched": true,
-      "matches": [
-        {
-          "independent_of_target_property": true,
-          "kind": "literal_exact",
-          "source": "FOCUS_LABEL",
-          "token": "2025 Bulgarian budget protests"
-        }
-      ],
-      "needed": 1,
-      "sources_used": [
-        "FOCUS_LABEL"
-      ],
-      "used_literal_substring": false
-    },
-    "result": true,
-    "step": "local_availability",
-    "synthetic": {
-      "pre_repair_source": "repair_target.old_value",
-      "tokens": [
-        "Category:2025 Bulgarian budget protests"
-      ],
-      "used_pre_repair_value": true
-    }
-  },
-  {
-    "result": false,
-    "step": "fallback_external"
-  },
-  {
-    "result": "local_match",
-    "step": "branch"
-  }
-]
-```
-
----
-
-## 011. `repair_Q137375874_2442357718`
-
-| Field | Value |
-|---|---|
-| qid | Q137375874 |
-| property | P373 |
-| track | A_BOX |
-| class / subtype / confidence | TypeB / LOCAL_TEXT_CONFIRMED / high |
-| main_score / diagnostic_only | True / False |
-| analysis_slice | main_ic_g_local_text_confirmed |
-| popularity_bucket | mid |
-| constraint_family | Q21502838 |
-| group_key | ABOX::Q137375874::P373 |
-| tbox_revision_key |  |
-
-### Annotation Focus
-
-- Decide whether the recorded local match actually supports the historical target.
-- For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
-- For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
-
-### Classifier Summary
-
-| Field | Value |
-|---|---|
-| truth_source | repair_target.new_value |
-| truth_token_kind | literal |
-| truth_tokens_preview | ["Nabila Idris"] |
-| decision_branch | local_match |
-| rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
-| local_match_source | FOCUS_LABEL |
-
-### What Changed
-
-```json
-{
-  "action": "UPDATE",
-  "author": "KrBot",
-  "kind": "A_BOX",
-  "new_value": [
-    "Nabila Idris"
-  ],
-  "old_value": [
-    "Category:Nabila Idris"
-  ],
-  "revision_id": 2442357718,
-  "value": [
-    "Nabila Idris"
-  ],
-  "value_change_summary": {
-    "action": "UPDATE",
-    "added_unique_values": [
-      "Nabila Idris"
-    ],
-    "deleted_value": [],
-    "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
-    "new_unique": [
-      "Nabila Idris"
-    ],
-    "new_value": [
-      "Nabila Idris"
-    ],
-    "normalized_unique_values_unchanged": false,
-    "old_count": 1,
-    "old_unique": [
-      "Category:Nabila Idris"
-    ],
-    "old_value": [
-      "Category:Nabila Idris"
-    ],
-    "removed_unique_values": [
-      "Category:Nabila Idris"
-    ],
-    "value_multiplicity_changes": {
-      "Category:Nabila Idris": {
-        "new": 0,
-        "old": 1
-      },
-      "Nabila Idris": {
-        "new": 1,
-        "old": 0
-      }
-    }
-  }
-}
-```
-
-### Violation Context
-
-```json
-{
-  "report_fix_date": "2025-12-16T11:51:46",
-  "report_page_title": "Wikidata:Database reports/Constraint violations/P373",
-  "report_revision_new": 2442981743,
-  "report_revision_old": 2442645840,
-  "report_violation_type": "Format",
-  "report_violation_type_normalized": "Format",
-  "report_violation_type_qids": [],
-  "report_violation_type_raw": "Format",
-  "report_violation_types": [
-    "Format",
-    "Commons link"
-  ],
-  "value": [
-    "Category:Nabila Idris"
-  ]
-}
-```
-
-### Local Evidence
-
-```json
-{
-  "found": 1,
-  "local_availability_result": true,
-  "local_ids_count": 27,
-  "matched": true,
-  "matches": [
-    {
-      "independent_of_target_property": true,
-      "kind": "literal_exact",
-      "source": "FOCUS_LABEL",
-      "token": "Nabila Idris"
-    }
-  ],
-  "needed": 1,
-  "sources_used": [
-    "FOCUS_LABEL"
-  ],
-  "synthetic_pre_repair": {
-    "pre_repair_source": "repair_target.old_value",
-    "tokens": [
-      "Category:Nabila Idris"
-    ],
-    "used_pre_repair_value": true
-  },
-  "truth_tokens": [
-    "Nabila Idris"
-  ],
-  "truth_tokens_in_recorded_matches": [
-    "Nabila Idris"
-  ],
-  "used_literal_substring": false
-}
-```
-
-### Labels / Human-Readable Context
-
-```json
-{
-  "property": {
-    "description": "name of the Wikimedia Commons category containing files related to this item (without the prefix \"Category:\")",
-    "label": "Commons category"
-  },
-  "qid": {
-    "description": "A Bangladeshi academic, social protection expert and human rights activist, she received the Begum Rokeya Medal in 2025 in recognition of her distinguished contributions to the field of human rights.",
-    "label": "Nabila Idris"
-  }
-}
-```
-
-### Constraint Types
-
-```json
-[
-  {
-    "label_en": "conflicts-with constraint",
-    "qid": "Q21502838"
-  },
-  {
-    "label_en": "property scope constraint",
-    "qid": "Q53869507"
-  },
-  {
-    "label_en": "single-value constraint",
-    "qid": "Q19474404"
-  },
-  {
-    "label_en": "allowed-entity-types constraint",
-    "qid": "Q52004125"
-  },
-  {
-    "label_en": "Commons link constraint",
-    "qid": "Q21510852"
-  },
-  {
-    "label_en": "format constraint",
-    "qid": "Q21502404"
-  }
-]
-```
-
-### Decision Trace
-
-```json
-[
-  {
-    "result": false,
-    "step": "is_delete"
-  },
-  {
-    "detail": {
-      "constraint_type": null,
-      "signal": "L4_constraints"
-    },
-    "result": false,
-    "step": "rule_deterministic"
-  },
-  {
-    "evidence": {
-      "found": 1,
-      "independent_match_count": 1,
-      "local_ids_count": 27,
-      "matched": true,
-      "matches": [
-        {
-          "independent_of_target_property": true,
-          "kind": "literal_exact",
-          "source": "FOCUS_LABEL",
-          "token": "Nabila Idris"
-        }
-      ],
-      "needed": 1,
-      "sources_used": [
-        "FOCUS_LABEL"
-      ],
-      "used_literal_substring": false
-    },
-    "result": true,
-    "step": "local_availability",
-    "synthetic": {
-      "pre_repair_source": "repair_target.old_value",
-      "tokens": [
-        "Category:Nabila Idris"
-      ],
-      "used_pre_repair_value": true
-    }
-  },
-  {
-    "result": false,
-    "step": "fallback_external"
-  },
-  {
-    "result": "local_match",
-    "step": "branch"
-  }
-]
-```
-
----
-
-## 012. `repair_Q137379963_2443215624`
+## 006. `repair_Q137379963_2443215624`
 
 | Field | Value |
 |---|---|
@@ -2817,6 +1838,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | analysis_slice | main_ic_g_local_text_confirmed |
 | popularity_bucket | tail |
 | constraint_family | Q21502838 |
+| classification_rule_family | local_evidence |
+| classification_rule_subfamily | local_text_raw |
+| decision_constraint_type |   |
 | group_key | ABOX::Q137379963::P373 |
 | tbox_revision_key |  |
 
@@ -2824,8 +1848,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 - Decide whether the recorded local match actually supports the historical target.
 - For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
+- For LOCAL_TEXT_DERIVED, verify that the target is deterministically derived from independent local text.
 - For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
+- For LOCAL_FOCUS_QID, confirm that focus identity alone is sufficient and no domain-specific reasoning is missing.
 
 ### Classifier Summary
 
@@ -2834,12 +1859,51 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | truth_source | repair_target.new_value |
 | truth_token_kind | literal |
 | truth_tokens_preview | ["The Rewynd"] |
+| classification_target_tokens | ["The Rewynd"] |
+| classification_target_reason | created or added values are the changed repair target |
 | decision_branch | local_match |
 | rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
+| local_match_kind | literal_exact_raw |
 | local_match_source | FOCUS_LABEL |
 
 ### What Changed
+
+#### Delta Summary
+
+```json
+{
+  "added_unique_values": [
+    "The Rewynd"
+  ],
+  "classification_target_reason": "created or added values are the changed repair target",
+  "classification_target_role": "added",
+  "classification_target_tokens": [
+    "The Rewynd"
+  ],
+  "new_changed_value": null,
+  "old_changed_value": null,
+  "removed_target_tokens": [],
+  "removed_unique_values": [],
+  "retained_support_tokens": [],
+  "retained_unique_values": [],
+  "semantic_action": "CREATE_FROM_MISSING"
+}
+```
+
+#### Classifier Rule Metadata
+
+```json
+{
+  "classification_rule_family": "local_evidence",
+  "classification_rule_subfamily": "local_text_raw",
+  "constraint_family": null,
+  "decision_constraint_source": "local_context",
+  "decision_constraint_type_label": null,
+  "decision_constraint_type_qid": null
+}
+```
+
+#### Repair Target
 
 ```json
 {
@@ -2857,36 +1921,33 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
     "The Rewynd"
   ],
   "value_change_summary": {
-    "action": "CREATE",
     "added_unique_values": [
       "The Rewynd"
     ],
-    "deleted_value": [],
     "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
+    "new_counts": {
+      "The Rewynd": 1
+    },
     "new_unique": [
       "The Rewynd"
     ],
-    "new_value": [
+    "new_values": [
+      "The Rewynd"
+    ],
+    "new_values_raw": [
       "The Rewynd"
     ],
     "normalized_unique_values_unchanged": false,
-    "old_count": 1,
-    "old_unique": [
+    "old_counts": {},
+    "old_unique": [],
+    "old_values": [],
+    "old_values_raw": [
       "MISSING"
     ],
-    "old_value": [
-      "MISSING"
-    ],
-    "removed_unique_values": [
-      "MISSING"
-    ],
+    "removed_unique_values": [],
+    "retained_unique_values": [],
+    "semantic_action": "CREATE_FROM_MISSING",
     "value_multiplicity_changes": {
-      "MISSING": {
-        "new": 0,
-        "old": 1
-      },
       "The Rewynd": {
         "new": 1,
         "old": 0
@@ -2921,11 +1982,14 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   "found": 1,
   "local_availability_result": true,
   "local_ids_count": 31,
+  "local_support_for_retained_value": [],
   "matched": true,
   "matches": [
     {
       "independent_of_target_property": true,
-      "kind": "literal_exact",
+      "kind": "literal_exact_raw",
+      "normalized_match_text": "the rewynd",
+      "raw_match_text": "The Rewynd",
       "source": "FOCUS_LABEL",
       "token": "The Rewynd"
     }
@@ -3007,6 +2071,44 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   },
   {
     "detail": {
+      "added_unique_values": [
+        "The Rewynd"
+      ],
+      "exact_value_lists_unchanged": false,
+      "new_counts": {
+        "The Rewynd": 1
+      },
+      "new_unique": [
+        "The Rewynd"
+      ],
+      "new_values": [
+        "The Rewynd"
+      ],
+      "new_values_raw": [
+        "The Rewynd"
+      ],
+      "normalized_unique_values_unchanged": false,
+      "old_counts": {},
+      "old_unique": [],
+      "old_values": [],
+      "old_values_raw": [
+        "MISSING"
+      ],
+      "removed_unique_values": [],
+      "retained_unique_values": [],
+      "semantic_action": "CREATE_FROM_MISSING",
+      "value_multiplicity_changes": {
+        "The Rewynd": {
+          "new": 1,
+          "old": 0
+        }
+      }
+    },
+    "result": "CREATE_FROM_MISSING",
+    "step": "value_delta"
+  },
+  {
+    "detail": {
       "constraint_type": null,
       "signal": "L4_constraints"
     },
@@ -3022,7 +2124,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
       "matches": [
         {
           "independent_of_target_property": true,
-          "kind": "literal_exact",
+          "kind": "literal_exact_raw",
+          "normalized_match_text": "the rewynd",
+          "raw_match_text": "The Rewynd",
           "source": "FOCUS_LABEL",
           "token": "The Rewynd"
         }
@@ -3056,7 +2160,7 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 ---
 
-## 013. `repair_Q137385306_2442996855`
+## 007. `repair_Q137385306_2442996855`
 
 | Field | Value |
 |---|---|
@@ -3068,6 +2172,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | analysis_slice | main_ic_g_local_text_confirmed |
 | popularity_bucket | tail |
 | constraint_family | Q21502838 |
+| classification_rule_family | local_evidence |
+| classification_rule_subfamily | local_text_raw |
+| decision_constraint_type |   |
 | group_key | ABOX::Q137385306::P225 |
 | tbox_revision_key |  |
 
@@ -3075,8 +2182,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 - Decide whether the recorded local match actually supports the historical target.
 - For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
+- For LOCAL_TEXT_DERIVED, verify that the target is deterministically derived from independent local text.
 - For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
+- For LOCAL_FOCUS_QID, confirm that focus identity alone is sufficient and no domain-specific reasoning is missing.
 
 ### Classifier Summary
 
@@ -3085,12 +2193,55 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | truth_source | repair_target.new_value |
 | truth_token_kind | literal |
 | truth_tokens_preview | ["Pachyspathe"] |
+| classification_target_tokens | ["Pachyspathe"] |
+| classification_target_reason | one-to-one replacement is classified from the replacement relation |
 | decision_branch | local_match |
 | rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
+| local_match_kind | literal_exact_raw |
 | local_match_source | FOCUS_LABEL |
 
 ### What Changed
+
+#### Delta Summary
+
+```json
+{
+  "added_unique_values": [
+    "Pachyspathe"
+  ],
+  "classification_target_reason": "one-to-one replacement is classified from the replacement relation",
+  "classification_target_role": "replacement_new",
+  "classification_target_tokens": [
+    "Pachyspathe"
+  ],
+  "new_changed_value": null,
+  "old_changed_value": null,
+  "removed_target_tokens": [
+    "Nephus"
+  ],
+  "removed_unique_values": [
+    "Nephus"
+  ],
+  "retained_support_tokens": [],
+  "retained_unique_values": [],
+  "semantic_action": "REPLACE_1_TO_1"
+}
+```
+
+#### Classifier Rule Metadata
+
+```json
+{
+  "classification_rule_family": "local_evidence",
+  "classification_rule_subfamily": "local_text_raw",
+  "constraint_family": null,
+  "decision_constraint_source": "local_context",
+  "decision_constraint_type_label": null,
+  "decision_constraint_type_qid": null
+}
+```
+
+#### Repair Target
 
 ```json
 {
@@ -3108,31 +2259,40 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
     "Pachyspathe"
   ],
   "value_change_summary": {
-    "action": "UPDATE",
     "added_unique_values": [
       "Pachyspathe"
     ],
-    "deleted_value": [],
     "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
+    "new_counts": {
+      "Pachyspathe": 1
+    },
     "new_unique": [
       "Pachyspathe"
     ],
-    "new_value": [
+    "new_values": [
+      "Pachyspathe"
+    ],
+    "new_values_raw": [
       "Pachyspathe"
     ],
     "normalized_unique_values_unchanged": false,
-    "old_count": 1,
+    "old_counts": {
+      "Nephus": 1
+    },
     "old_unique": [
       "Nephus"
     ],
-    "old_value": [
+    "old_values": [
+      "Nephus"
+    ],
+    "old_values_raw": [
       "Nephus"
     ],
     "removed_unique_values": [
       "Nephus"
     ],
+    "retained_unique_values": [],
+    "semantic_action": "REPLACE_1_TO_1",
     "value_multiplicity_changes": {
       "Nephus": {
         "new": 0,
@@ -3176,11 +2336,14 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   "found": 1,
   "local_availability_result": true,
   "local_ids_count": 7,
+  "local_support_for_retained_value": [],
   "matched": true,
   "matches": [
     {
       "independent_of_target_property": true,
-      "kind": "literal_exact",
+      "kind": "literal_exact_raw",
+      "normalized_match_text": "pachyspathe",
+      "raw_match_text": "Pachyspathe",
       "source": "FOCUS_LABEL",
       "token": "Pachyspathe"
     }
@@ -3270,6 +2433,56 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   },
   {
     "detail": {
+      "added_unique_values": [
+        "Pachyspathe"
+      ],
+      "exact_value_lists_unchanged": false,
+      "new_counts": {
+        "Pachyspathe": 1
+      },
+      "new_unique": [
+        "Pachyspathe"
+      ],
+      "new_values": [
+        "Pachyspathe"
+      ],
+      "new_values_raw": [
+        "Pachyspathe"
+      ],
+      "normalized_unique_values_unchanged": false,
+      "old_counts": {
+        "Nephus": 1
+      },
+      "old_unique": [
+        "Nephus"
+      ],
+      "old_values": [
+        "Nephus"
+      ],
+      "old_values_raw": [
+        "Nephus"
+      ],
+      "removed_unique_values": [
+        "Nephus"
+      ],
+      "retained_unique_values": [],
+      "semantic_action": "REPLACE_1_TO_1",
+      "value_multiplicity_changes": {
+        "Nephus": {
+          "new": 0,
+          "old": 1
+        },
+        "Pachyspathe": {
+          "new": 1,
+          "old": 0
+        }
+      }
+    },
+    "result": "REPLACE_1_TO_1",
+    "step": "value_delta"
+  },
+  {
+    "detail": {
       "constraint_type": null,
       "signal": "L4_constraints"
     },
@@ -3285,7 +2498,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
       "matches": [
         {
           "independent_of_target_property": true,
-          "kind": "literal_exact",
+          "kind": "literal_exact_raw",
+          "normalized_match_text": "pachyspathe",
+          "raw_match_text": "Pachyspathe",
           "source": "FOCUS_LABEL",
           "token": "Pachyspathe"
         }
@@ -3319,7 +2534,7 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 ---
 
-## 014. `repair_Q137392742_2442642262`
+## 008. `repair_Q137392742_2442642262`
 
 | Field | Value |
 |---|---|
@@ -3331,6 +2546,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | analysis_slice | main_ic_g_local_text_confirmed |
 | popularity_bucket | tail |
 | constraint_family | Q21502838 |
+| classification_rule_family | local_evidence |
+| classification_rule_subfamily | local_text_raw |
+| decision_constraint_type |   |
 | group_key | ABOX::Q137392742::P225 |
 | tbox_revision_key |  |
 
@@ -3338,8 +2556,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 - Decide whether the recorded local match actually supports the historical target.
 - For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
+- For LOCAL_TEXT_DERIVED, verify that the target is deterministically derived from independent local text.
 - For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
+- For LOCAL_FOCUS_QID, confirm that focus identity alone is sufficient and no domain-specific reasoning is missing.
 
 ### Classifier Summary
 
@@ -3348,12 +2567,51 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | truth_source | repair_target.new_value |
 | truth_token_kind | literal |
 | truth_tokens_preview | ["Vermeulenia"] |
+| classification_target_tokens | ["Vermeulenia"] |
+| classification_target_reason | created or added values are the changed repair target |
 | decision_branch | local_match |
 | rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
+| local_match_kind | literal_exact_raw |
 | local_match_source | FOCUS_LABEL |
 
 ### What Changed
+
+#### Delta Summary
+
+```json
+{
+  "added_unique_values": [
+    "Vermeulenia"
+  ],
+  "classification_target_reason": "created or added values are the changed repair target",
+  "classification_target_role": "added",
+  "classification_target_tokens": [
+    "Vermeulenia"
+  ],
+  "new_changed_value": null,
+  "old_changed_value": null,
+  "removed_target_tokens": [],
+  "removed_unique_values": [],
+  "retained_support_tokens": [],
+  "retained_unique_values": [],
+  "semantic_action": "CREATE_FROM_MISSING"
+}
+```
+
+#### Classifier Rule Metadata
+
+```json
+{
+  "classification_rule_family": "local_evidence",
+  "classification_rule_subfamily": "local_text_raw",
+  "constraint_family": null,
+  "decision_constraint_source": "local_context",
+  "decision_constraint_type_label": null,
+  "decision_constraint_type_qid": null
+}
+```
+
+#### Repair Target
 
 ```json
 {
@@ -3371,36 +2629,33 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
     "Vermeulenia"
   ],
   "value_change_summary": {
-    "action": "CREATE",
     "added_unique_values": [
       "Vermeulenia"
     ],
-    "deleted_value": [],
     "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
+    "new_counts": {
+      "Vermeulenia": 1
+    },
     "new_unique": [
       "Vermeulenia"
     ],
-    "new_value": [
+    "new_values": [
+      "Vermeulenia"
+    ],
+    "new_values_raw": [
       "Vermeulenia"
     ],
     "normalized_unique_values_unchanged": false,
-    "old_count": 1,
-    "old_unique": [
+    "old_counts": {},
+    "old_unique": [],
+    "old_values": [],
+    "old_values_raw": [
       "MISSING"
     ],
-    "old_value": [
-      "MISSING"
-    ],
-    "removed_unique_values": [
-      "MISSING"
-    ],
+    "removed_unique_values": [],
+    "retained_unique_values": [],
+    "semantic_action": "CREATE_FROM_MISSING",
     "value_multiplicity_changes": {
-      "MISSING": {
-        "new": 0,
-        "old": 1
-      },
       "Vermeulenia": {
         "new": 1,
         "old": 0
@@ -3435,11 +2690,14 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   "found": 1,
   "local_availability_result": true,
   "local_ids_count": 7,
+  "local_support_for_retained_value": [],
   "matched": true,
   "matches": [
     {
       "independent_of_target_property": true,
-      "kind": "literal_exact",
+      "kind": "literal_exact_raw",
+      "normalized_match_text": "vermeulenia",
+      "raw_match_text": "Vermeulenia",
       "source": "FOCUS_LABEL",
       "token": "Vermeulenia"
     }
@@ -3529,6 +2787,44 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   },
   {
     "detail": {
+      "added_unique_values": [
+        "Vermeulenia"
+      ],
+      "exact_value_lists_unchanged": false,
+      "new_counts": {
+        "Vermeulenia": 1
+      },
+      "new_unique": [
+        "Vermeulenia"
+      ],
+      "new_values": [
+        "Vermeulenia"
+      ],
+      "new_values_raw": [
+        "Vermeulenia"
+      ],
+      "normalized_unique_values_unchanged": false,
+      "old_counts": {},
+      "old_unique": [],
+      "old_values": [],
+      "old_values_raw": [
+        "MISSING"
+      ],
+      "removed_unique_values": [],
+      "retained_unique_values": [],
+      "semantic_action": "CREATE_FROM_MISSING",
+      "value_multiplicity_changes": {
+        "Vermeulenia": {
+          "new": 1,
+          "old": 0
+        }
+      }
+    },
+    "result": "CREATE_FROM_MISSING",
+    "step": "value_delta"
+  },
+  {
+    "detail": {
       "constraint_type": null,
       "signal": "L4_constraints"
     },
@@ -3544,7 +2840,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
       "matches": [
         {
           "independent_of_target_property": true,
-          "kind": "literal_exact",
+          "kind": "literal_exact_raw",
+          "normalized_match_text": "vermeulenia",
+          "raw_match_text": "Vermeulenia",
           "source": "FOCUS_LABEL",
           "token": "Vermeulenia"
         }
@@ -3578,7 +2876,7 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 ---
 
-## 015. `repair_Q137397574_2442915141`
+## 009. `repair_Q137397574_2442915141`
 
 | Field | Value |
 |---|---|
@@ -3590,6 +2888,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | analysis_slice | main_ic_g_local_text_confirmed |
 | popularity_bucket | tail |
 | constraint_family | Q21502838 |
+| classification_rule_family | local_evidence |
+| classification_rule_subfamily | local_text_raw |
+| decision_constraint_type |   |
 | group_key | ABOX::Q137397574::P225 |
 | tbox_revision_key |  |
 
@@ -3597,8 +2898,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 - Decide whether the recorded local match actually supports the historical target.
 - For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
+- For LOCAL_TEXT_DERIVED, verify that the target is deterministically derived from independent local text.
 - For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
+- For LOCAL_FOCUS_QID, confirm that focus identity alone is sufficient and no domain-specific reasoning is missing.
 
 ### Classifier Summary
 
@@ -3607,12 +2909,51 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | truth_source | repair_target.new_value |
 | truth_token_kind | literal |
 | truth_tokens_preview | ["Trochilus rubricauda"] |
+| classification_target_tokens | ["Trochilus rubricauda"] |
+| classification_target_reason | created or added values are the changed repair target |
 | decision_branch | local_match |
 | rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
+| local_match_kind | literal_exact_raw |
 | local_match_source | FOCUS_LABEL |
 
 ### What Changed
+
+#### Delta Summary
+
+```json
+{
+  "added_unique_values": [
+    "Trochilus rubricauda"
+  ],
+  "classification_target_reason": "created or added values are the changed repair target",
+  "classification_target_role": "added",
+  "classification_target_tokens": [
+    "Trochilus rubricauda"
+  ],
+  "new_changed_value": null,
+  "old_changed_value": null,
+  "removed_target_tokens": [],
+  "removed_unique_values": [],
+  "retained_support_tokens": [],
+  "retained_unique_values": [],
+  "semantic_action": "CREATE_FROM_MISSING"
+}
+```
+
+#### Classifier Rule Metadata
+
+```json
+{
+  "classification_rule_family": "local_evidence",
+  "classification_rule_subfamily": "local_text_raw",
+  "constraint_family": null,
+  "decision_constraint_source": "local_context",
+  "decision_constraint_type_label": null,
+  "decision_constraint_type_qid": null
+}
+```
+
+#### Repair Target
 
 ```json
 {
@@ -3630,36 +2971,33 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
     "Trochilus rubricauda"
   ],
   "value_change_summary": {
-    "action": "CREATE",
     "added_unique_values": [
       "Trochilus rubricauda"
     ],
-    "deleted_value": [],
     "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
+    "new_counts": {
+      "Trochilus rubricauda": 1
+    },
     "new_unique": [
       "Trochilus rubricauda"
     ],
-    "new_value": [
+    "new_values": [
+      "Trochilus rubricauda"
+    ],
+    "new_values_raw": [
       "Trochilus rubricauda"
     ],
     "normalized_unique_values_unchanged": false,
-    "old_count": 1,
-    "old_unique": [
+    "old_counts": {},
+    "old_unique": [],
+    "old_values": [],
+    "old_values_raw": [
       "MISSING"
     ],
-    "old_value": [
-      "MISSING"
-    ],
-    "removed_unique_values": [
-      "MISSING"
-    ],
+    "removed_unique_values": [],
+    "retained_unique_values": [],
+    "semantic_action": "CREATE_FROM_MISSING",
     "value_multiplicity_changes": {
-      "MISSING": {
-        "new": 0,
-        "old": 1
-      },
       "Trochilus rubricauda": {
         "new": 1,
         "old": 0
@@ -3694,11 +3032,14 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   "found": 1,
   "local_availability_result": true,
   "local_ids_count": 11,
+  "local_support_for_retained_value": [],
   "matched": true,
   "matches": [
     {
       "independent_of_target_property": true,
-      "kind": "literal_exact",
+      "kind": "literal_exact_raw",
+      "normalized_match_text": "trochilus rubricauda",
+      "raw_match_text": "Trochilus rubricauda",
       "source": "FOCUS_LABEL",
       "token": "Trochilus rubricauda"
     }
@@ -3788,6 +3129,44 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   },
   {
     "detail": {
+      "added_unique_values": [
+        "Trochilus rubricauda"
+      ],
+      "exact_value_lists_unchanged": false,
+      "new_counts": {
+        "Trochilus rubricauda": 1
+      },
+      "new_unique": [
+        "Trochilus rubricauda"
+      ],
+      "new_values": [
+        "Trochilus rubricauda"
+      ],
+      "new_values_raw": [
+        "Trochilus rubricauda"
+      ],
+      "normalized_unique_values_unchanged": false,
+      "old_counts": {},
+      "old_unique": [],
+      "old_values": [],
+      "old_values_raw": [
+        "MISSING"
+      ],
+      "removed_unique_values": [],
+      "retained_unique_values": [],
+      "semantic_action": "CREATE_FROM_MISSING",
+      "value_multiplicity_changes": {
+        "Trochilus rubricauda": {
+          "new": 1,
+          "old": 0
+        }
+      }
+    },
+    "result": "CREATE_FROM_MISSING",
+    "step": "value_delta"
+  },
+  {
+    "detail": {
       "constraint_type": null,
       "signal": "L4_constraints"
     },
@@ -3803,7 +3182,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
       "matches": [
         {
           "independent_of_target_property": true,
-          "kind": "literal_exact",
+          "kind": "literal_exact_raw",
+          "normalized_match_text": "trochilus rubricauda",
+          "raw_match_text": "Trochilus rubricauda",
           "source": "FOCUS_LABEL",
           "token": "Trochilus rubricauda"
         }
@@ -3837,258 +3218,7 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 ---
 
-## 016. `repair_Q14215493_2447090540`
-
-| Field | Value |
-|---|---|
-| qid | Q14215493 |
-| property | P373 |
-| track | A_BOX |
-| class / subtype / confidence | TypeB / LOCAL_TEXT_CONFIRMED / high |
-| main_score / diagnostic_only | True / False |
-| analysis_slice | main_ic_g_local_text_confirmed |
-| popularity_bucket | tail |
-| constraint_family | Q21502838 |
-| group_key | ABOX::Q14215493::P373 |
-| tbox_revision_key |  |
-
-### Annotation Focus
-
-- Decide whether the recorded local match actually supports the historical target.
-- For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
-- For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
-
-### Classifier Summary
-
-| Field | Value |
-|---|---|
-| truth_source | repair_target.new_value |
-| truth_token_kind | literal |
-| truth_tokens_preview | ["Festivals in Kerala"] |
-| decision_branch | local_match |
-| rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
-| local_match_source | FOCUS_LABEL |
-
-### What Changed
-
-```json
-{
-  "action": "UPDATE",
-  "author": "KrBot",
-  "kind": "A_BOX",
-  "new_value": [
-    "Festivals in Kerala"
-  ],
-  "old_value": [
-    "Festivals of Kerala"
-  ],
-  "revision_id": 2447090540,
-  "value": [
-    "Festivals in Kerala"
-  ],
-  "value_change_summary": {
-    "action": "UPDATE",
-    "added_unique_values": [
-      "Festivals in Kerala"
-    ],
-    "deleted_value": [],
-    "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
-    "new_unique": [
-      "Festivals in Kerala"
-    ],
-    "new_value": [
-      "Festivals in Kerala"
-    ],
-    "normalized_unique_values_unchanged": false,
-    "old_count": 1,
-    "old_unique": [
-      "Festivals of Kerala"
-    ],
-    "old_value": [
-      "Festivals of Kerala"
-    ],
-    "removed_unique_values": [
-      "Festivals of Kerala"
-    ],
-    "value_multiplicity_changes": {
-      "Festivals in Kerala": {
-        "new": 1,
-        "old": 0
-      },
-      "Festivals of Kerala": {
-        "new": 0,
-        "old": 1
-      }
-    }
-  }
-}
-```
-
-### Violation Context
-
-```json
-{
-  "report_fix_date": "2025-12-27T12:35:05",
-  "report_page_title": "Wikidata:Database reports/Constraint violations/P373",
-  "report_revision_new": 2447772714,
-  "report_revision_old": 2447382517,
-  "report_violation_type": "Commons link",
-  "report_violation_type_normalized": "Commons link",
-  "report_violation_type_qids": [],
-  "report_violation_type_raw": "Commons link",
-  "value": [
-    "Festivals of Kerala"
-  ]
-}
-```
-
-### Local Evidence
-
-```json
-{
-  "found": 1,
-  "local_availability_result": true,
-  "local_ids_count": 9,
-  "matched": true,
-  "matches": [
-    {
-      "independent_of_target_property": true,
-      "kind": "literal_exact",
-      "source": "FOCUS_LABEL",
-      "token": "Festivals in Kerala"
-    }
-  ],
-  "needed": 1,
-  "sources_used": [
-    "FOCUS_LABEL"
-  ],
-  "synthetic_pre_repair": {
-    "pre_repair_source": "repair_target.old_value",
-    "tokens": [
-      "Festivals of Kerala"
-    ],
-    "used_pre_repair_value": true
-  },
-  "truth_tokens": [
-    "Festivals in Kerala"
-  ],
-  "truth_tokens_in_recorded_matches": [
-    "Festivals in Kerala"
-  ],
-  "used_literal_substring": false
-}
-```
-
-### Labels / Human-Readable Context
-
-```json
-{
-  "property": {
-    "description": "name of the Wikimedia Commons category containing files related to this item (without the prefix \"Category:\")",
-    "label": "Commons category"
-  },
-  "qid": {
-    "description": "part of the culture of Kerala, India",
-    "label": "festivals in Kerala"
-  }
-}
-```
-
-### Constraint Types
-
-```json
-[
-  {
-    "label_en": "conflicts-with constraint",
-    "qid": "Q21502838"
-  },
-  {
-    "label_en": "property scope constraint",
-    "qid": "Q53869507"
-  },
-  {
-    "label_en": "single-value constraint",
-    "qid": "Q19474404"
-  },
-  {
-    "label_en": "allowed-entity-types constraint",
-    "qid": "Q52004125"
-  },
-  {
-    "label_en": "Commons link constraint",
-    "qid": "Q21510852"
-  },
-  {
-    "label_en": "format constraint",
-    "qid": "Q21502404"
-  }
-]
-```
-
-### Decision Trace
-
-```json
-[
-  {
-    "result": false,
-    "step": "is_delete"
-  },
-  {
-    "detail": {
-      "constraint_type": null,
-      "signal": "L4_constraints"
-    },
-    "result": false,
-    "step": "rule_deterministic"
-  },
-  {
-    "evidence": {
-      "found": 1,
-      "independent_match_count": 1,
-      "local_ids_count": 9,
-      "matched": true,
-      "matches": [
-        {
-          "independent_of_target_property": true,
-          "kind": "literal_exact",
-          "source": "FOCUS_LABEL",
-          "token": "Festivals in Kerala"
-        }
-      ],
-      "needed": 1,
-      "sources_used": [
-        "FOCUS_LABEL"
-      ],
-      "used_literal_substring": false
-    },
-    "result": true,
-    "step": "local_availability",
-    "synthetic": {
-      "pre_repair_source": "repair_target.old_value",
-      "tokens": [
-        "Festivals of Kerala"
-      ],
-      "used_pre_repair_value": true
-    }
-  },
-  {
-    "result": false,
-    "step": "fallback_external"
-  },
-  {
-    "result": "local_match",
-    "step": "branch"
-  }
-]
-```
-
----
-
-## 017. `repair_Q144617_2445327292`
+## 010. `repair_Q144617_2445327292`
 
 | Field | Value |
 |---|---|
@@ -4100,6 +3230,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | analysis_slice | main_ic_g_local_text_confirmed |
 | popularity_bucket | head |
 | constraint_family | Q52060874 |
+| classification_rule_family | local_evidence |
+| classification_rule_subfamily | local_text_raw |
+| decision_constraint_type |   |
 | group_key | ABOX::Q144617::P4264 |
 | tbox_revision_key |  |
 
@@ -4107,8 +3240,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 - Decide whether the recorded local match actually supports the historical target.
 - For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
+- For LOCAL_TEXT_DERIVED, verify that the target is deterministically derived from independent local text.
 - For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
+- For LOCAL_FOCUS_QID, confirm that focus identity alone is sufficient and no domain-specific reasoning is missing.
 
 ### Classifier Summary
 
@@ -4117,12 +3251,55 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | truth_source | repair_target.new_value |
 | truth_token_kind | literal |
 | truth_tokens_preview | ["tim"] |
+| classification_target_tokens | ["tim"] |
+| classification_target_reason | one-to-one replacement is classified from the replacement relation |
 | decision_branch | local_match |
 | rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
+| local_match_kind | literal_normalized_exact |
 | local_match_source | NEIGHBOR_LABEL |
 
 ### What Changed
+
+#### Delta Summary
+
+```json
+{
+  "added_unique_values": [
+    "tim"
+  ],
+  "classification_target_reason": "one-to-one replacement is classified from the replacement relation",
+  "classification_target_role": "replacement_new",
+  "classification_target_tokens": [
+    "tim"
+  ],
+  "new_changed_value": null,
+  "old_changed_value": null,
+  "removed_target_tokens": [
+    "telecom-italia"
+  ],
+  "removed_unique_values": [
+    "telecom-italia"
+  ],
+  "retained_support_tokens": [],
+  "retained_unique_values": [],
+  "semantic_action": "REPLACE_1_TO_1"
+}
+```
+
+#### Classifier Rule Metadata
+
+```json
+{
+  "classification_rule_family": "local_evidence",
+  "classification_rule_subfamily": "local_text_raw",
+  "constraint_family": null,
+  "decision_constraint_source": "local_context",
+  "decision_constraint_type_label": null,
+  "decision_constraint_type_qid": null
+}
+```
+
+#### Repair Target
 
 ```json
 {
@@ -4140,31 +3317,40 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
     "tim"
   ],
   "value_change_summary": {
-    "action": "UPDATE",
     "added_unique_values": [
       "tim"
     ],
-    "deleted_value": [],
     "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
+    "new_counts": {
+      "tim": 1
+    },
     "new_unique": [
       "tim"
     ],
-    "new_value": [
+    "new_values": [
+      "tim"
+    ],
+    "new_values_raw": [
       "tim"
     ],
     "normalized_unique_values_unchanged": false,
-    "old_count": 1,
+    "old_counts": {
+      "telecom-italia": 1
+    },
     "old_unique": [
       "telecom-italia"
     ],
-    "old_value": [
+    "old_values": [
+      "telecom-italia"
+    ],
+    "old_values_raw": [
       "telecom-italia"
     ],
     "removed_unique_values": [
       "telecom-italia"
     ],
+    "retained_unique_values": [],
+    "semantic_action": "REPLACE_1_TO_1",
     "value_multiplicity_changes": {
       "telecom-italia": {
         "new": 0,
@@ -4204,11 +3390,14 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   "found": 1,
   "local_availability_result": true,
   "local_ids_count": 95,
+  "local_support_for_retained_value": [],
   "matched": true,
   "matches": [
     {
       "independent_of_target_property": true,
-      "kind": "literal_exact",
+      "kind": "literal_normalized_exact",
+      "normalized_match_text": "tim",
+      "raw_match_text": "TIM",
       "source": "NEIGHBOR_LABEL",
       "token": "tim"
     }
@@ -4298,6 +3487,56 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   },
   {
     "detail": {
+      "added_unique_values": [
+        "tim"
+      ],
+      "exact_value_lists_unchanged": false,
+      "new_counts": {
+        "tim": 1
+      },
+      "new_unique": [
+        "tim"
+      ],
+      "new_values": [
+        "tim"
+      ],
+      "new_values_raw": [
+        "tim"
+      ],
+      "normalized_unique_values_unchanged": false,
+      "old_counts": {
+        "telecom-italia": 1
+      },
+      "old_unique": [
+        "telecom-italia"
+      ],
+      "old_values": [
+        "telecom-italia"
+      ],
+      "old_values_raw": [
+        "telecom-italia"
+      ],
+      "removed_unique_values": [
+        "telecom-italia"
+      ],
+      "retained_unique_values": [],
+      "semantic_action": "REPLACE_1_TO_1",
+      "value_multiplicity_changes": {
+        "telecom-italia": {
+          "new": 0,
+          "old": 1
+        },
+        "tim": {
+          "new": 1,
+          "old": 0
+        }
+      }
+    },
+    "result": "REPLACE_1_TO_1",
+    "step": "value_delta"
+  },
+  {
+    "detail": {
       "constraint_type": null,
       "signal": "L4_constraints"
     },
@@ -4313,7 +3552,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
       "matches": [
         {
           "independent_of_target_property": true,
-          "kind": "literal_exact",
+          "kind": "literal_normalized_exact",
+          "normalized_match_text": "tim",
+          "raw_match_text": "TIM",
           "source": "NEIGHBOR_LABEL",
           "token": "tim"
         }
@@ -4347,7 +3588,7 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 ---
 
-## 018. `repair_Q1578657_2447257297`
+## 011. `repair_Q1578657_2447257297`
 
 | Field | Value |
 |---|---|
@@ -4359,6 +3600,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | analysis_slice | main_ic_g_local_text_confirmed |
 | popularity_bucket | head |
 | constraint_family | Q21502838 |
+| classification_rule_family | local_evidence |
+| classification_rule_subfamily | local_text_raw |
+| decision_constraint_type |   |
 | group_key | ABOX::Q1578657::P373 |
 | tbox_revision_key |  |
 
@@ -4366,8 +3610,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 - Decide whether the recorded local match actually supports the historical target.
 - For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
+- For LOCAL_TEXT_DERIVED, verify that the target is deterministically derived from independent local text.
 - For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
+- For LOCAL_FOCUS_QID, confirm that focus identity alone is sufficient and no domain-specific reasoning is missing.
 
 ### Classifier Summary
 
@@ -4376,12 +3621,55 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | truth_source | repair_target.new_value |
 | truth_token_kind | literal |
 | truth_tokens_preview | ["Sony Ericsson W995"] |
+| classification_target_tokens | ["Sony Ericsson W995"] |
+| classification_target_reason | one-to-one replacement is classified from the replacement relation |
 | decision_branch | local_match |
 | rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
+| local_match_kind | literal_exact_raw |
 | local_match_source | FOCUS_LABEL |
 
 ### What Changed
+
+#### Delta Summary
+
+```json
+{
+  "added_unique_values": [
+    "Sony Ericsson W995"
+  ],
+  "classification_target_reason": "one-to-one replacement is classified from the replacement relation",
+  "classification_target_role": "replacement_new",
+  "classification_target_tokens": [
+    "Sony Ericsson W995"
+  ],
+  "new_changed_value": null,
+  "old_changed_value": null,
+  "removed_target_tokens": [
+    "Sony Ericsson W995i"
+  ],
+  "removed_unique_values": [
+    "Sony Ericsson W995i"
+  ],
+  "retained_support_tokens": [],
+  "retained_unique_values": [],
+  "semantic_action": "REPLACE_1_TO_1"
+}
+```
+
+#### Classifier Rule Metadata
+
+```json
+{
+  "classification_rule_family": "local_evidence",
+  "classification_rule_subfamily": "local_text_raw",
+  "constraint_family": null,
+  "decision_constraint_source": "local_context",
+  "decision_constraint_type_label": null,
+  "decision_constraint_type_qid": null
+}
+```
+
+#### Repair Target
 
 ```json
 {
@@ -4399,31 +3687,40 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
     "Sony Ericsson W995"
   ],
   "value_change_summary": {
-    "action": "UPDATE",
     "added_unique_values": [
       "Sony Ericsson W995"
     ],
-    "deleted_value": [],
     "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
+    "new_counts": {
+      "Sony Ericsson W995": 1
+    },
     "new_unique": [
       "Sony Ericsson W995"
     ],
-    "new_value": [
+    "new_values": [
+      "Sony Ericsson W995"
+    ],
+    "new_values_raw": [
       "Sony Ericsson W995"
     ],
     "normalized_unique_values_unchanged": false,
-    "old_count": 1,
+    "old_counts": {
+      "Sony Ericsson W995i": 1
+    },
     "old_unique": [
       "Sony Ericsson W995i"
     ],
-    "old_value": [
+    "old_values": [
+      "Sony Ericsson W995i"
+    ],
+    "old_values_raw": [
       "Sony Ericsson W995i"
     ],
     "removed_unique_values": [
       "Sony Ericsson W995i"
     ],
+    "retained_unique_values": [],
+    "semantic_action": "REPLACE_1_TO_1",
     "value_multiplicity_changes": {
       "Sony Ericsson W995": {
         "new": 1,
@@ -4463,11 +3760,14 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   "found": 1,
   "local_availability_result": true,
   "local_ids_count": 5,
+  "local_support_for_retained_value": [],
   "matched": true,
   "matches": [
     {
       "independent_of_target_property": true,
-      "kind": "literal_exact",
+      "kind": "literal_exact_raw",
+      "normalized_match_text": "sony ericsson w995",
+      "raw_match_text": "Sony Ericsson W995",
       "source": "FOCUS_LABEL",
       "token": "Sony Ericsson W995"
     }
@@ -4549,6 +3849,56 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   },
   {
     "detail": {
+      "added_unique_values": [
+        "Sony Ericsson W995"
+      ],
+      "exact_value_lists_unchanged": false,
+      "new_counts": {
+        "Sony Ericsson W995": 1
+      },
+      "new_unique": [
+        "Sony Ericsson W995"
+      ],
+      "new_values": [
+        "Sony Ericsson W995"
+      ],
+      "new_values_raw": [
+        "Sony Ericsson W995"
+      ],
+      "normalized_unique_values_unchanged": false,
+      "old_counts": {
+        "Sony Ericsson W995i": 1
+      },
+      "old_unique": [
+        "Sony Ericsson W995i"
+      ],
+      "old_values": [
+        "Sony Ericsson W995i"
+      ],
+      "old_values_raw": [
+        "Sony Ericsson W995i"
+      ],
+      "removed_unique_values": [
+        "Sony Ericsson W995i"
+      ],
+      "retained_unique_values": [],
+      "semantic_action": "REPLACE_1_TO_1",
+      "value_multiplicity_changes": {
+        "Sony Ericsson W995": {
+          "new": 1,
+          "old": 0
+        },
+        "Sony Ericsson W995i": {
+          "new": 0,
+          "old": 1
+        }
+      }
+    },
+    "result": "REPLACE_1_TO_1",
+    "step": "value_delta"
+  },
+  {
+    "detail": {
       "constraint_type": null,
       "signal": "L4_constraints"
     },
@@ -4564,7 +3914,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
       "matches": [
         {
           "independent_of_target_property": true,
-          "kind": "literal_exact",
+          "kind": "literal_exact_raw",
+          "normalized_match_text": "sony ericsson w995",
+          "raw_match_text": "Sony Ericsson W995",
           "source": "FOCUS_LABEL",
           "token": "Sony Ericsson W995"
         }
@@ -4598,286 +3950,31 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 ---
 
-## 019. `repair_Q17514215_2443430384`
+## 012. `repair_Q20428060_2442783962`
 
 | Field | Value |
 |---|---|
-| qid | Q17514215 |
-| property | P4264 |
-| track | A_BOX |
-| class / subtype / confidence | TypeB / LOCAL_TEXT_CONFIRMED / high |
-| main_score / diagnostic_only | True / False |
-| analysis_slice | main_ic_g_local_text_confirmed |
-| popularity_bucket | head |
-| constraint_family | Q52060874 |
-| group_key | ABOX::Q17514215::P4264 |
-| tbox_revision_key |  |
-
-### Annotation Focus
-
-- Decide whether the recorded local match actually supports the historical target.
-- For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
-- For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
-
-### Classifier Summary
-
-| Field | Value |
-|---|---|
-| truth_source | repair_target.new_value |
-| truth_token_kind | literal |
-| truth_tokens_preview | ["vacasa"] |
-| decision_branch | local_match |
-| rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
-| local_match_source | FOCUS_LABEL |
-
-### What Changed
-
-```json
-{
-  "action": "UPDATE",
-  "author": "KrBot",
-  "kind": "A_BOX",
-  "new_value": [
-    "vacasa"
-  ],
-  "old_value": [
-    "https://www.linkedin.com/company/vacasa/"
-  ],
-  "revision_id": 2443430384,
-  "value": [
-    "vacasa"
-  ],
-  "value_change_summary": {
-    "action": "UPDATE",
-    "added_unique_values": [
-      "vacasa"
-    ],
-    "deleted_value": [],
-    "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
-    "new_unique": [
-      "vacasa"
-    ],
-    "new_value": [
-      "vacasa"
-    ],
-    "normalized_unique_values_unchanged": false,
-    "old_count": 1,
-    "old_unique": [
-      "https://www.linkedin.com/company/vacasa/"
-    ],
-    "old_value": [
-      "https://www.linkedin.com/company/vacasa/"
-    ],
-    "removed_unique_values": [
-      "https://www.linkedin.com/company/vacasa/"
-    ],
-    "value_multiplicity_changes": {
-      "https://www.linkedin.com/company/vacasa/": {
-        "new": 0,
-        "old": 1
-      },
-      "vacasa": {
-        "new": 1,
-        "old": 0
-      }
-    }
-  }
-}
-```
-
-### Violation Context
-
-```json
-{
-  "report_fix_date": "2025-12-19T08:06:54",
-  "report_page_title": "Wikidata:Database reports/Constraint violations/P4264",
-  "report_revision_new": 2443996360,
-  "report_revision_old": 2443785860,
-  "report_violation_type": "Format",
-  "report_violation_type_normalized": "Format",
-  "report_violation_type_qids": [],
-  "report_violation_type_raw": "Format",
-  "value": [
-    "https://www.linkedin.com/company/vacasa/"
-  ]
-}
-```
-
-### Local Evidence
-
-```json
-{
-  "found": 1,
-  "local_availability_result": true,
-  "local_ids_count": 9,
-  "matched": true,
-  "matches": [
-    {
-      "independent_of_target_property": true,
-      "kind": "literal_exact",
-      "source": "FOCUS_LABEL",
-      "token": "vacasa"
-    }
-  ],
-  "needed": 1,
-  "sources_used": [
-    "FOCUS_LABEL"
-  ],
-  "synthetic_pre_repair": {
-    "pre_repair_source": "repair_target.old_value",
-    "tokens": [
-      "https://www.linkedin.com/company/vacasa/"
-    ],
-    "used_pre_repair_value": true
-  },
-  "truth_tokens": [
-    "vacasa"
-  ],
-  "truth_tokens_in_recorded_matches": [
-    "vacasa"
-  ],
-  "used_literal_substring": false
-}
-```
-
-### Labels / Human-Readable Context
-
-```json
-{
-  "property": {
-    "description": "identifier for an official company, school, organisation page, or showcase page, on LinkedIn",
-    "label": "LinkedIn company or organization ID"
-  },
-  "qid": {
-    "description": "vacation rental management company",
-    "label": "Vacasa"
-  }
-}
-```
-
-### Constraint Types
-
-```json
-[
-  {
-    "label_en": "single-best-value constraint",
-    "qid": "Q52060874"
-  },
-  {
-    "label_en": "distinct-values constraint",
-    "qid": "Q21502410"
-  },
-  {
-    "label_en": "format constraint",
-    "qid": "Q21502404"
-  },
-  {
-    "label_en": "subject type constraint",
-    "qid": "Q21503250"
-  },
-  {
-    "label_en": "property scope constraint",
-    "qid": "Q53869507"
-  },
-  {
-    "label_en": "conflicts-with constraint",
-    "qid": "Q21502838"
-  },
-  {
-    "label_en": "allowed-entity-types constraint",
-    "qid": "Q52004125"
-  },
-  {
-    "label_en": "allowed qualifiers constraint",
-    "qid": "Q21510851"
-  }
-]
-```
-
-### Decision Trace
-
-```json
-[
-  {
-    "result": false,
-    "step": "is_delete"
-  },
-  {
-    "detail": {
-      "constraint_type": null,
-      "signal": "L4_constraints"
-    },
-    "result": false,
-    "step": "rule_deterministic"
-  },
-  {
-    "evidence": {
-      "found": 1,
-      "independent_match_count": 1,
-      "local_ids_count": 9,
-      "matched": true,
-      "matches": [
-        {
-          "independent_of_target_property": true,
-          "kind": "literal_exact",
-          "source": "FOCUS_LABEL",
-          "token": "vacasa"
-        }
-      ],
-      "needed": 1,
-      "sources_used": [
-        "FOCUS_LABEL"
-      ],
-      "used_literal_substring": false
-    },
-    "result": true,
-    "step": "local_availability",
-    "synthetic": {
-      "pre_repair_source": "repair_target.old_value",
-      "tokens": [
-        "https://www.linkedin.com/company/vacasa/"
-      ],
-      "used_pre_repair_value": true
-    }
-  },
-  {
-    "result": false,
-    "step": "fallback_external"
-  },
-  {
-    "result": "local_match",
-    "step": "branch"
-  }
-]
-```
-
----
-
-## 020. `repair_Q1753812_2440724915`
-
-| Field | Value |
-|---|---|
-| qid | Q1753812 |
+| qid | Q20428060 |
 | property | P373 |
 | track | A_BOX |
 | class / subtype / confidence | TypeB / LOCAL_TEXT_CONFIRMED / high |
 | main_score / diagnostic_only | True / False |
 | analysis_slice | main_ic_g_local_text_confirmed |
-| popularity_bucket | head |
+| popularity_bucket | mid |
 | constraint_family | Q21502838 |
-| group_key | ABOX::Q1753812::P373 |
+| classification_rule_family | local_evidence |
+| classification_rule_subfamily | local_text_raw |
+| decision_constraint_type |   |
+| group_key | ABOX::Q20428060::P373 |
 | tbox_revision_key |  |
 
 ### Annotation Focus
 
 - Decide whether the recorded local match actually supports the historical target.
 - For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
+- For LOCAL_TEXT_DERIVED, verify that the target is deterministically derived from independent local text.
 - For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
+- For LOCAL_FOCUS_QID, confirm that focus identity alone is sufficient and no domain-specific reasoning is missing.
 
 ### Classifier Summary
 
@@ -4885,61 +3982,97 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 |---|---|
 | truth_source | repair_target.new_value |
 | truth_token_kind | literal |
-| truth_tokens_preview | ["Vikulovsky District"] |
+| truth_tokens_preview | ["Stations of the Cross in Dobrá Voda u Českých Budějovic"] |
+| classification_target_tokens | ["Stations of the Cross in Dobrá Voda u Českých Budějovic"] |
+| classification_target_reason | created or added values are the changed repair target |
 | decision_branch | local_match |
 | rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
+| local_match_kind | literal_exact_raw |
 | local_match_source | FOCUS_LABEL |
 
 ### What Changed
 
+#### Delta Summary
+
 ```json
 {
-  "action": "UPDATE",
-  "author": "Pi bot",
+  "added_unique_values": [
+    "Stations of the Cross in Dobrá Voda u Českých Budějovic"
+  ],
+  "classification_target_reason": "created or added values are the changed repair target",
+  "classification_target_role": "added",
+  "classification_target_tokens": [
+    "Stations of the Cross in Dobrá Voda u Českých Budějovic"
+  ],
+  "new_changed_value": null,
+  "old_changed_value": null,
+  "removed_target_tokens": [],
+  "removed_unique_values": [],
+  "retained_support_tokens": [],
+  "retained_unique_values": [],
+  "semantic_action": "CREATE_FROM_MISSING"
+}
+```
+
+#### Classifier Rule Metadata
+
+```json
+{
+  "classification_rule_family": "local_evidence",
+  "classification_rule_subfamily": "local_text_raw",
+  "constraint_family": null,
+  "decision_constraint_source": "local_context",
+  "decision_constraint_type_label": null,
+  "decision_constraint_type_qid": null
+}
+```
+
+#### Repair Target
+
+```json
+{
+  "action": "CREATE",
+  "author": "KrBot",
   "kind": "A_BOX",
   "new_value": [
-    "Vikulovsky District"
+    "Stations of the Cross in Dobrá Voda u Českých Budějovic"
   ],
   "old_value": [
-    "Category:Vikulovsky District"
+    "MISSING"
   ],
-  "revision_id": 2440724915,
+  "revision_id": 2442783962,
   "value": [
-    "Vikulovsky District"
+    "Stations of the Cross in Dobrá Voda u Českých Budějovic"
   ],
   "value_change_summary": {
-    "action": "UPDATE",
     "added_unique_values": [
-      "Vikulovsky District"
+      "Stations of the Cross in Dobrá Voda u Českých Budějovic"
     ],
-    "deleted_value": [],
     "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
+    "new_counts": {
+      "Stations of the Cross in Dobrá Voda u Českých Budějovic": 1
+    },
     "new_unique": [
-      "Vikulovsky District"
+      "Stations of the Cross in Dobrá Voda u Českých Budějovic"
     ],
-    "new_value": [
-      "Vikulovsky District"
+    "new_values": [
+      "Stations of the Cross in Dobrá Voda u Českých Budějovic"
+    ],
+    "new_values_raw": [
+      "Stations of the Cross in Dobrá Voda u Českých Budějovic"
     ],
     "normalized_unique_values_unchanged": false,
-    "old_count": 1,
-    "old_unique": [
-      "Category:Vikulovsky District"
+    "old_counts": {},
+    "old_unique": [],
+    "old_values": [],
+    "old_values_raw": [
+      "MISSING"
     ],
-    "old_value": [
-      "Category:Vikulovsky District"
-    ],
-    "removed_unique_values": [
-      "Category:Vikulovsky District"
-    ],
+    "removed_unique_values": [],
+    "retained_unique_values": [],
+    "semantic_action": "CREATE_FROM_MISSING",
     "value_multiplicity_changes": {
-      "Category:Vikulovsky District": {
-        "new": 0,
-        "old": 1
-      },
-      "Vikulovsky District": {
+      "Stations of the Cross in Dobrá Voda u Českých Budějovic": {
         "new": 1,
         "old": 0
       }
@@ -4952,10 +4085,10 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 ```json
 {
-  "report_fix_date": "2025-12-12T11:04:55",
+  "report_fix_date": "2025-12-17T12:39:08",
   "report_page_title": "Wikidata:Database reports/Constraint violations/P373",
-  "report_revision_new": 2441207555,
-  "report_revision_old": 2440854653,
+  "report_revision_new": 2443399922,
+  "report_revision_old": 2442981743,
   "report_violation_type": "Format",
   "report_violation_type_normalized": "Format",
   "report_violation_type_qids": [],
@@ -4965,7 +4098,7 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
     "Commons link"
   ],
   "value": [
-    "Category:Vikulovsky District"
+    "MISSING"
   ]
 }
 ```
@@ -4976,14 +4109,17 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 {
   "found": 1,
   "local_availability_result": true,
-  "local_ids_count": 23,
+  "local_ids_count": 39,
+  "local_support_for_retained_value": [],
   "matched": true,
   "matches": [
     {
       "independent_of_target_property": true,
-      "kind": "literal_exact",
+      "kind": "literal_exact_raw",
+      "normalized_match_text": "stations of the cross in dobrá voda u českých budějovic",
+      "raw_match_text": "Stations of the Cross in Dobrá Voda u Českých Budějovic",
       "source": "FOCUS_LABEL",
-      "token": "Vikulovsky District"
+      "token": "Stations of the Cross in Dobrá Voda u Českých Budějovic"
     }
   ],
   "needed": 1,
@@ -4993,15 +4129,15 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   "synthetic_pre_repair": {
     "pre_repair_source": "repair_target.old_value",
     "tokens": [
-      "Category:Vikulovsky District"
+      "MISSING"
     ],
     "used_pre_repair_value": true
   },
   "truth_tokens": [
-    "Vikulovsky District"
+    "Stations of the Cross in Dobrá Voda u Českých Budějovic"
   ],
   "truth_tokens_in_recorded_matches": [
-    "Vikulovsky District"
+    "Stations of the Cross in Dobrá Voda u Českých Budějovic"
   ],
   "used_literal_substring": false
 }
@@ -5016,8 +4152,8 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
     "label": "Commons category"
   },
   "qid": {
-    "description": "human settlement in Russia",
-    "label": "Vikulovsky District"
+    "description": "kulturní památka České republiky v obci Dobrá Voda u Českých Budějovic",
+    "label": "Stations of the Cross in Dobrá Voda u Českých Budějovic"
   }
 }
 ```
@@ -5063,6 +4199,44 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   },
   {
     "detail": {
+      "added_unique_values": [
+        "Stations of the Cross in Dobrá Voda u Českých Budějovic"
+      ],
+      "exact_value_lists_unchanged": false,
+      "new_counts": {
+        "Stations of the Cross in Dobrá Voda u Českých Budějovic": 1
+      },
+      "new_unique": [
+        "Stations of the Cross in Dobrá Voda u Českých Budějovic"
+      ],
+      "new_values": [
+        "Stations of the Cross in Dobrá Voda u Českých Budějovic"
+      ],
+      "new_values_raw": [
+        "Stations of the Cross in Dobrá Voda u Českých Budějovic"
+      ],
+      "normalized_unique_values_unchanged": false,
+      "old_counts": {},
+      "old_unique": [],
+      "old_values": [],
+      "old_values_raw": [
+        "MISSING"
+      ],
+      "removed_unique_values": [],
+      "retained_unique_values": [],
+      "semantic_action": "CREATE_FROM_MISSING",
+      "value_multiplicity_changes": {
+        "Stations of the Cross in Dobrá Voda u Českých Budějovic": {
+          "new": 1,
+          "old": 0
+        }
+      }
+    },
+    "result": "CREATE_FROM_MISSING",
+    "step": "value_delta"
+  },
+  {
+    "detail": {
       "constraint_type": null,
       "signal": "L4_constraints"
     },
@@ -5073,14 +4247,16 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
     "evidence": {
       "found": 1,
       "independent_match_count": 1,
-      "local_ids_count": 23,
+      "local_ids_count": 39,
       "matched": true,
       "matches": [
         {
           "independent_of_target_property": true,
-          "kind": "literal_exact",
+          "kind": "literal_exact_raw",
+          "normalized_match_text": "stations of the cross in dobrá voda u českých budějovic",
+          "raw_match_text": "Stations of the Cross in Dobrá Voda u Českých Budějovic",
           "source": "FOCUS_LABEL",
-          "token": "Vikulovsky District"
+          "token": "Stations of the Cross in Dobrá Voda u Českých Budějovic"
         }
       ],
       "needed": 1,
@@ -5094,7 +4270,7 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
     "synthetic": {
       "pre_repair_source": "repair_target.old_value",
       "tokens": [
-        "Category:Vikulovsky District"
+        "MISSING"
       ],
       "used_pre_repair_value": true
     }
@@ -5112,258 +4288,7 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 ---
 
-## 021. `repair_Q18597760_2447258320`
-
-| Field | Value |
-|---|---|
-| qid | Q18597760 |
-| property | P373 |
-| track | A_BOX |
-| class / subtype / confidence | TypeB / LOCAL_TEXT_CONFIRMED / high |
-| main_score / diagnostic_only | True / False |
-| analysis_slice | main_ic_g_local_text_confirmed |
-| popularity_bucket | tail |
-| constraint_family | Q21502838 |
-| group_key | ABOX::Q18597760::P373 |
-| tbox_revision_key |  |
-
-### Annotation Focus
-
-- Decide whether the recorded local match actually supports the historical target.
-- For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
-- For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
-
-### Classifier Summary
-
-| Field | Value |
-|---|---|
-| truth_source | repair_target.new_value |
-| truth_token_kind | literal |
-| truth_tokens_preview | ["AS Montigny-le-Bretonneux"] |
-| decision_branch | local_match |
-| rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
-| local_match_source | NEIGHBOR_LABEL |
-
-### What Changed
-
-```json
-{
-  "action": "UPDATE",
-  "author": "Pi bot",
-  "kind": "A_BOX",
-  "new_value": [
-    "AS Montigny-le-Bretonneux"
-  ],
-  "old_value": [
-    "Association sportive de Montigny-le-Bretonneux"
-  ],
-  "revision_id": 2447258320,
-  "value": [
-    "AS Montigny-le-Bretonneux"
-  ],
-  "value_change_summary": {
-    "action": "UPDATE",
-    "added_unique_values": [
-      "AS Montigny-le-Bretonneux"
-    ],
-    "deleted_value": [],
-    "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
-    "new_unique": [
-      "AS Montigny-le-Bretonneux"
-    ],
-    "new_value": [
-      "AS Montigny-le-Bretonneux"
-    ],
-    "normalized_unique_values_unchanged": false,
-    "old_count": 1,
-    "old_unique": [
-      "Association sportive de Montigny-le-Bretonneux"
-    ],
-    "old_value": [
-      "Association sportive de Montigny-le-Bretonneux"
-    ],
-    "removed_unique_values": [
-      "Association sportive de Montigny-le-Bretonneux"
-    ],
-    "value_multiplicity_changes": {
-      "AS Montigny-le-Bretonneux": {
-        "new": 1,
-        "old": 0
-      },
-      "Association sportive de Montigny-le-Bretonneux": {
-        "new": 0,
-        "old": 1
-      }
-    }
-  }
-}
-```
-
-### Violation Context
-
-```json
-{
-  "report_fix_date": "2025-12-27T12:35:05",
-  "report_page_title": "Wikidata:Database reports/Constraint violations/P373",
-  "report_revision_new": 2447772714,
-  "report_revision_old": 2447382517,
-  "report_violation_type": "Commons link",
-  "report_violation_type_normalized": "Commons link",
-  "report_violation_type_qids": [],
-  "report_violation_type_raw": "Commons link",
-  "value": [
-    "Association sportive de Montigny-le-Bretonneux"
-  ]
-}
-```
-
-### Local Evidence
-
-```json
-{
-  "found": 1,
-  "local_availability_result": true,
-  "local_ids_count": 5,
-  "matched": true,
-  "matches": [
-    {
-      "independent_of_target_property": true,
-      "kind": "literal_exact",
-      "source": "NEIGHBOR_LABEL",
-      "token": "AS Montigny-le-Bretonneux"
-    }
-  ],
-  "needed": 1,
-  "sources_used": [
-    "NEIGHBOR_LABEL"
-  ],
-  "synthetic_pre_repair": {
-    "pre_repair_source": "repair_target.old_value",
-    "tokens": [
-      "Association sportive de Montigny-le-Bretonneux"
-    ],
-    "used_pre_repair_value": true
-  },
-  "truth_tokens": [
-    "AS Montigny-le-Bretonneux"
-  ],
-  "truth_tokens_in_recorded_matches": [
-    "AS Montigny-le-Bretonneux"
-  ],
-  "used_literal_substring": false
-}
-```
-
-### Labels / Human-Readable Context
-
-```json
-{
-  "property": {
-    "description": "name of the Wikimedia Commons category containing files related to this item (without the prefix \"Category:\")",
-    "label": "Commons category"
-  },
-  "qid": {
-    "description": "Wikimedia category",
-    "label": "Category:Association sportive de Montigny-le-Bretonneux"
-  }
-}
-```
-
-### Constraint Types
-
-```json
-[
-  {
-    "label_en": "conflicts-with constraint",
-    "qid": "Q21502838"
-  },
-  {
-    "label_en": "property scope constraint",
-    "qid": "Q53869507"
-  },
-  {
-    "label_en": "single-value constraint",
-    "qid": "Q19474404"
-  },
-  {
-    "label_en": "allowed-entity-types constraint",
-    "qid": "Q52004125"
-  },
-  {
-    "label_en": "Commons link constraint",
-    "qid": "Q21510852"
-  },
-  {
-    "label_en": "format constraint",
-    "qid": "Q21502404"
-  }
-]
-```
-
-### Decision Trace
-
-```json
-[
-  {
-    "result": false,
-    "step": "is_delete"
-  },
-  {
-    "detail": {
-      "constraint_type": null,
-      "signal": "L4_constraints"
-    },
-    "result": false,
-    "step": "rule_deterministic"
-  },
-  {
-    "evidence": {
-      "found": 1,
-      "independent_match_count": 1,
-      "local_ids_count": 5,
-      "matched": true,
-      "matches": [
-        {
-          "independent_of_target_property": true,
-          "kind": "literal_exact",
-          "source": "NEIGHBOR_LABEL",
-          "token": "AS Montigny-le-Bretonneux"
-        }
-      ],
-      "needed": 1,
-      "sources_used": [
-        "NEIGHBOR_LABEL"
-      ],
-      "used_literal_substring": false
-    },
-    "result": true,
-    "step": "local_availability",
-    "synthetic": {
-      "pre_repair_source": "repair_target.old_value",
-      "tokens": [
-        "Association sportive de Montigny-le-Bretonneux"
-      ],
-      "used_pre_repair_value": true
-    }
-  },
-  {
-    "result": false,
-    "step": "fallback_external"
-  },
-  {
-    "result": "local_match",
-    "step": "branch"
-  }
-]
-```
-
----
-
-## 022. `repair_Q205953_2441113979`
+## 013. `repair_Q205953_2441113979`
 
 | Field | Value |
 |---|---|
@@ -5375,6 +4300,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | analysis_slice | main_ic_g_local_text_confirmed |
 | popularity_bucket | head |
 | constraint_family | Q21502838 |
+| classification_rule_family | local_evidence |
+| classification_rule_subfamily | local_text_raw |
+| decision_constraint_type |   |
 | group_key | ABOX::Q205953::P373 |
 | tbox_revision_key |  |
 
@@ -5382,8 +4310,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 - Decide whether the recorded local match actually supports the historical target.
 - For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
+- For LOCAL_TEXT_DERIVED, verify that the target is deterministically derived from independent local text.
 - For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
+- For LOCAL_FOCUS_QID, confirm that focus identity alone is sufficient and no domain-specific reasoning is missing.
 
 ### Classifier Summary
 
@@ -5392,12 +4321,55 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | truth_source | repair_target.new_value |
 | truth_token_kind | literal |
 | truth_tokens_preview | ["Fedor Emelianenko"] |
+| classification_target_tokens | ["Fedor Emelianenko"] |
+| classification_target_reason | one-to-one replacement is classified from the replacement relation |
 | decision_branch | local_match |
 | rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
+| local_match_kind | literal_exact_raw |
 | local_match_source | FOCUS_LABEL |
 
 ### What Changed
+
+#### Delta Summary
+
+```json
+{
+  "added_unique_values": [
+    "Fedor Emelianenko"
+  ],
+  "classification_target_reason": "one-to-one replacement is classified from the replacement relation",
+  "classification_target_role": "replacement_new",
+  "classification_target_tokens": [
+    "Fedor Emelianenko"
+  ],
+  "new_changed_value": null,
+  "old_changed_value": null,
+  "removed_target_tokens": [
+    "Fedor Emelianenkov"
+  ],
+  "removed_unique_values": [
+    "Fedor Emelianenkov"
+  ],
+  "retained_support_tokens": [],
+  "retained_unique_values": [],
+  "semantic_action": "REPLACE_1_TO_1"
+}
+```
+
+#### Classifier Rule Metadata
+
+```json
+{
+  "classification_rule_family": "local_evidence",
+  "classification_rule_subfamily": "local_text_raw",
+  "constraint_family": null,
+  "decision_constraint_source": "local_context",
+  "decision_constraint_type_label": null,
+  "decision_constraint_type_qid": null
+}
+```
+
+#### Repair Target
 
 ```json
 {
@@ -5415,31 +4387,40 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
     "Fedor Emelianenko"
   ],
   "value_change_summary": {
-    "action": "UPDATE",
     "added_unique_values": [
       "Fedor Emelianenko"
     ],
-    "deleted_value": [],
     "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
+    "new_counts": {
+      "Fedor Emelianenko": 1
+    },
     "new_unique": [
       "Fedor Emelianenko"
     ],
-    "new_value": [
+    "new_values": [
+      "Fedor Emelianenko"
+    ],
+    "new_values_raw": [
       "Fedor Emelianenko"
     ],
     "normalized_unique_values_unchanged": false,
-    "old_count": 1,
+    "old_counts": {
+      "Fedor Emelianenkov": 1
+    },
     "old_unique": [
       "Fedor Emelianenkov"
     ],
-    "old_value": [
+    "old_values": [
+      "Fedor Emelianenkov"
+    ],
+    "old_values_raw": [
       "Fedor Emelianenkov"
     ],
     "removed_unique_values": [
       "Fedor Emelianenkov"
     ],
+    "retained_unique_values": [],
+    "semantic_action": "REPLACE_1_TO_1",
     "value_multiplicity_changes": {
       "Fedor Emelianenko": {
         "new": 1,
@@ -5479,11 +4460,14 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   "found": 1,
   "local_availability_result": true,
   "local_ids_count": 78,
+  "local_support_for_retained_value": [],
   "matched": true,
   "matches": [
     {
       "independent_of_target_property": true,
-      "kind": "literal_exact",
+      "kind": "literal_exact_raw",
+      "normalized_match_text": "fedor emelianenko",
+      "raw_match_text": "Fedor Emelianenko",
       "source": "FOCUS_LABEL",
       "token": "Fedor Emelianenko"
     }
@@ -5565,6 +4549,56 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   },
   {
     "detail": {
+      "added_unique_values": [
+        "Fedor Emelianenko"
+      ],
+      "exact_value_lists_unchanged": false,
+      "new_counts": {
+        "Fedor Emelianenko": 1
+      },
+      "new_unique": [
+        "Fedor Emelianenko"
+      ],
+      "new_values": [
+        "Fedor Emelianenko"
+      ],
+      "new_values_raw": [
+        "Fedor Emelianenko"
+      ],
+      "normalized_unique_values_unchanged": false,
+      "old_counts": {
+        "Fedor Emelianenkov": 1
+      },
+      "old_unique": [
+        "Fedor Emelianenkov"
+      ],
+      "old_values": [
+        "Fedor Emelianenkov"
+      ],
+      "old_values_raw": [
+        "Fedor Emelianenkov"
+      ],
+      "removed_unique_values": [
+        "Fedor Emelianenkov"
+      ],
+      "retained_unique_values": [],
+      "semantic_action": "REPLACE_1_TO_1",
+      "value_multiplicity_changes": {
+        "Fedor Emelianenko": {
+          "new": 1,
+          "old": 0
+        },
+        "Fedor Emelianenkov": {
+          "new": 0,
+          "old": 1
+        }
+      }
+    },
+    "result": "REPLACE_1_TO_1",
+    "step": "value_delta"
+  },
+  {
+    "detail": {
       "constraint_type": null,
       "signal": "L4_constraints"
     },
@@ -5580,7 +4614,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
       "matches": [
         {
           "independent_of_target_property": true,
-          "kind": "literal_exact",
+          "kind": "literal_exact_raw",
+          "normalized_match_text": "fedor emelianenko",
+          "raw_match_text": "Fedor Emelianenko",
           "source": "FOCUS_LABEL",
           "token": "Fedor Emelianenko"
         }
@@ -5614,7 +4650,7 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 ---
 
-## 023. `repair_Q25239177_2447091414`
+## 014. `repair_Q25239177_2447091414`
 
 | Field | Value |
 |---|---|
@@ -5626,6 +4662,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | analysis_slice | main_ic_g_local_text_confirmed |
 | popularity_bucket | mid |
 | constraint_family | Q21502838 |
+| classification_rule_family | local_evidence |
+| classification_rule_subfamily | local_text_raw |
+| decision_constraint_type |   |
 | group_key | ABOX::Q25239177::P373 |
 | tbox_revision_key |  |
 
@@ -5633,8 +4672,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 - Decide whether the recorded local match actually supports the historical target.
 - For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
+- For LOCAL_TEXT_DERIVED, verify that the target is deterministically derived from independent local text.
 - For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
+- For LOCAL_FOCUS_QID, confirm that focus identity alone is sufficient and no domain-specific reasoning is missing.
 
 ### Classifier Summary
 
@@ -5643,12 +4683,55 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | truth_source | repair_target.new_value |
 | truth_token_kind | literal |
 | truth_tokens_preview | ["Folk festivals in Japan"] |
+| classification_target_tokens | ["Folk festivals in Japan"] |
+| classification_target_reason | one-to-one replacement is classified from the replacement relation |
 | decision_branch | local_match |
 | rationale | Truth tokens matched independent local text context. |
 | local_match_kind | literal_boundary |
 | local_match_source | FOCUS_LABEL |
 
 ### What Changed
+
+#### Delta Summary
+
+```json
+{
+  "added_unique_values": [
+    "Folk festivals in Japan"
+  ],
+  "classification_target_reason": "one-to-one replacement is classified from the replacement relation",
+  "classification_target_role": "replacement_new",
+  "classification_target_tokens": [
+    "Folk festivals in Japan"
+  ],
+  "new_changed_value": null,
+  "old_changed_value": null,
+  "removed_target_tokens": [
+    "Folk festivals of Japan"
+  ],
+  "removed_unique_values": [
+    "Folk festivals of Japan"
+  ],
+  "retained_support_tokens": [],
+  "retained_unique_values": [],
+  "semantic_action": "REPLACE_1_TO_1"
+}
+```
+
+#### Classifier Rule Metadata
+
+```json
+{
+  "classification_rule_family": "local_evidence",
+  "classification_rule_subfamily": "local_text_raw",
+  "constraint_family": null,
+  "decision_constraint_source": "local_context",
+  "decision_constraint_type_label": null,
+  "decision_constraint_type_qid": null
+}
+```
+
+#### Repair Target
 
 ```json
 {
@@ -5666,31 +4749,40 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
     "Folk festivals in Japan"
   ],
   "value_change_summary": {
-    "action": "UPDATE",
     "added_unique_values": [
       "Folk festivals in Japan"
     ],
-    "deleted_value": [],
     "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
+    "new_counts": {
+      "Folk festivals in Japan": 1
+    },
     "new_unique": [
       "Folk festivals in Japan"
     ],
-    "new_value": [
+    "new_values": [
+      "Folk festivals in Japan"
+    ],
+    "new_values_raw": [
       "Folk festivals in Japan"
     ],
     "normalized_unique_values_unchanged": false,
-    "old_count": 1,
+    "old_counts": {
+      "Folk festivals of Japan": 1
+    },
     "old_unique": [
       "Folk festivals of Japan"
     ],
-    "old_value": [
+    "old_values": [
+      "Folk festivals of Japan"
+    ],
+    "old_values_raw": [
       "Folk festivals of Japan"
     ],
     "removed_unique_values": [
       "Folk festivals of Japan"
     ],
+    "retained_unique_values": [],
+    "semantic_action": "REPLACE_1_TO_1",
     "value_multiplicity_changes": {
       "Folk festivals in Japan": {
         "new": 1,
@@ -5730,11 +4822,14 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   "found": 1,
   "local_availability_result": true,
   "local_ids_count": 7,
+  "local_support_for_retained_value": [],
   "matched": true,
   "matches": [
     {
       "independent_of_target_property": true,
       "kind": "literal_boundary",
+      "normalized_match_text": "category:folk festivals in japan",
+      "raw_match_text": "Category:Folk festivals in Japan",
       "source": "FOCUS_LABEL",
       "token": "Folk festivals in Japan"
     }
@@ -5816,6 +4911,56 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   },
   {
     "detail": {
+      "added_unique_values": [
+        "Folk festivals in Japan"
+      ],
+      "exact_value_lists_unchanged": false,
+      "new_counts": {
+        "Folk festivals in Japan": 1
+      },
+      "new_unique": [
+        "Folk festivals in Japan"
+      ],
+      "new_values": [
+        "Folk festivals in Japan"
+      ],
+      "new_values_raw": [
+        "Folk festivals in Japan"
+      ],
+      "normalized_unique_values_unchanged": false,
+      "old_counts": {
+        "Folk festivals of Japan": 1
+      },
+      "old_unique": [
+        "Folk festivals of Japan"
+      ],
+      "old_values": [
+        "Folk festivals of Japan"
+      ],
+      "old_values_raw": [
+        "Folk festivals of Japan"
+      ],
+      "removed_unique_values": [
+        "Folk festivals of Japan"
+      ],
+      "retained_unique_values": [],
+      "semantic_action": "REPLACE_1_TO_1",
+      "value_multiplicity_changes": {
+        "Folk festivals in Japan": {
+          "new": 1,
+          "old": 0
+        },
+        "Folk festivals of Japan": {
+          "new": 0,
+          "old": 1
+        }
+      }
+    },
+    "result": "REPLACE_1_TO_1",
+    "step": "value_delta"
+  },
+  {
+    "detail": {
       "constraint_type": null,
       "signal": "L4_constraints"
     },
@@ -5832,6 +4977,8 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
         {
           "independent_of_target_property": true,
           "kind": "literal_boundary",
+          "normalized_match_text": "category:folk festivals in japan",
+          "raw_match_text": "Category:Folk festivals in Japan",
           "source": "FOCUS_LABEL",
           "token": "Folk festivals in Japan"
         }
@@ -5865,7 +5012,7 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 ---
 
-## 024. `repair_Q2756_2447374243`
+## 015. `repair_Q2756_2447374243`
 
 | Field | Value |
 |---|---|
@@ -5877,6 +5024,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | analysis_slice | main_ic_g_local_text_confirmed |
 | popularity_bucket | head |
 | constraint_family | Q21502838 |
+| classification_rule_family | local_evidence |
+| classification_rule_subfamily | local_text_raw |
+| decision_constraint_type |   |
 | group_key | ABOX::Q2756::P373 |
 | tbox_revision_key |  |
 
@@ -5884,8 +5034,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 - Decide whether the recorded local match actually supports the historical target.
 - For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
+- For LOCAL_TEXT_DERIVED, verify that the target is deterministically derived from independent local text.
 - For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
+- For LOCAL_FOCUS_QID, confirm that focus identity alone is sufficient and no domain-specific reasoning is missing.
 
 ### Classifier Summary
 
@@ -5894,12 +5045,51 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | truth_source | repair_target.new_value |
 | truth_token_kind | literal |
 | truth_tokens_preview | ["Siena FC"] |
+| classification_target_tokens | ["Siena FC"] |
+| classification_target_reason | created or added values are the changed repair target |
 | decision_branch | local_match |
 | rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
+| local_match_kind | literal_exact_raw |
 | local_match_source | FOCUS_LABEL |
 
 ### What Changed
+
+#### Delta Summary
+
+```json
+{
+  "added_unique_values": [
+    "Siena FC"
+  ],
+  "classification_target_reason": "created or added values are the changed repair target",
+  "classification_target_role": "added",
+  "classification_target_tokens": [
+    "Siena FC"
+  ],
+  "new_changed_value": null,
+  "old_changed_value": null,
+  "removed_target_tokens": [],
+  "removed_unique_values": [],
+  "retained_support_tokens": [],
+  "retained_unique_values": [],
+  "semantic_action": "CREATE_FROM_MISSING"
+}
+```
+
+#### Classifier Rule Metadata
+
+```json
+{
+  "classification_rule_family": "local_evidence",
+  "classification_rule_subfamily": "local_text_raw",
+  "constraint_family": null,
+  "decision_constraint_source": "local_context",
+  "decision_constraint_type_label": null,
+  "decision_constraint_type_qid": null
+}
+```
+
+#### Repair Target
 
 ```json
 {
@@ -5917,36 +5107,33 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
     "Siena FC"
   ],
   "value_change_summary": {
-    "action": "CREATE",
     "added_unique_values": [
       "Siena FC"
     ],
-    "deleted_value": [],
     "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
+    "new_counts": {
+      "Siena FC": 1
+    },
     "new_unique": [
       "Siena FC"
     ],
-    "new_value": [
+    "new_values": [
+      "Siena FC"
+    ],
+    "new_values_raw": [
       "Siena FC"
     ],
     "normalized_unique_values_unchanged": false,
-    "old_count": 1,
-    "old_unique": [
+    "old_counts": {},
+    "old_unique": [],
+    "old_values": [],
+    "old_values_raw": [
       "MISSING"
     ],
-    "old_value": [
-      "MISSING"
-    ],
-    "removed_unique_values": [
-      "MISSING"
-    ],
+    "removed_unique_values": [],
+    "retained_unique_values": [],
+    "semantic_action": "CREATE_FROM_MISSING",
     "value_multiplicity_changes": {
-      "MISSING": {
-        "new": 0,
-        "old": 1
-      },
       "Siena FC": {
         "new": 1,
         "old": 0
@@ -5981,11 +5168,14 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   "found": 1,
   "local_availability_result": true,
   "local_ids_count": 39,
+  "local_support_for_retained_value": [],
   "matched": true,
   "matches": [
     {
       "independent_of_target_property": true,
-      "kind": "literal_exact",
+      "kind": "literal_exact_raw",
+      "normalized_match_text": "siena fc",
+      "raw_match_text": "Siena FC",
       "source": "FOCUS_LABEL",
       "token": "Siena FC"
     }
@@ -6067,6 +5257,44 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   },
   {
     "detail": {
+      "added_unique_values": [
+        "Siena FC"
+      ],
+      "exact_value_lists_unchanged": false,
+      "new_counts": {
+        "Siena FC": 1
+      },
+      "new_unique": [
+        "Siena FC"
+      ],
+      "new_values": [
+        "Siena FC"
+      ],
+      "new_values_raw": [
+        "Siena FC"
+      ],
+      "normalized_unique_values_unchanged": false,
+      "old_counts": {},
+      "old_unique": [],
+      "old_values": [],
+      "old_values_raw": [
+        "MISSING"
+      ],
+      "removed_unique_values": [],
+      "retained_unique_values": [],
+      "semantic_action": "CREATE_FROM_MISSING",
+      "value_multiplicity_changes": {
+        "Siena FC": {
+          "new": 1,
+          "old": 0
+        }
+      }
+    },
+    "result": "CREATE_FROM_MISSING",
+    "step": "value_delta"
+  },
+  {
+    "detail": {
       "constraint_type": null,
       "signal": "L4_constraints"
     },
@@ -6082,7 +5310,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
       "matches": [
         {
           "independent_of_target_property": true,
-          "kind": "literal_exact",
+          "kind": "literal_exact_raw",
+          "normalized_match_text": "siena fc",
+          "raw_match_text": "Siena FC",
           "source": "FOCUS_LABEL",
           "token": "Siena FC"
         }
@@ -6116,262 +5346,7 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 ---
 
-## 025. `repair_Q31868187_2442784183`
-
-| Field | Value |
-|---|---|
-| qid | Q31868187 |
-| property | P373 |
-| track | A_BOX |
-| class / subtype / confidence | TypeB / LOCAL_TEXT_CONFIRMED / high |
-| main_score / diagnostic_only | True / False |
-| analysis_slice | main_ic_g_local_text_confirmed |
-| popularity_bucket | mid |
-| constraint_family | Q21502838 |
-| group_key | ABOX::Q31868187::P373 |
-| tbox_revision_key |  |
-
-### Annotation Focus
-
-- Decide whether the recorded local match actually supports the historical target.
-- For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
-- For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
-
-### Classifier Summary
-
-| Field | Value |
-|---|---|
-| truth_source | repair_target.new_value |
-| truth_token_kind | literal |
-| truth_tokens_preview | ["Plástovice čp. 24"] |
-| decision_branch | local_match |
-| rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
-| local_match_source | FOCUS_LABEL |
-
-### What Changed
-
-```json
-{
-  "action": "CREATE",
-  "author": "KrBot",
-  "kind": "A_BOX",
-  "new_value": [
-    "Plástovice čp. 24"
-  ],
-  "old_value": [
-    "MISSING"
-  ],
-  "revision_id": 2442784183,
-  "value": [
-    "Plástovice čp. 24"
-  ],
-  "value_change_summary": {
-    "action": "CREATE",
-    "added_unique_values": [
-      "Plástovice čp. 24"
-    ],
-    "deleted_value": [],
-    "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
-    "new_unique": [
-      "Plástovice čp. 24"
-    ],
-    "new_value": [
-      "Plástovice čp. 24"
-    ],
-    "normalized_unique_values_unchanged": false,
-    "old_count": 1,
-    "old_unique": [
-      "MISSING"
-    ],
-    "old_value": [
-      "MISSING"
-    ],
-    "removed_unique_values": [
-      "MISSING"
-    ],
-    "value_multiplicity_changes": {
-      "MISSING": {
-        "new": 0,
-        "old": 1
-      },
-      "Plástovice čp. 24": {
-        "new": 1,
-        "old": 0
-      }
-    }
-  }
-}
-```
-
-### Violation Context
-
-```json
-{
-  "report_fix_date": "2025-12-17T12:39:08",
-  "report_page_title": "Wikidata:Database reports/Constraint violations/P373",
-  "report_revision_new": 2443399922,
-  "report_revision_old": 2442981743,
-  "report_violation_type": "Format",
-  "report_violation_type_normalized": "Format",
-  "report_violation_type_qids": [],
-  "report_violation_type_raw": "Format",
-  "report_violation_types": [
-    "Format",
-    "Commons link"
-  ],
-  "value": [
-    "MISSING"
-  ]
-}
-```
-
-### Local Evidence
-
-```json
-{
-  "found": 1,
-  "local_availability_result": true,
-  "local_ids_count": 11,
-  "matched": true,
-  "matches": [
-    {
-      "independent_of_target_property": true,
-      "kind": "literal_exact",
-      "source": "FOCUS_LABEL",
-      "token": "Plástovice čp. 24"
-    }
-  ],
-  "needed": 1,
-  "sources_used": [
-    "FOCUS_LABEL"
-  ],
-  "synthetic_pre_repair": {
-    "pre_repair_source": "repair_target.old_value",
-    "tokens": [
-      "MISSING"
-    ],
-    "used_pre_repair_value": true
-  },
-  "truth_tokens": [
-    "Plástovice čp. 24"
-  ],
-  "truth_tokens_in_recorded_matches": [
-    "Plástovice čp. 24"
-  ],
-  "used_literal_substring": false
-}
-```
-
-### Labels / Human-Readable Context
-
-```json
-{
-  "property": {
-    "description": "name of the Wikimedia Commons category containing files related to this item (without the prefix \"Category:\")",
-    "label": "Commons category"
-  },
-  "qid": {
-    "description": "usedlost",
-    "label": "Plástovice čp. 24"
-  }
-}
-```
-
-### Constraint Types
-
-```json
-[
-  {
-    "label_en": "conflicts-with constraint",
-    "qid": "Q21502838"
-  },
-  {
-    "label_en": "property scope constraint",
-    "qid": "Q53869507"
-  },
-  {
-    "label_en": "single-value constraint",
-    "qid": "Q19474404"
-  },
-  {
-    "label_en": "allowed-entity-types constraint",
-    "qid": "Q52004125"
-  },
-  {
-    "label_en": "Commons link constraint",
-    "qid": "Q21510852"
-  },
-  {
-    "label_en": "format constraint",
-    "qid": "Q21502404"
-  }
-]
-```
-
-### Decision Trace
-
-```json
-[
-  {
-    "result": false,
-    "step": "is_delete"
-  },
-  {
-    "detail": {
-      "constraint_type": null,
-      "signal": "L4_constraints"
-    },
-    "result": false,
-    "step": "rule_deterministic"
-  },
-  {
-    "evidence": {
-      "found": 1,
-      "independent_match_count": 1,
-      "local_ids_count": 11,
-      "matched": true,
-      "matches": [
-        {
-          "independent_of_target_property": true,
-          "kind": "literal_exact",
-          "source": "FOCUS_LABEL",
-          "token": "Plástovice čp. 24"
-        }
-      ],
-      "needed": 1,
-      "sources_used": [
-        "FOCUS_LABEL"
-      ],
-      "used_literal_substring": false
-    },
-    "result": true,
-    "step": "local_availability",
-    "synthetic": {
-      "pre_repair_source": "repair_target.old_value",
-      "tokens": [
-        "MISSING"
-      ],
-      "used_pre_repair_value": true
-    }
-  },
-  {
-    "result": false,
-    "step": "fallback_external"
-  },
-  {
-    "result": "local_match",
-    "step": "branch"
-  }
-]
-```
-
----
-
-## 026. `repair_Q32250854_2447091819`
+## 016. `repair_Q32250854_2447091819`
 
 | Field | Value |
 |---|---|
@@ -6383,6 +5358,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | analysis_slice | main_ic_g_local_text_confirmed |
 | popularity_bucket | tail |
 | constraint_family | Q21502838 |
+| classification_rule_family | local_evidence |
+| classification_rule_subfamily | local_text_raw |
+| decision_constraint_type |   |
 | group_key | ABOX::Q32250854::P373 |
 | tbox_revision_key |  |
 
@@ -6390,8 +5368,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 - Decide whether the recorded local match actually supports the historical target.
 - For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
+- For LOCAL_TEXT_DERIVED, verify that the target is deterministically derived from independent local text.
 - For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
+- For LOCAL_FOCUS_QID, confirm that focus identity alone is sufficient and no domain-specific reasoning is missing.
 
 ### Classifier Summary
 
@@ -6400,12 +5379,55 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | truth_source | repair_target.new_value |
 | truth_token_kind | literal |
 | truth_tokens_preview | ["Vikulovsky District"] |
+| classification_target_tokens | ["Vikulovsky District"] |
+| classification_target_reason | one-to-one replacement is classified from the replacement relation |
 | decision_branch | local_match |
 | rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
+| local_match_kind | literal_exact_raw |
 | local_match_source | NEIGHBOR_LABEL |
 
 ### What Changed
+
+#### Delta Summary
+
+```json
+{
+  "added_unique_values": [
+    "Vikulovsky District"
+  ],
+  "classification_target_reason": "one-to-one replacement is classified from the replacement relation",
+  "classification_target_role": "replacement_new",
+  "classification_target_tokens": [
+    "Vikulovsky District"
+  ],
+  "new_changed_value": null,
+  "old_changed_value": null,
+  "removed_target_tokens": [
+    "Vikulovo rayon"
+  ],
+  "removed_unique_values": [
+    "Vikulovo rayon"
+  ],
+  "retained_support_tokens": [],
+  "retained_unique_values": [],
+  "semantic_action": "REPLACE_1_TO_1"
+}
+```
+
+#### Classifier Rule Metadata
+
+```json
+{
+  "classification_rule_family": "local_evidence",
+  "classification_rule_subfamily": "local_text_raw",
+  "constraint_family": null,
+  "decision_constraint_source": "local_context",
+  "decision_constraint_type_label": null,
+  "decision_constraint_type_qid": null
+}
+```
+
+#### Repair Target
 
 ```json
 {
@@ -6423,31 +5445,40 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
     "Vikulovsky District"
   ],
   "value_change_summary": {
-    "action": "UPDATE",
     "added_unique_values": [
       "Vikulovsky District"
     ],
-    "deleted_value": [],
     "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
+    "new_counts": {
+      "Vikulovsky District": 1
+    },
     "new_unique": [
       "Vikulovsky District"
     ],
-    "new_value": [
+    "new_values": [
+      "Vikulovsky District"
+    ],
+    "new_values_raw": [
       "Vikulovsky District"
     ],
     "normalized_unique_values_unchanged": false,
-    "old_count": 1,
+    "old_counts": {
+      "Vikulovo rayon": 1
+    },
     "old_unique": [
       "Vikulovo rayon"
     ],
-    "old_value": [
+    "old_values": [
+      "Vikulovo rayon"
+    ],
+    "old_values_raw": [
       "Vikulovo rayon"
     ],
     "removed_unique_values": [
       "Vikulovo rayon"
     ],
+    "retained_unique_values": [],
+    "semantic_action": "REPLACE_1_TO_1",
     "value_multiplicity_changes": {
       "Vikulovo rayon": {
         "new": 0,
@@ -6487,11 +5518,14 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   "found": 1,
   "local_availability_result": true,
   "local_ids_count": 5,
+  "local_support_for_retained_value": [],
   "matched": true,
   "matches": [
     {
       "independent_of_target_property": true,
-      "kind": "literal_exact",
+      "kind": "literal_exact_raw",
+      "normalized_match_text": "vikulovsky district",
+      "raw_match_text": "Vikulovsky District",
       "source": "NEIGHBOR_LABEL",
       "token": "Vikulovsky District"
     }
@@ -6573,6 +5607,56 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   },
   {
     "detail": {
+      "added_unique_values": [
+        "Vikulovsky District"
+      ],
+      "exact_value_lists_unchanged": false,
+      "new_counts": {
+        "Vikulovsky District": 1
+      },
+      "new_unique": [
+        "Vikulovsky District"
+      ],
+      "new_values": [
+        "Vikulovsky District"
+      ],
+      "new_values_raw": [
+        "Vikulovsky District"
+      ],
+      "normalized_unique_values_unchanged": false,
+      "old_counts": {
+        "Vikulovo rayon": 1
+      },
+      "old_unique": [
+        "Vikulovo rayon"
+      ],
+      "old_values": [
+        "Vikulovo rayon"
+      ],
+      "old_values_raw": [
+        "Vikulovo rayon"
+      ],
+      "removed_unique_values": [
+        "Vikulovo rayon"
+      ],
+      "retained_unique_values": [],
+      "semantic_action": "REPLACE_1_TO_1",
+      "value_multiplicity_changes": {
+        "Vikulovo rayon": {
+          "new": 0,
+          "old": 1
+        },
+        "Vikulovsky District": {
+          "new": 1,
+          "old": 0
+        }
+      }
+    },
+    "result": "REPLACE_1_TO_1",
+    "step": "value_delta"
+  },
+  {
+    "detail": {
       "constraint_type": null,
       "signal": "L4_constraints"
     },
@@ -6588,7 +5672,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
       "matches": [
         {
           "independent_of_target_property": true,
-          "kind": "literal_exact",
+          "kind": "literal_exact_raw",
+          "normalized_match_text": "vikulovsky district",
+          "raw_match_text": "Vikulovsky District",
           "source": "NEIGHBOR_LABEL",
           "token": "Vikulovsky District"
         }
@@ -6622,7 +5708,7 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 ---
 
-## 027. `repair_Q334056_2447087909`
+## 017. `repair_Q334056_2447087909`
 
 | Field | Value |
 |---|---|
@@ -6634,6 +5720,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | analysis_slice | main_ic_g_local_text_confirmed |
 | popularity_bucket | head |
 | constraint_family | Q21502838 |
+| classification_rule_family | local_evidence |
+| classification_rule_subfamily | local_text_raw |
+| decision_constraint_type |   |
 | group_key | ABOX::Q334056::P373 |
 | tbox_revision_key |  |
 
@@ -6641,8 +5730,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 - Decide whether the recorded local match actually supports the historical target.
 - For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
+- For LOCAL_TEXT_DERIVED, verify that the target is deterministically derived from independent local text.
 - For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
+- For LOCAL_FOCUS_QID, confirm that focus identity alone is sufficient and no domain-specific reasoning is missing.
 
 ### Classifier Summary
 
@@ -6651,12 +5741,55 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | truth_source | repair_target.new_value |
 | truth_token_kind | literal |
 | truth_tokens_preview | ["Muri-Gries Abbey"] |
+| classification_target_tokens | ["Muri-Gries Abbey"] |
+| classification_target_reason | one-to-one replacement is classified from the replacement relation |
 | decision_branch | local_match |
 | rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
+| local_match_kind | literal_exact_raw |
 | local_match_source | FOCUS_LABEL |
 
 ### What Changed
+
+#### Delta Summary
+
+```json
+{
+  "added_unique_values": [
+    "Muri-Gries Abbey"
+  ],
+  "classification_target_reason": "one-to-one replacement is classified from the replacement relation",
+  "classification_target_role": "replacement_new",
+  "classification_target_tokens": [
+    "Muri-Gries Abbey"
+  ],
+  "new_changed_value": null,
+  "old_changed_value": null,
+  "removed_target_tokens": [
+    "Abtei Muri-Gries"
+  ],
+  "removed_unique_values": [
+    "Abtei Muri-Gries"
+  ],
+  "retained_support_tokens": [],
+  "retained_unique_values": [],
+  "semantic_action": "REPLACE_1_TO_1"
+}
+```
+
+#### Classifier Rule Metadata
+
+```json
+{
+  "classification_rule_family": "local_evidence",
+  "classification_rule_subfamily": "local_text_raw",
+  "constraint_family": null,
+  "decision_constraint_source": "local_context",
+  "decision_constraint_type_label": null,
+  "decision_constraint_type_qid": null
+}
+```
+
+#### Repair Target
 
 ```json
 {
@@ -6674,31 +5807,40 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
     "Muri-Gries Abbey"
   ],
   "value_change_summary": {
-    "action": "UPDATE",
     "added_unique_values": [
       "Muri-Gries Abbey"
     ],
-    "deleted_value": [],
     "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
+    "new_counts": {
+      "Muri-Gries Abbey": 1
+    },
     "new_unique": [
       "Muri-Gries Abbey"
     ],
-    "new_value": [
+    "new_values": [
+      "Muri-Gries Abbey"
+    ],
+    "new_values_raw": [
       "Muri-Gries Abbey"
     ],
     "normalized_unique_values_unchanged": false,
-    "old_count": 1,
+    "old_counts": {
+      "Abtei Muri-Gries": 1
+    },
     "old_unique": [
       "Abtei Muri-Gries"
     ],
-    "old_value": [
+    "old_values": [
+      "Abtei Muri-Gries"
+    ],
+    "old_values_raw": [
       "Abtei Muri-Gries"
     ],
     "removed_unique_values": [
       "Abtei Muri-Gries"
     ],
+    "retained_unique_values": [],
+    "semantic_action": "REPLACE_1_TO_1",
     "value_multiplicity_changes": {
       "Abtei Muri-Gries": {
         "new": 0,
@@ -6738,11 +5880,14 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   "found": 1,
   "local_availability_result": true,
   "local_ids_count": 21,
+  "local_support_for_retained_value": [],
   "matched": true,
   "matches": [
     {
       "independent_of_target_property": true,
-      "kind": "literal_exact",
+      "kind": "literal_exact_raw",
+      "normalized_match_text": "muri-gries abbey",
+      "raw_match_text": "Muri-Gries Abbey",
       "source": "FOCUS_LABEL",
       "token": "Muri-Gries Abbey"
     }
@@ -6824,6 +5969,56 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   },
   {
     "detail": {
+      "added_unique_values": [
+        "Muri-Gries Abbey"
+      ],
+      "exact_value_lists_unchanged": false,
+      "new_counts": {
+        "Muri-Gries Abbey": 1
+      },
+      "new_unique": [
+        "Muri-Gries Abbey"
+      ],
+      "new_values": [
+        "Muri-Gries Abbey"
+      ],
+      "new_values_raw": [
+        "Muri-Gries Abbey"
+      ],
+      "normalized_unique_values_unchanged": false,
+      "old_counts": {
+        "Abtei Muri-Gries": 1
+      },
+      "old_unique": [
+        "Abtei Muri-Gries"
+      ],
+      "old_values": [
+        "Abtei Muri-Gries"
+      ],
+      "old_values_raw": [
+        "Abtei Muri-Gries"
+      ],
+      "removed_unique_values": [
+        "Abtei Muri-Gries"
+      ],
+      "retained_unique_values": [],
+      "semantic_action": "REPLACE_1_TO_1",
+      "value_multiplicity_changes": {
+        "Abtei Muri-Gries": {
+          "new": 0,
+          "old": 1
+        },
+        "Muri-Gries Abbey": {
+          "new": 1,
+          "old": 0
+        }
+      }
+    },
+    "result": "REPLACE_1_TO_1",
+    "step": "value_delta"
+  },
+  {
+    "detail": {
       "constraint_type": null,
       "signal": "L4_constraints"
     },
@@ -6839,7 +6034,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
       "matches": [
         {
           "independent_of_target_property": true,
-          "kind": "literal_exact",
+          "kind": "literal_exact_raw",
+          "normalized_match_text": "muri-gries abbey",
+          "raw_match_text": "Muri-Gries Abbey",
           "source": "FOCUS_LABEL",
           "token": "Muri-Gries Abbey"
         }
@@ -6873,7 +6070,7 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 ---
 
-## 028. `repair_Q3797851_2442499584`
+## 018. `repair_Q3797851_2442499584`
 
 | Field | Value |
 |---|---|
@@ -6885,6 +6082,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | analysis_slice | main_ic_g_local_text_confirmed |
 | popularity_bucket | mid |
 | constraint_family | Q21502838 |
+| classification_rule_family | local_evidence |
+| classification_rule_subfamily | local_text_raw |
+| decision_constraint_type |   |
 | group_key | ABOX::Q3797851::P225 |
 | tbox_revision_key |  |
 
@@ -6892,8 +6092,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 - Decide whether the recorded local match actually supports the historical target.
 - For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
+- For LOCAL_TEXT_DERIVED, verify that the target is deterministically derived from independent local text.
 - For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
+- For LOCAL_FOCUS_QID, confirm that focus identity alone is sufficient and no domain-specific reasoning is missing.
 
 ### Classifier Summary
 
@@ -6902,12 +6103,55 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | truth_source | repair_target.new_value |
 | truth_token_kind | literal |
 | truth_tokens_preview | ["Mopalia schrencki"] |
+| classification_target_tokens | ["Mopalia schrencki"] |
+| classification_target_reason | one-to-one replacement is classified from the replacement relation |
 | decision_branch | local_match |
 | rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
+| local_match_kind | literal_exact_raw |
 | local_match_source | FOCUS_LABEL |
 
 ### What Changed
+
+#### Delta Summary
+
+```json
+{
+  "added_unique_values": [
+    "Mopalia schrencki"
+  ],
+  "classification_target_reason": "one-to-one replacement is classified from the replacement relation",
+  "classification_target_role": "replacement_new",
+  "classification_target_tokens": [
+    "Mopalia schrencki"
+  ],
+  "new_changed_value": null,
+  "old_changed_value": null,
+  "removed_target_tokens": [
+    "Mopalia schrenck"
+  ],
+  "removed_unique_values": [
+    "Mopalia schrenck"
+  ],
+  "retained_support_tokens": [],
+  "retained_unique_values": [],
+  "semantic_action": "REPLACE_1_TO_1"
+}
+```
+
+#### Classifier Rule Metadata
+
+```json
+{
+  "classification_rule_family": "local_evidence",
+  "classification_rule_subfamily": "local_text_raw",
+  "constraint_family": null,
+  "decision_constraint_source": "local_context",
+  "decision_constraint_type_label": null,
+  "decision_constraint_type_qid": null
+}
+```
+
+#### Repair Target
 
 ```json
 {
@@ -6925,31 +6169,40 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
     "Mopalia schrencki"
   ],
   "value_change_summary": {
-    "action": "UPDATE",
     "added_unique_values": [
       "Mopalia schrencki"
     ],
-    "deleted_value": [],
     "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
+    "new_counts": {
+      "Mopalia schrencki": 1
+    },
     "new_unique": [
       "Mopalia schrencki"
     ],
-    "new_value": [
+    "new_values": [
+      "Mopalia schrencki"
+    ],
+    "new_values_raw": [
       "Mopalia schrencki"
     ],
     "normalized_unique_values_unchanged": false,
-    "old_count": 1,
+    "old_counts": {
+      "Mopalia schrenck": 1
+    },
     "old_unique": [
       "Mopalia schrenck"
     ],
-    "old_value": [
+    "old_values": [
+      "Mopalia schrenck"
+    ],
+    "old_values_raw": [
       "Mopalia schrenck"
     ],
     "removed_unique_values": [
       "Mopalia schrenck"
     ],
+    "retained_unique_values": [],
+    "semantic_action": "REPLACE_1_TO_1",
     "value_multiplicity_changes": {
       "Mopalia schrenck": {
         "new": 0,
@@ -6989,11 +6242,14 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   "found": 1,
   "local_availability_result": true,
   "local_ids_count": 7,
+  "local_support_for_retained_value": [],
   "matched": true,
   "matches": [
     {
       "independent_of_target_property": true,
-      "kind": "literal_exact",
+      "kind": "literal_exact_raw",
+      "normalized_match_text": "mopalia schrencki",
+      "raw_match_text": "Mopalia schrencki",
       "source": "FOCUS_LABEL",
       "token": "Mopalia schrencki"
     }
@@ -7083,6 +6339,56 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   },
   {
     "detail": {
+      "added_unique_values": [
+        "Mopalia schrencki"
+      ],
+      "exact_value_lists_unchanged": false,
+      "new_counts": {
+        "Mopalia schrencki": 1
+      },
+      "new_unique": [
+        "Mopalia schrencki"
+      ],
+      "new_values": [
+        "Mopalia schrencki"
+      ],
+      "new_values_raw": [
+        "Mopalia schrencki"
+      ],
+      "normalized_unique_values_unchanged": false,
+      "old_counts": {
+        "Mopalia schrenck": 1
+      },
+      "old_unique": [
+        "Mopalia schrenck"
+      ],
+      "old_values": [
+        "Mopalia schrenck"
+      ],
+      "old_values_raw": [
+        "Mopalia schrenck"
+      ],
+      "removed_unique_values": [
+        "Mopalia schrenck"
+      ],
+      "retained_unique_values": [],
+      "semantic_action": "REPLACE_1_TO_1",
+      "value_multiplicity_changes": {
+        "Mopalia schrenck": {
+          "new": 0,
+          "old": 1
+        },
+        "Mopalia schrencki": {
+          "new": 1,
+          "old": 0
+        }
+      }
+    },
+    "result": "REPLACE_1_TO_1",
+    "step": "value_delta"
+  },
+  {
+    "detail": {
       "constraint_type": null,
       "signal": "L4_constraints"
     },
@@ -7098,7 +6404,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
       "matches": [
         {
           "independent_of_target_property": true,
-          "kind": "literal_exact",
+          "kind": "literal_exact_raw",
+          "normalized_match_text": "mopalia schrencki",
+          "raw_match_text": "Mopalia schrencki",
           "source": "FOCUS_LABEL",
           "token": "Mopalia schrencki"
         }
@@ -7132,7 +6440,7 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 ---
 
-## 029. `repair_Q5360360_2447089476`
+## 019. `repair_Q5360360_2447089476`
 
 | Field | Value |
 |---|---|
@@ -7144,6 +6452,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | analysis_slice | main_ic_g_local_text_confirmed |
 | popularity_bucket | head |
 | constraint_family | Q21502838 |
+| classification_rule_family | local_evidence |
+| classification_rule_subfamily | local_text_raw |
+| decision_constraint_type |   |
 | group_key | ABOX::Q5360360::P373 |
 | tbox_revision_key |  |
 
@@ -7151,8 +6462,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 - Decide whether the recorded local match actually supports the historical target.
 - For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
+- For LOCAL_TEXT_DERIVED, verify that the target is deterministically derived from independent local text.
 - For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
+- For LOCAL_FOCUS_QID, confirm that focus identity alone is sufficient and no domain-specific reasoning is missing.
 
 ### Classifier Summary
 
@@ -7161,12 +6473,55 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | truth_source | repair_target.new_value |
 | truth_token_kind | literal |
 | truth_tokens_preview | ["Elia, Keryneias"] |
+| classification_target_tokens | ["Elia, Keryneias"] |
+| classification_target_reason | one-to-one replacement is classified from the replacement relation |
 | decision_branch | local_match |
 | rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
+| local_match_kind | literal_normalized_exact |
 | local_match_source | FOCUS_LABEL |
 
 ### What Changed
+
+#### Delta Summary
+
+```json
+{
+  "added_unique_values": [
+    "Elia, Keryneias"
+  ],
+  "classification_target_reason": "one-to-one replacement is classified from the replacement relation",
+  "classification_target_role": "replacement_new",
+  "classification_target_tokens": [
+    "Elia, Keryneias"
+  ],
+  "new_changed_value": null,
+  "old_changed_value": null,
+  "removed_target_tokens": [
+    "Elia Keryneias"
+  ],
+  "removed_unique_values": [
+    "Elia Keryneias"
+  ],
+  "retained_support_tokens": [],
+  "retained_unique_values": [],
+  "semantic_action": "REPLACE_1_TO_1"
+}
+```
+
+#### Classifier Rule Metadata
+
+```json
+{
+  "classification_rule_family": "local_evidence",
+  "classification_rule_subfamily": "local_text_raw",
+  "constraint_family": null,
+  "decision_constraint_source": "local_context",
+  "decision_constraint_type_label": null,
+  "decision_constraint_type_qid": null
+}
+```
+
+#### Repair Target
 
 ```json
 {
@@ -7184,31 +6539,40 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
     "Elia, Keryneias"
   ],
   "value_change_summary": {
-    "action": "UPDATE",
     "added_unique_values": [
       "Elia, Keryneias"
     ],
-    "deleted_value": [],
     "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
+    "new_counts": {
+      "Elia, Keryneias": 1
+    },
     "new_unique": [
       "Elia, Keryneias"
     ],
-    "new_value": [
+    "new_values": [
+      "Elia, Keryneias"
+    ],
+    "new_values_raw": [
       "Elia, Keryneias"
     ],
     "normalized_unique_values_unchanged": false,
-    "old_count": 1,
+    "old_counts": {
+      "Elia Keryneias": 1
+    },
     "old_unique": [
       "Elia Keryneias"
     ],
-    "old_value": [
+    "old_values": [
+      "Elia Keryneias"
+    ],
+    "old_values_raw": [
       "Elia Keryneias"
     ],
     "removed_unique_values": [
       "Elia Keryneias"
     ],
+    "retained_unique_values": [],
+    "semantic_action": "REPLACE_1_TO_1",
     "value_multiplicity_changes": {
       "Elia Keryneias": {
         "new": 0,
@@ -7248,11 +6612,14 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   "found": 1,
   "local_availability_result": true,
   "local_ids_count": 23,
+  "local_support_for_retained_value": [],
   "matched": true,
   "matches": [
     {
       "independent_of_target_property": true,
-      "kind": "literal_exact",
+      "kind": "literal_normalized_exact",
+      "normalized_match_text": "elia keryneias",
+      "raw_match_text": "Elia Keryneias",
       "source": "FOCUS_LABEL",
       "token": "Elia, Keryneias"
     }
@@ -7334,6 +6701,56 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   },
   {
     "detail": {
+      "added_unique_values": [
+        "Elia, Keryneias"
+      ],
+      "exact_value_lists_unchanged": false,
+      "new_counts": {
+        "Elia, Keryneias": 1
+      },
+      "new_unique": [
+        "Elia, Keryneias"
+      ],
+      "new_values": [
+        "Elia, Keryneias"
+      ],
+      "new_values_raw": [
+        "Elia, Keryneias"
+      ],
+      "normalized_unique_values_unchanged": false,
+      "old_counts": {
+        "Elia Keryneias": 1
+      },
+      "old_unique": [
+        "Elia Keryneias"
+      ],
+      "old_values": [
+        "Elia Keryneias"
+      ],
+      "old_values_raw": [
+        "Elia Keryneias"
+      ],
+      "removed_unique_values": [
+        "Elia Keryneias"
+      ],
+      "retained_unique_values": [],
+      "semantic_action": "REPLACE_1_TO_1",
+      "value_multiplicity_changes": {
+        "Elia Keryneias": {
+          "new": 0,
+          "old": 1
+        },
+        "Elia, Keryneias": {
+          "new": 1,
+          "old": 0
+        }
+      }
+    },
+    "result": "REPLACE_1_TO_1",
+    "step": "value_delta"
+  },
+  {
+    "detail": {
       "constraint_type": null,
       "signal": "L4_constraints"
     },
@@ -7349,7 +6766,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
       "matches": [
         {
           "independent_of_target_property": true,
-          "kind": "literal_exact",
+          "kind": "literal_normalized_exact",
+          "normalized_match_text": "elia keryneias",
+          "raw_match_text": "Elia Keryneias",
           "source": "FOCUS_LABEL",
           "token": "Elia, Keryneias"
         }
@@ -7383,764 +6802,7 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 ---
 
-## 030. `repair_Q56276464_2439595160`
-
-| Field | Value |
-|---|---|
-| qid | Q56276464 |
-| property | P2088 |
-| track | A_BOX |
-| class / subtype / confidence | TypeB / LOCAL_TEXT_CONFIRMED / high |
-| main_score / diagnostic_only | True / False |
-| analysis_slice | main_ic_g_local_text_confirmed |
-| popularity_bucket | mid |
-| constraint_family | Q21502410 |
-| group_key | ABOX::Q56276464::P2088 |
-| tbox_revision_key |  |
-
-### Annotation Focus
-
-- Decide whether the recorded local match actually supports the historical target.
-- For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
-- For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
-
-### Classifier Summary
-
-| Field | Value |
-|---|---|
-| truth_source | repair_target.new_value |
-| truth_token_kind | literal |
-| truth_tokens_preview | ["blueground"] |
-| decision_branch | local_match |
-| rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
-| local_match_source | FOCUS_LABEL |
-
-### What Changed
-
-```json
-{
-  "action": "UPDATE",
-  "author": "~2025-39122-72",
-  "kind": "A_BOX",
-  "new_value": [
-    "blueground"
-  ],
-  "old_value": [
-    "http://www.crunchbase.com/organization/blueground"
-  ],
-  "revision_id": 2439595160,
-  "value": [
-    "blueground"
-  ],
-  "value_change_summary": {
-    "action": "UPDATE",
-    "added_unique_values": [
-      "blueground"
-    ],
-    "deleted_value": [],
-    "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
-    "new_unique": [
-      "blueground"
-    ],
-    "new_value": [
-      "blueground"
-    ],
-    "normalized_unique_values_unchanged": false,
-    "old_count": 1,
-    "old_unique": [
-      "http://www.crunchbase.com/organization/blueground"
-    ],
-    "old_value": [
-      "http://www.crunchbase.com/organization/blueground"
-    ],
-    "removed_unique_values": [
-      "http://www.crunchbase.com/organization/blueground"
-    ],
-    "value_multiplicity_changes": {
-      "blueground": {
-        "new": 1,
-        "old": 0
-      },
-      "http://www.crunchbase.com/organization/blueground": {
-        "new": 0,
-        "old": 1
-      }
-    }
-  }
-}
-```
-
-### Violation Context
-
-```json
-{
-  "report_fix_date": "2025-12-10T08:07:36",
-  "report_page_title": "Wikidata:Database reports/Constraint violations/P2088",
-  "report_revision_new": 2440381917,
-  "report_revision_old": 2439924877,
-  "report_violation_type": "Format",
-  "report_violation_type_normalized": "Format",
-  "report_violation_type_qids": [],
-  "report_violation_type_raw": "Format",
-  "value": [
-    "http://www.crunchbase.com/organization/blueground"
-  ]
-}
-```
-
-### Local Evidence
-
-```json
-{
-  "found": 1,
-  "local_availability_result": true,
-  "local_ids_count": 13,
-  "matched": true,
-  "matches": [
-    {
-      "independent_of_target_property": true,
-      "kind": "literal_exact",
-      "source": "FOCUS_LABEL",
-      "token": "blueground"
-    }
-  ],
-  "needed": 1,
-  "sources_used": [
-    "FOCUS_LABEL"
-  ],
-  "synthetic_pre_repair": {
-    "pre_repair_source": "repair_target.old_value",
-    "tokens": [
-      "http://www.crunchbase.com/organization/blueground"
-    ],
-    "used_pre_repair_value": true
-  },
-  "truth_tokens": [
-    "blueground"
-  ],
-  "truth_tokens_in_recorded_matches": [
-    "blueground"
-  ],
-  "used_literal_substring": false
-}
-```
-
-### Labels / Human-Readable Context
-
-```json
-{
-  "property": {
-    "description": "Identifier for an organization, in the Crunchbase database of companies and start-ups, operated by TechCrunch",
-    "label": "Crunchbase organization ID"
-  },
-  "qid": {
-    "description": "A global PropTech company offering fully furnished, turnkey apartments for flexible short‑ to long‑term stays, available in many cities worldwide.",
-    "label": "Blueground"
-  }
-}
-```
-
-### Constraint Types
-
-```json
-[
-  {
-    "label_en": "distinct-values constraint",
-    "qid": "Q21502410"
-  },
-  {
-    "label_en": "single-best-value constraint",
-    "qid": "Q52060874"
-  },
-  {
-    "label_en": "conflicts-with constraint",
-    "qid": "Q21502838"
-  },
-  {
-    "label_en": "format constraint",
-    "qid": "Q21502404"
-  },
-  {
-    "label_en": "subject type constraint",
-    "qid": "Q21503250"
-  },
-  {
-    "label_en": "allowed-entity-types constraint",
-    "qid": "Q52004125"
-  },
-  {
-    "label_en": "property scope constraint",
-    "qid": "Q53869507"
-  }
-]
-```
-
-### Decision Trace
-
-```json
-[
-  {
-    "result": false,
-    "step": "is_delete"
-  },
-  {
-    "detail": {
-      "constraint_type": null,
-      "signal": "L4_constraints"
-    },
-    "result": false,
-    "step": "rule_deterministic"
-  },
-  {
-    "evidence": {
-      "found": 1,
-      "independent_match_count": 1,
-      "local_ids_count": 13,
-      "matched": true,
-      "matches": [
-        {
-          "independent_of_target_property": true,
-          "kind": "literal_exact",
-          "source": "FOCUS_LABEL",
-          "token": "blueground"
-        }
-      ],
-      "needed": 1,
-      "sources_used": [
-        "FOCUS_LABEL"
-      ],
-      "used_literal_substring": false
-    },
-    "result": true,
-    "step": "local_availability",
-    "synthetic": {
-      "pre_repair_source": "repair_target.old_value",
-      "tokens": [
-        "http://www.crunchbase.com/organization/blueground"
-      ],
-      "used_pre_repair_value": true
-    }
-  },
-  {
-    "result": false,
-    "step": "fallback_external"
-  },
-  {
-    "result": "local_match",
-    "step": "branch"
-  }
-]
-```
-
----
-
-## 031. `repair_Q5769641_2447089552`
-
-| Field | Value |
-|---|---|
-| qid | Q5769641 |
-| property | P373 |
-| track | A_BOX |
-| class / subtype / confidence | TypeB / LOCAL_TEXT_CONFIRMED / high |
-| main_score / diagnostic_only | True / False |
-| analysis_slice | main_ic_g_local_text_confirmed |
-| popularity_bucket | mid |
-| constraint_family | Q21502838 |
-| group_key | ABOX::Q5769641::P373 |
-| tbox_revision_key |  |
-
-### Annotation Focus
-
-- Decide whether the recorded local match actually supports the historical target.
-- For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
-- For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
-
-### Classifier Summary
-
-| Field | Value |
-|---|---|
-| truth_source | repair_target.new_value |
-| truth_token_kind | literal |
-| truth_tokens_preview | ["Opisthostoma everetti"] |
-| decision_branch | local_match |
-| rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
-| local_match_source | FOCUS_LABEL |
-
-### What Changed
-
-```json
-{
-  "action": "UPDATE",
-  "author": "KrBot",
-  "kind": "A_BOX",
-  "new_value": [
-    "Opisthostoma everetti"
-  ],
-  "old_value": [
-    "Opisthostoma everettii"
-  ],
-  "revision_id": 2447089552,
-  "value": [
-    "Opisthostoma everetti"
-  ],
-  "value_change_summary": {
-    "action": "UPDATE",
-    "added_unique_values": [
-      "Opisthostoma everetti"
-    ],
-    "deleted_value": [],
-    "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
-    "new_unique": [
-      "Opisthostoma everetti"
-    ],
-    "new_value": [
-      "Opisthostoma everetti"
-    ],
-    "normalized_unique_values_unchanged": false,
-    "old_count": 1,
-    "old_unique": [
-      "Opisthostoma everettii"
-    ],
-    "old_value": [
-      "Opisthostoma everettii"
-    ],
-    "removed_unique_values": [
-      "Opisthostoma everettii"
-    ],
-    "value_multiplicity_changes": {
-      "Opisthostoma everetti": {
-        "new": 1,
-        "old": 0
-      },
-      "Opisthostoma everettii": {
-        "new": 0,
-        "old": 1
-      }
-    }
-  }
-}
-```
-
-### Violation Context
-
-```json
-{
-  "report_fix_date": "2025-12-27T12:35:05",
-  "report_page_title": "Wikidata:Database reports/Constraint violations/P373",
-  "report_revision_new": 2447772714,
-  "report_revision_old": 2447382517,
-  "report_violation_type": "Commons link",
-  "report_violation_type_normalized": "Commons link",
-  "report_violation_type_qids": [],
-  "report_violation_type_raw": "Commons link",
-  "value": [
-    "Opisthostoma everettii"
-  ]
-}
-```
-
-### Local Evidence
-
-```json
-{
-  "found": 1,
-  "local_availability_result": true,
-  "local_ids_count": 7,
-  "matched": true,
-  "matches": [
-    {
-      "independent_of_target_property": true,
-      "kind": "literal_exact",
-      "source": "FOCUS_LABEL",
-      "token": "Opisthostoma everetti"
-    }
-  ],
-  "needed": 1,
-  "sources_used": [
-    "FOCUS_LABEL"
-  ],
-  "synthetic_pre_repair": {
-    "pre_repair_source": "repair_target.old_value",
-    "tokens": [
-      "Opisthostoma everettii"
-    ],
-    "used_pre_repair_value": true
-  },
-  "truth_tokens": [
-    "Opisthostoma everetti"
-  ],
-  "truth_tokens_in_recorded_matches": [
-    "Opisthostoma everetti"
-  ],
-  "used_literal_substring": false
-}
-```
-
-### Labels / Human-Readable Context
-
-```json
-{
-  "property": {
-    "description": "name of the Wikimedia Commons category containing files related to this item (without the prefix \"Category:\")",
-    "label": "Commons category"
-  },
-  "qid": {
-    "description": "species of snail",
-    "label": "Opisthostoma everetti"
-  }
-}
-```
-
-### Constraint Types
-
-```json
-[
-  {
-    "label_en": "conflicts-with constraint",
-    "qid": "Q21502838"
-  },
-  {
-    "label_en": "property scope constraint",
-    "qid": "Q53869507"
-  },
-  {
-    "label_en": "single-value constraint",
-    "qid": "Q19474404"
-  },
-  {
-    "label_en": "allowed-entity-types constraint",
-    "qid": "Q52004125"
-  },
-  {
-    "label_en": "Commons link constraint",
-    "qid": "Q21510852"
-  },
-  {
-    "label_en": "format constraint",
-    "qid": "Q21502404"
-  }
-]
-```
-
-### Decision Trace
-
-```json
-[
-  {
-    "result": false,
-    "step": "is_delete"
-  },
-  {
-    "detail": {
-      "constraint_type": null,
-      "signal": "L4_constraints"
-    },
-    "result": false,
-    "step": "rule_deterministic"
-  },
-  {
-    "evidence": {
-      "found": 1,
-      "independent_match_count": 1,
-      "local_ids_count": 7,
-      "matched": true,
-      "matches": [
-        {
-          "independent_of_target_property": true,
-          "kind": "literal_exact",
-          "source": "FOCUS_LABEL",
-          "token": "Opisthostoma everetti"
-        }
-      ],
-      "needed": 1,
-      "sources_used": [
-        "FOCUS_LABEL"
-      ],
-      "used_literal_substring": false
-    },
-    "result": true,
-    "step": "local_availability",
-    "synthetic": {
-      "pre_repair_source": "repair_target.old_value",
-      "tokens": [
-        "Opisthostoma everettii"
-      ],
-      "used_pre_repair_value": true
-    }
-  },
-  {
-    "result": false,
-    "step": "fallback_external"
-  },
-  {
-    "result": "local_match",
-    "step": "branch"
-  }
-]
-```
-
----
-
-## 032. `repair_Q6073972_2447257679`
-
-| Field | Value |
-|---|---|
-| qid | Q6073972 |
-| property | P373 |
-| track | A_BOX |
-| class / subtype / confidence | TypeB / LOCAL_TEXT_CONFIRMED / high |
-| main_score / diagnostic_only | True / False |
-| analysis_slice | main_ic_g_local_text_confirmed |
-| popularity_bucket | mid |
-| constraint_family | Q21502838 |
-| group_key | ABOX::Q6073972::P373 |
-| tbox_revision_key |  |
-
-### Annotation Focus
-
-- Decide whether the recorded local match actually supports the historical target.
-- For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
-- For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
-
-### Classifier Summary
-
-| Field | Value |
-|---|---|
-| truth_source | repair_target.new_value |
-| truth_token_kind | literal |
-| truth_tokens_preview | ["Peñalcázar"] |
-| decision_branch | local_match |
-| rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
-| local_match_source | FOCUS_LABEL |
-
-### What Changed
-
-```json
-{
-  "action": "UPDATE",
-  "author": "Pi bot",
-  "kind": "A_BOX",
-  "new_value": [
-    "Peñalcázar"
-  ],
-  "old_value": [
-    "Peñalcazar"
-  ],
-  "revision_id": 2447257679,
-  "value": [
-    "Peñalcázar"
-  ],
-  "value_change_summary": {
-    "action": "UPDATE",
-    "added_unique_values": [
-      "Peñalcázar"
-    ],
-    "deleted_value": [],
-    "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
-    "new_unique": [
-      "Peñalcázar"
-    ],
-    "new_value": [
-      "Peñalcázar"
-    ],
-    "normalized_unique_values_unchanged": false,
-    "old_count": 1,
-    "old_unique": [
-      "Peñalcazar"
-    ],
-    "old_value": [
-      "Peñalcazar"
-    ],
-    "removed_unique_values": [
-      "Peñalcazar"
-    ],
-    "value_multiplicity_changes": {
-      "Peñalcazar": {
-        "new": 0,
-        "old": 1
-      },
-      "Peñalcázar": {
-        "new": 1,
-        "old": 0
-      }
-    }
-  }
-}
-```
-
-### Violation Context
-
-```json
-{
-  "report_fix_date": "2025-12-27T12:35:05",
-  "report_page_title": "Wikidata:Database reports/Constraint violations/P373",
-  "report_revision_new": 2447772714,
-  "report_revision_old": 2447382517,
-  "report_violation_type": "Commons link",
-  "report_violation_type_normalized": "Commons link",
-  "report_violation_type_qids": [],
-  "report_violation_type_raw": "Commons link",
-  "value": [
-    "Peñalcazar"
-  ]
-}
-```
-
-### Local Evidence
-
-```json
-{
-  "found": 1,
-  "local_availability_result": true,
-  "local_ids_count": 13,
-  "matched": true,
-  "matches": [
-    {
-      "independent_of_target_property": true,
-      "kind": "literal_exact",
-      "source": "FOCUS_LABEL",
-      "token": "Peñalcázar"
-    }
-  ],
-  "needed": 1,
-  "sources_used": [
-    "FOCUS_LABEL"
-  ],
-  "synthetic_pre_repair": {
-    "pre_repair_source": "repair_target.old_value",
-    "tokens": [
-      "Peñalcazar"
-    ],
-    "used_pre_repair_value": true
-  },
-  "truth_tokens": [
-    "Peñalcázar"
-  ],
-  "truth_tokens_in_recorded_matches": [
-    "Peñalcázar"
-  ],
-  "used_literal_substring": false
-}
-```
-
-### Labels / Human-Readable Context
-
-```json
-{
-  "property": {
-    "description": "name of the Wikimedia Commons category containing files related to this item (without the prefix \"Category:\")",
-    "label": "Commons category"
-  },
-  "qid": {
-    "description": "depopulated of Spain in the municipality of La Quiñonería",
-    "label": "Peñalcázar"
-  }
-}
-```
-
-### Constraint Types
-
-```json
-[
-  {
-    "label_en": "conflicts-with constraint",
-    "qid": "Q21502838"
-  },
-  {
-    "label_en": "property scope constraint",
-    "qid": "Q53869507"
-  },
-  {
-    "label_en": "single-value constraint",
-    "qid": "Q19474404"
-  },
-  {
-    "label_en": "allowed-entity-types constraint",
-    "qid": "Q52004125"
-  },
-  {
-    "label_en": "Commons link constraint",
-    "qid": "Q21510852"
-  },
-  {
-    "label_en": "format constraint",
-    "qid": "Q21502404"
-  }
-]
-```
-
-### Decision Trace
-
-```json
-[
-  {
-    "result": false,
-    "step": "is_delete"
-  },
-  {
-    "detail": {
-      "constraint_type": null,
-      "signal": "L4_constraints"
-    },
-    "result": false,
-    "step": "rule_deterministic"
-  },
-  {
-    "evidence": {
-      "found": 1,
-      "independent_match_count": 1,
-      "local_ids_count": 13,
-      "matched": true,
-      "matches": [
-        {
-          "independent_of_target_property": true,
-          "kind": "literal_exact",
-          "source": "FOCUS_LABEL",
-          "token": "Peñalcázar"
-        }
-      ],
-      "needed": 1,
-      "sources_used": [
-        "FOCUS_LABEL"
-      ],
-      "used_literal_substring": false
-    },
-    "result": true,
-    "step": "local_availability",
-    "synthetic": {
-      "pre_repair_source": "repair_target.old_value",
-      "tokens": [
-        "Peñalcazar"
-      ],
-      "used_pre_repair_value": true
-    }
-  },
-  {
-    "result": false,
-    "step": "fallback_external"
-  },
-  {
-    "result": "local_match",
-    "step": "branch"
-  }
-]
-```
-
----
-
-## 033. `repair_Q61872875_2447258973`
+## 020. `repair_Q61872875_2447258973`
 
 | Field | Value |
 |---|---|
@@ -8152,6 +6814,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | analysis_slice | main_ic_g_local_text_confirmed |
 | popularity_bucket | mid |
 | constraint_family | Q21502838 |
+| classification_rule_family | local_evidence |
+| classification_rule_subfamily | local_text_raw |
+| decision_constraint_type |   |
 | group_key | ABOX::Q61872875::P373 |
 | tbox_revision_key |  |
 
@@ -8159,8 +6824,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 - Decide whether the recorded local match actually supports the historical target.
 - For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
+- For LOCAL_TEXT_DERIVED, verify that the target is deterministically derived from independent local text.
 - For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
+- For LOCAL_FOCUS_QID, confirm that focus identity alone is sufficient and no domain-specific reasoning is missing.
 
 ### Classifier Summary
 
@@ -8169,12 +6835,55 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | truth_source | repair_target.new_value |
 | truth_token_kind | literal |
 | truth_tokens_preview | ["Dr. Fazıl Küçük Museum"] |
+| classification_target_tokens | ["Dr. Fazıl Küçük Museum"] |
+| classification_target_reason | one-to-one replacement is classified from the replacement relation |
 | decision_branch | local_match |
 | rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
+| local_match_kind | literal_exact_raw |
 | local_match_source | FOCUS_LABEL |
 
 ### What Changed
+
+#### Delta Summary
+
+```json
+{
+  "added_unique_values": [
+    "Dr. Fazıl Küçük Museum"
+  ],
+  "classification_target_reason": "one-to-one replacement is classified from the replacement relation",
+  "classification_target_role": "replacement_new",
+  "classification_target_tokens": [
+    "Dr. Fazıl Küçük Museum"
+  ],
+  "new_changed_value": null,
+  "old_changed_value": null,
+  "removed_target_tokens": [
+    "Dr. Fazıl Küçük Müzesi"
+  ],
+  "removed_unique_values": [
+    "Dr. Fazıl Küçük Müzesi"
+  ],
+  "retained_support_tokens": [],
+  "retained_unique_values": [],
+  "semantic_action": "REPLACE_1_TO_1"
+}
+```
+
+#### Classifier Rule Metadata
+
+```json
+{
+  "classification_rule_family": "local_evidence",
+  "classification_rule_subfamily": "local_text_raw",
+  "constraint_family": null,
+  "decision_constraint_source": "local_context",
+  "decision_constraint_type_label": null,
+  "decision_constraint_type_qid": null
+}
+```
+
+#### Repair Target
 
 ```json
 {
@@ -8192,31 +6901,40 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
     "Dr. Fazıl Küçük Museum"
   ],
   "value_change_summary": {
-    "action": "UPDATE",
     "added_unique_values": [
       "Dr. Fazıl Küçük Museum"
     ],
-    "deleted_value": [],
     "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
+    "new_counts": {
+      "Dr. Fazıl Küçük Museum": 1
+    },
     "new_unique": [
       "Dr. Fazıl Küçük Museum"
     ],
-    "new_value": [
+    "new_values": [
+      "Dr. Fazıl Küçük Museum"
+    ],
+    "new_values_raw": [
       "Dr. Fazıl Küçük Museum"
     ],
     "normalized_unique_values_unchanged": false,
-    "old_count": 1,
+    "old_counts": {
+      "Dr. Fazıl Küçük Müzesi": 1
+    },
     "old_unique": [
       "Dr. Fazıl Küçük Müzesi"
     ],
-    "old_value": [
+    "old_values": [
+      "Dr. Fazıl Küçük Müzesi"
+    ],
+    "old_values_raw": [
       "Dr. Fazıl Küçük Müzesi"
     ],
     "removed_unique_values": [
       "Dr. Fazıl Küçük Müzesi"
     ],
+    "retained_unique_values": [],
+    "semantic_action": "REPLACE_1_TO_1",
     "value_multiplicity_changes": {
       "Dr. Fazıl Küçük Museum": {
         "new": 1,
@@ -8256,11 +6974,14 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   "found": 1,
   "local_availability_result": true,
   "local_ids_count": 7,
+  "local_support_for_retained_value": [],
   "matched": true,
   "matches": [
     {
       "independent_of_target_property": true,
-      "kind": "literal_exact",
+      "kind": "literal_exact_raw",
+      "normalized_match_text": "dr. fazıl küçük museum",
+      "raw_match_text": "Dr. Fazıl Küçük Museum",
       "source": "FOCUS_LABEL",
       "token": "Dr. Fazıl Küçük Museum"
     }
@@ -8342,6 +7063,56 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   },
   {
     "detail": {
+      "added_unique_values": [
+        "Dr. Fazıl Küçük Museum"
+      ],
+      "exact_value_lists_unchanged": false,
+      "new_counts": {
+        "Dr. Fazıl Küçük Museum": 1
+      },
+      "new_unique": [
+        "Dr. Fazıl Küçük Museum"
+      ],
+      "new_values": [
+        "Dr. Fazıl Küçük Museum"
+      ],
+      "new_values_raw": [
+        "Dr. Fazıl Küçük Museum"
+      ],
+      "normalized_unique_values_unchanged": false,
+      "old_counts": {
+        "Dr. Fazıl Küçük Müzesi": 1
+      },
+      "old_unique": [
+        "Dr. Fazıl Küçük Müzesi"
+      ],
+      "old_values": [
+        "Dr. Fazıl Küçük Müzesi"
+      ],
+      "old_values_raw": [
+        "Dr. Fazıl Küçük Müzesi"
+      ],
+      "removed_unique_values": [
+        "Dr. Fazıl Küçük Müzesi"
+      ],
+      "retained_unique_values": [],
+      "semantic_action": "REPLACE_1_TO_1",
+      "value_multiplicity_changes": {
+        "Dr. Fazıl Küçük Museum": {
+          "new": 1,
+          "old": 0
+        },
+        "Dr. Fazıl Küçük Müzesi": {
+          "new": 0,
+          "old": 1
+        }
+      }
+    },
+    "result": "REPLACE_1_TO_1",
+    "step": "value_delta"
+  },
+  {
+    "detail": {
       "constraint_type": null,
       "signal": "L4_constraints"
     },
@@ -8357,7 +7128,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
       "matches": [
         {
           "independent_of_target_property": true,
-          "kind": "literal_exact",
+          "kind": "literal_exact_raw",
+          "normalized_match_text": "dr. fazıl küçük museum",
+          "raw_match_text": "Dr. Fazıl Küçük Museum",
           "source": "FOCUS_LABEL",
           "token": "Dr. Fazıl Küçük Museum"
         }
@@ -8391,7 +7164,7 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 ---
 
-## 034. `repair_Q624028_2447088024`
+## 021. `repair_Q624028_2447088024`
 
 | Field | Value |
 |---|---|
@@ -8403,6 +7176,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | analysis_slice | main_ic_g_local_text_confirmed |
 | popularity_bucket | head |
 | constraint_family | Q21502838 |
+| classification_rule_family | local_evidence |
+| classification_rule_subfamily | local_text_raw |
+| decision_constraint_type |   |
 | group_key | ABOX::Q624028::P373 |
 | tbox_revision_key |  |
 
@@ -8410,8 +7186,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 - Decide whether the recorded local match actually supports the historical target.
 - For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
+- For LOCAL_TEXT_DERIVED, verify that the target is deterministically derived from independent local text.
 - For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
+- For LOCAL_FOCUS_QID, confirm that focus identity alone is sufficient and no domain-specific reasoning is missing.
 
 ### Classifier Summary
 
@@ -8420,12 +7197,55 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | truth_source | repair_target.new_value |
 | truth_token_kind | literal |
 | truth_tokens_preview | ["Credit default swap"] |
+| classification_target_tokens | ["Credit default swap"] |
+| classification_target_reason | one-to-one replacement is classified from the replacement relation |
 | decision_branch | local_match |
 | rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
+| local_match_kind | literal_normalized_exact |
 | local_match_source | FOCUS_LABEL |
 
 ### What Changed
+
+#### Delta Summary
+
+```json
+{
+  "added_unique_values": [
+    "Credit default swap"
+  ],
+  "classification_target_reason": "one-to-one replacement is classified from the replacement relation",
+  "classification_target_role": "replacement_new",
+  "classification_target_tokens": [
+    "Credit default swap"
+  ],
+  "new_changed_value": null,
+  "old_changed_value": null,
+  "removed_target_tokens": [
+    "Credit defaut swap"
+  ],
+  "removed_unique_values": [
+    "Credit defaut swap"
+  ],
+  "retained_support_tokens": [],
+  "retained_unique_values": [],
+  "semantic_action": "REPLACE_1_TO_1"
+}
+```
+
+#### Classifier Rule Metadata
+
+```json
+{
+  "classification_rule_family": "local_evidence",
+  "classification_rule_subfamily": "local_text_raw",
+  "constraint_family": null,
+  "decision_constraint_source": "local_context",
+  "decision_constraint_type_label": null,
+  "decision_constraint_type_qid": null
+}
+```
+
+#### Repair Target
 
 ```json
 {
@@ -8443,31 +7263,40 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
     "Credit default swap"
   ],
   "value_change_summary": {
-    "action": "UPDATE",
     "added_unique_values": [
       "Credit default swap"
     ],
-    "deleted_value": [],
     "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
+    "new_counts": {
+      "Credit default swap": 1
+    },
     "new_unique": [
       "Credit default swap"
     ],
-    "new_value": [
+    "new_values": [
+      "Credit default swap"
+    ],
+    "new_values_raw": [
       "Credit default swap"
     ],
     "normalized_unique_values_unchanged": false,
-    "old_count": 1,
+    "old_counts": {
+      "Credit defaut swap": 1
+    },
     "old_unique": [
       "Credit defaut swap"
     ],
-    "old_value": [
+    "old_values": [
+      "Credit defaut swap"
+    ],
+    "old_values_raw": [
       "Credit defaut swap"
     ],
     "removed_unique_values": [
       "Credit defaut swap"
     ],
+    "retained_unique_values": [],
+    "semantic_action": "REPLACE_1_TO_1",
     "value_multiplicity_changes": {
       "Credit default swap": {
         "new": 1,
@@ -8507,11 +7336,14 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   "found": 1,
   "local_availability_result": true,
   "local_ids_count": 7,
+  "local_support_for_retained_value": [],
   "matched": true,
   "matches": [
     {
       "independent_of_target_property": true,
-      "kind": "literal_exact",
+      "kind": "literal_normalized_exact",
+      "normalized_match_text": "credit default swap",
+      "raw_match_text": "credit default swap",
       "source": "FOCUS_LABEL",
       "token": "Credit default swap"
     }
@@ -8593,6 +7425,56 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   },
   {
     "detail": {
+      "added_unique_values": [
+        "Credit default swap"
+      ],
+      "exact_value_lists_unchanged": false,
+      "new_counts": {
+        "Credit default swap": 1
+      },
+      "new_unique": [
+        "Credit default swap"
+      ],
+      "new_values": [
+        "Credit default swap"
+      ],
+      "new_values_raw": [
+        "Credit default swap"
+      ],
+      "normalized_unique_values_unchanged": false,
+      "old_counts": {
+        "Credit defaut swap": 1
+      },
+      "old_unique": [
+        "Credit defaut swap"
+      ],
+      "old_values": [
+        "Credit defaut swap"
+      ],
+      "old_values_raw": [
+        "Credit defaut swap"
+      ],
+      "removed_unique_values": [
+        "Credit defaut swap"
+      ],
+      "retained_unique_values": [],
+      "semantic_action": "REPLACE_1_TO_1",
+      "value_multiplicity_changes": {
+        "Credit default swap": {
+          "new": 1,
+          "old": 0
+        },
+        "Credit defaut swap": {
+          "new": 0,
+          "old": 1
+        }
+      }
+    },
+    "result": "REPLACE_1_TO_1",
+    "step": "value_delta"
+  },
+  {
+    "detail": {
       "constraint_type": null,
       "signal": "L4_constraints"
     },
@@ -8608,7 +7490,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
       "matches": [
         {
           "independent_of_target_property": true,
-          "kind": "literal_exact",
+          "kind": "literal_normalized_exact",
+          "normalized_match_text": "credit default swap",
+          "raw_match_text": "credit default swap",
           "source": "FOCUS_LABEL",
           "token": "Credit default swap"
         }
@@ -8642,7 +7526,7 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 ---
 
-## 035. `repair_Q6767_2447372569`
+## 022. `repair_Q6767_2447372569`
 
 | Field | Value |
 |---|---|
@@ -8654,6 +7538,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | analysis_slice | main_ic_g_local_text_confirmed |
 | popularity_bucket | head |
 | constraint_family | Q21502838 |
+| classification_rule_family | local_evidence |
+| classification_rule_subfamily | local_text_raw |
+| decision_constraint_type |   |
 | group_key | ABOX::Q6767::P373 |
 | tbox_revision_key |  |
 
@@ -8661,8 +7548,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 - Decide whether the recorded local match actually supports the historical target.
 - For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
+- For LOCAL_TEXT_DERIVED, verify that the target is deterministically derived from independent local text.
 - For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
+- For LOCAL_FOCUS_QID, confirm that focus identity alone is sufficient and no domain-specific reasoning is missing.
 
 ### Classifier Summary
 
@@ -8671,12 +7559,51 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | truth_source | repair_target.new_value |
 | truth_token_kind | literal |
 | truth_tokens_preview | ["US Livorno 1915"] |
+| classification_target_tokens | ["US Livorno 1915"] |
+| classification_target_reason | created or added values are the changed repair target |
 | decision_branch | local_match |
 | rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
+| local_match_kind | literal_exact_raw |
 | local_match_source | FOCUS_LABEL |
 
 ### What Changed
+
+#### Delta Summary
+
+```json
+{
+  "added_unique_values": [
+    "US Livorno 1915"
+  ],
+  "classification_target_reason": "created or added values are the changed repair target",
+  "classification_target_role": "added",
+  "classification_target_tokens": [
+    "US Livorno 1915"
+  ],
+  "new_changed_value": null,
+  "old_changed_value": null,
+  "removed_target_tokens": [],
+  "removed_unique_values": [],
+  "retained_support_tokens": [],
+  "retained_unique_values": [],
+  "semantic_action": "CREATE_FROM_MISSING"
+}
+```
+
+#### Classifier Rule Metadata
+
+```json
+{
+  "classification_rule_family": "local_evidence",
+  "classification_rule_subfamily": "local_text_raw",
+  "constraint_family": null,
+  "decision_constraint_source": "local_context",
+  "decision_constraint_type_label": null,
+  "decision_constraint_type_qid": null
+}
+```
+
+#### Repair Target
 
 ```json
 {
@@ -8694,36 +7621,33 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
     "US Livorno 1915"
   ],
   "value_change_summary": {
-    "action": "CREATE",
     "added_unique_values": [
       "US Livorno 1915"
     ],
-    "deleted_value": [],
     "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
+    "new_counts": {
+      "US Livorno 1915": 1
+    },
     "new_unique": [
       "US Livorno 1915"
     ],
-    "new_value": [
+    "new_values": [
+      "US Livorno 1915"
+    ],
+    "new_values_raw": [
       "US Livorno 1915"
     ],
     "normalized_unique_values_unchanged": false,
-    "old_count": 1,
-    "old_unique": [
+    "old_counts": {},
+    "old_unique": [],
+    "old_values": [],
+    "old_values_raw": [
       "MISSING"
     ],
-    "old_value": [
-      "MISSING"
-    ],
-    "removed_unique_values": [
-      "MISSING"
-    ],
+    "removed_unique_values": [],
+    "retained_unique_values": [],
+    "semantic_action": "CREATE_FROM_MISSING",
     "value_multiplicity_changes": {
-      "MISSING": {
-        "new": 0,
-        "old": 1
-      },
       "US Livorno 1915": {
         "new": 1,
         "old": 0
@@ -8758,11 +7682,14 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   "found": 1,
   "local_availability_result": true,
   "local_ids_count": 29,
+  "local_support_for_retained_value": [],
   "matched": true,
   "matches": [
     {
       "independent_of_target_property": true,
-      "kind": "literal_exact",
+      "kind": "literal_exact_raw",
+      "normalized_match_text": "us livorno 1915",
+      "raw_match_text": "US Livorno 1915",
       "source": "FOCUS_LABEL",
       "token": "US Livorno 1915"
     }
@@ -8844,6 +7771,44 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   },
   {
     "detail": {
+      "added_unique_values": [
+        "US Livorno 1915"
+      ],
+      "exact_value_lists_unchanged": false,
+      "new_counts": {
+        "US Livorno 1915": 1
+      },
+      "new_unique": [
+        "US Livorno 1915"
+      ],
+      "new_values": [
+        "US Livorno 1915"
+      ],
+      "new_values_raw": [
+        "US Livorno 1915"
+      ],
+      "normalized_unique_values_unchanged": false,
+      "old_counts": {},
+      "old_unique": [],
+      "old_values": [],
+      "old_values_raw": [
+        "MISSING"
+      ],
+      "removed_unique_values": [],
+      "retained_unique_values": [],
+      "semantic_action": "CREATE_FROM_MISSING",
+      "value_multiplicity_changes": {
+        "US Livorno 1915": {
+          "new": 1,
+          "old": 0
+        }
+      }
+    },
+    "result": "CREATE_FROM_MISSING",
+    "step": "value_delta"
+  },
+  {
+    "detail": {
       "constraint_type": null,
       "signal": "L4_constraints"
     },
@@ -8859,7 +7824,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
       "matches": [
         {
           "independent_of_target_property": true,
-          "kind": "literal_exact",
+          "kind": "literal_exact_raw",
+          "normalized_match_text": "us livorno 1915",
+          "raw_match_text": "US Livorno 1915",
           "source": "FOCUS_LABEL",
           "token": "US Livorno 1915"
         }
@@ -8893,262 +7860,7 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 ---
 
-## 036. `repair_Q7495220_2444599258`
-
-| Field | Value |
-|---|---|
-| qid | Q7495220 |
-| property | P373 |
-| track | A_BOX |
-| class / subtype / confidence | TypeB / LOCAL_TEXT_CONFIRMED / high |
-| main_score / diagnostic_only | True / False |
-| analysis_slice | main_ic_g_local_text_confirmed |
-| popularity_bucket | head |
-| constraint_family | Q21502838 |
-| group_key | ABOX::Q7495220::P373 |
-| tbox_revision_key |  |
-
-### Annotation Focus
-
-- Decide whether the recorded local match actually supports the historical target.
-- For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
-- For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
-
-### Classifier Summary
-
-| Field | Value |
-|---|---|
-| truth_source | repair_target.new_value |
-| truth_token_kind | literal |
-| truth_tokens_preview | ["Sherman Oaks Galleria"] |
-| decision_branch | local_match |
-| rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
-| local_match_source | FOCUS_LABEL |
-
-### What Changed
-
-```json
-{
-  "action": "UPDATE",
-  "author": "KrBot",
-  "kind": "A_BOX",
-  "new_value": [
-    "Sherman Oaks Galleria"
-  ],
-  "old_value": [
-    "Category:Sherman Oaks Galleria"
-  ],
-  "revision_id": 2444599258,
-  "value": [
-    "Sherman Oaks Galleria"
-  ],
-  "value_change_summary": {
-    "action": "UPDATE",
-    "added_unique_values": [
-      "Sherman Oaks Galleria"
-    ],
-    "deleted_value": [],
-    "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
-    "new_unique": [
-      "Sherman Oaks Galleria"
-    ],
-    "new_value": [
-      "Sherman Oaks Galleria"
-    ],
-    "normalized_unique_values_unchanged": false,
-    "old_count": 1,
-    "old_unique": [
-      "Category:Sherman Oaks Galleria"
-    ],
-    "old_value": [
-      "Category:Sherman Oaks Galleria"
-    ],
-    "removed_unique_values": [
-      "Category:Sherman Oaks Galleria"
-    ],
-    "value_multiplicity_changes": {
-      "Category:Sherman Oaks Galleria": {
-        "new": 0,
-        "old": 1
-      },
-      "Sherman Oaks Galleria": {
-        "new": 1,
-        "old": 0
-      }
-    }
-  }
-}
-```
-
-### Violation Context
-
-```json
-{
-  "report_fix_date": "2025-12-22T10:34:48",
-  "report_page_title": "Wikidata:Database reports/Constraint violations/P373",
-  "report_revision_new": 2445460508,
-  "report_revision_old": 2444891710,
-  "report_violation_type": "Format",
-  "report_violation_type_normalized": "Format",
-  "report_violation_type_qids": [],
-  "report_violation_type_raw": "Format",
-  "report_violation_types": [
-    "Format",
-    "Commons link"
-  ],
-  "value": [
-    "Category:Sherman Oaks Galleria"
-  ]
-}
-```
-
-### Local Evidence
-
-```json
-{
-  "found": 1,
-  "local_availability_result": true,
-  "local_ids_count": 7,
-  "matched": true,
-  "matches": [
-    {
-      "independent_of_target_property": true,
-      "kind": "literal_exact",
-      "source": "FOCUS_LABEL",
-      "token": "Sherman Oaks Galleria"
-    }
-  ],
-  "needed": 1,
-  "sources_used": [
-    "FOCUS_LABEL"
-  ],
-  "synthetic_pre_repair": {
-    "pre_repair_source": "repair_target.old_value",
-    "tokens": [
-      "Category:Sherman Oaks Galleria"
-    ],
-    "used_pre_repair_value": true
-  },
-  "truth_tokens": [
-    "Sherman Oaks Galleria"
-  ],
-  "truth_tokens_in_recorded_matches": [
-    "Sherman Oaks Galleria"
-  ],
-  "used_literal_substring": false
-}
-```
-
-### Labels / Human-Readable Context
-
-```json
-{
-  "property": {
-    "description": "name of the Wikimedia Commons category containing files related to this item (without the prefix \"Category:\")",
-    "label": "Commons category"
-  },
-  "qid": {
-    "description": "Shopping mall in Los Angeles, California, United States",
-    "label": "Sherman Oaks Galleria"
-  }
-}
-```
-
-### Constraint Types
-
-```json
-[
-  {
-    "label_en": "conflicts-with constraint",
-    "qid": "Q21502838"
-  },
-  {
-    "label_en": "property scope constraint",
-    "qid": "Q53869507"
-  },
-  {
-    "label_en": "single-value constraint",
-    "qid": "Q19474404"
-  },
-  {
-    "label_en": "allowed-entity-types constraint",
-    "qid": "Q52004125"
-  },
-  {
-    "label_en": "Commons link constraint",
-    "qid": "Q21510852"
-  },
-  {
-    "label_en": "format constraint",
-    "qid": "Q21502404"
-  }
-]
-```
-
-### Decision Trace
-
-```json
-[
-  {
-    "result": false,
-    "step": "is_delete"
-  },
-  {
-    "detail": {
-      "constraint_type": null,
-      "signal": "L4_constraints"
-    },
-    "result": false,
-    "step": "rule_deterministic"
-  },
-  {
-    "evidence": {
-      "found": 1,
-      "independent_match_count": 1,
-      "local_ids_count": 7,
-      "matched": true,
-      "matches": [
-        {
-          "independent_of_target_property": true,
-          "kind": "literal_exact",
-          "source": "FOCUS_LABEL",
-          "token": "Sherman Oaks Galleria"
-        }
-      ],
-      "needed": 1,
-      "sources_used": [
-        "FOCUS_LABEL"
-      ],
-      "used_literal_substring": false
-    },
-    "result": true,
-    "step": "local_availability",
-    "synthetic": {
-      "pre_repair_source": "repair_target.old_value",
-      "tokens": [
-        "Category:Sherman Oaks Galleria"
-      ],
-      "used_pre_repair_value": true
-    }
-  },
-  {
-    "result": false,
-    "step": "fallback_external"
-  },
-  {
-    "result": "local_match",
-    "step": "branch"
-  }
-]
-```
-
----
-
-## 037. `repair_Q7886778_2447089920`
+## 023. `repair_Q7886778_2447089920`
 
 | Field | Value |
 |---|---|
@@ -9160,6 +7872,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | analysis_slice | main_ic_g_local_text_confirmed |
 | popularity_bucket | mid |
 | constraint_family | Q21502838 |
+| classification_rule_family | local_evidence |
+| classification_rule_subfamily | local_text_raw |
+| decision_constraint_type |   |
 | group_key | ABOX::Q7886778::P373 |
 | tbox_revision_key |  |
 
@@ -9167,8 +7882,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 - Decide whether the recorded local match actually supports the historical target.
 - For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
+- For LOCAL_TEXT_DERIVED, verify that the target is deterministically derived from independent local text.
 - For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
+- For LOCAL_FOCUS_QID, confirm that focus identity alone is sufficient and no domain-specific reasoning is missing.
 
 ### Classifier Summary
 
@@ -9177,12 +7893,55 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | truth_source | repair_target.new_value |
 | truth_token_kind | literal |
 | truth_tokens_preview | ["Union stations"] |
+| classification_target_tokens | ["Union stations"] |
+| classification_target_reason | one-to-one replacement is classified from the replacement relation |
 | decision_branch | local_match |
 | rationale | Truth tokens matched independent local text context. |
 | local_match_kind | literal_boundary |
 | local_match_source | NEIGHBOR_LABEL |
 
 ### What Changed
+
+#### Delta Summary
+
+```json
+{
+  "added_unique_values": [
+    "Union stations"
+  ],
+  "classification_target_reason": "one-to-one replacement is classified from the replacement relation",
+  "classification_target_role": "replacement_new",
+  "classification_target_tokens": [
+    "Union stations"
+  ],
+  "new_changed_value": null,
+  "old_changed_value": null,
+  "removed_target_tokens": [
+    "Union train stations"
+  ],
+  "removed_unique_values": [
+    "Union train stations"
+  ],
+  "retained_support_tokens": [],
+  "retained_unique_values": [],
+  "semantic_action": "REPLACE_1_TO_1"
+}
+```
+
+#### Classifier Rule Metadata
+
+```json
+{
+  "classification_rule_family": "local_evidence",
+  "classification_rule_subfamily": "local_text_raw",
+  "constraint_family": null,
+  "decision_constraint_source": "local_context",
+  "decision_constraint_type_label": null,
+  "decision_constraint_type_qid": null
+}
+```
+
+#### Repair Target
 
 ```json
 {
@@ -9200,31 +7959,40 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
     "Union stations"
   ],
   "value_change_summary": {
-    "action": "UPDATE",
     "added_unique_values": [
       "Union stations"
     ],
-    "deleted_value": [],
     "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
+    "new_counts": {
+      "Union stations": 1
+    },
     "new_unique": [
       "Union stations"
     ],
-    "new_value": [
+    "new_values": [
+      "Union stations"
+    ],
+    "new_values_raw": [
       "Union stations"
     ],
     "normalized_unique_values_unchanged": false,
-    "old_count": 1,
+    "old_counts": {
+      "Union train stations": 1
+    },
     "old_unique": [
       "Union train stations"
     ],
-    "old_value": [
+    "old_values": [
+      "Union train stations"
+    ],
+    "old_values_raw": [
       "Union train stations"
     ],
     "removed_unique_values": [
       "Union train stations"
     ],
+    "retained_unique_values": [],
+    "semantic_action": "REPLACE_1_TO_1",
     "value_multiplicity_changes": {
       "Union stations": {
         "new": 1,
@@ -9264,11 +8032,14 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   "found": 1,
   "local_availability_result": true,
   "local_ids_count": 7,
+  "local_support_for_retained_value": [],
   "matched": true,
   "matches": [
     {
       "independent_of_target_property": true,
       "kind": "literal_boundary",
+      "normalized_match_text": "category:union stations",
+      "raw_match_text": "Category:Union stations",
       "source": "NEIGHBOR_LABEL",
       "token": "Union stations"
     }
@@ -9350,6 +8121,56 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   },
   {
     "detail": {
+      "added_unique_values": [
+        "Union stations"
+      ],
+      "exact_value_lists_unchanged": false,
+      "new_counts": {
+        "Union stations": 1
+      },
+      "new_unique": [
+        "Union stations"
+      ],
+      "new_values": [
+        "Union stations"
+      ],
+      "new_values_raw": [
+        "Union stations"
+      ],
+      "normalized_unique_values_unchanged": false,
+      "old_counts": {
+        "Union train stations": 1
+      },
+      "old_unique": [
+        "Union train stations"
+      ],
+      "old_values": [
+        "Union train stations"
+      ],
+      "old_values_raw": [
+        "Union train stations"
+      ],
+      "removed_unique_values": [
+        "Union train stations"
+      ],
+      "retained_unique_values": [],
+      "semantic_action": "REPLACE_1_TO_1",
+      "value_multiplicity_changes": {
+        "Union stations": {
+          "new": 1,
+          "old": 0
+        },
+        "Union train stations": {
+          "new": 0,
+          "old": 1
+        }
+      }
+    },
+    "result": "REPLACE_1_TO_1",
+    "step": "value_delta"
+  },
+  {
+    "detail": {
       "constraint_type": null,
       "signal": "L4_constraints"
     },
@@ -9366,6 +8187,8 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
         {
           "independent_of_target_property": true,
           "kind": "literal_boundary",
+          "normalized_match_text": "category:union stations",
+          "raw_match_text": "Category:Union stations",
           "source": "NEIGHBOR_LABEL",
           "token": "Union stations"
         }
@@ -9399,266 +8222,7 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 ---
 
-## 038. `repair_Q7986873_2446818080`
-
-| Field | Value |
-|---|---|
-| qid | Q7986873 |
-| property | P225 |
-| track | A_BOX |
-| class / subtype / confidence | TypeB / LOCAL_TEXT_CONFIRMED / high |
-| main_score / diagnostic_only | True / False |
-| analysis_slice | main_ic_g_local_text_confirmed |
-| popularity_bucket | head |
-| constraint_family | Q21502838 |
-| group_key | ABOX::Q7986873::P225 |
-| tbox_revision_key |  |
-
-### Annotation Focus
-
-- Decide whether the recorded local match actually supports the historical target.
-- For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
-- For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
-
-### Classifier Summary
-
-| Field | Value |
-|---|---|
-| truth_source | repair_target.new_value |
-| truth_token_kind | literal |
-| truth_tokens_preview | ["Nemopalpus"] |
-| decision_branch | local_match |
-| rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
-| local_match_source | FOCUS_LABEL |
-
-### What Changed
-
-```json
-{
-  "action": "UPDATE",
-  "author": "Brya",
-  "kind": "A_BOX",
-  "new_value": [
-    "Nemopalpus"
-  ],
-  "old_value": [
-    "Nemapalpus"
-  ],
-  "revision_id": 2446818080,
-  "value": [
-    "Nemopalpus"
-  ],
-  "value_change_summary": {
-    "action": "UPDATE",
-    "added_unique_values": [
-      "Nemopalpus"
-    ],
-    "deleted_value": [],
-    "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
-    "new_unique": [
-      "Nemopalpus"
-    ],
-    "new_value": [
-      "Nemopalpus"
-    ],
-    "normalized_unique_values_unchanged": false,
-    "old_count": 1,
-    "old_unique": [
-      "Nemapalpus"
-    ],
-    "old_value": [
-      "Nemapalpus"
-    ],
-    "removed_unique_values": [
-      "Nemapalpus"
-    ],
-    "value_multiplicity_changes": {
-      "Nemapalpus": {
-        "new": 0,
-        "old": 1
-      },
-      "Nemopalpus": {
-        "new": 1,
-        "old": 0
-      }
-    }
-  }
-}
-```
-
-### Violation Context
-
-```json
-{
-  "report_fix_date": "2025-12-26T13:55:47",
-  "report_page_title": "Wikidata:Database reports/Constraint violations/P225",
-  "report_revision_new": 2447398980,
-  "report_revision_old": 2447090178,
-  "report_violation_type": "Single value",
-  "report_violation_type_normalized": "Single value",
-  "report_violation_type_qids": [],
-  "report_violation_type_raw": "Single value",
-  "value": [
-    "Nemapalpus"
-  ]
-}
-```
-
-### Local Evidence
-
-```json
-{
-  "found": 1,
-  "local_availability_result": true,
-  "local_ids_count": 9,
-  "matched": true,
-  "matches": [
-    {
-      "independent_of_target_property": true,
-      "kind": "literal_exact",
-      "source": "FOCUS_LABEL",
-      "token": "Nemopalpus"
-    }
-  ],
-  "needed": 1,
-  "sources_used": [
-    "FOCUS_LABEL"
-  ],
-  "synthetic_pre_repair": {
-    "pre_repair_source": "repair_target.old_value",
-    "tokens": [
-      "Nemapalpus"
-    ],
-    "used_pre_repair_value": true
-  },
-  "truth_tokens": [
-    "Nemopalpus"
-  ],
-  "truth_tokens_in_recorded_matches": [
-    "Nemopalpus"
-  ],
-  "used_literal_substring": false
-}
-```
-
-### Labels / Human-Readable Context
-
-```json
-{
-  "property": {
-    "description": "correct scientific name of a taxon (according to the reference given)",
-    "label": "taxon name"
-  },
-  "qid": {
-    "description": "genus of insects",
-    "label": "Nemopalpus"
-  }
-}
-```
-
-### Constraint Types
-
-```json
-[
-  {
-    "label_en": "conflicts-with constraint",
-    "qid": "Q21502838"
-  },
-  {
-    "label_en": "item-requires-statement constraint",
-    "qid": "Q21503247"
-  },
-  {
-    "label_en": "subject type constraint",
-    "qid": "Q21503250"
-  },
-  {
-    "label_en": "allowed qualifiers constraint",
-    "qid": "Q21510851"
-  },
-  {
-    "label_en": "allowed-entity-types constraint",
-    "qid": "Q52004125"
-  },
-  {
-    "label_en": "property scope constraint",
-    "qid": "Q53869507"
-  },
-  {
-    "label_en": "distinct-values constraint",
-    "qid": "Q21502410"
-  },
-  {
-    "label_en": "single-value constraint",
-    "qid": "Q19474404"
-  }
-]
-```
-
-### Decision Trace
-
-```json
-[
-  {
-    "result": false,
-    "step": "is_delete"
-  },
-  {
-    "detail": {
-      "constraint_type": null,
-      "signal": "L4_constraints"
-    },
-    "result": false,
-    "step": "rule_deterministic"
-  },
-  {
-    "evidence": {
-      "found": 1,
-      "independent_match_count": 1,
-      "local_ids_count": 9,
-      "matched": true,
-      "matches": [
-        {
-          "independent_of_target_property": true,
-          "kind": "literal_exact",
-          "source": "FOCUS_LABEL",
-          "token": "Nemopalpus"
-        }
-      ],
-      "needed": 1,
-      "sources_used": [
-        "FOCUS_LABEL"
-      ],
-      "used_literal_substring": false
-    },
-    "result": true,
-    "step": "local_availability",
-    "synthetic": {
-      "pre_repair_source": "repair_target.old_value",
-      "tokens": [
-        "Nemapalpus"
-      ],
-      "used_pre_repair_value": true
-    }
-  },
-  {
-    "result": false,
-    "step": "fallback_external"
-  },
-  {
-    "result": "local_match",
-    "step": "branch"
-  }
-]
-```
-
----
-
-## 039. `repair_Q8866784_2447090198`
+## 024. `repair_Q8866784_2447090198`
 
 | Field | Value |
 |---|---|
@@ -9670,6 +8234,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | analysis_slice | main_ic_g_local_text_confirmed |
 | popularity_bucket | mid |
 | constraint_family | Q21502838 |
+| classification_rule_family | local_evidence |
+| classification_rule_subfamily | local_text_raw |
+| decision_constraint_type |   |
 | group_key | ABOX::Q8866784::P373 |
 | tbox_revision_key |  |
 
@@ -9677,8 +8244,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 - Decide whether the recorded local match actually supports the historical target.
 - For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
+- For LOCAL_TEXT_DERIVED, verify that the target is deterministically derived from independent local text.
 - For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
+- For LOCAL_FOCUS_QID, confirm that focus identity alone is sufficient and no domain-specific reasoning is missing.
 
 ### Classifier Summary
 
@@ -9687,12 +8255,55 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | truth_source | repair_target.new_value |
 | truth_token_kind | literal |
 | truth_tokens_preview | ["Union stations"] |
+| classification_target_tokens | ["Union stations"] |
+| classification_target_reason | one-to-one replacement is classified from the replacement relation |
 | decision_branch | local_match |
 | rationale | Truth tokens matched independent local text context. |
 | local_match_kind | literal_boundary |
 | local_match_source | FOCUS_LABEL |
 
 ### What Changed
+
+#### Delta Summary
+
+```json
+{
+  "added_unique_values": [
+    "Union stations"
+  ],
+  "classification_target_reason": "one-to-one replacement is classified from the replacement relation",
+  "classification_target_role": "replacement_new",
+  "classification_target_tokens": [
+    "Union stations"
+  ],
+  "new_changed_value": null,
+  "old_changed_value": null,
+  "removed_target_tokens": [
+    "Union train stations"
+  ],
+  "removed_unique_values": [
+    "Union train stations"
+  ],
+  "retained_support_tokens": [],
+  "retained_unique_values": [],
+  "semantic_action": "REPLACE_1_TO_1"
+}
+```
+
+#### Classifier Rule Metadata
+
+```json
+{
+  "classification_rule_family": "local_evidence",
+  "classification_rule_subfamily": "local_text_raw",
+  "constraint_family": null,
+  "decision_constraint_source": "local_context",
+  "decision_constraint_type_label": null,
+  "decision_constraint_type_qid": null
+}
+```
+
+#### Repair Target
 
 ```json
 {
@@ -9710,31 +8321,40 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
     "Union stations"
   ],
   "value_change_summary": {
-    "action": "UPDATE",
     "added_unique_values": [
       "Union stations"
     ],
-    "deleted_value": [],
     "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
+    "new_counts": {
+      "Union stations": 1
+    },
     "new_unique": [
       "Union stations"
     ],
-    "new_value": [
+    "new_values": [
+      "Union stations"
+    ],
+    "new_values_raw": [
       "Union stations"
     ],
     "normalized_unique_values_unchanged": false,
-    "old_count": 1,
+    "old_counts": {
+      "Union train stations": 1
+    },
     "old_unique": [
       "Union train stations"
     ],
-    "old_value": [
+    "old_values": [
+      "Union train stations"
+    ],
+    "old_values_raw": [
       "Union train stations"
     ],
     "removed_unique_values": [
       "Union train stations"
     ],
+    "retained_unique_values": [],
+    "semantic_action": "REPLACE_1_TO_1",
     "value_multiplicity_changes": {
       "Union stations": {
         "new": 1,
@@ -9774,11 +8394,14 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   "found": 1,
   "local_availability_result": true,
   "local_ids_count": 5,
+  "local_support_for_retained_value": [],
   "matched": true,
   "matches": [
     {
       "independent_of_target_property": true,
       "kind": "literal_boundary",
+      "normalized_match_text": "category:union stations",
+      "raw_match_text": "Category:Union stations",
       "source": "FOCUS_LABEL",
       "token": "Union stations"
     }
@@ -9860,6 +8483,56 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   },
   {
     "detail": {
+      "added_unique_values": [
+        "Union stations"
+      ],
+      "exact_value_lists_unchanged": false,
+      "new_counts": {
+        "Union stations": 1
+      },
+      "new_unique": [
+        "Union stations"
+      ],
+      "new_values": [
+        "Union stations"
+      ],
+      "new_values_raw": [
+        "Union stations"
+      ],
+      "normalized_unique_values_unchanged": false,
+      "old_counts": {
+        "Union train stations": 1
+      },
+      "old_unique": [
+        "Union train stations"
+      ],
+      "old_values": [
+        "Union train stations"
+      ],
+      "old_values_raw": [
+        "Union train stations"
+      ],
+      "removed_unique_values": [
+        "Union train stations"
+      ],
+      "retained_unique_values": [],
+      "semantic_action": "REPLACE_1_TO_1",
+      "value_multiplicity_changes": {
+        "Union stations": {
+          "new": 1,
+          "old": 0
+        },
+        "Union train stations": {
+          "new": 0,
+          "old": 1
+        }
+      }
+    },
+    "result": "REPLACE_1_TO_1",
+    "step": "value_delta"
+  },
+  {
+    "detail": {
       "constraint_type": null,
       "signal": "L4_constraints"
     },
@@ -9876,6 +8549,8 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
         {
           "independent_of_target_property": true,
           "kind": "literal_boundary",
+          "normalized_match_text": "category:union stations",
+          "raw_match_text": "Category:Union stations",
           "source": "FOCUS_LABEL",
           "token": "Union stations"
         }
@@ -9909,7 +8584,7 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 ---
 
-## 040. `repair_Q910283_2440849086`
+## 025. `repair_Q910283_2440849086`
 
 | Field | Value |
 |---|---|
@@ -9921,6 +8596,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | analysis_slice | main_ic_g_local_text_confirmed |
 | popularity_bucket | head |
 | constraint_family | Q21502838 |
+| classification_rule_family | local_evidence |
+| classification_rule_subfamily | local_text_raw |
+| decision_constraint_type |   |
 | group_key | ABOX::Q910283::P373 |
 | tbox_revision_key |  |
 
@@ -9928,8 +8606,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 
 - Decide whether the recorded local match actually supports the historical target.
 - For LOCAL_TEXT_CONFIRMED, check that the match is independent focus/neighbor text rather than a retained target-property value.
+- For LOCAL_TEXT_DERIVED, verify that the target is deterministically derived from independent local text.
 - For LOCAL_SELECTION_CONFIRMED, confirm that retained-value support is independent of the pre-repair target-property list.
-- For LOCAL_FOCUS_QID, confirm that the added/created value really equals the focus entity id.
+- For LOCAL_FOCUS_QID, confirm that focus identity alone is sufficient and no domain-specific reasoning is missing.
 
 ### Classifier Summary
 
@@ -9938,12 +8617,51 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
 | truth_source | repair_target.new_value |
 | truth_token_kind | literal |
 | truth_tokens_preview | ["Nippon Railway"] |
+| classification_target_tokens | ["Nippon Railway"] |
+| classification_target_reason | created or added values are the changed repair target |
 | decision_branch | local_match |
 | rationale | Truth tokens matched independent local text context. |
-| local_match_kind | literal_exact |
+| local_match_kind | literal_exact_raw |
 | local_match_source | FOCUS_LABEL |
 
 ### What Changed
+
+#### Delta Summary
+
+```json
+{
+  "added_unique_values": [
+    "Nippon Railway"
+  ],
+  "classification_target_reason": "created or added values are the changed repair target",
+  "classification_target_role": "added",
+  "classification_target_tokens": [
+    "Nippon Railway"
+  ],
+  "new_changed_value": null,
+  "old_changed_value": null,
+  "removed_target_tokens": [],
+  "removed_unique_values": [],
+  "retained_support_tokens": [],
+  "retained_unique_values": [],
+  "semantic_action": "CREATE_FROM_MISSING"
+}
+```
+
+#### Classifier Rule Metadata
+
+```json
+{
+  "classification_rule_family": "local_evidence",
+  "classification_rule_subfamily": "local_text_raw",
+  "constraint_family": null,
+  "decision_constraint_source": "local_context",
+  "decision_constraint_type_label": null,
+  "decision_constraint_type_qid": null
+}
+```
+
+#### Repair Target
 
 ```json
 {
@@ -9961,36 +8679,33 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
     "Nippon Railway"
   ],
   "value_change_summary": {
-    "action": "CREATE",
     "added_unique_values": [
       "Nippon Railway"
     ],
-    "deleted_value": [],
     "exact_value_lists_unchanged": false,
-    "kind": "A_BOX",
-    "new_count": 1,
+    "new_counts": {
+      "Nippon Railway": 1
+    },
     "new_unique": [
       "Nippon Railway"
     ],
-    "new_value": [
+    "new_values": [
+      "Nippon Railway"
+    ],
+    "new_values_raw": [
       "Nippon Railway"
     ],
     "normalized_unique_values_unchanged": false,
-    "old_count": 1,
-    "old_unique": [
+    "old_counts": {},
+    "old_unique": [],
+    "old_values": [],
+    "old_values_raw": [
       "MISSING"
     ],
-    "old_value": [
-      "MISSING"
-    ],
-    "removed_unique_values": [
-      "MISSING"
-    ],
+    "removed_unique_values": [],
+    "retained_unique_values": [],
+    "semantic_action": "CREATE_FROM_MISSING",
     "value_multiplicity_changes": {
-      "MISSING": {
-        "new": 0,
-        "old": 1
-      },
       "Nippon Railway": {
         "new": 1,
         "old": 0
@@ -10025,11 +8740,14 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   "found": 1,
   "local_availability_result": true,
   "local_ids_count": 19,
+  "local_support_for_retained_value": [],
   "matched": true,
   "matches": [
     {
       "independent_of_target_property": true,
-      "kind": "literal_exact",
+      "kind": "literal_exact_raw",
+      "normalized_match_text": "nippon railway",
+      "raw_match_text": "Nippon Railway",
       "source": "FOCUS_LABEL",
       "token": "Nippon Railway"
     }
@@ -10111,6 +8829,44 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
   },
   {
     "detail": {
+      "added_unique_values": [
+        "Nippon Railway"
+      ],
+      "exact_value_lists_unchanged": false,
+      "new_counts": {
+        "Nippon Railway": 1
+      },
+      "new_unique": [
+        "Nippon Railway"
+      ],
+      "new_values": [
+        "Nippon Railway"
+      ],
+      "new_values_raw": [
+        "Nippon Railway"
+      ],
+      "normalized_unique_values_unchanged": false,
+      "old_counts": {},
+      "old_unique": [],
+      "old_values": [],
+      "old_values_raw": [
+        "MISSING"
+      ],
+      "removed_unique_values": [],
+      "retained_unique_values": [],
+      "semantic_action": "CREATE_FROM_MISSING",
+      "value_multiplicity_changes": {
+        "Nippon Railway": {
+          "new": 1,
+          "old": 0
+        }
+      }
+    },
+    "result": "CREATE_FROM_MISSING",
+    "step": "value_delta"
+  },
+  {
+    "detail": {
       "constraint_type": null,
       "signal": "L4_constraints"
     },
@@ -10126,7 +8882,9 @@ Use this file for evidence review. Enter final annotations in the CSV copy, not 
       "matches": [
         {
           "independent_of_target_property": true,
-          "kind": "literal_exact",
+          "kind": "literal_exact_raw",
+          "normalized_match_text": "nippon railway",
+          "raw_match_text": "Nippon Railway",
           "source": "FOCUS_LABEL",
           "token": "Nippon Railway"
         }

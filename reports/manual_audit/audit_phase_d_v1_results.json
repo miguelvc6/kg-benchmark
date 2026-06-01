@@ -14,12 +14,27 @@
     "numerator": 0,
     "rate": null
   },
+  "Tbox_polarity_error_rate": {
+    "denominator": 0,
+    "numerator": 0,
+    "rate": null
+  },
+  "Tbox_unknown_causality_rate": {
+    "denominator": 0,
+    "numerator": 0,
+    "rate": null
+  },
   "TypeA_overclaim_rate": {
     "denominator": 0,
     "numerator": 0,
     "rate": null
   },
   "TypeB_leakage_suspicion_rate": {
+    "denominator": 0,
+    "numerator": 0,
+    "rate": null
+  },
+  "TypeB_local_derived_precision": {
     "denominator": 0,
     "numerator": 0,
     "rate": null
@@ -67,6 +82,11 @@
       "numerator": 0,
       "rate": null
     },
+    "TBOX_UNKNOWN_TBOX_CAUSALITY": {
+      "denominator": 0,
+      "numerator": 0,
+      "rate": null
+    },
     "TypeA_DELETE_AMBIGUOUS": {
       "denominator": 0,
       "numerator": 0,
@@ -97,7 +117,12 @@
       "numerator": 0,
       "rate": null
     },
-    "TypeB_LOCAL_FOCUS_QID": {
+    "TypeA_SET_MEMBERSHIP_REJECTION": {
+      "denominator": 0,
+      "numerator": 0,
+      "rate": null
+    },
+    "TypeA_TARGET_REQUIRED_CLAIM": {
       "denominator": 0,
       "numerator": 0,
       "rate": null
@@ -112,12 +137,32 @@
       "numerator": 0,
       "rate": null
     },
+    "TypeB_LOCAL_TEXT_DERIVED": {
+      "denominator": 0,
+      "numerator": 0,
+      "rate": null
+    },
     "TypeC_EXTERNAL_BY_ELIMINATION_LITERAL_TRUTH": {
       "denominator": 0,
       "numerator": 0,
       "rate": null
     },
     "TypeC_EXTERNAL_BY_ELIMINATION_QID_TRUTH": {
+      "denominator": 0,
+      "numerator": 0,
+      "rate": null
+    },
+    "TypeC_UNKNOWN_BAD_TARGET_OR_CONTEXT": {
+      "denominator": 0,
+      "numerator": 0,
+      "rate": null
+    },
+    "TypeC_UNKNOWN_FOCUS_QID_DOMAIN_REASONING": {
+      "denominator": 0,
+      "numerator": 0,
+      "rate": null
+    },
+    "TypeC_UNKNOWN_FORMAT_PRUNING_RETAINED_UNVERIFIED": {
       "denominator": 0,
       "numerator": 0,
       "rate": null

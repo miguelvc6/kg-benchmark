@@ -1,0 +1,62 @@
+{
+  "created_at_utc": "2026-05-29T17:13:28.922692Z",
+  "current_key_counts": {
+    "COINCIDENTAL_SCHEMA_CHANGE": 233427,
+    "EXTERNAL": 0,
+    "EXTERNAL_BY_ELIMINATION": 19430,
+    "FORMAT_NORMALIZATION": 12807,
+    "FORMAT_VALUE_PRUNING": 4930,
+    "LOCAL_FOCUS_PREREPAIR_PROPERTY": 0,
+    "LOCAL_FOCUS_QID": 0,
+    "LOCAL_SELECTION_CONFIRMED": 656,
+    "LOCAL_TEXT": 0,
+    "LOCAL_TEXT_CONFIRMED": 88,
+    "LOCAL_TEXT_DERIVED": 4993,
+    "MULTIPLICITY_NORMALIZATION": 310,
+    "RELAXATION_SET_EXPANSION": 21535,
+    "RESTRICTION_SET_CONTRACTION": 32171,
+    "SCHEMA_UPDATE": 162002,
+    "SET_MEMBERSHIP_REJECTION": 8971,
+    "TARGET_REQUIRED_CLAIM": 760,
+    "UNKNOWN_BAD_TARGET_OR_CONTEXT": 3712,
+    "UNKNOWN_FOCUS_QID_DOMAIN_REASONING": 8,
+    "UNKNOWN_FORMAT_PRUNING_RETAINED_UNVERIFIED": 2,
+    "UNKNOWN_MULTIPLICITY_ARTIFACT": 157,
+    "UNKNOWN_TBOX_CAUSALITY": 7459
+  },
+  "current_minus_previous": {
+    "T_BOX/UNKNOWN_TBOX_CAUSALITY": -27308,
+    "TypeA/FORMAT_NORMALIZATION": 0,
+    "TypeB/LOCAL_TEXT_DERIVED": 0,
+    "TypeC/EXTERNAL_BY_ELIMINATION": 0,
+    "TypeC/UNKNOWN_BAD_TARGET_OR_CONTEXT": 0
+  },
+  "errors_total": 0,
+  "input": "data/04_classified_benchmark.jsonl",
+  "notes": [
+    "Record-level pre-patch Stage 4 was overwritten by regeneration; this report preserves final key-count deltas against the previous transition summary and zero-check scan results.",
+    "Lean Stage 4 was regenerated with --no-full-output; full embedded world-state output was not regenerated."
+  ],
+  "previous_key_counts": {
+    "T_BOX/UNKNOWN_TBOX_CAUSALITY": 34767,
+    "TypeA/FORMAT_NORMALIZATION": 12807,
+    "TypeB/LOCAL_TEXT_DERIVED": 4993,
+    "TypeC/EXTERNAL_BY_ELIMINATION": 19430,
+    "TypeC/UNKNOWN_BAD_TARGET_OR_CONTEXT": 3712
+  },
+  "previous_transition_report": "reports/classifier_audit/transition_after_final_tbox_abox_patch.json",
+  "records_scanned": 535570,
+  "regression_checks": {
+    "FORMAT_VALUE_PRUNING_retained_pass_regex_false": 0,
+    "P8726_LOCAL_TEXT_DERIVED": 4993,
+    "TypeB/LOCAL_FOCUS_PREREPAIR_PROPERTY": 0,
+    "TypeB/LOCAL_TEXT": 0,
+    "TypeC/EXTERNAL": 0,
+    "UNKNOWN_FOCUS_QID_DOMAIN_REASONING": 8,
+    "mixed_SCHEMBL_external_by_elimination": 0,
+    "multiplicity_noncardinality_typea_main": 0,
+    "single_value_multiple_new_external_by_elimination": 0
+  },
+  "report_type": "classifier_script_patch_transition_summary",
+  "stats": "reports/classifier_stats.json"
+}

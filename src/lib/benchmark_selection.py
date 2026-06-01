@@ -15,6 +15,7 @@ SUPPORTED_SELECTED_CASE_ORDERS = {"sorted", "shuffled"}
 TRACK_TBOX_MARKER = '"track": "T_BOX"'
 CASE_ID_RE = re.compile(r'"id"\s*:\s*"([^"]+)"')
 PROPERTY_REVISION_RE = re.compile(r'"property_revision_id"\s*:\s*"?([^",}\s]+)"?')
+WIKIDATA_DATE_RE = re.compile(r"^[+-]\d{4,}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}Z)?$")
 DEFAULT_CORE_SIZE = 4800
 DEFAULT_DEV_SIZE = 600
 DEFAULT_TBOX_CAP_CORE = 10
@@ -30,6 +31,7 @@ CORE_QUOTAS: dict[str, int] = {
     "TypeA_SELF_LINK_REJECTION": 80,
     "TypeA_SET_MEMBERSHIP_REJECTION": 40,
     "TypeA_MULTIPLICITY_NORMALIZATION": 40,
+    "TypeA_TARGET_REQUIRED_CLAIM": 40,
     "TypeA_REJECTION_RULE_INVALID": 20,
     "TypeA_LOGICAL": 40,
     "TypeA_DELETE_AMBIGUOUS": 250,
@@ -80,6 +82,10 @@ DIAGNOSTIC_SUBTYPES = {
     "UNKNOWN_MISSING_TRUTH",
     "UNKNOWN_MISSING_WORLD_STATE",
     "UNKNOWN_CURRENT_VALUE_FALLBACK",
+    "UNKNOWN_FORMAT_PRUNING_RETAINED_UNVERIFIED",
+    "UNKNOWN_BAD_TARGET_OR_CONTEXT",
+    "UNKNOWN_FOCUS_QID_DOMAIN_REASONING",
+    "UNKNOWN_TBOX_CAUSALITY",
 }
 MAIN_SCORE_STRATA = {
     "TypeA_REJECTION_FORMAT_INVALID",
@@ -88,6 +94,7 @@ MAIN_SCORE_STRATA = {
     "TypeA_SELF_LINK_REJECTION",
     "TypeA_SET_MEMBERSHIP_REJECTION",
     "TypeA_MULTIPLICITY_NORMALIZATION",
+    "TypeA_TARGET_REQUIRED_CLAIM",
     "TypeA_REJECTION_RULE_INVALID",
     "TypeA_LOGICAL",
     "TypeB_LOCAL_TEXT_CONFIRMED",
@@ -208,8 +215,15 @@ def _truth_token_kind(record: dict[str, Any]) -> str:
             kinds.add("qid")
         elif token_s.startswith("P"):
             kinds.add("pid")
-        elif token_s[:1] in "+-" or any(ch.isdigit() for ch in token_s):
-            kinds.add("date_or_numeric")
+        elif WIKIDATA_DATE_RE.match(token_s):
+            kinds.add("date")
+        elif any(ch.isdigit() for ch in token_s):
+            try:
+                float(token_s)
+            except ValueError:
+                kinds.add("literal")
+            else:
+                kinds.add("numeric")
         else:
             kinds.add("literal")
     return next(iter(kinds)) if len(kinds) == 1 else "mixed"
@@ -299,6 +313,7 @@ def _dev_stratum(cls: str, subtype: str) -> str | None:
         "SELF_LINK_REJECTION",
         "SET_MEMBERSHIP_REJECTION",
         "MULTIPLICITY_NORMALIZATION",
+        "TARGET_REQUIRED_CLAIM",
     }:
         return "DEV_TYPEA_CLEAN_RULE_REJECTION"
     if cls == "TypeA" and subtype == "DELETE_AMBIGUOUS":
@@ -331,6 +346,8 @@ def _analysis_slice(cls: str, subtype: str, stratum: str) -> str:
         return "diagnostic_ic_u"
     if cls == "T_BOX" and subtype == "COINCIDENTAL_SCHEMA_CHANGE":
         return "diagnostic_tbox_coincidental"
+    if cls == "T_BOX" and subtype == "UNKNOWN_TBOX_CAUSALITY":
+        return "diagnostic_tbox_unknown_causality"
     if cls == "T_BOX":
         return f"main_tbox_{subtype.lower()}"
     return f"diagnostic_{stratum.lower()}"
@@ -363,6 +380,7 @@ def derive_case_metadata(record: dict[str, Any], *, tier: str = "core") -> dict[
         "confidence": confidence,
         "selection_stratum": selection_stratum,
         "analysis_slice": _analysis_slice(cls, subtype, selection_stratum),
+        "analysis_slice_precise": classification.get("analysis_slice_precise") or "",
         "main_score": main_score,
         "diagnostic_only": diagnostic_only,
         "group_key": group_key,
@@ -370,6 +388,11 @@ def derive_case_metadata(record: dict[str, Any], *, tier: str = "core") -> dict[
         "weak_group_key": weak_group_key,
         "popularity_bucket": _popularity_bucket(record),
         "constraint_family": _constraint_family(record),
+        "decision_constraint_type_qid": classification.get("decision_constraint_type_qid") or "",
+        "decision_constraint_type_label": classification.get("decision_constraint_type_label") or "",
+        "decision_constraint_source": classification.get("decision_constraint_source") or "",
+        "classification_rule_family": classification.get("classification_rule_family") or "",
+        "classification_rule_subfamily": classification.get("classification_rule_subfamily") or "",
         "truth_source": _truth_source(record),
         "truth_token_kind": _truth_token_kind(record),
     }

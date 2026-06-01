@@ -1,8 +1,10 @@
+"""Helpers for deriving normalized A-box value-delta summaries."""
+
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 from typing import Any
-from collections import Counter
 
 
 def comparable_atom(value: Any) -> str:
@@ -15,7 +17,7 @@ def comparable_atom(value: Any) -> str:
     if isinstance(value, str):
         return value
     if isinstance(value, dict):
-        for key in ("qid", "id", "raw", "value"):
+        for key in ("qid", "id", "raw", "value", "time", "amount", "text"):
             if key in value:
                 return comparable_atom(value[key])
     return str(value)

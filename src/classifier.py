@@ -46,6 +46,7 @@ from lib.repair_state import pre_repair_target_raw_value
 from lib.repair_state import derive_value_change_summary
 
 DATE_ISO_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+WIKIDATA_DATE_RE = re.compile(r"^[+-]\d{4,}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}Z)?$")
 
 # Default paths
 DEFAULT_REPAIRS_PATH = "02_wikidata_repairs.json"
@@ -57,12 +58,24 @@ DEFAULT_STATS_PATH = "reports/classifier_stats.json"
 
 # Constraint QID families (observed in outputs)
 FORMAT_QIDS = {"Q21502404"}  # format constraint
+SINGLE_VALUE_QIDS = {"Q19474404"}
+DISTINCT_VALUE_QIDS = {"Q21502410"}
 ONE_OF_QIDS = {"Q21510859", "Q21502402"}  # one-of constraint (observed + legacy)
 RANGE_QIDS = {"Q21510860"}  # range constraint
 TYPE_QIDS = {"Q21503250"}  # subject type constraint
 VALUE_TYPE_QIDS = {"Q21510865"}  # value-type constraint
-SELF_LINK_QIDS = {"Q21510862"}
+SELF_LINK_QIDS: set[str] = set()
+SYMMETRIC_QIDS = {"Q21510862"}
 NONE_OF_QIDS = {"Q52558054"}
+INVERSE_QIDS = {"Q21510855"}
+MANDATORY_QUALIFIER_QIDS = {"Q21510856"}
+ALLOWED_QUALIFIER_QIDS = {"Q21510851"}
+REQUIRED_STATEMENT_QIDS = {"Q21503247"}
+VALUE_REQUIRES_STATEMENT_QIDS = {"Q21510864"}
+ALLOWED_ENTITY_TYPES_QIDS = {"Q52004125"}
+PROPERTY_SCOPE_QIDS = {"Q53869507"}
+CONFLICTS_WITH_QIDS = {"Q21502838"}
+LABEL_IN_LANGUAGE_QIDS = {"Q108139345"}
 
 ONE_OF_VALUE_QUALIFIER = "P2305"
 TYPE_VALUE_QUALIFIERS = ("P2308", "P2309")
@@ -70,6 +83,15 @@ NUMERIC_MIN_QUALIFIER = "P2313"
 NUMERIC_MAX_QUALIFIER = "P2312"
 DATE_MIN_QUALIFIER = "P2310"
 DATE_MAX_QUALIFIER = "P2311"
+FORMAT_PATTERN_QUALIFIER = "P1793"
+LANGUAGE_CODE_QUALIFIER = "P424"
+CONSTRAINT_STATUS_QUALIFIER = "P2316"
+PROPERTY_PARAMETER_QUALIFIER = "P2306"
+SINGLE_VALUE_SEPARATOR_QUALIFIER = "P4155"
+PROPERTY_SCOPE_QUALIFIER = "P4680"
+TBOX_METADATA_QUALIFIER_PROPERTIES = {
+    CONSTRAINT_STATUS_QUALIFIER,
+}
 CURRENT_VALUE_TRUTH_SOURCES = {
     "persistence_check.current_value_2026",
     "violation_context.value_current_2026",
@@ -80,15 +102,53 @@ CURRENT_VALUE_TRUTH_SOURCES = {
 VIOLATION_TO_CONSTRAINT_MAP = {
     "Single value": "Q19474404",
     "Unique value": "Q21502410",
+    "Distinct values": "Q21502410",
     "Format": "Q21502404",
     "One of": "Q21510859",
+    "Inverse": "Q21510855",
     "Type": "Q21503250",
     "Value type": "Q21510865",
-    "Self link": "Q21510862",
+    "Symmetric": "Q21510862",
     "None of": "Q52558054",
+    "Conflicts with": "Q21502838",
+    "Mandatory Qualifiers": "Q21510856",
+    "Mandatory qualifier": "Q21510856",
+    "Allowed qualifiers": "Q21510851",
+    "Item": "Q21503247",
+    "Target required claim": "Q21510864",
+    "Value requires statement": "Q21510864",
+    "Entity types": "Q52004125",
+    "Property scope": "Q53869507",
+    "Scope": "Q53869507",
+    "Label in language": "Q108139345",
+    "Description in language": "Q108139345",
     "Range": "Q21510860",
     "Diff within range": "Q21510861",
     "Quantity": "Q21510857",
+}
+
+CONSTRAINT_LABELS = {
+    "Q19474404": "single-value constraint",
+    "Q21502410": "distinct-values constraint",
+    "Q21502404": "format constraint",
+    "Q21510859": "one-of constraint",
+    "Q21502402": "one-of constraint",
+    "Q21510855": "inverse constraint",
+    "Q21503250": "type constraint",
+    "Q21510865": "value-type constraint",
+    "Q21510862": "symmetric constraint",
+    "Q52558054": "none-of constraint",
+    "Q21502838": "conflicts-with constraint",
+    "Q21510856": "mandatory qualifier constraint",
+    "Q21510851": "allowed qualifiers constraint",
+    "Q21503247": "item requires statement constraint",
+    "Q21510864": "value requires statement constraint",
+    "Q52004125": "allowed entity types constraint",
+    "Q53869507": "property scope constraint",
+    "Q108139345": "label-in-language constraint",
+    "Q21510860": "range constraint",
+    "Q21510861": "diff within range constraint",
+    "Q21510857": "quantity constraint",
 }
 
 
@@ -137,6 +197,10 @@ def extract_constraint_entries(world_state_entry: Dict[str, Any]) -> List[Dict[s
 def constraint_kind(ctype: Dict[str, Any]) -> Optional[str]:
     qid = ctype.get("qid") if isinstance(ctype, dict) else None
     label = ctype.get("label") if isinstance(ctype, dict) else None
+    if qid in SINGLE_VALUE_QIDS:
+        return "single_value"
+    if qid in DISTINCT_VALUE_QIDS:
+        return "distinct_values"
     if qid in FORMAT_QIDS:
         return "format"
     if qid in ONE_OF_QIDS:
@@ -147,8 +211,36 @@ def constraint_kind(ctype: Dict[str, Any]) -> Optional[str]:
         return "type"
     if qid in VALUE_TYPE_QIDS:
         return "value_type"
+    if qid in SELF_LINK_QIDS:
+        return "self_link"
+    if qid in SYMMETRIC_QIDS:
+        return "symmetric"
+    if qid in NONE_OF_QIDS:
+        return "none_of"
+    if qid in INVERSE_QIDS:
+        return "inverse"
+    if qid in CONFLICTS_WITH_QIDS:
+        return "conflicts_with"
+    if qid in MANDATORY_QUALIFIER_QIDS:
+        return "mandatory_qualifier"
+    if qid in ALLOWED_QUALIFIER_QIDS:
+        return "allowed_qualifier"
+    if qid in REQUIRED_STATEMENT_QIDS:
+        return "required_statement"
+    if qid in VALUE_REQUIRES_STATEMENT_QIDS:
+        return "value_required_statement"
+    if qid in ALLOWED_ENTITY_TYPES_QIDS:
+        return "allowed_entity_types"
+    if qid in PROPERTY_SCOPE_QIDS:
+        return "property_scope"
+    if qid in LABEL_IN_LANGUAGE_QIDS:
+        return "label_in_language"
     if isinstance(label, str):
         ln = normalize_text(label)
+        if ln in {"single-value constraint", "single value constraint", "single value"}:
+            return "single_value"
+        if ln in {"distinct-values constraint", "distinct values constraint", "unique value constraint", "unique value"}:
+            return "distinct_values"
         if ln in {"format constraint", "format"}:
             return "format"
         if ln in {"one of constraint", "one-of constraint", "one of", "one-of"}:
@@ -159,19 +251,41 @@ def constraint_kind(ctype: Dict[str, Any]) -> Optional[str]:
             return "type"
         if ln in {"value type constraint", "value-type constraint", "value type", "value-type"}:
             return "value_type"
+        if ln in {"self-link constraint", "self link constraint", "self link"}:
+            return "self_link"
+        if ln in {"symmetric constraint", "symmetric"}:
+            return "symmetric"
+        if ln in {"none of constraint", "none-of constraint", "none of", "none-of"}:
+            return "none_of"
+        if ln in {"inverse constraint", "inverse"}:
+            return "inverse"
+        if ln in {"conflicts-with constraint", "conflicts with constraint", "conflicts with"}:
+            return "conflicts_with"
+        if ln in {"mandatory qualifier constraint", "mandatory qualifiers constraint", "mandatory qualifiers"}:
+            return "mandatory_qualifier"
+        if ln in {"allowed qualifiers constraint", "allowed qualifier constraint", "allowed qualifiers"}:
+            return "allowed_qualifier"
+        if ln in {"item requires statement constraint", "required statement constraint"}:
+            return "required_statement"
+        if ln in {"value requires statement constraint", "value requires statement", "target required claim"}:
+            return "value_required_statement"
+        if ln in {"allowed entity types constraint", "entity types constraint", "entity types"}:
+            return "allowed_entity_types"
+        if ln in {"property scope constraint", "property scope"}:
+            return "property_scope"
+        if ln in {"label-in-language constraint", "label in language constraint", "label in language", "description in language"}:
+            return "label_in_language"
     return None
 
 
 def is_causal_repair(violation_name: Optional[str], changed_constraint_qids: Iterable[str]) -> bool:
     if not isinstance(violation_name, str) or not violation_name.strip():
-        return True
+        return False
     if changed_constraint_qids is None:
         changed_constraint_qids = []
-    normalized = normalize_text(violation_name)
-    mapping = {normalize_text(k): v for k, v in VIOLATION_TO_CONSTRAINT_MAP.items()}
-    target_qid = mapping.get(normalized)
+    target_qid = _map_tbox_violation(violation_name).get("mapped_violation_constraint_qid")
     if not target_qid:
-        return True
+        return False
     changed_set = {qid for qid in changed_constraint_qids if isinstance(qid, str)}
     return target_qid in changed_set
 
@@ -341,22 +455,691 @@ def _analyze_generic_set_change(
     return _compare_sets(old_values, new_values)
 
 
+def _constraint_label(qid: Optional[str], signature: Optional[List[Dict[str, Any]]] = None) -> Optional[str]:
+    if isinstance(signature, list) and isinstance(qid, str):
+        for entry in signature:
+            if not isinstance(entry, dict) or entry.get("constraint_qid") != qid:
+                continue
+            label = entry.get("constraint_label") or entry.get("label")
+            if isinstance(label, str) and label:
+                return label
+    if isinstance(qid, str):
+        return CONSTRAINT_LABELS.get(qid)
+    return None
+
+
+def _preview_list(values: Iterable[Any], limit: int = 25) -> List[Any]:
+    items = list(values) if not isinstance(values, list) else values
+    if len(items) <= limit:
+        return items
+    return items[:limit] + [f"...(+{len(items) - limit})"]
+
+
+def _constraint_family(qid: Optional[str], label: Optional[str] = None) -> str:
+    kind = constraint_kind({"qid": qid, "label": label})
+    return kind or "unknown"
+
+
+def _constraint_set_semantics(qid: Optional[str], label: Optional[str] = None) -> str:
+    family = _constraint_family(qid, label)
+    if family in {
+        "one_of",
+        "type",
+        "value_type",
+        "allowed_qualifier",
+        "allowed_entity_types",
+        "property_scope",
+        "single_value",
+        "distinct_values",
+        "label_in_language",
+        "symmetric",
+    }:
+        return "allowed"
+    if family in {"none_of", "conflicts_with"}:
+        return "forbidden"
+    if family in {"mandatory_qualifier", "required_statement", "value_required_statement"}:
+        return "required"
+    return "unknown"
+
+
+def _constraint_value_property_ids(qid: Optional[str], label: Optional[str] = None) -> Optional[Iterable[str]]:
+    family = _constraint_family(qid, label)
+    if family == "one_of":
+        return {ONE_OF_VALUE_QUALIFIER}
+    if family in {"type", "value_type"}:
+        return set(TYPE_VALUE_QUALIFIERS)
+    return None
+
+
+def tbox_relevant_qualifier_properties_for_family(family_or_constraint_qid: Optional[str]) -> Optional[set[str]]:
+    if not isinstance(family_or_constraint_qid, str) or not family_or_constraint_qid:
+        return None
+    family = (
+        _constraint_family(family_or_constraint_qid, _constraint_label(family_or_constraint_qid))
+        if family_or_constraint_qid.startswith("Q")
+        else family_or_constraint_qid
+    )
+    relevant: dict[str, set[str]] = {
+        "format": {FORMAT_PATTERN_QUALIFIER},
+        "one_of": {ONE_OF_VALUE_QUALIFIER},
+        "none_of": {ONE_OF_VALUE_QUALIFIER},
+        "type": set(TYPE_VALUE_QUALIFIERS),
+        "value_type": set(TYPE_VALUE_QUALIFIERS),
+        "allowed_entity_types": set(TYPE_VALUE_QUALIFIERS),
+        "label_in_language": {LANGUAGE_CODE_QUALIFIER},
+        "description_in_language": {LANGUAGE_CODE_QUALIFIER},
+        "allowed_qualifier": {PROPERTY_PARAMETER_QUALIFIER},
+        "mandatory_qualifier": {PROPERTY_PARAMETER_QUALIFIER},
+        "required_statement": {PROPERTY_PARAMETER_QUALIFIER, ONE_OF_VALUE_QUALIFIER},
+        "value_required_statement": {PROPERTY_PARAMETER_QUALIFIER, ONE_OF_VALUE_QUALIFIER},
+        "inverse": {PROPERTY_PARAMETER_QUALIFIER},
+        "conflicts_with": {PROPERTY_PARAMETER_QUALIFIER, ONE_OF_VALUE_QUALIFIER},
+        "property_scope": {PROPERTY_SCOPE_QUALIFIER},
+        "range": {DATE_MIN_QUALIFIER, DATE_MAX_QUALIFIER, NUMERIC_MIN_QUALIFIER, NUMERIC_MAX_QUALIFIER},
+        "single_value": {SINGLE_VALUE_SEPARATOR_QUALIFIER},
+        "distinct_values": {PROPERTY_PARAMETER_QUALIFIER},
+        "symmetric": {PROPERTY_PARAMETER_QUALIFIER},
+    }
+    return relevant.get(family)
+
+
+def is_tbox_metadata_qualifier_property(pid: str) -> bool:
+    return isinstance(pid, str) and pid in TBOX_METADATA_QUALIFIER_PROPERTIES
+
+
+def _values_from_change_rows(rows: List[Dict[str, Any]]) -> tuple[list[str], list[str], list[str]]:
+    added: list[str] = []
+    removed: list[str] = []
+    props: list[str] = []
+    for row in rows:
+        prop = row.get("qualifier_property")
+        if isinstance(prop, str) and prop not in props:
+            props.append(prop)
+        added.extend(str(value) for value in row.get("added_values", []))
+        removed.extend(str(value) for value in row.get("removed_values", []))
+    return sorted(set(added)), sorted(set(removed)), sorted(props)
+
+
+def filter_tbox_semantic_qualifier_changes(
+    changes: List[Dict[str, Any]],
+    target_family_or_qid: Optional[str],
+    *,
+    target_constraint_qid: Optional[str] = None,
+) -> Dict[str, Any]:
+    relevant = tbox_relevant_qualifier_properties_for_family(target_family_or_qid)
+    family = (
+        _constraint_family(target_family_or_qid, _constraint_label(target_family_or_qid))
+        if isinstance(target_family_or_qid, str) and target_family_or_qid.startswith("Q")
+        else target_family_or_qid or "unknown"
+    )
+    semantic_rows: List[Dict[str, Any]] = []
+    ignored_rows: List[Dict[str, Any]] = []
+    for row in changes:
+        row_qid = row.get("constraint_qid")
+        if target_constraint_qid and row_qid != target_constraint_qid:
+            continue
+        prop = row.get("qualifier_property")
+        prop_s = str(prop) if prop is not None else ""
+        if relevant is not None and prop_s in relevant and not is_tbox_metadata_qualifier_property(prop_s):
+            semantic_rows.append(row)
+        else:
+            ignored_rows.append(row)
+    semantic_added, semantic_removed, semantic_props = _values_from_change_rows(semantic_rows)
+    ignored_added, ignored_removed, ignored_props = _values_from_change_rows(ignored_rows)
+    if relevant is None:
+        reason = "unknown_family_no_semantic_qualifier_filter"
+    elif ignored_rows and semantic_rows:
+        reason = "family_relevant_qualifiers_kept_metadata_or_irrelevant_qualifiers_ignored"
+    elif ignored_rows:
+        reason = "all_changed_qualifiers_are_metadata_or_irrelevant_for_family"
+    else:
+        reason = "all_changed_qualifiers_are_semantic_for_family"
+    return {
+        "target_family": family,
+        "relevant_qualifier_properties": sorted(relevant) if relevant is not None else [],
+        "semantic_changed_qualifier_properties": semantic_props,
+        "ignored_changed_qualifier_properties": ignored_props,
+        "semantic_added_values": semantic_added,
+        "semantic_removed_values": semantic_removed,
+        "ignored_added_values": ignored_added,
+        "ignored_removed_values": ignored_removed,
+        "semantic_added_value_count": len(semantic_added),
+        "semantic_removed_value_count": len(semantic_removed),
+        "ignored_value_count": len(ignored_added) + len(ignored_removed),
+        "qualifier_filter_reason": reason,
+        "semantic_change_rows": semantic_rows,
+        "ignored_change_rows": ignored_rows,
+    }
+
+
+def _qualifier_value_counter(
+    constraints: List[Dict[str, Any]],
+    qid: str,
+    property_ids: Optional[Iterable[str]] = None,
+) -> Counter[str]:
+    qualifiers = _collect_qualifiers_for_qid(constraints, qid)
+    return Counter(_collect_qualifier_values(qualifiers, property_ids=property_ids))
+
+
+def _qualifier_value_changes_for_qid(
+    before: List[Dict[str, Any]],
+    after: List[Dict[str, Any]],
+    qid: str,
+    property_ids: Optional[Iterable[str]] = None,
+) -> Dict[str, Any]:
+    old_counter = _qualifier_value_counter(before, qid, property_ids)
+    new_counter = _qualifier_value_counter(after, qid, property_ids)
+    before_props: Dict[str, Counter[str]] = {}
+    after_props: Dict[str, Counter[str]] = {}
+    for target, bucket in ((before, before_props), (after, after_props)):
+        for qualifier in _collect_qualifiers_for_qid(target, qid):
+            property_id = str(qualifier.get("property_id") or "UNKNOWN")
+            bucket.setdefault(property_id, Counter()).update(_collect_qualifier_values([qualifier], property_ids=property_ids))
+    changed_props = sorted(
+        prop
+        for prop in set(before_props) | set(after_props)
+        if (before_props.get(prop, Counter()) - after_props.get(prop, Counter()))
+        or (after_props.get(prop, Counter()) - before_props.get(prop, Counter()))
+    )
+    return {
+        "added_values": sorted((new_counter - old_counter).elements()),
+        "removed_values": sorted((old_counter - new_counter).elements()),
+        "old_values": sorted(old_counter.elements()),
+        "new_values": sorted(new_counter.elements()),
+        "changed_qualifier_properties": changed_props,
+    }
+
+
+def _qid_values_from_entries(entries: List[Dict[str, Any]]) -> List[str]:
+    out: List[str] = []
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        qid = entry.get("constraint_qid")
+        if isinstance(qid, str) and qid not in out:
+            out.append(qid)
+    return out
+
+
+def _signature_entry_diff(before: List[Dict[str, Any]], after: List[Dict[str, Any]]) -> Tuple[List[str], List[str]]:
+    before_qids = Counter(entry.get("constraint_qid") for entry in before if isinstance(entry, dict) and isinstance(entry.get("constraint_qid"), str))
+    after_qids = Counter(entry.get("constraint_qid") for entry in after if isinstance(entry, dict) and isinstance(entry.get("constraint_qid"), str))
+    changed = sorted(set((after_qids - before_qids).keys()) | set((before_qids - after_qids).keys()))
+    return changed, list(changed)
+
+
+def _qualifier_value_change_rows(before: List[Dict[str, Any]], after: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def counters_by_qid_and_property(entries: List[Dict[str, Any]]) -> Dict[Tuple[str, str], Counter[str]]:
+        result: Dict[Tuple[str, str], Counter[str]] = {}
+        for entry in entries:
+            if not isinstance(entry, dict) or not isinstance(entry.get("constraint_qid"), str):
+                continue
+            qid = entry["constraint_qid"]
+            qualifiers = entry.get("qualifiers")
+            if not isinstance(qualifiers, list):
+                continue
+            for qualifier in qualifiers:
+                if not isinstance(qualifier, dict):
+                    continue
+                property_id = str(qualifier.get("property_id") or "UNKNOWN")
+                result.setdefault((qid, property_id), Counter()).update(_collect_qualifier_values([qualifier]))
+        return result
+
+    before_by_key = counters_by_qid_and_property(before)
+    after_by_key = counters_by_qid_and_property(after)
+    rows: List[Dict[str, Any]] = []
+    for qid, property_id in sorted(set(before_by_key) | set(after_by_key)):
+        old_counter = before_by_key.get((qid, property_id), Counter())
+        new_counter = after_by_key.get((qid, property_id), Counter())
+        added = sorted((new_counter - old_counter).elements())
+        removed = sorted((old_counter - new_counter).elements())
+        if added or removed:
+            rows.append(
+                {
+                    "constraint_qid": qid,
+                    "qualifier_property": property_id,
+                    "added_values": added,
+                    "removed_values": removed,
+                }
+            )
+    return rows
+
+
+def _extract_report_tokens_from_text(texts: str) -> Dict[str, List[str]]:
+    texts = texts or ""
+    qids = sorted(set(re.findall(r"\bQ\|?(\d+)\b", texts, flags=re.IGNORECASE)))
+    pids = sorted(set(re.findall(r"\bP\|?(\d+)\b", texts, flags=re.IGNORECASE)))
+    langs = sorted(set(re.findall(r"\b(?:label|description)\s+in\s+([a-z][a-z0-9-]*)\s+language\b", texts, flags=re.IGNORECASE)))
+    scopes = sorted(set(re.findall(r"\b(?:as|scope)\s+(?:a\s+)?([a-z][a-z _-]{2,30})\b", texts, flags=re.IGNORECASE)))
+    return {
+        "qids": [f"Q{qid}" for qid in qids],
+        "pids": [f"P{pid}" for pid in pids],
+        "langs": [lang.lower() for lang in langs],
+        "scope_values": [normalize_text(scope) for scope in scopes],
+    }
+
+
+def _extract_report_tokens(repair_event: Dict[str, Any]) -> Dict[str, List[str]]:
+    texts = " ".join(_violation_report_texts(repair_event))
+    vc = repair_event.get("violation_context", {})
+    for value in flatten_truth(vc if isinstance(vc, dict) else {}):
+        texts += f" {value}"
+    return _extract_report_tokens_from_text(texts)
+
+
+def _map_tbox_violation(violation_name: Optional[str]) -> Dict[str, Any]:
+    normalized = normalize_text(violation_name or "")
+    if not normalized:
+        return {
+            "mapped_violation_constraint_qid": None,
+            "mapped_violation_constraint_label": None,
+            "mapped_violation_family": "unknown",
+            "mapped_violation_confidence": "none",
+            "mapped_violation_reason": "missing_violation_name",
+        }
+    mapping = {normalize_text(k): v for k, v in VIOLATION_TO_CONSTRAINT_MAP.items()}
+    qid = None
+    reason = "exact_violation_type_mapping"
+    confidence = "high"
+    if normalized in mapping:
+        qid = mapping[normalized]
+    elif normalized.startswith("value type"):
+        qid = "Q21510865"
+        reason = "value_type_prefix_mapping"
+        confidence = "medium"
+    elif normalized.startswith("type q") or normalized == "type":
+        qid = "Q21503250"
+        reason = "type_prefix_mapping"
+        confidence = "medium"
+    elif normalized.startswith("item p"):
+        qid = "Q21503247"
+        reason = "item_requires_statement_prefix_mapping"
+        confidence = "medium"
+    elif normalized.startswith("conflicts with"):
+        qid = "Q21502838"
+        reason = "conflicts_with_prefix_mapping"
+        confidence = "medium"
+    elif normalized.startswith("target required claim") or normalized.startswith("value requires statement"):
+        qid = "Q21510864"
+        reason = "value_requires_statement_prefix_mapping"
+        confidence = "medium"
+    elif normalized.startswith("label in"):
+        qid = "Q108139345"
+        reason = "label_language_report_mapping"
+        confidence = "medium"
+    elif normalized.startswith("description in"):
+        qid = "Q108139345"
+        reason = "description_language_report_mapping"
+        confidence = "medium"
+    elif normalized.startswith("mandatory qualifier") or normalized.startswith("mandatory qualifiers"):
+        qid = "Q21510856"
+        reason = "mandatory_qualifier_prefix_mapping"
+        confidence = "medium"
+    elif normalized.startswith("allowed qualifier") or normalized.startswith("allowed qualifiers"):
+        qid = "Q21510851"
+        reason = "allowed_qualifier_prefix_mapping"
+        confidence = "medium"
+    elif normalized.startswith("scope") or normalized.startswith("property scope"):
+        qid = "Q53869507"
+        reason = "property_scope_prefix_mapping"
+        confidence = "medium"
+    elif normalized.startswith("symmetric"):
+        qid = "Q21510862"
+        reason = "symmetric_prefix_mapping"
+        confidence = "medium"
+    if qid:
+        return {
+            "mapped_violation_constraint_qid": qid,
+            "mapped_violation_constraint_label": _constraint_label(qid),
+            "mapped_violation_family": _constraint_family(qid, _constraint_label(qid)),
+            "mapped_violation_confidence": confidence,
+            "mapped_violation_reason": reason,
+        }
+    return {
+        "mapped_violation_constraint_qid": None,
+        "mapped_violation_constraint_label": None,
+        "mapped_violation_family": "unknown",
+        "mapped_violation_confidence": "none",
+        "mapped_violation_reason": "unmapped_violation_type",
+    }
+
+
+def _overlap_detail(changes: List[Dict[str, Any]], report_tokens: Dict[str, List[str]]) -> Dict[str, List[str]]:
+    changed_values: set[str] = set()
+    for row in changes:
+        changed_values.update(str(value) for value in row.get("added_values", []))
+        changed_values.update(str(value) for value in row.get("removed_values", []))
+    qids = sorted(set(report_tokens.get("qids", [])) & changed_values)
+    pids = sorted(set(report_tokens.get("pids", [])) & changed_values)
+    langs = sorted(set(report_tokens.get("langs", [])) & {normalize_text(value) for value in changed_values})
+    scopes = sorted(set(report_tokens.get("scope_values", [])) & {normalize_text(value) for value in changed_values})
+    return {
+        "value_overlap_with_report_qids": qids,
+        "property_overlap_with_report_pids": pids,
+        "language_overlap_with_report_langs": langs,
+        "scope_overlap_with_report_values": scopes,
+    }
+
+
+def compatible_overlap_for_mapped_family(
+    mapped_family: str,
+    report_tokens: Dict[str, List[str]],
+    semantic_change_summary: Dict[str, Any],
+    raw_overlap: Optional[Dict[str, List[str]]] = None,
+) -> Dict[str, Any]:
+    semantic_values = set(map(str, semantic_change_summary.get("semantic_added_values", []))) | set(
+        map(str, semantic_change_summary.get("semantic_removed_values", []))
+    )
+    semantic_values_normalized = {normalize_text(value) for value in semantic_values}
+    semantic_props = set(semantic_change_summary.get("semantic_changed_qualifier_properties", []))
+    compatible = {
+        "value_overlap_with_report_qids": [],
+        "property_overlap_with_report_pids": [],
+        "language_overlap_with_report_langs": [],
+        "scope_overlap_with_report_values": [],
+        "compatible_overlap_used": False,
+        "compatible_overlap_reason": "no_type_compatible_overlap",
+        "incompatible_overlap_ignored": {},
+    }
+    qids = sorted(set(report_tokens.get("qids", [])) & semantic_values)
+    pids = sorted(set(report_tokens.get("pids", [])) & semantic_values)
+    langs = sorted(set(report_tokens.get("langs", [])) & semantic_values_normalized)
+    scopes = sorted(set(report_tokens.get("scope_values", [])) & semantic_values_normalized)
+
+    if mapped_family == "format":
+        if FORMAT_PATTERN_QUALIFIER in semantic_props:
+            compatible["compatible_overlap_used"] = True
+            compatible["compatible_overlap_reason"] = "format_regex_qualifier_changed"
+    elif mapped_family in {"label_in_language", "description_in_language"}:
+        compatible["language_overlap_with_report_langs"] = langs
+    elif mapped_family in {"type", "value_type", "allowed_entity_types", "one_of", "none_of"}:
+        compatible["value_overlap_with_report_qids"] = qids
+    elif mapped_family in {"allowed_qualifier", "mandatory_qualifier", "required_statement", "value_required_statement", "inverse"}:
+        compatible["property_overlap_with_report_pids"] = pids
+    elif mapped_family == "conflicts_with":
+        compatible["property_overlap_with_report_pids"] = pids
+        compatible["value_overlap_with_report_qids"] = qids
+    elif mapped_family == "property_scope":
+        compatible["scope_overlap_with_report_values"] = scopes
+    elif mapped_family == "range":
+        if semantic_props & {DATE_MIN_QUALIFIER, DATE_MAX_QUALIFIER, NUMERIC_MIN_QUALIFIER, NUMERIC_MAX_QUALIFIER}:
+            compatible["compatible_overlap_used"] = True
+            compatible["compatible_overlap_reason"] = "range_bound_qualifier_changed"
+    elif mapped_family in {"single_value", "distinct_values", "symmetric"}:
+        if semantic_props or semantic_values:
+            compatible["compatible_overlap_used"] = True
+            compatible["compatible_overlap_reason"] = "family_specific_semantic_qualifier_changed"
+
+    if _has_any_overlap(compatible):
+        compatible["compatible_overlap_used"] = True
+        compatible["compatible_overlap_reason"] = f"{mapped_family}_compatible_report_argument_overlap"
+    if raw_overlap:
+        ignored = {
+            key: sorted(set(raw_overlap.get(key, [])) - set(compatible.get(key, [])))
+            for key in (
+                "value_overlap_with_report_qids",
+                "property_overlap_with_report_pids",
+                "language_overlap_with_report_langs",
+                "scope_overlap_with_report_values",
+            )
+            if set(raw_overlap.get(key, [])) - set(compatible.get(key, []))
+        }
+        compatible["incompatible_overlap_ignored"] = ignored
+    return compatible
+
+
+def _family_has_concrete_report_tokens(family: str, report_tokens: Dict[str, List[str]]) -> bool:
+    if family in {"type", "value_type", "allowed_entity_types", "one_of", "none_of"}:
+        return bool(report_tokens.get("qids"))
+    if family in {
+        "conflicts_with",
+        "inverse",
+        "allowed_qualifier",
+        "mandatory_qualifier",
+        "required_statement",
+        "value_required_statement",
+    }:
+        return bool(report_tokens.get("pids"))
+    if family in {"label_in_language", "description_in_language"}:
+        return bool(report_tokens.get("langs"))
+    if family == "property_scope":
+        return bool(report_tokens.get("scope_values"))
+    return False
+
+
+def report_has_concrete_arguments(
+    candidate_violation_name: Optional[str],
+    report_tokens: Dict[str, List[str]],
+    violation_context: Optional[Dict[str, Any]] = None,
+) -> bool:
+    text = normalize_text(candidate_violation_name or "")
+    if report_tokens.get("qids") or report_tokens.get("pids") or report_tokens.get("langs") or report_tokens.get("scope_values"):
+        return True
+    if isinstance(violation_context, dict):
+        qids = violation_context.get("report_violation_type_qids")
+        if isinstance(qids, list) and qids:
+            return True
+    return bool(
+        re.search(r"\b(?:type|value type)\s+q\|?\d+\b", text)
+        or re.search(r"\b(?:item|target required claim|conflicts with)\s+p\|?\d+\b", text)
+        or re.search(r"\b(?:label|description)\s+in\s+[a-z][a-z0-9-]*\s+language\b", text)
+    )
+
+
+def _compatible_overlap_for_family(
+    family: str,
+    overlap: Dict[str, List[str]],
+    report_tokens: Optional[Dict[str, List[str]]] = None,
+) -> Dict[str, List[str]]:
+    compatible = {
+        "value_overlap_with_report_qids": [],
+        "property_overlap_with_report_pids": [],
+        "language_overlap_with_report_langs": [],
+        "scope_overlap_with_report_values": [],
+    }
+    if family in {"type", "value_type", "allowed_entity_types", "one_of", "none_of"}:
+        compatible["value_overlap_with_report_qids"] = list(overlap.get("value_overlap_with_report_qids", []))
+    elif family in {"conflicts_with"}:
+        compatible["property_overlap_with_report_pids"] = list(overlap.get("property_overlap_with_report_pids", []))
+        compatible["value_overlap_with_report_qids"] = list(overlap.get("value_overlap_with_report_qids", []))
+    elif family in {
+        "inverse",
+        "allowed_qualifier",
+        "mandatory_qualifier",
+        "required_statement",
+        "value_required_statement",
+    }:
+        compatible["property_overlap_with_report_pids"] = list(overlap.get("property_overlap_with_report_pids", []))
+    elif family in {"label_in_language", "description_in_language"}:
+        compatible["language_overlap_with_report_langs"] = list(overlap.get("language_overlap_with_report_langs", []))
+    elif family == "property_scope":
+        compatible["scope_overlap_with_report_values"] = list(overlap.get("scope_overlap_with_report_values", []))
+    elif family in {"format", "single_value", "distinct_values", "symmetric", "range"}:
+        # These families normally carry causality by exact constraint-family match.
+        return compatible
+    return compatible
+
+
+def _has_any_overlap(overlap: Dict[str, List[str]]) -> bool:
+    return any(bool(overlap.get(key)) for key in (
+        "value_overlap_with_report_qids",
+        "property_overlap_with_report_pids",
+        "language_overlap_with_report_langs",
+        "scope_overlap_with_report_values",
+    ))
+
+
+def _families_related_for_tbox_target(mapped_family: str, changed_family: str, compatible_overlap: Dict[str, Any]) -> bool:
+    if not compatible_overlap.get("compatible_overlap_used"):
+        return False
+    related = {
+        "type": {"allowed_entity_types"},
+        "value_type": {"allowed_entity_types"},
+        "allowed_entity_types": {"type", "value_type"},
+        "required_statement": {"value_required_statement"},
+        "value_required_statement": {"required_statement"},
+        "label_in_language": {"description_in_language"},
+        "description_in_language": {"label_in_language"},
+    }
+    return changed_family in related.get(mapped_family, set())
+
+
+def _analysis_slice_precise_for_tbox(step: Dict[str, Any]) -> str:
+    precise = step.get("directional_subtype_precise")
+    if isinstance(precise, str) and precise:
+        return f"main_tbox_{precise.lower()}"
+    subtype = step.get("result")
+    if subtype == "UNKNOWN_TBOX_CAUSALITY":
+        return "diagnostic_tbox_unknown_causality"
+    if subtype == "COINCIDENTAL_SCHEMA_CHANGE":
+        return "diagnostic_tbox_coincidental"
+    return f"main_tbox_{str(subtype).lower()}" if subtype else ""
+
+
+def _polarity_from_delta(
+    *,
+    qid: str,
+    label: Optional[str],
+    added_values: List[str],
+    removed_values: List[str],
+) -> Dict[str, Any]:
+    set_semantics = _constraint_set_semantics(qid, label)
+    added = bool(added_values)
+    removed = bool(removed_values)
+    set_operation = "mixed" if added and removed else "expansion" if added else "contraction" if removed else "unchanged"
+    if added and removed:
+        return {
+            "subtype": "SCHEMA_UPDATE",
+            "polarity": "unknown",
+            "set_semantics": set_semantics,
+            "set_operation": set_operation,
+            "polarity_basis": "both_added_and_removed_values",
+            "directional_subtype_basis": "mixed qualifier-value change",
+            "directional_subtype_precise": None,
+        }
+    if set_semantics == "allowed":
+        if added:
+            return {
+                "subtype": "RELAXATION_SET_EXPANSION",
+                "polarity": "relaxation",
+                "set_semantics": set_semantics,
+                "set_operation": set_operation,
+                "polarity_basis": "allowed set gained values",
+                "directional_subtype_basis": "allowed set expansion",
+                "directional_subtype_precise": "RELAXATION_ALLOWED_SET_EXPANSION",
+            }
+        if removed:
+            return {
+                "subtype": "RESTRICTION_SET_CONTRACTION",
+                "polarity": "restriction",
+                "set_semantics": set_semantics,
+                "set_operation": set_operation,
+                "polarity_basis": "allowed set lost values",
+                "directional_subtype_basis": "allowed set contraction",
+                "directional_subtype_precise": "RESTRICTION_ALLOWED_SET_CONTRACTION",
+            }
+    if set_semantics == "forbidden":
+        if added:
+            return {
+                "subtype": "RESTRICTION_SET_CONTRACTION",
+                "polarity": "restriction",
+                "set_semantics": set_semantics,
+                "set_operation": set_operation,
+                "polarity_basis": "forbidden set gained prohibited values",
+                "directional_subtype_basis": "forbidden set expansion",
+                "directional_subtype_precise": "RESTRICTION_FORBIDDEN_SET_EXPANSION",
+            }
+        if removed:
+            return {
+                "subtype": "RELAXATION_SET_EXPANSION",
+                "polarity": "relaxation",
+                "set_semantics": set_semantics,
+                "set_operation": set_operation,
+                "polarity_basis": "forbidden set lost prohibited values",
+                "directional_subtype_basis": "forbidden set contraction",
+                "directional_subtype_precise": "RELAXATION_FORBIDDEN_SET_CONTRACTION",
+            }
+    if set_semantics == "required":
+        if added:
+            return {
+                "subtype": "RESTRICTION_SET_CONTRACTION",
+                "polarity": "restriction",
+                "set_semantics": set_semantics,
+                "set_operation": set_operation,
+                "polarity_basis": "required set gained required values",
+                "directional_subtype_basis": "required set expansion",
+                "directional_subtype_precise": "RESTRICTION_REQUIRED_SET_EXPANSION",
+            }
+        if removed:
+            return {
+                "subtype": "RELAXATION_SET_EXPANSION",
+                "polarity": "relaxation",
+                "set_semantics": set_semantics,
+                "set_operation": set_operation,
+                "polarity_basis": "required set lost required values",
+                "directional_subtype_basis": "required set contraction",
+                "directional_subtype_precise": "RELAXATION_REQUIRED_SET_CONTRACTION",
+            }
+    return {
+        "subtype": "SCHEMA_UPDATE",
+        "polarity": "unknown",
+        "set_semantics": set_semantics,
+        "set_operation": set_operation,
+        "polarity_basis": "unknown constraint-family polarity",
+        "directional_subtype_basis": "causal family match without interpretable polarity",
+        "directional_subtype_precise": None,
+    }
+
+
 class ConstraintDiffer:
     def __init__(self, repair_event: Dict[str, Any], constraint_delta: Optional[Dict[str, Any]]):
         self.repair_event = repair_event
         self.delta = constraint_delta if isinstance(constraint_delta, dict) else {}
-        self.changed_constraint_qids = [
+        changed_from_delta = [
             qid for qid in _ensure_list(self.delta.get("changed_constraint_types")) if isinstance(qid, str)
         ]
         self.signature_before = _load_signature_list(self.delta, "signature_before", "old_constraints")
         self.signature_after = _load_signature_list(self.delta, "signature_after", "new_constraints")
+        changed_from_entries, _ = _signature_entry_diff(self.signature_before, self.signature_after)
+        self.qualifier_value_changes = _qualifier_value_change_rows(self.signature_before, self.signature_after)
+        changed_from_qualifiers = [
+            row["constraint_qid"]
+            for row in self.qualifier_value_changes
+            if isinstance(row.get("constraint_qid"), str)
+        ]
+        self.changed_constraint_qids_from_entries = sorted(set(changed_from_delta) | set(changed_from_entries))
+        self.changed_constraint_qids_from_qualifier_changes = sorted(set(changed_from_qualifiers))
+        self.changed_constraint_qids_all = sorted(
+            set(self.changed_constraint_qids_from_entries) | set(self.changed_constraint_qids_from_qualifier_changes)
+        )
+        self.changed_constraint_qids = self.changed_constraint_qids_all
 
-    def _violation_name(self) -> Optional[str]:
+    def _violation_names(self) -> List[str]:
         vc = self.repair_event.get("violation_context", {})
         if not isinstance(vc, dict):
-            return None
-        name = vc.get("report_violation_type_normalized") or vc.get("report_violation_type")
-        return name if isinstance(name, str) else None
+            return []
+        names: List[str] = []
+        for key in (
+            "report_violation_type_normalized",
+            "report_violation_type",
+            "report_violation_type_raw",
+            "report_violation_types",
+            "violation_name",
+            "message",
+        ):
+            raw = vc.get(key)
+            if isinstance(raw, str) and raw.strip():
+                names.append(raw.strip())
+            elif isinstance(raw, list):
+                names.extend([item.strip() for item in raw if isinstance(item, str) and item.strip()])
+        seen: set[str] = set()
+        deduped: List[str] = []
+        for name in names:
+            key = normalize_text(name)
+            if key and key not in seen:
+                seen.add(key)
+                deduped.append(name)
+        return deduped
 
     def _candidate_constraint_qids(self) -> List[str]:
         qids = []
@@ -368,68 +1151,387 @@ class ConstraintDiffer:
                 qids.append(qid)
         return qids
 
-    def _select_target_qid(self, mapped_qid: Optional[str]) -> Optional[str]:
+    def _select_target_qid(
+        self,
+        mapping: Dict[str, Any],
+        compatible_overlap: Dict[str, Any],
+    ) -> Tuple[Optional[str], str, str, bool, bool]:
+        mapped_qid = mapping.get("mapped_violation_constraint_qid")
+        mapped_family = mapping.get("mapped_violation_family", "unknown")
+        changed = set(self.changed_constraint_qids_all)
         if isinstance(mapped_qid, str):
-            candidates = set(self.changed_constraint_qids) | set(self._candidate_constraint_qids())
-            if mapped_qid in candidates:
-                return mapped_qid
-        if self.changed_constraint_qids:
-            return self.changed_constraint_qids[0]
-        candidates = self._candidate_constraint_qids()
-        return candidates[0] if candidates else None
+            if mapped_qid in changed:
+                return mapped_qid, "mapped_violation_constraint_changed", "high", True, False
+        if compatible_overlap.get("compatible_overlap_used"):
+            for row in self.qualifier_value_changes:
+                qid = row.get("constraint_qid")
+                if isinstance(qid, str) and qid in changed:
+                    changed_family = _constraint_family(qid, _constraint_label(qid, self.signature_before + self.signature_after))
+                    if changed_family == mapped_family:
+                        return qid, "changed_constraint_family_has_compatible_report_overlap", "medium", True, False
+                    if _families_related_for_tbox_target(mapped_family, changed_family, compatible_overlap):
+                        return qid, "changed_related_constraint_has_report_overlap", "medium", True, True
+        if mapped_family not in {"unknown", "label_in_language", "description_in_language"}:
+            for qid in self.changed_constraint_qids_all:
+                changed_family = _constraint_family(qid, _constraint_label(qid, self.signature_before + self.signature_after))
+                if changed_family == mapped_family:
+                    return qid, "changed_constraint_family_matches_mapped_violation", "medium", True, False
+                if _families_related_for_tbox_target(mapped_family, changed_family, compatible_overlap):
+                    return qid, "changed_related_constraint_family_matches_mapped_violation", "medium", True, True
+        return None, "no_matching_changed_constraint", "low", False, False
+
+    def _semantic_summary_for_family(self, mapped_family: str) -> Dict[str, Any]:
+        rows: List[Dict[str, Any]] = []
+        for row in self.qualifier_value_changes:
+            qid = row.get("constraint_qid")
+            if not isinstance(qid, str):
+                continue
+            family = _constraint_family(qid, _constraint_label(qid, self.signature_before + self.signature_after))
+            if family == mapped_family:
+                rows.append(row)
+            elif mapped_family in {"type", "value_type"} and family == "allowed_entity_types":
+                rows.append(row)
+            elif mapped_family in {"required_statement", "value_required_statement"} and family in {"required_statement", "value_required_statement"}:
+                rows.append(row)
+            elif mapped_family in {"label_in_language", "description_in_language"} and family in {"label_in_language", "description_in_language"}:
+                rows.append(row)
+        if not rows:
+            rows = self.qualifier_value_changes
+        return filter_tbox_semantic_qualifier_changes(rows, mapped_family)
+
+    def _candidate_mapping(self, name: str) -> Dict[str, Any]:
+        mapping = _map_tbox_violation(name)
+        report_tokens = _extract_report_tokens_from_text(name)
+        vc = self.repair_event.get("violation_context", {})
+        if isinstance(vc, dict):
+            qids = vc.get("report_violation_type_qids")
+            if isinstance(qids, list):
+                report_tokens["qids"] = sorted(set(report_tokens.get("qids", [])) | {str(qid) for qid in qids if is_qid(str(qid))})
+        semantic_summary = self._semantic_summary_for_family(mapping["mapped_violation_family"])
+        overlap = _overlap_detail(self.qualifier_value_changes, report_tokens)
+        compatible_overlap = compatible_overlap_for_mapped_family(
+            mapping["mapped_violation_family"],
+            report_tokens,
+            semantic_summary,
+            raw_overlap=overlap,
+        )
+        mapped_qid = mapping["mapped_violation_constraint_qid"]
+        exact_family = isinstance(mapped_qid, str) and mapped_qid in self.changed_constraint_qids_all
+        compatible = bool(compatible_overlap.get("compatible_overlap_used"))
+        has_concrete = report_has_concrete_arguments(
+            name,
+            report_tokens,
+            self.repair_event.get("violation_context") if isinstance(self.repair_event.get("violation_context"), dict) else None,
+        )
+        if exact_family and compatible:
+            score = 40
+            level = "exact_constraint_and_value_match"
+        elif exact_family and not has_concrete:
+            score = 30
+            level = "exact_constraint_family_only"
+        elif exact_family:
+            score = 25
+            level = "exact_constraint_family_only"
+        elif compatible:
+            score = 20
+            level = "value_or_property_overlap_only"
+        elif mapping["mapped_violation_family"] == "unknown":
+            score = 0
+            level = "unmapped_violation"
+        else:
+            score = 5
+            level = "constraint_family_mismatch"
+        return {
+            "violation_name": name,
+            **mapping,
+            "report_tokens": report_tokens,
+            "overlap": overlap,
+            "compatible_overlap": compatible_overlap,
+            "semantic_change_summary": semantic_summary,
+            "has_concrete_report_tokens": has_concrete,
+            "candidate_score": score,
+            "candidate_causality_match_level": level,
+        }
+
+    def _select_violation_candidate(self) -> Dict[str, Any]:
+        names = self._violation_names()
+        if not names:
+            names = [""]
+        candidates = [self._candidate_mapping(name) for name in names]
+        candidates.sort(
+            key=lambda item: (
+                item["candidate_score"],
+                1 if item["compatible_overlap"].get("compatible_overlap_used") else 0,
+                len(item["compatible_overlap"].get("value_overlap_with_report_qids", []))
+                + len(item["compatible_overlap"].get("property_overlap_with_report_pids", []))
+                + len(item["compatible_overlap"].get("language_overlap_with_report_langs", []))
+                + len(item["compatible_overlap"].get("scope_overlap_with_report_values", [])),
+            ),
+            reverse=True,
+        )
+        selected = dict(candidates[0])
+        selected["candidate_violation_names"] = names
+        selected["candidate_violation_mappings_preview"] = _preview_list(
+            [
+                {
+                    "violation_name": candidate["violation_name"],
+                    "mapped_violation_constraint_qid": candidate["mapped_violation_constraint_qid"],
+                    "mapped_violation_family": candidate["mapped_violation_family"],
+                    "candidate_causality_match_level": candidate["candidate_causality_match_level"],
+                    "candidate_score": candidate["candidate_score"],
+                }
+                for candidate in candidates
+            ],
+            limit=12,
+        )
+        return selected
 
     def classify_change(self) -> Tuple[str, List[Dict[str, Any]], str]:
         trace: List[Dict[str, Any]] = []
-        violation_name = self._violation_name()
-        mapping = {normalize_text(k): v for k, v in VIOLATION_TO_CONSTRAINT_MAP.items()}
-        mapped_qid = mapping.get(normalize_text(violation_name)) if isinstance(violation_name, str) else None
-        causal = is_causal_repair(violation_name, self.changed_constraint_qids)
+        selected = self._select_violation_candidate()
+        violation_name = selected["violation_name"]
+        mapping = {key: selected[key] for key in (
+            "mapped_violation_constraint_qid",
+            "mapped_violation_constraint_label",
+            "mapped_violation_family",
+            "mapped_violation_confidence",
+            "mapped_violation_reason",
+        )}
+        mapped_qid = mapping["mapped_violation_constraint_qid"]
+        report_tokens = selected["report_tokens"]
+        overlap = selected["overlap"]
+        compatible_overlap = selected["compatible_overlap"]
+        target_qid, target_reason, target_confidence, target_is_changed, target_is_related = self._select_target_qid(
+            mapping,
+            compatible_overlap,
+        )
+        target_label = _constraint_label(target_qid, self.signature_before + self.signature_after)
+        exact_family = isinstance(mapped_qid, str) and mapped_qid in self.changed_constraint_qids_all
+        compatible = bool(compatible_overlap.get("compatible_overlap_used"))
+        has_concrete = selected["has_concrete_report_tokens"]
+        if exact_family and compatible:
+            causality_level = "exact_constraint_and_value_match"
+        elif exact_family and has_concrete:
+            causality_level = "exact_constraint_family_only_no_compatible_overlap"
+        elif exact_family:
+            causality_level = "exact_constraint_family_only"
+        elif target_qid and compatible:
+            causality_level = "related_constraint_with_value_overlap" if target_is_related else "value_or_property_overlap_only"
+        elif mapping["mapped_violation_family"] == "unknown":
+            causality_level = "unmapped_violation"
+        elif target_qid is None:
+            causality_level = "constraint_family_mismatch"
+        else:
+            causality_level = "unknown"
+
+        causal = causality_level in {
+            "exact_constraint_and_value_match",
+            "related_constraint_with_value_overlap",
+            "exact_constraint_family_only",
+            "exact_constraint_family_only_no_compatible_overlap",
+            "value_or_property_overlap_only",
+        }
+        value_specific_without_overlap = exact_family and has_concrete and not compatible
+        directional_allowed = causal and not value_specific_without_overlap
+        causality_detail = {
+            "mapped_report_constraint_qid": mapping.get("mapped_violation_constraint_qid"),
+            "mapped_report_constraint_label": mapping.get("mapped_violation_constraint_label"),
+            "mapped_report_family": mapping.get("mapped_violation_family"),
+            **mapping,
+            "selected_violation_name": violation_name,
+            "candidate_violation_names": selected["candidate_violation_names"],
+            "candidate_violation_mappings_preview": selected["candidate_violation_mappings_preview"],
+            "violation_name": violation_name,
+            "changed_constraint_qids_from_entries": _preview_list(self.changed_constraint_qids_from_entries),
+            "changed_constraint_qids_from_qualifier_changes": _preview_list(self.changed_constraint_qids_from_qualifier_changes),
+            "changed_constraint_qids_all": _preview_list(self.changed_constraint_qids_all),
+            "target_constraint_qid": target_qid,
+            "target_constraint_label": target_label,
+            "target_constraint_selection_reason": target_reason,
+            "target_constraint_selection_confidence": target_confidence,
+            "target_constraint_is_changed": target_is_changed,
+            "target_constraint_is_related_family": target_is_related,
+            "causality_match_level": causality_level,
+            "causality_match_reason": (
+                "mapped constraint family changed, but no compatible changed value/property/language overlaps the concrete report"
+                if value_specific_without_overlap
+                else
+                "mapped constraint family and compatible changed values support the violation report"
+                if causal
+                else "changed constraints do not establish a causal link to the reported violation"
+            ),
+            "value_specific_without_overlap": value_specific_without_overlap,
+            **overlap,
+            "compatible_value_overlap_with_report_qids": compatible_overlap.get("value_overlap_with_report_qids", []),
+            "compatible_property_overlap_with_report_pids": compatible_overlap.get("property_overlap_with_report_pids", []),
+            "compatible_language_overlap_with_report_langs": compatible_overlap.get("language_overlap_with_report_langs", []),
+            "compatible_scope_overlap_with_report_values": compatible_overlap.get("scope_overlap_with_report_values", []),
+            "compatible_overlap_used": compatible_overlap.get("compatible_overlap_used", False),
+            "compatible_overlap_reason": compatible_overlap.get("compatible_overlap_reason", ""),
+            "incompatible_overlap_ignored": compatible_overlap.get("incompatible_overlap_ignored", {}),
+        }
         trace.append(
             {
                 "step": "causality_filter",
                 "result": causal,
                 "violation_name": violation_name,
-                "mapped_constraint_qid": mapped_qid,
-                "changed_constraint_qids": self.changed_constraint_qids,
+                "mapped_violation_constraint_qid": mapped_qid,
+                "causality_match_level": causality_level,
+            }
+        )
+        trace.append(
+            {
+                "step": "target_constraint",
+                "result": target_qid,
+                "target_constraint_selection_reason": target_reason,
+                "target_constraint_selection_confidence": target_confidence,
             }
         )
         if not causal:
+            subtype = "UNKNOWN_TBOX_CAUSALITY" if causality_level in {"unmapped_violation", "unknown"} else "COINCIDENTAL_SCHEMA_CHANGE"
+            trace.append({"step": "tbox_causality", "result": subtype, **causality_detail})
             return (
-                "COINCIDENTAL_SCHEMA_CHANGE",
+                subtype,
                 trace,
-                "Violation type did not map to the changed constraint types; treated as coincidental schema change.",
+                "The property revision changed constraints, but the changed constraint family or changed qualifier values do not establish a causal link to the reported violation type.",
             )
-
-        target_qid = self._select_target_qid(mapped_qid)
-        trace.append({"step": "target_constraint", "result": target_qid})
         if not target_qid:
-            return "SCHEMA_UPDATE", trace, "No constraint type selected; defaulted to schema update."
+            trace.append({"step": "tbox_causality", "result": "UNKNOWN_TBOX_CAUSALITY", **causality_detail})
+            return "UNKNOWN_TBOX_CAUSALITY", trace, "No changed target constraint could be selected for the reported violation."
+
+        target_family = _constraint_family(target_qid, target_label)
+        target_change_rows = [
+            row for row in self.qualifier_value_changes if row.get("constraint_qid") == target_qid
+        ]
+        semantic_summary = filter_tbox_semantic_qualifier_changes(
+            target_change_rows,
+            target_qid,
+            target_constraint_qid=target_qid,
+        )
+        causality_detail.update(
+            {
+                key: value
+                for key, value in semantic_summary.items()
+                if key not in {"semantic_change_rows", "ignored_change_rows"}
+            }
+        )
+        if (
+            value_specific_without_overlap
+            and semantic_summary.get("semantic_added_value_count", 0) == 0
+            and semantic_summary.get("semantic_removed_value_count", 0) == 0
+        ):
+            trace.append({"step": "tbox_causality", "result": "UNKNOWN_TBOX_CAUSALITY", **causality_detail})
+            return (
+                "UNKNOWN_TBOX_CAUSALITY",
+                trace,
+                "Mapped constraint family changed, but concrete report arguments do not overlap any semantic qualifier change.",
+            )
 
         old_qualifiers = _collect_qualifiers_for_qid(self.signature_before, target_qid)
         new_qualifiers = _collect_qualifiers_for_qid(self.signature_after, target_qid)
 
         if target_qid in RANGE_QIDS:
             result = analyze_range_change(old_qualifiers, new_qualifiers)
+            if value_specific_without_overlap:
+                result = "SCHEMA_UPDATE"
             trace.append({"step": "range_semantics", "result": result})
+            trace.append(
+                {
+                    "step": "tbox_causality",
+                    "result": result,
+                    "set_semantics": "range",
+                    "polarity": "relaxation" if result == "RELAXATION_RANGE_WIDENED" else "restriction" if result == "RESTRICTION_RANGE_NARROWED" else "unknown",
+                    "polarity_basis": "numeric/date range bounds",
+                    "directional_subtype_basis": result.lower(),
+                    **causality_detail,
+                }
+            )
             rationale = "Range constraint qualifiers compared using numeric and date bounds."
             return result, trace, rationale
 
-        if target_qid in ONE_OF_QIDS:
-            result = _analyze_set_change(old_qualifiers, new_qualifiers, property_id=ONE_OF_VALUE_QUALIFIER)
-            trace.append({"step": "set_semantics", "result": result, "property_id": ONE_OF_VALUE_QUALIFIER})
-            rationale = "One-of constraint values compared as a set using P2305."
-            return result, trace, rationale
-
-        if target_qid in TYPE_QIDS or target_qid in VALUE_TYPE_QIDS:
-            result = _analyze_set_change(old_qualifiers, new_qualifiers, property_ids=TYPE_VALUE_QUALIFIERS)
-            trace.append({"step": "set_semantics", "result": result, "property_ids": list(TYPE_VALUE_QUALIFIERS)})
-            rationale = "Type/value-type constraint classes and relations compared using P2308/P2309."
-            return result, trace, rationale
-
-        result = _analyze_generic_set_change(old_qualifiers, new_qualifiers)
-        trace.append({"step": "generic_set_semantics", "result": result})
-        rationale = "Constraint qualifiers compared with generic set semantics."
+        polarity_detail = _polarity_from_delta(
+            qid=target_qid,
+            label=target_label,
+            added_values=semantic_summary["semantic_added_values"],
+            removed_values=semantic_summary["semantic_removed_values"],
+        )
+        semantic_has_values = bool(semantic_summary["semantic_added_values"] or semantic_summary["semantic_removed_values"])
+        result = polarity_detail["subtype"] if directional_allowed and semantic_has_values else "SCHEMA_UPDATE"
+        trace.append(
+            {
+                "step": "set_semantics",
+                "result": result,
+                "property_ids": semantic_summary.get("semantic_changed_qualifier_properties"),
+                "added_value_count": len(semantic_summary["semantic_added_values"]),
+                "removed_value_count": len(semantic_summary["semantic_removed_values"]),
+                **polarity_detail,
+            }
+        )
+        trace.append(
+            {
+                "step": "tbox_causality",
+                "result": result,
+                "added_values": _preview_list(semantic_summary["semantic_added_values"]),
+                "removed_values": _preview_list(semantic_summary["semantic_removed_values"]),
+                "added_value_count": len(semantic_summary["semantic_added_values"]),
+                "removed_value_count": len(semantic_summary["semantic_removed_values"]),
+                "changed_qualifier_properties": semantic_summary.get("semantic_changed_qualifier_properties", []),
+                **polarity_detail,
+                **causality_detail,
+                "analysis_slice_precise": _analysis_slice_precise_for_tbox({"result": result, **polarity_detail}),
+            }
+        )
+        rationale = (
+            "Constraint family matched the violation and qualifier-value polarity was interpreted for the target constraint."
+            if result != "SCHEMA_UPDATE"
+            else "Constraint family matched the violation, but polarity could not be interpreted directionally."
+        )
         return result, trace, rationale
+
+
+def _compact_tbox_diff_summary(trace: List[Dict[str, Any]]) -> Dict[str, Any]:
+    step = next((item for item in reversed(trace) if item.get("step") == "tbox_causality"), {})
+    if not isinstance(step, dict):
+        return {}
+    return {
+        "lean_stage4_pruned_full_signatures": True,
+        "source": "classification.decision_trace.tbox_causality",
+        "selected_violation_name": step.get("selected_violation_name"),
+        "target_constraint_qid": step.get("target_constraint_qid"),
+        "target_constraint_label": step.get("target_constraint_label"),
+        "target_constraint_selection_reason": step.get("target_constraint_selection_reason"),
+        "mapped_report_constraint_qid": step.get("mapped_report_constraint_qid"),
+        "mapped_report_constraint_label": step.get("mapped_report_constraint_label"),
+        "mapped_report_family": step.get("mapped_report_family"),
+        "target_constraint_is_changed": step.get("target_constraint_is_changed"),
+        "target_constraint_is_related_family": step.get("target_constraint_is_related_family"),
+        "changed_constraint_qids_from_entries": step.get("changed_constraint_qids_from_entries"),
+        "changed_constraint_qids_from_qualifier_changes": step.get("changed_constraint_qids_from_qualifier_changes"),
+        "changed_constraint_qids_all": step.get("changed_constraint_qids_all"),
+        "changed_qualifier_properties": step.get("changed_qualifier_properties"),
+        "added_values": step.get("added_values"),
+        "removed_values": step.get("removed_values"),
+        "added_value_count": step.get("added_value_count"),
+        "removed_value_count": step.get("removed_value_count"),
+        "set_semantics": step.get("set_semantics"),
+        "set_operation": step.get("set_operation"),
+        "polarity": step.get("polarity"),
+        "polarity_basis": step.get("polarity_basis"),
+        "directional_subtype_precise": step.get("directional_subtype_precise"),
+        "analysis_slice_precise": step.get("analysis_slice_precise"),
+        "semantic_changed_qualifier_properties": step.get("semantic_changed_qualifier_properties"),
+        "ignored_changed_qualifier_properties": step.get("ignored_changed_qualifier_properties"),
+        "semantic_added_values": step.get("semantic_added_values"),
+        "semantic_removed_values": step.get("semantic_removed_values"),
+        "ignored_added_values": step.get("ignored_added_values"),
+        "ignored_removed_values": step.get("ignored_removed_values"),
+        "ignored_value_count": step.get("ignored_value_count"),
+        "qualifier_filter_reason": step.get("qualifier_filter_reason"),
+        "compatible_overlap_used": step.get("compatible_overlap_used"),
+        "compatible_overlap_reason": step.get("compatible_overlap_reason"),
+        "incompatible_overlap_ignored": step.get("incompatible_overlap_ignored"),
+        "value_specific_without_overlap": step.get("value_specific_without_overlap"),
+    }
 
 
 def _parse_numeric_token(token: str) -> Optional[Decimal]:
@@ -678,6 +1780,7 @@ def local_context_buckets(
     text_neighbor_label: List[str] = []
     text_neighbor_description: List[str] = []
     text_focus_properties: List[str] = []
+    text_focus_property_entries: List[Dict[str, Any]] = []
     text_l2_referenced: List[str] = []
     synth_info = {"used_pre_repair_value": False, "pre_repair_source": "missing", "tokens": []}
     target_pid = repair_event.get("property") if is_pid(repair_event.get("property")) else None
@@ -708,7 +1811,16 @@ def local_context_buckets(
                     ids_focus_non_target.add(tok)
                     locally_referenced_ids.add(tok)
                 elif tok not in (None, ""):
-                    text_focus_properties.append(str(tok))
+                    tok_s = str(tok)
+                    text_focus_properties.append(tok_s)
+                    text_focus_property_entries.append(
+                        {
+                            "text": tok_s,
+                            "supporting_property_id": pid,
+                            "supporting_property_label": None,
+                            "supporting_value": tok_s,
+                        }
+                    )
 
     # Neighborhood
     edges = safe_get(world_state_entry, "L3_neighborhood", "outgoing_edges", default=[])
@@ -770,6 +1882,7 @@ def local_context_buckets(
         "text_neighbor_label_fields": text_neighbor_label,
         "text_neighbor_description_fields": text_neighbor_description,
         "text_focus_property_fields": text_focus_properties,
+        "text_focus_property_entries": text_focus_property_entries,
         "text_l2_referenced_fields": text_l2_referenced,
         # Legacy aggregate fields remain for older tests/callers.
         "text_focus": normalize_text(" \n ".join(text_focus_label + text_focus_description + text_focus_alias + text_focus_properties)),
@@ -788,6 +1901,26 @@ def report_type_normalized(repair_event: Dict[str, Any]) -> str:
     return normalize_text(t)
 
 
+def _violation_report_texts(repair_event: Dict[str, Any]) -> List[str]:
+    vc = repair_event.get("violation_context", {})
+    if not isinstance(vc, dict):
+        return []
+    values: List[str] = []
+    for key in (
+        "report_violation_type_normalized",
+        "report_violation_type",
+        "report_violation_types",
+        "violation_name",
+        "message",
+    ):
+        raw = vc.get(key)
+        if isinstance(raw, str):
+            values.append(raw)
+        elif isinstance(raw, list):
+            values.extend([item for item in raw if isinstance(item, str)])
+    return values
+
+
 def _is_format_report(repair_event: Dict[str, Any]) -> bool:
     return report_type_normalized(repair_event) == "format"
 
@@ -800,25 +1933,168 @@ def _is_selection_report(repair_event: Dict[str, Any]) -> bool:
     return report_type_normalized(repair_event) in {"single value", "unique value"}
 
 
+def _is_single_value_report(repair_event: Dict[str, Any]) -> bool:
+    return any(normalize_text(text) in {"single value", "single-value", "single value constraint"} for text in _violation_report_texts(repair_event))
+
+
 def _is_set_membership_report(repair_event: Dict[str, Any]) -> bool:
     return report_type_normalized(repair_event) in {"one of", "none of"}
+
+
+def _is_cardinality_or_duplicate_report(repair_event: Dict[str, Any], constraint_types: List[Dict[str, Optional[str]]]) -> bool:
+    del constraint_types
+    report = report_type_normalized(repair_event)
+    if report in {
+        "single value",
+        "single-value",
+        "single value constraint",
+        "unique value",
+        "unique-value",
+        "unique value constraint",
+        "distinct values",
+        "distinct-values",
+        "distinct values constraint",
+        "duplicate value",
+        "duplicate values",
+    }:
+        return True
+    return any(term in report for term in ("duplicate", "cardinality"))
+
+
+def _target_required_claim_pid(repair_event: Dict[str, Any]) -> Optional[str]:
+    vc = repair_event.get("violation_context", {})
+    if not isinstance(vc, dict):
+        return None
+    candidates = [
+        vc.get("report_violation_type_normalized"),
+        vc.get("report_violation_type"),
+        vc.get("violation_name"),
+        vc.get("message"),
+    ]
+    for value in candidates:
+        if not isinstance(value, str):
+            continue
+        if "target required claim" not in normalize_text(value):
+            continue
+        match = re.search(r"\bP\|?(\d+)\b", value, flags=re.IGNORECASE)
+        if match:
+            return f"P{match.group(1)}"
+        return "UNKNOWN"
+    return None
 
 
 def _classification_target_tokens(value_change: Any) -> Dict[str, Any]:
     action = value_change.semantic_action
     if action in {"CREATE_FROM_MISSING", "ADD_SUPERSET"}:
-        return {"role": "added", "tokens": list(value_change.added_unique_values or value_change.new_unique)}
+        return {
+            "role": "added",
+            "tokens": list(value_change.added_unique_values or value_change.new_unique),
+            "reason": "created or added values are the changed repair target",
+        }
     if action == "DELETE_SUBSET":
-        return {"role": "removed", "tokens": list(value_change.removed_unique_values)}
+        return {
+            "role": "removed",
+            "tokens": list(value_change.removed_unique_values),
+            "reason": "subset deletion is explained by removed values, not retained values",
+        }
     if action == "DELETE_TO_MISSING":
-        return {"role": "removed", "tokens": list(value_change.removed_unique_values or value_change.old_unique)}
+        return {
+            "role": "removed",
+            "tokens": list(value_change.removed_unique_values or value_change.old_unique),
+            "reason": "delete-to-missing is explained by deleted old values",
+        }
     if action == "REPLACE_1_TO_1":
-        return {"role": "replacement_new", "tokens": list(value_change.new_unique)}
+        return {
+            "role": "replacement_new",
+            "tokens": list(value_change.new_unique),
+            "reason": "one-to-one replacement is classified from the replacement relation",
+        }
     if action == "MIXED_UPDATE":
-        return {"role": "changed", "tokens": list(value_change.added_unique_values + value_change.removed_unique_values)}
+        if len(value_change.added_unique_values) == 1 and len(value_change.removed_unique_values) == 1:
+            return {
+                "role": "changed_pair",
+                "tokens": list(value_change.removed_unique_values + value_change.added_unique_values),
+                "old_changed_value": value_change.removed_unique_values[0],
+                "new_changed_value": value_change.added_unique_values[0],
+                "retained_values": list(value_change.retained_unique_values),
+                "reason": "mixed update classification uses the deterministic changed pair while ignoring retained values",
+            }
+        return {
+            "role": "changed",
+            "tokens": list(value_change.added_unique_values + value_change.removed_unique_values),
+            "reason": "mixed update classification uses added and removed changed values only",
+        }
     if action.startswith("MULTIPLICITY_"):
-        return {"role": "multiplicity", "tokens": list(value_change.old_unique or value_change.new_unique)}
-    return {"role": "none", "tokens": []}
+        return {
+            "role": "multiplicity",
+            "tokens": list(value_change.old_unique or value_change.new_unique),
+            "reason": "unique values are unchanged; only multiplicity changed",
+        }
+    return {"role": "none", "tokens": [], "reason": "no changed semantic value tokens"}
+
+
+def _independent_local_text_fields(
+    repair_event: Dict[str, Any],
+    world_state_entry: Dict[str, Any],
+) -> List[Tuple[str, str]]:
+    buckets, _ = local_context_buckets(repair_event, world_state_entry)
+    fields: List[Tuple[str, str]] = []
+    source_keys = [
+        ("FOCUS_LABEL", "text_focus_label_fields"),
+        ("FOCUS_DESCRIPTION", "text_focus_description_fields"),
+        ("FOCUS_ALIAS", "text_focus_alias_fields"),
+        ("FOCUS_NON_TARGET_PROPERTY_TEXT", "text_focus_property_fields"),
+        ("NEIGHBOR_LABEL", "text_neighbor_label_fields"),
+        ("NEIGHBOR_DESCRIPTION", "text_neighbor_description_fields"),
+    ]
+    for source, key in source_keys:
+        value = buckets.get(key)
+        if isinstance(value, list):
+            for item in value:
+                if isinstance(item, str) and item.strip():
+                    fields.append((source, item))
+    return fields
+
+
+def _p8726_local_text_derived_detail(
+    repair_event: Dict[str, Any],
+    world_state_entry: Dict[str, Any],
+    value_change: Any,
+) -> Optional[Dict[str, Any]]:
+    if repair_event.get("property") != "P8726":
+        return None
+    target = _classification_target_tokens(value_change)
+    target_values = [str(token) for token in target.get("tokens", []) if token not in (None, "")]
+    if len(target_values) != 1:
+        return None
+    target_value = target_values[0]
+    match = re.fullmatch(r"(?P<year>\d{4})/si/(?P<number>\d+)/made", target_value, flags=re.IGNORECASE)
+    if not match:
+        return None
+    year = match.group("year")
+    number = str(int(match.group("number")))
+    pattern = re.compile(
+        rf"(?:\bS\.?\s*I\.?\s*(?:No\.?)?\s*{re.escape(number)}\s*/\s*{re.escape(year)}\b|"
+        rf"\bStatutory\s+Instrument\b.{0,80}\b{re.escape(number)}\s*/\s*{re.escape(year)}\b)",
+        flags=re.IGNORECASE,
+    )
+    for source, text in _independent_local_text_fields(repair_event, world_state_entry):
+        m = pattern.search(text)
+        if not m:
+            continue
+        return {
+            "source": source,
+            "raw_matched_text": m.group(0),
+            "source_text": text,
+            "extracted_year": year,
+            "extracted_number": number,
+            "derived_target": f"{year}/si/{number}/made",
+            "actual_target": target_value,
+            "independent_of_target_property": True,
+            "derivation_rule": "p8726_statutory_instrument_id",
+            "classification_target_role": target.get("role"),
+        }
+    return None
 
 
 def match_truth_locally(truth_tokens: List[str], buckets: Dict[str, Any]) -> Tuple[bool, Dict[str, Any]]:
@@ -848,22 +2124,45 @@ def match_truth_locally(truth_tokens: List[str], buckets: Dict[str, Any]) -> Tup
         ("NEIGHBOR_ID", buckets.get("ids_neighbors", set()), True),
     ]
 
-    def fields_for(source_key: str, legacy_key: str = "") -> List[str]:
+    def fields_for(source_key: str, legacy_key: str = "") -> List[Tuple[str, Dict[str, Any]]]:
         fields = buckets.get(source_key)
         if isinstance(fields, list):
-            return [str(field) for field in fields if str(field).strip()]
+            return [(str(field), {}) for field in fields if str(field).strip()]
         if not legacy_key:
             return []
         legacy = buckets.get(legacy_key, "")
         if isinstance(legacy, str) and legacy.strip():
-            return [legacy]
+            return [(legacy, {})]
         return []
+
+    def focus_property_fields() -> List[Tuple[str, Dict[str, Any]]]:
+        entries = buckets.get("text_focus_property_entries")
+        if isinstance(entries, list):
+            out: List[Tuple[str, Dict[str, Any]]] = []
+            for entry in entries:
+                if not isinstance(entry, dict):
+                    continue
+                text = str(entry.get("text") or "")
+                if not text.strip():
+                    continue
+                out.append(
+                    (
+                        text,
+                        {
+                            "supporting_property_id": entry.get("supporting_property_id"),
+                            "supporting_property_label": entry.get("supporting_property_label"),
+                            "supporting_value": entry.get("supporting_value"),
+                        },
+                    )
+                )
+            return out
+        return fields_for("text_focus_property_fields")
 
     text_sources = [
         ("FOCUS_LABEL", fields_for("text_focus_label_fields", "text_focus"), True),
         ("FOCUS_DESCRIPTION", fields_for("text_focus_description_fields"), True),
         ("FOCUS_ALIAS", fields_for("text_focus_alias_fields"), True),
-        ("FOCUS_NON_TARGET_PROPERTY_TEXT", fields_for("text_focus_property_fields"), True),
+        ("FOCUS_NON_TARGET_PROPERTY_TEXT", focus_property_fields(), True),
         ("FOCUS_PREREPAIR_TARGET_PROPERTY_LITERAL", fields_for("text_focus_prerepair_literal_fields"), False),
         ("NEIGHBOR_LABEL", fields_for("text_neighbor_label_fields", "text_neighbors"), True),
         ("NEIGHBOR_DESCRIPTION", fields_for("text_neighbor_description_fields"), True),
@@ -875,36 +2174,49 @@ def match_truth_locally(truth_tokens: List[str], buckets: Dict[str, Any]) -> Tup
             return False
         return re.search(rf"(?<![0-9a-z]){re.escape(token_norm)}(?![0-9a-z])", field_norm) is not None
 
-    def match_text_token(token: str, *, is_date: bool) -> Optional[Dict[str, str]]:
+    def match_text_token(token: str, *, is_date: bool) -> Optional[Dict[str, Any]]:
         tok_n = normalize_text(token)
         if not tok_n:
             return None
         for source, fields, independent in text_sources:
-            for raw_field in fields:
+            for raw_field, metadata in fields:
                 field_n = normalize_text(raw_field)
                 if not field_n:
                     continue
                 if field_n == tok_n:
-                    return {
+                    kind = "date_exact" if is_date else ("literal_exact_raw" if raw_field.strip() == token else "literal_normalized_exact")
+                    match = {
                         "token": token,
-                        "kind": "date_exact" if is_date else "literal_exact",
+                        "kind": kind,
                         "source": source,
                         "independent_of_target_property": independent,
+                        "raw_match_text": raw_field,
+                        "normalized_match_text": field_n,
                     }
+                    match.update({key: value for key, value in metadata.items() if value not in (None, "")})
+                    return match
                 if is_date and boundary_match(tok_n, field_n):
-                    return {
+                    match = {
                         "token": token,
                         "kind": "date_boundary",
                         "source": source,
                         "independent_of_target_property": independent,
+                        "raw_match_text": raw_field,
+                        "normalized_match_text": field_n,
                     }
+                    match.update({key: value for key, value in metadata.items() if value not in (None, "")})
+                    return match
                 if not is_date and len(tok_n) >= 4 and boundary_match(tok_n, field_n):
-                    return {
+                    match = {
                         "token": token,
                         "kind": "literal_boundary",
                         "source": source,
                         "independent_of_target_property": independent,
+                        "raw_match_text": raw_field,
+                        "normalized_match_text": field_n,
                     }
+                    match.update({key: value for key, value in metadata.items() if value not in (None, "")})
+                    return match
         return None
 
     for tok in truth_tokens:
@@ -936,7 +2248,7 @@ def match_truth_locally(truth_tokens: List[str], buckets: Dict[str, Any]) -> Tup
                     break
             continue
 
-        text_match = match_text_token(tok_s, is_date=bool(DATE_ISO_RE.match(tok_s)))
+        text_match = match_text_token(tok_s, is_date=bool(DATE_ISO_RE.match(tok_s) or WIKIDATA_DATE_RE.match(tok_s)))
         if text_match:
             found += 1
             if text_match["kind"] in {"literal_boundary", "date_boundary"}:
@@ -1022,6 +2334,13 @@ def _is_simple_format_normalization(old_value: str, new_value: str) -> Tuple[boo
         return True, "strip_trailing_punctuation"
     if old_s.strip().rstrip("/\\") == new_s:
         return True, "strip_trailing_slash"
+    if new_s.strip().rstrip("/\\") == old_s.strip():
+        return True, "append_trailing_slash"
+    if old_s.strip().startswith("Category:") and old_s.strip()[len("Category:") :] == new_s:
+        return True, "strip_category_prefix"
+    url_match = re.match(r"^https?://[^/]+/(?:[^?#]*/)?([^/?#]+)/?[/]?(?:[?#].*)?$", old_s.strip(), flags=re.I)
+    if url_match and url_match.group(1) == new_s:
+        return True, "extract_url_slug"
     if re.fullmatch(r"SCHEMBL\d+", old_s.strip(), flags=re.IGNORECASE) and new_s == re.sub(
         r"(?i)^SCHEMBL", "", old_s.strip()
     ):
@@ -1036,6 +2355,36 @@ def _is_simple_format_normalization(old_value: str, new_value: str) -> Tuple[boo
     if old_date and old_date == new_s:
         return True, "normalize_date_literal"
     return False, "non_deterministic_format_update"
+
+
+def _format_pair_detail(old_value: str, new_value: str, regexes: List[str]) -> Tuple[str, Dict[str, Any]]:
+    if is_qid(old_value) or is_qid(new_value) or is_pid(old_value) or is_pid(new_value):
+        return "not_format_literals", {
+            "reason": "format_normalization_requires_literals",
+            "old_value": old_value,
+            "new_value": new_value,
+        }
+    simple, kind = _is_simple_format_normalization(old_value, new_value)
+    old_pass = _passes_any_regex(old_value, regexes)
+    new_pass = _passes_any_regex(new_value, regexes)
+    detail = {
+        "normalization_kind": kind,
+        "normalization_rule": kind,
+        "old_value": old_value,
+        "new_value": new_value,
+        "old_changed": old_value,
+        "new_changed": new_value,
+        "regexes_present": bool(regexes),
+        "old_pass_regex": old_pass,
+        "new_pass_regex": new_pass,
+    }
+    if regexes and old_pass is True and new_pass is False:
+        return "bad_target", {**detail, "reason": "old_value_passes_regex_new_value_fails"}
+    if regexes and old_pass is False and new_pass is True and simple:
+        return "format_normalization", detail
+    if simple and (not regexes or new_pass is not False):
+        return "format_normalization", detail
+    return "not_deterministic", detail
 
 
 def _format_normalization_detail(
@@ -1061,17 +2410,21 @@ def _format_normalization_detail(
     }
 
 
-def _format_normalization_from_delta(value_change: Any) -> Tuple[bool, Dict[str, Any]]:
-    if value_change.semantic_action != "REPLACE_1_TO_1":
-        return False, {"reason": "not_replace_1_to_1"}
-    if len(value_change.old_unique) != 1 or len(value_change.new_unique) != 1:
-        return False, {"reason": "format_repair_requires_single_old_and_new_value"}
-    old_value = value_change.old_unique[0]
-    new_value = value_change.new_unique[0]
-    if is_qid(old_value) or is_qid(new_value) or is_pid(old_value) or is_pid(new_value):
-        return False, {"reason": "format_normalization_requires_literals", "old_value": old_value, "new_value": new_value}
-    simple, kind = _is_simple_format_normalization(old_value, new_value)
-    return simple, {"normalization_kind": kind, "old_value": old_value, "new_value": new_value}
+def _format_normalization_from_delta(value_change: Any, world_state_entry: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
+    regexes = _format_regexes(world_state_entry)
+    if value_change.semantic_action == "REPLACE_1_TO_1":
+        if len(value_change.old_unique) != 1 or len(value_change.new_unique) != 1:
+            return "not_deterministic", {"reason": "format_repair_requires_single_old_and_new_value"}
+        old_value = value_change.old_unique[0]
+        new_value = value_change.new_unique[0]
+        return _format_pair_detail(old_value, new_value, regexes)
+    if value_change.semantic_action == "MIXED_UPDATE":
+        if len(value_change.added_unique_values) == 1 and len(value_change.removed_unique_values) == 1:
+            old_value = value_change.removed_unique_values[0]
+            new_value = value_change.added_unique_values[0]
+            status, detail = _format_pair_detail(old_value, new_value, regexes)
+            return status, {**detail, "mixed_update": True, "retained_values": value_change.retained_unique_values}
+    return "not_deterministic", {"reason": "not_supported_format_delta", "semantic_action": value_change.semantic_action}
 
 
 def rule_deterministic_classification(
@@ -1200,7 +2553,10 @@ def _format_regexes(world_state_entry: Dict[str, Any]) -> List[str]:
                 continue
             values = qualifier.get("values")
             if isinstance(values, list):
-                regexes.extend([str(value) for value in values if value not in (None, "")])
+                for value in values:
+                    regexes.extend([token for token in flatten_truth(value) if token not in (None, "")])
+            elif values not in (None, ""):
+                regexes.extend([token for token in flatten_truth(values) if token not in (None, "")])
     return regexes
 
 
@@ -1246,9 +2602,21 @@ def _format_value_pruning_detail(
     removed_reported = bool(removed) and set(removed).issubset(report_values)
     removed_fail_regex = all(_passes_any_regex(value, regexes) is False for value in removed) if regexes else False
     retained_pass_regex = all(_passes_any_regex(value, regexes) is True for value in retained) if regexes else None
-    ok = removed_reported or (removed_fail_regex and retained_pass_regex is not False)
-    confidence = "high" if removed_fail_regex and retained_pass_regex else "medium"
+    if regexes and retained_pass_regex is not True:
+        ok = False
+        reason = "retained_values_do_not_all_pass_format_regex"
+    elif removed_reported:
+        ok = True
+        reason = "removed_values_reported_as_offending_values"
+    elif removed_fail_regex and retained_pass_regex is True:
+        ok = True
+        reason = "removed_values_fail_and_retained_values_pass_format_regex"
+    else:
+        ok = False
+        reason = "removed_values_not_verified_as_format_failures"
+    confidence = "high" if removed_fail_regex and retained_pass_regex is True else "medium"
     return ok, confidence, {
+        "reason": reason,
         "removed_values": removed,
         "retained_values": retained,
         "report_values": sorted(report_values),
@@ -1348,6 +2716,95 @@ def classify_delete_action(
     )
 
 
+def _first_trace_detail(trace: List[Dict[str, Any]], key: str) -> Any:
+    for step in trace:
+        if not isinstance(step, dict):
+            continue
+        detail = step.get("detail")
+        if isinstance(detail, dict) and key in detail:
+            return detail.get(key)
+        if key in step:
+            return step.get(key)
+    return None
+
+
+def _constraint_label_from_types(qid: Optional[str], ctypes: List[Dict[str, Any]]) -> Optional[str]:
+    if not isinstance(qid, str):
+        return None
+    for ctype in ctypes:
+        if isinstance(ctype, dict) and ctype.get("qid") == qid:
+            label = ctype.get("label_en") or ctype.get("label")
+            if isinstance(label, str):
+                return label
+    return _constraint_label(qid)
+
+
+def _rule_metadata_for_classification(
+    cls: str,
+    subtype: str,
+    trace: List[Dict[str, Any]],
+    ctypes: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    family = "unknown"
+    subfamily = subtype.lower() if isinstance(subtype, str) else "unknown"
+    qid: Optional[str] = None
+    source = "classifier_rule"
+    if subtype in {"FORMAT_NORMALIZATION", "FORMAT_VALUE_PRUNING", "REJECTION_FORMAT_INVALID"}:
+        family = "format"
+        qid = "Q21502404"
+        subfamily = (
+            str(_first_trace_detail(trace, "normalization_rule") or _first_trace_detail(trace, "normalization_kind") or subtype.lower())
+            if subtype == "FORMAT_NORMALIZATION"
+            else subtype.lower()
+        )
+    elif subtype == "SET_MEMBERSHIP_REJECTION":
+        family = "set_membership"
+        report = str(_first_trace_detail(trace, "report_type") or "")
+        subfamily = normalize_text(report).replace(" ", "_") if report else "set_membership"
+        qid = "Q52558054" if report == "none of" else "Q21510859"
+    elif subtype == "SELF_LINK_REJECTION":
+        family = "self_link_report"
+        subfamily = "self_link_rejection"
+        qid = None
+        source = "violation_report"
+    elif subtype == "TARGET_REQUIRED_CLAIM":
+        family = "target_required_claim"
+        qid = "Q21510864"
+    elif subtype == "MULTIPLICITY_NORMALIZATION":
+        family = "multiplicity"
+        qid = "Q19474404"
+    elif cls == "TypeB" and subtype in {"LOCAL_TEXT_CONFIRMED", "LOCAL_SELECTION_CONFIRMED", "LOCAL_FOCUS_QID", "LOCAL_TEXT_DERIVED"}:
+        family = "local_evidence"
+        subfamily = {
+            "LOCAL_TEXT_CONFIRMED": "local_text_raw",
+            "LOCAL_SELECTION_CONFIRMED": "local_selection_confirmed",
+            "LOCAL_FOCUS_QID": "focus_qid",
+            "LOCAL_TEXT_DERIVED": "local_text_derived",
+        }.get(subtype, subtype.lower())
+        source = "local_context"
+    elif cls == "TypeC" and subtype == "EXTERNAL_BY_ELIMINATION":
+        family = "negative_rule_and_local_scan"
+        subfamily = "external_by_elimination"
+    elif cls == "TypeC" and isinstance(subtype, str) and subtype.startswith("UNKNOWN_"):
+        family = "diagnostic_unknown"
+        subfamily = subtype.lower()
+    elif cls == "T_BOX":
+        family = "tbox_schema_causality"
+        subfamily = subtype.lower()
+        qid = _first_trace_detail(trace, "target_constraint_qid") or _first_trace_detail(trace, "mapped_violation_constraint_qid")
+        source = str(_first_trace_detail(trace, "target_constraint_selection_reason") or "tbox_causality_filter")
+    elif cls == "TypeA":
+        family = "rule_or_logical"
+        subfamily = subtype.lower()
+    return {
+        "decision_constraint_type_qid": qid,
+        "decision_constraint_type_label": _constraint_label_from_types(qid, ctypes),
+        "decision_constraint_source": source,
+        "classification_rule_family": family,
+        "classification_rule_subfamily": subfamily,
+    }
+
+
 def local_context_is_sparse(buckets: Dict[str, Any]) -> bool:
     text_field_count = 0
     for key in (
@@ -1386,7 +2843,7 @@ def classify_one(
     def make(
         cls: str, subtype: str, conf: str, trace: List[Dict[str, Any]], rationale: str, ctypes: List[Dict[str, Any]]
     ) -> Dict[str, Any]:
-        return {
+        classification = {
             "class": cls,
             "subtype": subtype,
             "confidence": conf,
@@ -1394,6 +2851,8 @@ def classify_one(
             "rationale": rationale,
             "constraint_types": ctypes,
         }
+        classification.update(_rule_metadata_for_classification(cls, subtype, trace, ctypes))
+        return classification
 
     truth_tokens, truth_source, truth_applicable = get_truth_info(repair_event)
     value_change = derive_value_change_summary(repair_event)
@@ -1448,7 +2907,7 @@ def classify_one(
             "RESTRICTION_SET_CONTRACTION",
         }:
             conf = "high"
-        if schema_subtype == "COINCIDENTAL_SCHEMA_CHANGE":
+        if schema_subtype in {"COINCIDENTAL_SCHEMA_CHANGE", "UNKNOWN_TBOX_CAUSALITY"}:
             conf = "low"
         classification = make(
             "T_BOX",
@@ -1459,7 +2918,9 @@ def classify_one(
             constraint_types,
         )
         classification["local_subtype"] = None
+        classification["analysis_slice_precise"] = _first_trace_detail(trace, "analysis_slice_precise") or ""
         classification["diagnostics"] = diagnostics
+        classification["diagnostics"]["tbox_diff_summary"] = _compact_tbox_diff_summary(trace)
         return classification, None, {"missing_truth_tokens": False, "missing_old_value": False}
 
     # A-BOX delete => Type A rejection
@@ -1492,14 +2953,27 @@ def classify_one(
         return classification, None, {"missing_truth_tokens": False, "missing_old_value": False}
 
     if value_change.semantic_action == "MULTIPLICITY_DECREASE_SAME_UNIQUE":
+        is_cardinality = _is_cardinality_or_duplicate_report(repair_event, constraint_types)
         trace = [
             {"step": "is_delete", "result": False},
             {"step": "value_delta", "result": value_change.semantic_action, "detail": value_change.as_dict()},
-            {"step": "rule_deterministic", "result": True, "kind": "MULTIPLICITY"},
+            {"step": "rule_deterministic", "result": is_cardinality, "kind": "MULTIPLICITY"},
             {"step": "local_availability", "result": None},
             {"step": "fallback_external", "result": False},
-            {"step": "branch", "result": "multiplicity_normalization"},
+            {"step": "branch", "result": "multiplicity_normalization" if is_cardinality else "unknown_multiplicity_artifact"},
         ]
+        if not is_cardinality:
+            classification = make(
+                "TypeC",
+                "UNKNOWN_MULTIPLICITY_ARTIFACT",
+                "low",
+                trace,
+                "Unique values are unchanged and multiplicity decreases, but the violation report is not cardinality or duplicate related.",
+                constraint_types,
+            )
+            classification["local_subtype"] = None
+            classification["diagnostics"] = diagnostics
+            return classification, None, {"missing_truth_tokens": False, "missing_old_value": False}
         classification = make(
             "TypeA",
             "MULTIPLICITY_NORMALIZATION",
@@ -1527,6 +3001,59 @@ def classify_one(
             "low",
             trace,
             "Unique values are unchanged; the repair appears to be a multiplicity or reconstruction artifact.",
+            constraint_types,
+        )
+        classification["local_subtype"] = None
+        classification["diagnostics"] = diagnostics
+        return classification, None, {"missing_truth_tokens": False, "missing_old_value": False}
+
+    target_required_pid = _target_required_claim_pid(repair_event)
+    if (
+        target_required_pid
+        and value_change.semantic_action == "CREATE_FROM_MISSING"
+        and len(value_change.new_unique) == 1
+        and value_change.new_unique[0] == repair_event.get("qid")
+    ):
+        trace = [
+            {"step": "is_delete", "result": False},
+            {"step": "value_delta", "result": value_change.semantic_action, "detail": value_change.as_dict()},
+            {
+                "step": "rule_deterministic",
+                "result": True,
+                "kind": "TARGET_REQUIRED_CLAIM",
+                "detail": {"target_required_property": target_required_pid},
+            },
+            {"step": "local_availability", "result": None},
+            {"step": "fallback_external", "result": False},
+            {"step": "branch", "result": "target_required_claim"},
+        ]
+        classification = make(
+            "TypeA",
+            "TARGET_REQUIRED_CLAIM",
+            "high" if target_required_pid != "UNKNOWN" else "medium",
+            trace,
+            "Target-required-claim violation deterministically requires the focus entity as the target value.",
+            constraint_types,
+        )
+        classification["local_subtype"] = None
+        classification["diagnostics"] = diagnostics
+        return classification, None, {"missing_truth_tokens": False, "missing_old_value": False}
+
+    if _is_self_link_report(repair_event) and repair_event.get("qid") in value_change.added_unique_values:
+        trace = [
+            {"step": "is_delete", "result": False},
+            {"step": "value_delta", "result": value_change.semantic_action, "detail": value_change.as_dict()},
+            {"step": "rule_deterministic", "result": False, "kind": "SELF_LINK_BAD_TARGET"},
+            {"step": "local_availability", "result": None},
+            {"step": "fallback_external", "result": False},
+            {"step": "branch", "result": "unknown_bad_target_or_context"},
+        ]
+        classification = make(
+            "TypeC",
+            "UNKNOWN_BAD_TARGET_OR_CONTEXT",
+            "low",
+            trace,
+            "Repair adds the focus entity under a self-link violation; this is likely a bad target or insufficient context, not local evidence.",
             constraint_types,
         )
         classification["local_subtype"] = None
@@ -1576,6 +3103,26 @@ def classify_one(
             classification["local_subtype"] = None
             classification["diagnostics"] = diagnostics
             return classification, None, {"missing_truth_tokens": False, "missing_old_value": False}
+        if _is_format_report(repair_event) and fmt_detail.get("reason") == "retained_values_do_not_all_pass_format_regex":
+            trace = [
+                {"step": "is_delete", "result": False},
+                {"step": "value_delta", "result": value_change.semantic_action, "detail": value_change.as_dict()},
+                {"step": "rule_deterministic", "result": False, "kind": "FORMAT_VALUE_PRUNING", "detail": fmt_detail},
+                {"step": "local_availability", "result": None},
+                {"step": "fallback_external", "result": False},
+                {"step": "branch", "result": "unknown_format_pruning_retained_unverified"},
+            ]
+            classification = make(
+                "TypeC",
+                "UNKNOWN_FORMAT_PRUNING_RETAINED_UNVERIFIED",
+                "low",
+                trace,
+                "Format subset pruning removed invalid-looking values, but retained values were not verified against the format regex.",
+                constraint_types,
+            )
+            classification["local_subtype"] = None
+            classification["diagnostics"] = diagnostics
+            return classification, None, {"missing_truth_tokens": False, "missing_old_value": False}
         ok_set, set_detail = _set_membership_rejection_detail(repair_event, world_state_entry, value_change)
         if ok_set:
             trace = [
@@ -1598,9 +3145,14 @@ def classify_one(
             classification["diagnostics"] = diagnostics
             return classification, None, {"missing_truth_tokens": False, "missing_old_value": False}
 
-    if _is_format_report(repair_event):
-        simple, fmt_detail = _format_normalization_from_delta(value_change)
-        if simple:
+    fmt_status, fmt_detail = _format_normalization_from_delta(value_change, world_state_entry)
+    strong_nonreport_format_normalization = (
+        fmt_status == "format_normalization"
+        and fmt_detail.get("normalization_rule")
+        in {"strip_schembl_prefix", "strip_category_prefix", "extract_url_slug"}
+    )
+    if _is_format_report(repair_event) or strong_nonreport_format_normalization:
+        if fmt_status == "format_normalization":
             trace = [
                 {"step": "is_delete", "result": False},
                 {"step": "value_delta", "result": value_change.semantic_action, "detail": value_change.as_dict()},
@@ -1612,7 +3164,7 @@ def classify_one(
             classification = make(
                 "TypeA",
                 "FORMAT_NORMALIZATION",
-                "high",
+                "high" if _is_format_report(repair_event) else "medium",
                 trace,
                 "One-to-one literal update is a deterministic format normalization.",
                 constraint_types,
@@ -1620,6 +3172,56 @@ def classify_one(
             classification["local_subtype"] = None
             classification["diagnostics"] = diagnostics
             return classification, None, {"missing_truth_tokens": False, "missing_old_value": False}
+        if fmt_status == "bad_target":
+            trace = [
+                {"step": "is_delete", "result": False},
+                {"step": "value_delta", "result": value_change.semantic_action, "detail": value_change.as_dict()},
+                {"step": "rule_deterministic", "result": False, "kind": "FORMAT_NORMALIZATION", "detail": fmt_detail},
+                {"step": "local_availability", "result": None},
+                {"step": "fallback_external", "result": False},
+                {"step": "branch", "result": "unknown_bad_target_or_context"},
+            ]
+            classification = make(
+                "TypeC",
+                "UNKNOWN_BAD_TARGET_OR_CONTEXT",
+                "low",
+                trace,
+                "Format update moves from a regex-valid value to a regex-invalid value; target or context is suspect.",
+                constraint_types,
+            )
+            classification["local_subtype"] = None
+            classification["diagnostics"] = diagnostics
+            return classification, None, {"missing_truth_tokens": False, "missing_old_value": False}
+
+    if (
+        _is_single_value_report(repair_event)
+        and value_change.semantic_action in {"CREATE_FROM_MISSING", "ADD_SUPERSET", "MIXED_UPDATE"}
+        and len(value_change.new_unique) > 1
+    ):
+        trace = [
+            {"step": "is_delete", "result": False},
+            {"step": "value_delta", "result": value_change.semantic_action, "detail": value_change.as_dict()},
+            {
+                "step": "rule_deterministic",
+                "result": False,
+                "kind": "SINGLE_VALUE_MULTIPLE_NEW_VALUES",
+                "detail": {"report_type": report_type_normalized(repair_event), "new_unique": value_change.new_unique},
+            },
+            {"step": "local_availability", "result": None},
+            {"step": "fallback_external", "result": False},
+            {"step": "branch", "result": "single_value_report_multiple_new_values"},
+        ]
+        classification = make(
+            "TypeC",
+            "UNKNOWN_BAD_TARGET_OR_CONTEXT",
+            "low",
+            trace,
+            "Single-value violation is followed by multiple created/added target values; treated as report-context mismatch or bad target rather than clean external evidence.",
+            constraint_types,
+        )
+        classification["local_subtype"] = None
+        classification["diagnostics"] = diagnostics
+        return classification, None, {"missing_truth_tokens": False, "missing_old_value": False}
 
     classification_tokens = [str(token) for token in target_tokens.get("tokens", []) if token not in (None, "")]
     if not classification_tokens and value_change.semantic_action not in {"DELETE_TO_MISSING", "DELETE_SUBSET"}:
@@ -1704,6 +3306,34 @@ def classify_one(
             {"missing_truth_tokens": truth_applicable and missing_truth, "missing_old_value": False},
         )
 
+    derived_detail = _p8726_local_text_derived_detail(repair_event, world_state_entry, value_change)
+    if derived_detail:
+        trace = [
+            {"step": "is_delete", "result": False},
+            {"step": "value_delta", "result": value_change.semantic_action, "detail": value_change.as_dict()},
+            {"step": "rule_deterministic", "result": False, "detail": det_detail},
+            {
+                "step": "local_text_derived",
+                "result": True,
+                "detail": derived_detail,
+                "independent_of_target_property": True,
+            },
+            {"step": "local_availability", "result": True, "evidence": {"matches": [derived_detail]}},
+            {"step": "fallback_external", "result": False},
+            {"step": "branch", "result": "local_text_derived"},
+        ]
+        classification = make(
+            "TypeB",
+            "LOCAL_TEXT_DERIVED",
+            "high" if derived_detail.get("raw_matched_text") else "medium",
+            trace,
+            "Target literal derived from independent local text by deterministic property-specific transformation.",
+            constraint_types,
+        )
+        classification["local_subtype"] = "LOCAL_TEXT_DERIVED"
+        classification["diagnostics"] = diagnostics
+        return classification, None, {"missing_truth_tokens": False, "missing_old_value": False}
+
     buckets, synth_info = local_context_buckets(repair_event, world_state_entry)
 
     if value_change.semantic_action == "DELETE_SUBSET":
@@ -1783,11 +3413,25 @@ def classify_one(
             conf = "medium"
         trace = [
             {"step": "is_delete", "result": False},
+            {"step": "value_delta", "result": value_change.semantic_action, "detail": value_change.as_dict()},
             {"step": "rule_deterministic", "result": False, "detail": det_detail},
             {"step": "local_availability", "result": True, "evidence": evidence, "synthetic": synth_info},
             {"step": "fallback_external", "result": False},
             {"step": "branch", "result": "local_match"},
         ]
+        if local_subtype == "LOCAL_FOCUS_QID" and repair_event.get("qid") in classification_tokens:
+            trace[-1] = {"step": "branch", "result": "unknown_focus_qid_domain_reasoning"}
+            classification = make(
+                "TypeC",
+                "UNKNOWN_FOCUS_QID_DOMAIN_REASONING",
+                "low",
+                trace,
+                "Focus QID is locally available, but local identity alone does not justify asserting this property value; correctness requires a domain/property-specific rule or external/domain reasoning.",
+                constraint_types,
+            )
+            classification["local_subtype"] = None
+            classification["diagnostics"] = diagnostics
+            return classification, None, {"missing_truth_tokens": False, "missing_old_value": synth_info.get("pre_repair_source") == "missing"}
         if local_subtype == "LOCAL_FOCUS_QID":
             rationale = "Repair target matched the focus entity id."
         elif local_subtype == "LOCAL_FOCUS_PREREPAIR_PROPERTY":
@@ -1868,6 +3512,33 @@ def build_labels_en(repair_event: Dict[str, Any]) -> Dict[str, Any]:
             "description": repair_event.get("property_description_en"),
         },
     }
+
+
+def lean_repair_target(repair_target: Any) -> Any:
+    if not isinstance(repair_target, dict):
+        return repair_target
+    if repair_target.get("kind") != "T_BOX":
+        return repair_target
+    out = {key: value for key, value in repair_target.items() if key != "constraint_delta"}
+    delta = repair_target.get("constraint_delta")
+    if isinstance(delta, dict):
+        keep_keys = {
+            "revision_id",
+            "property_revision_id",
+            "property_revision_new",
+            "property_revision_prev",
+            "hash_before",
+            "hash_after",
+            "changed_constraint_types",
+            "added_constraint_types",
+            "removed_constraint_types",
+        }
+        out["constraint_delta"] = {key: delta.get(key) for key in keep_keys if key in delta}
+        out["constraint_delta"]["lean_stage4_note"] = (
+            "Full T-box signatures are omitted from lean Stage 4; use data/02 and data/03 "
+            "or classification.tbox_causality trace fields for detailed inspection."
+        )
+    return out
 
 
 def ensure_popularity(
@@ -2171,8 +3842,11 @@ def main() -> int:
 
         def iter_outputs() -> Iterator[Dict[str, Any]]:
             repairs_iter: Iterable[Dict[str, Any]] = iter_repairs(repairs_path)
-            total_repairs = count_repairs(repairs_path)
-            log.info("Repairs to process: %d", total_repairs)
+            total_repairs = count_repairs(repairs_path) if use_progress else None
+            if total_repairs is None:
+                log.info("Repairs to process: progress disabled; skipped input pre-count")
+            else:
+                log.info("Repairs to process: %d", total_repairs)
             repairs_iter = tqdm(
                 repairs_iter,
                 desc="Classifying",
@@ -2217,7 +3891,7 @@ def main() -> int:
                     "information_type": repair_event.get("information_type", None),
                     "labels_en": build_labels_en(repair_event),
                     "violation_context": repair_event.get("violation_context"),
-                    "repair_target": repair_event.get("repair_target"),
+                    "repair_target": lean_repair_target(repair_event.get("repair_target")),
                     "persistence_check": repair_event.get("persistence_check"),
                     "popularity": pop,
                     "context_ref": {

@@ -132,6 +132,8 @@ Important runtime behavior:
 
 The FULL variant is identical except it embeds the world-state payload directly under `world_state` instead of using only `context_ref`.
 
+Current operational convention: `data/04_classified_benchmark.jsonl` is the canonical Stage 4 input for selection, audit, and tests. When classifier regeneration is run with `--no-full-output`, any existing `data/04_classified_benchmark_full.jsonl` should be treated as stale/deprecated until explicitly regenerated.
+
 Use cases:
 
 - offline experiment bundles
@@ -196,10 +198,21 @@ Required top-level fields:
 - `weak_group_key`
 - `popularity_bucket`
 - `constraint_family`
+- `decision_constraint_type_qid`
+- `decision_constraint_type_label`
+- `decision_constraint_source`
+- `classification_rule_family`
+- `classification_rule_subfamily`
 - `truth_source`
 - `truth_token_kind`
 
-The current core policy treats refined labels such as `FORMAT_NORMALIZATION`, `FORMAT_VALUE_PRUNING`, `SELF_LINK_REJECTION`, `MULTIPLICITY_NORMALIZATION`, `LOCAL_TEXT_CONFIRMED`, `LOCAL_SELECTION_CONFIRMED`, and `LOCAL_FOCUS_QID` as main-score candidates when confidence is not low. Diagnostic labels such as `DELETE_AMBIGUOUS`, `UNKNOWN_SELECTION_AMBIGUOUS`, `UNKNOWN_MULTIPLICITY_ARTIFACT`, other `UNKNOWN_*` TypeC labels, and `COINCIDENTAL_SCHEMA_CHANGE` are excluded from `main_score_case_ids`.
+The current core policy treats refined labels such as `FORMAT_NORMALIZATION`, `FORMAT_VALUE_PRUNING`, `SELF_LINK_REJECTION`, `SET_MEMBERSHIP_REJECTION`, `TARGET_REQUIRED_CLAIM`, `MULTIPLICITY_NORMALIZATION`, `LOCAL_TEXT_CONFIRMED`, `LOCAL_TEXT_DERIVED`, and `LOCAL_SELECTION_CONFIRMED` as main-score candidates when confidence is not low. Diagnostic labels such as `DELETE_AMBIGUOUS`, `UNKNOWN_SELECTION_AMBIGUOUS`, `UNKNOWN_MULTIPLICITY_ARTIFACT`, `UNKNOWN_FORMAT_PRUNING_RETAINED_UNVERIFIED`, `UNKNOWN_BAD_TARGET_OR_CONTEXT`, `UNKNOWN_FOCUS_QID_DOMAIN_REASONING`, other `UNKNOWN_*` TypeC labels, `COINCIDENTAL_SCHEMA_CHANGE`, and `UNKNOWN_TBOX_CAUSALITY` are excluded from `main_score_case_ids`.
+
+`constraint_family` is retained for backward compatibility and may describe a property-level or first-observed constraint family rather than the rule that decided the classifier label. For rule-family analyses, use `classification_rule_family`, `classification_rule_subfamily`, and `decision_constraint_type_qid`.
+
+For T-box records, `classification.decision_trace` includes a `tbox_causality` step with `selected_violation_name`, `candidate_violation_names`, `candidate_violation_mappings_preview`, mapped-report constraint fields, changed target-constraint fields, semantic and ignored qualifier-change fields, compatible and incompatible overlap fields, `set_operation`, `set_semantics`, `polarity`, `directional_subtype_precise`, and `analysis_slice_precise`. Lean Stage 4 also stores `classification.diagnostics.tbox_diff_summary` as the compact replacement for pruned full constraint signatures.
+
+T-box qualifier changes are split into semantic and ignored groups before polarity analysis. Metadata/status qualifiers such as `P2316` can mark that a constraint changed, but they are not semantic added/removed values and should not be used as directional evidence. The coarse public subtype remains available for compatibility; precise polarity analyses should use `directional_subtype_precise` or `analysis_slice_precise`.
 
 The manifest must distinguish headline evaluation cases from diagnostic/challenge cases. The main paper score should use `main_score_case_ids`, while `diagnostic_case_ids` should be reported separately.
 
@@ -219,7 +232,7 @@ Hard validation checks for `core_v1`:
 - max 10 T-box cases per property revision;
 - no `UNKNOWN_*` TypeC cases in `main_score_case_ids`;
 - no low-confidence cases in `main_score_case_ids` unless explicitly upgraded by policy;
-- no `DELETE_AMBIGUOUS` or `COINCIDENTAL_SCHEMA_CHANGE` cases in `main_score_case_ids`.
+- no `DELETE_AMBIGUOUS`, `COINCIDENTAL_SCHEMA_CHANGE`, or `UNKNOWN_TBOX_CAUSALITY` cases in `main_score_case_ids`.
 
 ## Manual Audit Artifacts: `reports/manual_audit/*`
 

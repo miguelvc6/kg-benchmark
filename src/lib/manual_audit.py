@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
+import re
 from collections import Counter, defaultdict, deque
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -18,23 +19,30 @@ DEFAULT_TBOX_CAP_PER_REVISION = 5
 DEFAULT_ABOX_CAP_PER_GROUP = 3
 
 AUDIT_QUOTAS: dict[str, int] = {
-    "TypeC_EXTERNAL_BY_ELIMINATION_QID_TRUTH": 50,
-    "TypeC_EXTERNAL_BY_ELIMINATION_LITERAL_TRUTH": 50,
-    "TypeC_UNKNOWN_SELECTION_AMBIGUOUS": 15,
+    "TypeC_EXTERNAL_BY_ELIMINATION_QID_TRUTH": 30,
+    "TypeC_EXTERNAL_BY_ELIMINATION_LITERAL_TRUTH": 30,
+    "TypeC_UNKNOWN_SELECTION_AMBIGUOUS": 10,
     "TypeC_UNKNOWN_MULTIPLICITY_ARTIFACT": 5,
-    "TypeC_UNKNOWN_OR_SPARSE_DIAGNOSTIC": 10,
-    "TypeA_FORMAT_NORMALIZATION": 35,
-    "TypeA_FORMAT_VALUE_PRUNING": 35,
-    "TypeA_REJECTION_FORMAT_INVALID": 30,
-    "TypeA_SELF_LINK_REJECTION": 20,
+    "TypeC_UNKNOWN_FORMAT_PRUNING_RETAINED_UNVERIFIED": 5,
+    "TypeC_UNKNOWN_BAD_TARGET_OR_CONTEXT": 10,
+    "TypeC_UNKNOWN_FOCUS_QID_DOMAIN_REASONING": 10,
+    "TypeC_UNKNOWN_OR_SPARSE_DIAGNOSTIC": 5,
+    "TypeA_FORMAT_NORMALIZATION": 25,
+    "TypeA_FORMAT_VALUE_PRUNING": 25,
+    "TypeA_REJECTION_FORMAT_INVALID": 20,
+    "TypeA_SELF_LINK_REJECTION": 15,
+    "TypeA_SET_MEMBERSHIP_REJECTION": 25,
     "TypeA_MULTIPLICITY_NORMALIZATION": 10,
-    "TypeA_DELETE_AMBIGUOUS": 40,
-    "TypeB_LOCAL_TEXT_CONFIRMED": 40,
-    "TypeB_LOCAL_SELECTION_CONFIRMED": 35,
-    "TypeB_LOCAL_FOCUS_QID": 15,
-    "TBOX_SCHEMA_UPDATE": 20,
-    "TBOX_COINCIDENTAL_SCHEMA_CHANGE": 20,
-    "TBOX_DIRECTIONAL_RELAXATION_OR_RESTRICTION": 20,
+    "TypeA_TARGET_REQUIRED_CLAIM": 10,
+    "TypeA_DELETE_AMBIGUOUS": 25,
+    "TypeB_LOCAL_TEXT_CONFIRMED": 25,
+    "TypeB_LOCAL_TEXT_DERIVED": 20,
+    "TypeB_LOCAL_SELECTION_CONFIRMED": 30,
+    "TypeB_LOCAL_FOCUS_QID": 10,
+    "TBOX_SCHEMA_UPDATE": 25,
+    "TBOX_COINCIDENTAL_SCHEMA_CHANGE": 25,
+    "TBOX_DIRECTIONAL_RELAXATION_OR_RESTRICTION": 25,
+    "TBOX_UNKNOWN_TBOX_CAUSALITY": 30,
 }
 
 AUDIT_FIELDNAMES = [
@@ -47,10 +55,16 @@ AUDIT_FIELDNAMES = [
     "confidence",
     "selection_stratum",
     "analysis_slice",
+    "analysis_slice_precise",
     "main_score",
     "diagnostic_only",
     "popularity_bucket",
     "constraint_family",
+    "decision_constraint_type_qid",
+    "decision_constraint_type_label",
+    "decision_constraint_source",
+    "classification_rule_family",
+    "classification_rule_subfamily",
     "truth_source",
     "truth_token_kind",
     "truth_tokens_preview",
@@ -59,6 +73,37 @@ AUDIT_FIELDNAMES = [
     "local_match_source",
     "tbox_revision_key",
     "group_key",
+    "selected_violation_name",
+    "candidate_violation_names",
+    "mapped_report_constraint_qid",
+    "mapped_report_constraint_label",
+    "mapped_report_family",
+    "target_constraint_qid",
+    "target_constraint_label",
+    "target_constraint_selection_reason",
+    "target_constraint_selection_confidence",
+    "target_constraint_is_changed",
+    "target_constraint_is_related_family",
+    "compatible_value_overlap_with_report_qids",
+    "compatible_property_overlap_with_report_pids",
+    "compatible_language_overlap_with_report_langs",
+    "compatible_scope_overlap_with_report_values",
+    "incompatible_overlap_ignored",
+    "value_specific_without_overlap",
+    "compatible_overlap_used",
+    "compatible_overlap_reason",
+    "semantic_changed_qualifier_properties",
+    "ignored_changed_qualifier_properties",
+    "semantic_added_values",
+    "semantic_removed_values",
+    "ignored_added_values",
+    "ignored_removed_values",
+    "qualifier_filter_reason",
+    "directional_subtype_precise",
+    "set_semantics",
+    "set_operation",
+    "polarity",
+    "polarity_basis",
     "repair_locus_correct",
     "historical_target_well_defined",
     "target_visible_locally",
@@ -98,6 +143,7 @@ HUMAN_ALLOWED_VALUES: dict[str, list[str]] = {
     ],
     "typeb_judgment": [
         "local_confirmed",
+        "local_derived_confirmed",
         "local_false_positive",
         "leakage_suspected",
         "weak_literal_match",
@@ -107,7 +153,13 @@ HUMAN_ALLOWED_VALUES: dict[str, list[str]] = {
         "causal_schema_repair",
         "plausible_schema_update",
         "coincidental_or_weak",
+        "causal_confirmed",
+        "causal_plausible",
+        "coincidental_confirmed",
+        "unknown_causality",
+        "wrong_polarity",
         "wrong_constraint_family",
+        "needs_discussion",
         "not_tbox",
     ],
     "core_recommendation": ["main", "diagnostic", "exclude", "needs_discussion"],
@@ -117,6 +169,7 @@ UNANNOTATED = "unannotated"
 ANNOTATION_FIELDS = list(HUMAN_ALLOWED_VALUES) + ["notes", "annotator_id", "annotation_timestamp_utc"]
 TRUTH_TOKEN_KINDS = ["qid", "literal", "date", "numeric", "mixed", "none_expected"]
 POPULARITY_BUCKETS = ["head", "mid", "tail", "unknown"]
+WIKIDATA_DATE_RE = re.compile(r"^[+-]\d{4,}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}Z)?$")
 
 
 @dataclass(frozen=True)
@@ -151,6 +204,54 @@ def _trace_step(record: dict[str, Any], step_name: str) -> dict[str, Any] | None
         if step.get("step") == step_name:
             return step
     return None
+
+
+def _audit_json(value: Any) -> str:
+    if value in (None, "", [], {}):
+        return ""
+    if isinstance(value, (list, dict)):
+        return json.dumps(value, ensure_ascii=False, sort_keys=True)
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return str(value)
+
+
+def _tbox_metadata_fields(record: dict[str, Any]) -> dict[str, str]:
+    step = _trace_step(record, "tbox_causality") or {}
+    keys = [
+        "selected_violation_name",
+        "candidate_violation_names",
+        "mapped_report_constraint_qid",
+        "mapped_report_constraint_label",
+        "mapped_report_family",
+        "target_constraint_qid",
+        "target_constraint_label",
+        "target_constraint_selection_reason",
+        "target_constraint_selection_confidence",
+        "target_constraint_is_changed",
+        "target_constraint_is_related_family",
+        "compatible_value_overlap_with_report_qids",
+        "compatible_property_overlap_with_report_pids",
+        "compatible_language_overlap_with_report_langs",
+        "compatible_scope_overlap_with_report_values",
+        "incompatible_overlap_ignored",
+        "value_specific_without_overlap",
+        "compatible_overlap_used",
+        "compatible_overlap_reason",
+        "semantic_changed_qualifier_properties",
+        "ignored_changed_qualifier_properties",
+        "semantic_added_values",
+        "semantic_removed_values",
+        "ignored_added_values",
+        "ignored_removed_values",
+        "qualifier_filter_reason",
+        "directional_subtype_precise",
+        "set_semantics",
+        "set_operation",
+        "polarity",
+        "polarity_basis",
+    ]
+    return {key: _audit_json(step.get(key)) for key in keys}
 
 
 def decision_branch(record: dict[str, Any]) -> str:
@@ -197,7 +298,7 @@ def audit_truth_token_kind(record: dict[str, Any]) -> str:
         token_s = str(token)
         if token_s.startswith("Q"):
             kinds.add("qid")
-        elif token_s.startswith(("+", "-")) and "-" in token_s:
+        elif WIKIDATA_DATE_RE.match(token_s):
             kinds.add("date")
         else:
             try:
@@ -248,6 +349,12 @@ def audit_stratum_for_record(record: dict[str, Any]) -> str | None:
         return "TypeC_UNKNOWN_SELECTION_AMBIGUOUS"
     if cls == "TypeC" and subtype == "UNKNOWN_MULTIPLICITY_ARTIFACT":
         return "TypeC_UNKNOWN_MULTIPLICITY_ARTIFACT"
+    if cls == "TypeC" and subtype == "UNKNOWN_FORMAT_PRUNING_RETAINED_UNVERIFIED":
+        return "TypeC_UNKNOWN_FORMAT_PRUNING_RETAINED_UNVERIFIED"
+    if cls == "TypeC" and subtype == "UNKNOWN_BAD_TARGET_OR_CONTEXT":
+        return "TypeC_UNKNOWN_BAD_TARGET_OR_CONTEXT"
+    if cls == "TypeC" and subtype == "UNKNOWN_FOCUS_QID_DOMAIN_REASONING":
+        return "TypeC_UNKNOWN_FOCUS_QID_DOMAIN_REASONING"
     if cls == "TypeC" and isinstance(subtype, str) and subtype.startswith("UNKNOWN_"):
         return "TypeC_UNKNOWN_OR_SPARSE_DIAGNOSTIC"
     if cls == "TypeA" and subtype == "FORMAT_NORMALIZATION":
@@ -258,12 +365,18 @@ def audit_stratum_for_record(record: dict[str, Any]) -> str | None:
         return "TypeA_REJECTION_FORMAT_INVALID"
     if cls == "TypeA" and subtype == "SELF_LINK_REJECTION":
         return "TypeA_SELF_LINK_REJECTION"
+    if cls == "TypeA" and subtype == "SET_MEMBERSHIP_REJECTION":
+        return "TypeA_SET_MEMBERSHIP_REJECTION"
     if cls == "TypeA" and subtype == "MULTIPLICITY_NORMALIZATION":
         return "TypeA_MULTIPLICITY_NORMALIZATION"
+    if cls == "TypeA" and subtype == "TARGET_REQUIRED_CLAIM":
+        return "TypeA_TARGET_REQUIRED_CLAIM"
     if cls == "TypeA" and subtype == "DELETE_AMBIGUOUS":
         return "TypeA_DELETE_AMBIGUOUS"
     if cls == "TypeB" and subtype == "LOCAL_TEXT_CONFIRMED":
         return "TypeB_LOCAL_TEXT_CONFIRMED"
+    if cls == "TypeB" and subtype == "LOCAL_TEXT_DERIVED":
+        return "TypeB_LOCAL_TEXT_DERIVED"
     if cls == "TypeB" and subtype == "LOCAL_SELECTION_CONFIRMED":
         return "TypeB_LOCAL_SELECTION_CONFIRMED"
     if cls == "TypeB" and subtype == "LOCAL_FOCUS_QID":
@@ -272,6 +385,8 @@ def audit_stratum_for_record(record: dict[str, Any]) -> str | None:
         return "TBOX_SCHEMA_UPDATE"
     if cls == "T_BOX" and subtype == "COINCIDENTAL_SCHEMA_CHANGE":
         return "TBOX_COINCIDENTAL_SCHEMA_CHANGE"
+    if cls == "T_BOX" and subtype == "UNKNOWN_TBOX_CAUSALITY":
+        return "TBOX_UNKNOWN_TBOX_CAUSALITY"
     if cls == "T_BOX" and subtype in {"RELAXATION_SET_EXPANSION", "RESTRICTION_SET_CONTRACTION"}:
         return "TBOX_DIRECTIONAL_RELAXATION_OR_RESTRICTION"
     return None
@@ -305,10 +420,16 @@ def make_audit_row(
         "confidence": metadata.get("confidence") or _classification(record).get("confidence") or "",
         "selection_stratum": audit_stratum,
         "analysis_slice": metadata.get("analysis_slice") or "",
+        "analysis_slice_precise": metadata.get("analysis_slice_precise") or _classification(record).get("analysis_slice_precise") or "",
         "main_score": bool(metadata.get("main_score")),
         "diagnostic_only": bool(metadata.get("diagnostic_only")),
         "popularity_bucket": metadata.get("popularity_bucket") or "unknown",
         "constraint_family": metadata.get("constraint_family") or "",
+        "decision_constraint_type_qid": metadata.get("decision_constraint_type_qid") or _classification(record).get("decision_constraint_type_qid") or "",
+        "decision_constraint_type_label": metadata.get("decision_constraint_type_label") or _classification(record).get("decision_constraint_type_label") or "",
+        "decision_constraint_source": metadata.get("decision_constraint_source") or _classification(record).get("decision_constraint_source") or "",
+        "classification_rule_family": metadata.get("classification_rule_family") or _classification(record).get("classification_rule_family") or "",
+        "classification_rule_subfamily": metadata.get("classification_rule_subfamily") or _classification(record).get("classification_rule_subfamily") or "",
         "truth_source": diagnostics.get("truth_source") or metadata.get("truth_source") or "",
         "truth_token_kind": audit_truth_token_kind(record),
         "truth_tokens_preview": truth_tokens_preview(record),
@@ -320,6 +441,7 @@ def make_audit_row(
         "_tier_hint": tier_hint,
         "_local_context_score": local_context_score(record),
     }
+    row.update(_tbox_metadata_fields(record))
     row.update(_annotation_defaults())
     return row
 
@@ -691,12 +813,14 @@ def summarize_annotations(rows: list[dict[str, str]]) -> dict[str, Any]:
         elif stratum.startswith("TypeA"):
             by_stratum[stratum] = _metric_from_rows(stratum_rows, "typea_judgment", {"clean_rule_or_format"})
         elif stratum.startswith("TypeB"):
-            by_stratum[stratum] = _metric_from_rows(stratum_rows, "typeb_judgment", {"local_confirmed"})
+            by_stratum[stratum] = _metric_from_rows(stratum_rows, "typeb_judgment", {"local_confirmed", "local_derived_confirmed"})
         elif stratum.startswith("TBOX_COINCIDENTAL"):
-            by_stratum[stratum] = _metric_from_rows(stratum_rows, "tbox_judgment", {"coincidental_or_weak"})
+            by_stratum[stratum] = _metric_from_rows(stratum_rows, "tbox_judgment", {"coincidental_or_weak", "coincidental_confirmed"})
+        elif stratum.startswith("TBOX_UNKNOWN"):
+            by_stratum[stratum] = _metric_from_rows(stratum_rows, "tbox_judgment", {"unknown_causality"})
         elif stratum.startswith("TBOX"):
             by_stratum[stratum] = _metric_from_rows(
-                stratum_rows, "tbox_judgment", {"causal_schema_repair", "plausible_schema_update"}
+                stratum_rows, "tbox_judgment", {"causal_schema_repair", "plausible_schema_update", "causal_confirmed", "causal_plausible"}
             )
 
     return {
@@ -716,12 +840,23 @@ def summarize_annotations(rows: list[dict[str, str]]) -> dict[str, Any]:
             {"overclaimed", "needs_local_evidence", "needs_external_evidence"},
         ),
         "Delete_ambiguity_confirmation_rate": _metric_from_rows(typea_delete, "typea_judgment", {"delete_ambiguous_ok"}),
-        "TypeB_local_precision": _metric_from_rows(typeb, "typeb_judgment", {"local_confirmed"}),
+        "TypeB_local_precision": _metric_from_rows(typeb, "typeb_judgment", {"local_confirmed", "local_derived_confirmed"}),
+        "TypeB_local_derived_precision": _metric_from_rows(
+            [row for row in typeb if row.get("subtype") == "LOCAL_TEXT_DERIVED"],
+            "typeb_judgment",
+            {"local_derived_confirmed", "local_confirmed"},
+        ),
         "TypeB_leakage_suspicion_rate": _metric_from_rows(typeb, "typeb_judgment", {"leakage_suspected"}),
         "Tbox_causal_precision": _metric_from_rows(
-            tbox_main, "tbox_judgment", {"causal_schema_repair", "plausible_schema_update"}
+            tbox_main, "tbox_judgment", {"causal_schema_repair", "plausible_schema_update", "causal_confirmed", "causal_plausible"}
         ),
-        "Tbox_coincidental_rate": _metric_from_rows(tbox_coincidental, "tbox_judgment", {"coincidental_or_weak"}),
+        "Tbox_unknown_causality_rate": _metric_from_rows(
+            [row for row in rows if row.get("class") == "T_BOX"], "tbox_judgment", {"unknown_causality"}
+        ),
+        "Tbox_polarity_error_rate": _metric_from_rows(
+            [row for row in rows if row.get("class") == "T_BOX"], "tbox_judgment", {"wrong_polarity"}
+        ),
+        "Tbox_coincidental_rate": _metric_from_rows(tbox_coincidental, "tbox_judgment", {"coincidental_or_weak", "coincidental_confirmed"}),
         "main_score_keep_rate": _metric_from_rows(main_candidates, "core_recommendation", {"main"}),
         "diagnostic_or_exclude_rate": _metric_from_rows(rows, "core_recommendation", {"diagnostic", "exclude"}),
     }
@@ -736,9 +871,12 @@ def write_summary_markdown(summary: dict[str, Any], path: Path) -> None:
         "TypeA_overclaim_rate",
         "Delete_ambiguity_confirmation_rate",
         "TypeB_local_precision",
+        "TypeB_local_derived_precision",
         "TypeB_leakage_suspicion_rate",
         "Tbox_causal_precision",
         "Tbox_coincidental_rate",
+        "Tbox_unknown_causality_rate",
+        "Tbox_polarity_error_rate",
         "main_score_keep_rate",
         "diagnostic_or_exclude_rate",
     ]
