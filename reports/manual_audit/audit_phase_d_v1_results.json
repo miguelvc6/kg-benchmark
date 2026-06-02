@@ -188,6 +188,7 @@
     "numerator": 0,
     "rate": null
   },
+  "partially_annotated_row_count": 0,
   "row_count": 450,
   "unannotated_row_count": 450
 }
