@@ -243,8 +243,12 @@ Phase D writes audit artifacts for validating high-risk classifier decisions:
 - `audit_annotation_schema.json`
 - `audit_phase_d_v1_results.json`
 - `audit_phase_d_v1_summary.md`
+- `audit_phase_d_v1_policy.json`
+- `audit_phase_d_v1_policy.md`
 
-Audit rows include prefilled case metadata, classifier diagnostics, and empty human annotation fields. The required annotation fields are documented in `00-manual_audit_phase_D.md`.
+Audit rows include prefilled case metadata, classifier diagnostics, and empty human annotation fields. The required annotation fields are documented in `implementation-plan-completions/manual_audit_phase_D.md`.
+
+The audit policy report is produced by `src/apply_audit_policy.py`. It has `manifest_type = "phase_d_audit_policy"`, `manifest_version = "phase_d_v1"`, completion counts, recommendation-specific case-id lists, summary metrics, and warnings. Its `status` is `ready` only when every sampled row has human annotation values; otherwise it is `blocked_incomplete_annotations` and must not be used as paper-facing audit evidence.
 
 ## Proposal Artifacts
 

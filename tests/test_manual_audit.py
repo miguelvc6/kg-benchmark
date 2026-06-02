@@ -11,10 +11,13 @@ from lib.benchmark_selection import derive_case_metadata
 from lib.manual_audit import (
     AUDIT_FIELDNAMES,
     AuditBuildOptions,
+    apply_audit_policy,
+    audit_annotation_completion,
     audit_annotation_schema,
     build_audit_sample,
     summarize_annotations,
     write_audit_csv,
+    write_audit_policy_markdown,
 )
 
 CASE_CARD_SPEC = importlib.util.spec_from_file_location(
@@ -408,6 +411,58 @@ class ManualAuditTests(unittest.TestCase):
             self.assertEqual(summary["row_count"], 1)
             self.assertEqual(summary["unannotated_row_count"], 1)
             self.assertIsNone(summary["TypeC_unknown_or_incomplete_rate"]["rate"])
+
+    def test_audit_policy_blocks_incomplete_annotations(self) -> None:
+        row = {field: "" for field in AUDIT_FIELDNAMES}
+        row.update({"case_id": "c1", "class": "TypeC", "subtype": "EXTERNAL_BY_ELIMINATION"})
+
+        completion = audit_annotation_completion([row])
+        policy = apply_audit_policy([row], require_complete=True)
+
+        self.assertFalse(completion["ready_for_audit_policy"])
+        self.assertEqual(policy["status"], "blocked_incomplete_annotations")
+        self.assertEqual(policy["completion"]["unannotated_row_count"], 1)
+        self.assertIn("missing", policy["recommendation_counts"])
+
+    def test_audit_policy_collects_completed_recommendations(self) -> None:
+        base = {field: "" for field in AUDIT_FIELDNAMES}
+        annotated = {
+            "repair_locus_correct": "yes",
+            "historical_target_well_defined": "yes",
+            "target_visible_locally": "no",
+            "extractor_missed_local_evidence": "not_applicable",
+            "external_evidence_required": "yes",
+            "typec_judgment": "external_by_elimination_ok",
+            "typea_judgment": "not_typea",
+            "typeb_judgment": "not_typeb",
+            "tbox_judgment": "not_tbox",
+        }
+        rows = [
+            {**base, **annotated, "case_id": "main", "class": "TypeC", "core_recommendation": "main"},
+            {**base, **annotated, "case_id": "diag", "class": "TypeC", "core_recommendation": "diagnostic"},
+            {**base, **annotated, "case_id": "exclude", "class": "TypeC", "core_recommendation": "exclude"},
+        ]
+
+        policy = apply_audit_policy(rows, require_complete=True)
+
+        self.assertEqual(policy["status"], "ready")
+        self.assertEqual(policy["main_case_ids"], ["main"])
+        self.assertEqual(policy["diagnostic_case_ids"], ["diag"])
+        self.assertEqual(policy["exclude_case_ids"], ["exclude"])
+        self.assertEqual(policy["recommendation_counts"], {"diagnostic": 1, "exclude": 1, "main": 1})
+
+    def test_audit_policy_markdown_writes_blocked_status(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            row = {field: "" for field in AUDIT_FIELDNAMES}
+            row.update({"case_id": "c1", "class": "TypeC", "subtype": "EXTERNAL_BY_ELIMINATION"})
+            policy = apply_audit_policy([row])
+            out = Path(tmp_dir) / "policy.md"
+
+            write_audit_policy_markdown(policy, out)
+
+            text = out.read_text(encoding="utf-8")
+            self.assertIn("blocked_incomplete_annotations", text)
+            self.assertIn("Blocking Condition", text)
 
 
 if __name__ == "__main__":

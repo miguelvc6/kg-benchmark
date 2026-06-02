@@ -765,6 +765,37 @@ def is_annotated_value(value: Any) -> bool:
     return str(value or "").strip() not in {"", UNANNOTATED}
 
 
+def audit_annotation_completion(rows: list[dict[str, str]]) -> dict[str, Any]:
+    total = len(rows)
+    complete = 0
+    unannotated = 0
+    partial = 0
+    missing_by_field: Counter[str] = Counter()
+    for row in rows:
+        annotated_fields = [
+            field for field in HUMAN_ALLOWED_VALUES if is_annotated_value(row.get(field))
+        ]
+        if len(annotated_fields) == len(HUMAN_ALLOWED_VALUES):
+            complete += 1
+            continue
+        if not annotated_fields:
+            unannotated += 1
+        else:
+            partial += 1
+        for field in HUMAN_ALLOWED_VALUES:
+            if not is_annotated_value(row.get(field)):
+                missing_by_field[field] += 1
+    return {
+        "row_count": total,
+        "complete_row_count": complete,
+        "unannotated_row_count": unannotated,
+        "partially_annotated_row_count": partial,
+        "completion_rate": _rate(complete, total),
+        "ready_for_audit_policy": total > 0 and complete == total,
+        "missing_by_field": dict(sorted(missing_by_field.items())),
+    }
+
+
 def _rate(numerator: int, denominator: int) -> float | None:
     if denominator == 0:
         return None
@@ -783,12 +814,7 @@ def _bool_from_csv(value: Any) -> bool:
 
 def summarize_annotations(rows: list[dict[str, str]]) -> dict[str, Any]:
     total = len(rows)
-    complete_rows = [
-        row
-        for row in rows
-        if all(is_annotated_value(row.get(field)) for field in HUMAN_ALLOWED_VALUES)
-    ]
-    unannotated_rows = [row for row in rows if not any(is_annotated_value(row.get(field)) for field in HUMAN_ALLOWED_VALUES)]
+    completion = audit_annotation_completion(rows)
 
     typec_external = [
         row
@@ -836,10 +862,11 @@ def summarize_annotations(rows: list[dict[str, str]]) -> dict[str, Any]:
             )
 
     return {
-        "annotation_completeness_rate": _rate(len(complete_rows), total),
+        "annotation_completeness_rate": completion["completion_rate"],
         "row_count": total,
-        "complete_row_count": len(complete_rows),
-        "unannotated_row_count": len(unannotated_rows),
+        "complete_row_count": completion["complete_row_count"],
+        "unannotated_row_count": completion["unannotated_row_count"],
+        "partially_annotated_row_count": completion["partially_annotated_row_count"],
         "label_precision_by_stratum": by_stratum,
         "TypeC_confirmed_external_rate": _metric_from_rows(typec_external, "typec_judgment", {"external_confirmed"}),
         "TypeC_local_missed_rate": _metric_from_rows(typec_external, "typec_judgment", {"local_missed"}),
@@ -872,6 +899,123 @@ def summarize_annotations(rows: list[dict[str, str]]) -> dict[str, Any]:
         "main_score_keep_rate": _metric_from_rows(main_candidates, "core_recommendation", {"main"}),
         "diagnostic_or_exclude_rate": _metric_from_rows(rows, "core_recommendation", {"diagnostic", "exclude"}),
     }
+
+
+def apply_audit_policy(rows: list[dict[str, str]], *, require_complete: bool = False) -> dict[str, Any]:
+    completion = audit_annotation_completion(rows)
+    summary = summarize_annotations(rows)
+    recommendations: dict[str, list[str]] = {
+        "main_case_ids": [],
+        "diagnostic_case_ids": [],
+        "exclude_case_ids": [],
+        "needs_discussion_case_ids": [],
+        "missing_recommendation_case_ids": [],
+    }
+    counts = Counter()
+    for row in rows:
+        case_id = row.get("case_id") or ""
+        recommendation = (row.get("core_recommendation") or "").strip()
+        if recommendation == "main":
+            recommendations["main_case_ids"].append(case_id)
+        elif recommendation == "diagnostic":
+            recommendations["diagnostic_case_ids"].append(case_id)
+        elif recommendation == "exclude":
+            recommendations["exclude_case_ids"].append(case_id)
+        elif recommendation == "needs_discussion":
+            recommendations["needs_discussion_case_ids"].append(case_id)
+        else:
+            recommendations["missing_recommendation_case_ids"].append(case_id)
+            recommendation = "missing"
+        counts[recommendation] += 1
+
+    warnings: list[str] = []
+    status = "ready"
+    if not completion["ready_for_audit_policy"]:
+        status = "blocked_incomplete_annotations"
+        warnings.append(
+            "Audit-informed policy is blocked until every row has human annotation values."
+        )
+    if recommendations["missing_recommendation_case_ids"]:
+        warnings.append(
+            f"{len(recommendations['missing_recommendation_case_ids'])} rows have no core_recommendation."
+        )
+    if require_complete and status != "ready":
+        warnings.append("Strict mode requested; policy application should exit nonzero.")
+
+    return {
+        "manifest_type": "phase_d_audit_policy",
+        "manifest_version": AUDIT_POLICY_VERSION,
+        "created_at_utc": datetime.now(timezone.utc).isoformat(),
+        "status": status,
+        "completion": completion,
+        "recommendation_counts": dict(sorted(counts.items())),
+        **recommendations,
+        "summary_metrics": summary,
+        "warnings": warnings,
+    }
+
+
+def write_audit_policy_markdown(policy: dict[str, Any], path: Path) -> None:
+    completion = policy.get("completion", {})
+    summary = policy.get("summary_metrics", {})
+    lines = [
+        "# Phase D Audit-Informed Policy",
+        "",
+        f"- Status: `{policy.get('status')}`",
+        f"- Rows: {completion.get('row_count', 0)}",
+        f"- Complete rows: {completion.get('complete_row_count', 0)}",
+        f"- Partially annotated rows: {completion.get('partially_annotated_row_count', 0)}",
+        f"- Unannotated rows: {completion.get('unannotated_row_count', 0)}",
+        "",
+        "## Recommendation Counts",
+        "",
+        "| Recommendation | Count |",
+        "|---|---:|",
+    ]
+    for key, value in sorted((policy.get("recommendation_counts") or {}).items()):
+        lines.append(f"| {key} | {value} |")
+    lines.extend(["", "## Key Metrics", "", "| Metric | Rate | Numerator | Denominator |", "|---|---:|---:|---:|"])
+    for name in [
+        "annotation_completeness_rate",
+        "TypeC_confirmed_external_rate",
+        "TypeC_local_missed_rate",
+        "TypeC_unknown_or_incomplete_rate",
+        "TypeA_overclaim_rate",
+        "TypeB_local_precision",
+        "TypeB_local_derived_precision",
+        "Tbox_causal_precision",
+        "Tbox_unknown_causality_rate",
+        "Tbox_polarity_error_rate",
+        "main_score_keep_rate",
+        "diagnostic_or_exclude_rate",
+    ]:
+        value = summary.get(name)
+        if isinstance(value, dict):
+            rate = value.get("rate")
+            numerator = value.get("numerator")
+            denominator = value.get("denominator")
+        else:
+            rate = value
+            numerator = ""
+            denominator = summary.get("row_count") if name == "annotation_completeness_rate" else ""
+        rate_text = "n/a" if rate is None else f"{rate:.4f}"
+        lines.append(f"| {name} | {rate_text} | {numerator} | {denominator} |")
+    warnings = policy.get("warnings") or []
+    if warnings:
+        lines.extend(["", "## Warnings", ""])
+        lines.extend(f"- {warning}" for warning in warnings)
+    if policy.get("status") != "ready":
+        lines.extend(
+            [
+                "",
+                "## Blocking Condition",
+                "",
+                "This report does not apply an audit-informed core policy because the manual audit annotations are incomplete.",
+                "Complete the annotation CSV, then rerun with strict validation enabled.",
+            ]
+        )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def write_summary_markdown(summary: dict[str, Any], path: Path) -> None:

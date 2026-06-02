@@ -546,68 +546,169 @@ Required stratification keys:
 
 ### Phase C completion output — completed 2026-05-22
 
-Phase C is completed in `00-phase_C_completion.md`. The repository implementation is in `src/lib/benchmark_selection.py`, `src/select_benchmark_cases.py`, and the group-key bridge in `src/splitter.py`. The Phase D readiness prompt remains in `00-codex_phase_D_audit.md`.
+Phase C is completed in `00-phase_C_completion.md`. The repository implementation is in `src/lib/benchmark_selection.py`, `src/select_benchmark_cases.py`, and the group-key bridge in `src/splitter.py`. Phase D readiness artifacts and current audit policy are described below.
 
 ## 4. Phase D — Classification audit
+
+**Completion status:** readiness artifacts complete; human annotation pending
+
+**Implementation update:** Phase D now uses the deterministic audit builder in `src/lib/manual_audit.py` and `src/build_audit_sample.py`, the summary script in `src/audit_summarize.py`, and generated case cards from `scripts/generate_manual_audit_case_cards.py`.
+
+**Current generated artifacts:**
+
+- `reports/manual_audit/audit_phase_d_v1_seed_13.jsonl`
+- `reports/manual_audit/audit_phase_d_v1_seed_13.csv`
+- `reports/manual_audit/audit_annotation_schema.json`
+- `reports/manual_audit/audit_phase_d_v1_results.json`
+- `reports/manual_audit/audit_phase_d_v1_summary.md`
+- `reports/manual_audit/case_cards_by_stratum/`
+
+### Phase D decision summary
+
+The audit is no longer a broad sample of old `LOCAL_TEXT`, `LOCAL_FOCUS_PREREPAIR_PROPERTY`, or unqualified `EXTERNAL` labels. Those broad labels are retired. Phase D now audits the refined post-hardening classifier:
+
+- TypeB means independent local support or deterministic local-derived evidence, including `LOCAL_TEXT_CONFIRMED`, `LOCAL_TEXT_DERIVED`, and `LOCAL_SELECTION_CONFIRMED`.
+- TypeC `EXTERNAL_BY_ELIMINATION` means no-retrieval stress by elimination, not confirmed external evidence.
+- TypeC `UNKNOWN_*` subtypes are diagnostic IC-U cases and are not main-score evidence.
+- TypeA includes deterministic rule, format, multiplicity, set-membership, target-required, and self-link branches when the reported rule/delta justifies the repair.
+- T-box main-score labels require mapped causal constraint-family support or compatible value/property/language/scope overlap. `COINCIDENTAL_SCHEMA_CHANGE` and `UNKNOWN_TBOX_CAUSALITY` are diagnostic.
+- Public T-box directional subtypes remain coarse, while active `directional_subtype_precise` is populated only for final directional labels. Non-directional `SCHEMA_UPDATE` records may expose `potential_directional_*` debug fields, but selection and analysis use `main_tbox_schema_update`.
 
 ### Task D1 — Build audit sample
 
 **Type:** Manual audit / repository support
 **Dependencies:** B10, C1
-**Output:** audit sample JSONL/CSV
+**Output:** `reports/manual_audit/audit_phase_d_v1_seed_13.jsonl` and `.csv`
 
-Sample 300–500 cases:
+**Status:** readiness complete
 
-| Stratum                                            | Target count |
-| -------------------------------------------------- | -----------: |
-| TypeC / EXTERNAL_BY_ELIMINATION, QID truth         |           50 |
-| TypeC / EXTERNAL_BY_ELIMINATION, literal truth     |           50 |
-| TypeC sparse local graph                           |           50 |
-| TypeC current-value fallback                       |    all or 50 |
-| TypeA format update                                |           50 |
-| TypeA delete under single/unique-value constraints |           50 |
-| TypeB local text                                   |           50 |
-| T-box generic schema update                        |           50 |
+Build a deterministic 450-case sample from the canonical lean Stage 4 file and the Phase C dev/core manifests:
+
+```bash
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python src/build_audit_sample.py \
+  --classified-benchmark data/04_classified_benchmark.jsonl \
+  --core-manifest reports/benchmark_selection/core_v1_seed_13.json \
+  --dev-manifest reports/benchmark_selection/dev_prompt_v1_seed_13.json \
+  --seed 13 \
+  --output-jsonl reports/manual_audit/audit_phase_d_v1_seed_13.jsonl \
+  --output-csv reports/manual_audit/audit_phase_d_v1_seed_13.csv \
+  --output-schema reports/manual_audit/audit_annotation_schema.json
+```
+
+Current audit strata:
+
+| Stratum | Target count | Audit purpose |
+| --- | ---: | --- |
+| `TypeC_EXTERNAL_BY_ELIMINATION_QID_TRUTH` | 30 | Check IC-E-elim QID cases are genuinely not locally/rule grounded. |
+| `TypeC_EXTERNAL_BY_ELIMINATION_LITERAL_TRUTH` | 30 | Check literal external-by-elimination cases and missed local derivations. |
+| `TypeC_UNKNOWN_SELECTION_AMBIGUOUS` | 10 | Diagnose ambiguous subset/selection repairs. |
+| `TypeC_UNKNOWN_MULTIPLICITY_ARTIFACT` | 5 | Diagnose multiplicity artifacts. |
+| `TypeC_UNKNOWN_FORMAT_PRUNING_RETAINED_UNVERIFIED` | 5 | Check format-pruning retained-value uncertainty. |
+| `TypeC_UNKNOWN_BAD_TARGET_OR_CONTEXT` | 10 | Diagnose bad target or report-context mismatch. |
+| `TypeC_UNKNOWN_FOCUS_QID_DOMAIN_REASONING` | 10 | Check focus-QID cases needing domain reasoning. |
+| `TypeC_UNKNOWN_OR_SPARSE_DIAGNOSTIC` | 5 | Retain sparse/unknown TypeC diagnostic coverage. |
+| `TypeA_FORMAT_NORMALIZATION` | 25 | Check deterministic format canonicalization. |
+| `TypeA_FORMAT_VALUE_PRUNING` | 25 | Check removed values are format-invalid and retained values are verified. |
+| `TypeA_REJECTION_FORMAT_INVALID` | 20 | Check delete-to-missing format rejection. |
+| `TypeA_SELF_LINK_REJECTION` | 15 | Check self-link rejection. |
+| `TypeA_SET_MEMBERSHIP_REJECTION` | 25 | Check one-of/none-of/set-membership determinism. |
+| `TypeA_MULTIPLICITY_NORMALIZATION` | 10 | Check cardinality/duplicate-driven multiplicity cleanup. |
+| `TypeA_TARGET_REQUIRED_CLAIM` | 10 | Check target-required claim repairs. |
+| `TypeA_DELETE_AMBIGUOUS` | 25 | Check diagnostic ambiguous deletes. |
+| `TypeB_LOCAL_TEXT_CONFIRMED` | 25 | Check independent local text support. |
+| `TypeB_LOCAL_TEXT_DERIVED` | 20 | Check deterministic local-derived literal support, including P8726. |
+| `TypeB_LOCAL_SELECTION_CONFIRMED` | 30 | Check local selection support independent of retained target-property values. |
+| `TypeB_LOCAL_FOCUS_QID` | 10 | Keep residual focus-QID local evidence under review if any remain. |
+| `TBOX_SCHEMA_UPDATE` | 25 | Check causal schema update without directional claim. |
+| `TBOX_COINCIDENTAL_SCHEMA_CHANGE` | 25 | Check diagnostic coincidental schema edits. |
+| `TBOX_DIRECTIONAL_RELAXATION_OR_RESTRICTION` | 25 | Check causal polarity and precise directional metadata. |
+| `TBOX_UNKNOWN_TBOX_CAUSALITY` | 30 | Check diagnostic low-causality T-box cases. |
+
+Sampling policy:
+
+- Prefer core cases because the audit validates core labels.
+- Keep dev overlap at zero unless a rare stratum cannot otherwise be filled.
+- Enforce max 5 T-box cases per property revision.
+- Enforce max 3 A-box cases per `(qid, property)` group; current generated sample is stricter, with max A-box group count 1.
+- Balance popularity buckets where possible.
+- Record underfilled quotas and warnings explicitly.
 
 **Metrics:**
 
 - audit sample distribution;
 - coverage of constraint families;
-- coverage of popularity buckets.
+- coverage of popularity buckets;
+- dev overlap;
+- max T-box per revision;
+- max A-box group count;
+- underfilled quota list.
 
 **Acceptance criteria:**
 
-- Sample covers the highest-risk classifier decisions.
+- Audit JSONL/CSV contain 450 rows.
+- JSONL validates against `audit_annotation_schema.json`.
+- Dev overlap is zero.
+- T-box revision cap is respected.
+- A-box group cap is respected.
+- Underfilled rare strata are recorded rather than silently backfilled.
 
 ### Task D2 — Create annotation template
 
 **Type:** Manual audit
 **Dependencies:** D1
-**Output:** audit spreadsheet or JSON schema
+**Output:** `reports/manual_audit/audit_annotation_schema.json`
 
-Fields:
+**Status:** readiness complete
 
-- case_id;
-- current class/subtype/confidence;
-- repair locus correct?;
-- target truth well-defined?;
-- target visible locally?;
-- extractor missed local evidence?;
-- external evidence truly required?;
-- Type C subtype judgment;
-- core/challenge/exclude recommendation;
-- notes;
-- annotator id;
-- timestamp.
+The audit schema contains prefilled classifier and split metadata plus human annotation fields.
+
+Required prefilled fields include:
+
+- `case_id`, `qid`, `property`, `track`, `class`, `subtype`, `confidence`;
+- `selection_stratum`, `analysis_slice`, `analysis_slice_precise`, `main_score`, `diagnostic_only`;
+- `popularity_bucket`, `constraint_family`;
+- `decision_constraint_type_qid`, `decision_constraint_type_label`, `decision_constraint_source`;
+- `classification_rule_family`, `classification_rule_subfamily`;
+- `truth_source`, `truth_token_kind`, `truth_tokens_preview`;
+- `decision_branch`, `local_match_kind`, `local_match_source`;
+- `tbox_revision_key`, `group_key`;
+- T-box report mapping, target selection, compatible-overlap, semantic/ignored qualifier-change, active direction, and potential-direction debug fields.
+
+Human annotation fields:
+
+| Field | Allowed values |
+| --- | --- |
+| `repair_locus_correct` | `yes`, `no`, `unclear` |
+| `historical_target_well_defined` | `yes`, `no`, `unclear` |
+| `target_visible_locally` | `yes`, `no`, `partial`, `unclear` |
+| `extractor_missed_local_evidence` | `yes`, `no`, `unclear`, `not_applicable` |
+| `external_evidence_required` | `yes`, `no`, `maybe`, `unclear`, `not_applicable` |
+| `typec_judgment` | `external_confirmed`, `external_by_elimination_ok`, `local_missed`, `unknown_or_incomplete`, `bad_target`, `not_typec` |
+| `typea_judgment` | `clean_rule_or_format`, `delete_ambiguous_ok`, `needs_local_evidence`, `needs_external_evidence`, `overclaimed`, `not_typea` |
+| `typeb_judgment` | `local_confirmed`, `local_derived_confirmed`, `local_false_positive`, `leakage_suspected`, `weak_literal_match`, `not_typeb` |
+| `tbox_judgment` | `causal_schema_repair`, `plausible_schema_update`, `coincidental_or_weak`, `causal_confirmed`, `causal_plausible`, `coincidental_confirmed`, `unknown_causality`, `wrong_polarity`, `wrong_constraint_family`, `needs_discussion`, `not_tbox` |
+| `core_recommendation` | `main`, `diagnostic`, `exclude`, `needs_discussion` |
+| `notes` | free text |
+| `annotator_id` | string |
+| `annotation_timestamp_utc` | ISO timestamp |
+
+Rubric additions:
+
+- Use `local_derived_confirmed` when a literal target is deterministically derived from independent local text, for example P8726 `S.I. No. 483/2007` -> `2007/si/483/made`.
+- For T-box cards, inspect mapped report constraint, changed target constraint, compatible overlap, semantic vs ignored qualifier changes, and active vs potential direction fields.
+- Do not treat `potential_directional_*` fields as active directional labels for `SCHEMA_UPDATE`.
 
 **Metrics:**
 
 - annotation completeness rate;
-- disagreement rate if multiple annotators.
+- disagreement rate if multiple annotators;
+- schema validation pass/fail.
 
 **Acceptance criteria:**
 
 - Template supports direct computation of label precision and transition suggestions.
+- Schema allowed values match `src/lib/manual_audit.py`.
+- Unannotated rows are accepted with `unannotated` or blank annotation values.
 
 ### Task D3 — Execute classification audit
 
@@ -615,43 +716,111 @@ Fields:
 **Dependencies:** D2
 **Output:** audit labels and notes
 
+**Status:** pending human annotation
+
 Audit each sampled case.
 
 **Metrics:**
 
 - label precision by stratum;
 - Type C confirmed-external rate;
-- Type C false-positive rate;
+- Type C local-missed and unknown/incomplete rates;
 - TypeA overclaim rate;
-- TypeB false-positive rate;
+- TypeB local precision and leakage-suspicion rate;
+- TypeB local-derived precision;
+- T-box causal precision;
+- T-box coincidental rate;
+- T-box unknown-causality rate;
+- T-box polarity-error rate;
 - recommended exclusion rate.
 
 **Acceptance criteria:**
 
 - Enough audited examples exist to support paper claims about classifier quality.
+- Annotated CSV can be summarized by `src/audit_summarize.py`.
+- Summary tolerates partially annotated files and reports remaining unannotated rows.
 
 ### Task D4 — Apply audit-informed filtering/reporting policy
 
 **Type:** Evaluation design / repository implementation
 **Dependencies:** D3
-**Output:** updated core inclusion policy
+**Output:** `reports/manual_audit/audit_phase_d_v1_policy.json` and `.md`
+
+**Status:** repository implementation complete; blocked on human annotation values
 
 Define which cases count in main core vs challenge/diagnostic:
 
 - high-confidence confirmed or well-supported cases -> main core;
 - medium-confidence `EXTERNAL_BY_ELIMINATION` -> main core but separate IC-E-elim slice;
 - unknown/missing/sparse/current fallback -> challenge or excluded from main score;
-- low-causality T-box -> separate slice.
+- diagnostic TypeC `UNKNOWN_*` -> diagnostic or excluded from main score;
+- `DELETE_AMBIGUOUS`, `COINCIDENTAL_SCHEMA_CHANGE`, and `UNKNOWN_TBOX_CAUSALITY` -> diagnostic only;
+- T-box `SCHEMA_UPDATE` -> main only when causal family/overlap support is plausible;
+- T-box directional labels -> main only when causality and polarity are clear.
+
+Apply the policy report after annotation:
+
+```bash
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python src/apply_audit_policy.py \
+  --annotations reports/manual_audit/audit_phase_d_v1_seed_13_annotated.csv \
+  --out-json reports/manual_audit/audit_phase_d_v1_policy.json \
+  --out-md reports/manual_audit/audit_phase_d_v1_policy.md \
+  --require-complete
+```
+
+Without `--require-complete`, the script writes a blocked/incomplete report that records missing annotation fields and recommendation counts. With `--require-complete`, it exits nonzero until all human annotation fields are complete.
 
 **Metrics:**
 
 - core size after policy;
 - diagnostic slice size;
-- excluded cases by reason.
+- excluded cases by reason;
+- main-score keep rate;
+- diagnostic-or-exclude rate.
 
 **Acceptance criteria:**
 
 - Main score is not dominated by low-confidence or unknown cases.
+- Unknown/low-confidence cases in `main_score_case_ids` remains zero.
+- Diagnostic subtypes in `main_score_case_ids` remains zero.
+- Audit-informed policy report is `ready` only after every sampled case has human annotation values.
+- Incomplete annotation files produce `blocked_incomplete_annotations`, not a paper-facing policy claim.
+
+### Phase D readiness output — completed before human audit
+
+Readiness artifacts have been regenerated from the canonical lean Stage 4 file `data/04_classified_benchmark.jsonl`.
+
+Current validation:
+
+- Stage 4 records: 535,570.
+- Stage 4 errors: 0.
+- Dev manifest: 600 selected, hard validation passed.
+- Core manifest: 4,800 selected, hard validation passed.
+- Core/dev case overlap: 0.
+- Core/dev T-box revision overlap: 0.
+- Core/dev A-box group overlap: 0.
+- Core unknown/low-confidence cases in main score: 0.
+- Core diagnostic subtypes in main score: 0.
+- Audit sample rows: 450.
+- Audit JSONL validates against `audit_annotation_schema.json`.
+- Manual-audit summary handles the unannotated CSV and reports 450 unannotated rows.
+- Audit-informed policy script exists and reports `blocked_incomplete_annotations` until human labels are filled.
+- Case cards are regenerated under `reports/manual_audit/case_cards_by_stratum/`.
+
+Current expected rare-stratum underfills:
+
+- `TypeC_UNKNOWN_FORMAT_PRUNING_RETAINED_UNVERIFIED`: 2 selected of 5 requested.
+- `TypeC_UNKNOWN_FOCUS_QID_DOMAIN_REASONING`: 8 selected of 10 requested.
+- `TypeB_LOCAL_FOCUS_QID`: 0 selected of 10 requested.
+
+Operational commands:
+
+```bash
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python src/build_audit_sample.py --core-manifest reports/benchmark_selection/core_v1_seed_13.json --dev-manifest reports/benchmark_selection/dev_prompt_v1_seed_13.json --output-jsonl reports/manual_audit/audit_phase_d_v1_seed_13.jsonl --output-csv reports/manual_audit/audit_phase_d_v1_seed_13.csv --output-schema reports/manual_audit/audit_annotation_schema.json
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python src/audit_summarize.py --annotations reports/manual_audit/audit_phase_d_v1_seed_13.csv --out-json reports/manual_audit/audit_phase_d_v1_results.json --out-md reports/manual_audit/audit_phase_d_v1_summary.md
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python src/apply_audit_policy.py --annotations reports/manual_audit/audit_phase_d_v1_seed_13_annotated.csv --out-json reports/manual_audit/audit_phase_d_v1_policy.json --out-md reports/manual_audit/audit_phase_d_v1_policy.md
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python scripts/generate_manual_audit_case_cards.py --audit-csv reports/manual_audit/audit_phase_d_v1_seed_13.csv --classified-benchmark data/04_classified_benchmark.jsonl --output-dir reports/manual_audit/case_cards_by_stratum
+```
 
 ## 5. Phase E — Non-LLM baselines
 
