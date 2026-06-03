@@ -10,6 +10,7 @@ The implemented repository currently provides:
 - proposal validation and normalization for A-box and T-box outputs
 - track-diagnosis normalization for A-box vs T-box prediction
 - benchmark evaluation over frozen artifacts
+- deterministic non-LLM Phase E baselines
 - a zero-shot reasoning-floor baseline runner
 - deterministic train/dev/test split generation
 - a Guardian-ready proposal interface for future intervention loops
@@ -23,6 +24,7 @@ The repository does not currently provide Guardian multi-turn intervention loops
 - `src/select_benchmark_cases.py`: deterministic paper-subset manifest generation from Stage 4.
 - `src/splitter.py`: stage 5 deterministic train/dev/test splits.
 - `src/evaluate.py`: benchmark evaluation entry point for normalized proposal artifacts.
+- `src/non_llm_baselines.py`: Phase E deterministic non-LLM baseline generator and evaluator.
 - `src/reasoning_floor.py`: zero-shot baseline runner over Stage 4 benchmark cases.
 
 ## Runtime Convention
@@ -53,6 +55,7 @@ The repository does not currently provide Guardian multi-turn intervention loops
 | 4b | `src/select_benchmark_cases.py` | Build a deterministic evaluation subset manifest from Stage 4 | `reports/benchmark_selection/*.json` |
 | 5 | `src/splitter.py` | Create deterministic train/dev/test splits from Stage 4 output | `data/05_splits.json` |
 | 6 | `src/evaluate.py` | Score A-box and T-box proposals against frozen benchmark artifacts | `reports/evaluation_traces.jsonl`, `reports/evaluation_summary.json` |
+| 6b | `src/non_llm_baselines.py` | Generate and score Phase E non-LLM baselines over a selection manifest | `reports/non_llm_baselines/*` |
 | 7 | `src/reasoning_floor.py` | Run zero-shot baseline prompting over benchmark cases and score outputs | `reports/reasoning_floor/*` |
 
 ## Stage 1: Candidate Mining
@@ -210,6 +213,19 @@ Current behavior:
 
 The evaluation details and metric semantics are documented in [Evaluation Harness](./Evaluation_Harness.md).
 
+## Stage 6b: Non-LLM Baselines
+
+`src/non_llm_baselines.py` generates Phase E deterministic baselines over a selection manifest and scores them with the existing evaluator.
+
+Current baselines include:
+
+- majority and constant-track diagnosis predictions;
+- a conservative constraint-only TypeA proposal baseline;
+- a local lookup oracle for TypeB cases;
+- do-nothing and invalid/empty evaluator lower bounds.
+
+The default output bundle is `reports/non_llm_baselines/core_v1_phase_e/`. Details are documented in [Non-LLM Baselines](./Non_LLM_Baselines.md).
+
 ## Stage 7: Reasoning Floor
 
 `src/reasoning_floor.py` runs the zero-shot pre-Guardian baseline.
@@ -249,6 +265,7 @@ uv run python src/classifier.py --sample
 uv run python src/classifier.py --self-test
 uv run python src/splitter.py --sample
 uv run python src/evaluate.py --help
+uv run python src/non_llm_baselines.py --help
 uv run python src/reasoning_floor.py --help
 uv run python -m unittest tests/test_patch_parser.py tests/test_tbox_parser.py tests/test_evaluator.py tests/test_reasoning_floor.py
 ```

@@ -6,10 +6,12 @@ This area contains repository-facing documentation: how the benchmark is built, 
 - [Artifact Schemas](./Artifact_Schemas.md): structure of the Stage 2, Stage 3, Stage 4, and Stage 5 artifacts.
 - [Classifier Specification](./Classifier_Specification.md): current classification logic implemented in `src/classifier.py`.
 - [Phase B Completion](./implementation-plan-completions/00-phase_B_completion.md): classifier redesign completion note, audit artifacts, and verification.
+- [Phase E Completion](./implementation-plan-completions/00-phase_E_completion.md): non-LLM baseline implementation and generated core-v1 outputs.
 - [Confidence Frequency Report](./Confidence_Frequency_Report.md): script and JSON output for confidence-value frequencies by benchmark strata.
 - [Benchmark Selection](./Benchmark_Selection.md): deterministic paper-subset manifest generation and runtime filtering.
 - [Proposal Validation](./Proposal_Validation.md): A-box and T-box proposal normalization contracts and runtime modules.
 - [Evaluation Harness](./Evaluation_Harness.md): benchmark scoring workflow, outputs, and metric semantics.
+- [Non-LLM Baselines](./Non_LLM_Baselines.md): Phase E deterministic track, symbolic TypeA, local lookup, and evaluator lower-bound baselines.
 - [Reasoning Floor](./Reasoning_Floor.md): zero-shot baseline runner, ablation bundles, and provider interface.
 - [LLM Endpoint Smoke Test](./LLM_Endpoint_Smoke_Test.md): quick CLI checks for local Ollama, Azure AI, and university OpenAI-compatible endpoints.
 - [Reasoning Floor Viewer](./Reasoning_Floor_Viewer.md): Streamlit debugger for browsing runs, prompts, outputs, and evaluation traces.

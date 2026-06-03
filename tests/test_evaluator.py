@@ -12,6 +12,46 @@ class EvaluatorTests(unittest.TestCase):
             for row in rows:
                 fh.write(json.dumps(row) + "\n")
 
+    def test_invalid_python_regex_in_constraint_does_not_crash_regression_check(self) -> None:
+        from guardian.evaluator import evaluate_a_box_case
+        from guardian.patch_parser import normalize_proposal
+
+        record = {
+            "id": "repair_regex",
+            "qid": "Q1",
+            "property": "P1",
+            "track": "A_BOX",
+            "repair_target": {"action": "UPDATE", "old_value": ["old"], "new_value": ["new"]},
+            "classification": {"class": "TypeA", "subtype": "FORMAT_NORMALIZATION"},
+        }
+        world_state = {
+            "L1_ego_node": {"properties": {"P1": ["new"]}},
+            "L4_constraints": {
+                "constraints": [
+                    {
+                        "constraint_type": {"qid": "Q21502404"},
+                        "qualifiers": [{"property_id": "P1793", "values": [r"^\p{Lu}+$"]}],
+                    }
+                ]
+            },
+        }
+        proposal = normalize_proposal(
+            {
+                "case_id": "repair_regex",
+                "target": {"qid": "Q1", "pid": "P1"},
+                "ops": [{"op": "SET", "pid": "P1", "value": "new"}],
+                "rationale": "Normalize format.",
+                "provenance": [{"kind": "KG", "node_id": "P1"}],
+                "uncertainty": {"confidence": 0.8},
+            }
+        )
+
+        trace = evaluate_a_box_case(record, world_state, proposal, {}, {}, "mid", None)
+
+        self.assertTrue(trace["proposal_executable"])
+        self.assertEqual(trace["details"]["supported_violations_before"], 1)
+        self.assertEqual(trace["details"]["supported_violations_after"], 1)
+
     def test_a_box_and_t_box_evaluation(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)
@@ -125,8 +165,13 @@ class EvaluatorTests(unittest.TestCase):
                             ]
                         },
                         "rationale": "Expand the allowed set to match the historical repair.",
-                        "provenance": [{"kind": "KG", "node_id": "Q21510859", "snippet": "historical constraint family"}],
-                        "uncertainty": {"confidence": 0.15, "notes": "Signature order is deterministic after normalization."},
+                        "provenance": [
+                            {"kind": "KG", "node_id": "Q21510859", "snippet": "historical constraint family"}
+                        ],
+                        "uncertainty": {
+                            "confidence": 0.15,
+                            "notes": "Signature order is deterministic after normalization.",
+                        },
                     }
                 ],
             )

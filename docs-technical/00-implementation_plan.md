@@ -831,11 +831,15 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python scripts/generate_manual_audit_cas
 
 ## 5. Phase E — Non-LLM baselines
 
+**Completion status:** complete on 2026-06-03
+**Implementation update:** Phase E is implemented in `src/lib/non_llm_baselines.py` and `src/non_llm_baselines.py`, with generated core-v1 artifacts under `reports/non_llm_baselines/core_v1_phase_e/`.
+
 ### Task E1 — Implement majority and constant-track baselines
 
 **Type:** Repository implementation / evaluation
 **Dependencies:** C2
 **Output:** baseline diagnosis predictions
+**Status:** complete
 
 Baselines:
 
@@ -854,13 +858,14 @@ Baselines:
 
 **Acceptance criteria:**
 
-- LLM track-diagnosis results can be compared against trivial baselines.
+- complete. LLM track-diagnosis results can be compared against `majority_track`, `always_a_box`, `always_t_box`, and `always_ambiguous`, each with track accuracy, macro-F1, confusion matrix, A-box overuse rate, and T-box miss rate.
 
 ### Task E2 — Implement constraint-only Type A baseline
 
 **Type:** Repository implementation / evaluation
 **Dependencies:** B8, C2
 **Output:** symbolic repair proposals for supported TypeA cases
+**Status:** complete
 
 Baseline solves only supported deterministic cases:
 
@@ -878,13 +883,14 @@ Baseline solves only supported deterministic cases:
 
 **Acceptance criteria:**
 
-- Provides meaningful lower/upper reference for TypeA.
+- complete. `constraint_only_typea` writes normalized A-box proposals for supported deterministic TypeA cases and abstains elsewhere.
 
 ### Task E3 — Implement local lookup oracle
 
 **Type:** Repository implementation / evaluation
 **Dependencies:** B4, C2
 **Output:** local lookup proposals or oracle labels
+**Status:** complete
 
 This baseline checks whether TypeB labels are operational:
 
@@ -900,13 +906,14 @@ This baseline checks whether TypeB labels are operational:
 
 **Acceptance criteria:**
 
-- TypeB operationality can be validated independently of LLMs.
+- complete. `local_lookup_oracle` writes normalized A-box proposals for TypeB cases whose target values are locally visible or deterministically derivable, and records TypeB coverage.
 
 ### Task E4 — Implement invalid/do-nothing baseline
 
 **Type:** Repository implementation / evaluation sanity check
 **Dependencies:** C2
 **Output:** invalid or empty proposals
+**Status:** complete
 
 **Metrics:**
 
@@ -915,7 +922,26 @@ This baseline checks whether TypeB labels are operational:
 
 **Acceptance criteria:**
 
-- Evaluator does not accept invalid/no-op proposals except in explicitly allowed cases.
+- complete. `invalid_empty` has accepted rate 0.0000 and `do_nothing_pre_repair` has accepted rate 0.0083 on core-v1, exposing the evaluator lower bound.
+
+### Phase E completion output — completed 2026-06-03
+
+Phase E outputs are documented in [Non-LLM Baselines](./Non_LLM_Baselines.md).
+
+Generated artifacts:
+
+- `reports/non_llm_baselines/core_v1_phase_e/run_config.json`
+- `reports/non_llm_baselines/core_v1_phase_e/baseline_summary.json`
+- `reports/non_llm_baselines/core_v1_phase_e/baseline_summary.md`
+- per-baseline normalized predictions or proposals plus `evaluation_traces.jsonl`, `evaluation_summary.json`, and `baseline_summary.json`
+
+Current core-v1 headline checks:
+
+- majority/always-A-box track accuracy: 0.8758; always-T-box track accuracy: 0.1242; always-ambiguous track accuracy: 0.0000.
+- `constraint_only_typea`: TypeA coverage 0.6423; accepted rate 0.2942 over the full selected core.
+- `local_lookup_oracle`: TypeB coverage 0.9621; accepted rate 0.1844 over the full selected core.
+- `invalid_empty`: accepted rate 0.0000 with proposal parse-error rate 1.0000.
+- `do_nothing_pre_repair`: accepted rate 0.0083.
 
 ## 6. Phase F — Prompt development on dev only
 
@@ -1656,7 +1682,7 @@ If these claims cannot be supported, add Guardian-lite or expand the method cont
 - [ ] Add core/dev selection manifests.
 - [x] Add audit sample generator.
 - [x] Add audit annotation template.
-- [ ] Add non-LLM baselines.
+- [x] Add non-LLM baselines.
 - [ ] Add prompt representation variants.
 - [ ] Add few-shot exemplar selector with leakage controls.
 - [ ] Add optional abstention schema.

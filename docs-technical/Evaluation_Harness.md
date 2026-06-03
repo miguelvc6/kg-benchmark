@@ -43,6 +43,8 @@ Current A-box scoring:
 
 The first-wave regression check uses currently supported local constraint families represented in the stored constraint metadata.
 
+Stored Wikidata format regexes that are not valid Python `re` patterns are treated as non-matching during regression checks instead of aborting evaluation. This keeps benchmark scoring deterministic when Wikidata regex syntax uses features outside Python's regex engine.
+
 ## T-box Evaluation
 
 Current T-box scoring:

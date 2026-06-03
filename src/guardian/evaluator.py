@@ -8,13 +8,13 @@ from pathlib import Path
 from typing import Any, Callable, Iterable, Optional
 
 from classifier import VIOLATION_TO_CONSTRAINT_MAP, WorldStateStore
+from guardian.patch_parser import normalize_proposal as normalize_a_box_proposal
+from guardian.tbox_parser import normalize_proposal as normalize_t_box_proposal
+from guardian.tbox_parser import normalize_signature_after as normalize_t_box_signature_after
+from guardian.track_parser import normalize_diagnosis as normalize_track_diagnosis
 from lib.benchmark_selection import resolve_case_id_filter
 from lib.repair_state import comparable_atom, normalize_value_list, reconstruct_properties_with_pre_repair_target
 from lib.utils import iter_jsonl, normalize_text
-from guardian.patch_parser import normalize_proposal as normalize_a_box_proposal
-from guardian.track_parser import normalize_diagnosis as normalize_track_diagnosis
-from guardian.tbox_parser import normalize_proposal as normalize_t_box_proposal
-from guardian.tbox_parser import normalize_signature_after as normalize_t_box_signature_after
 
 FORMAT_QIDS = {"Q21502404"}
 ONE_OF_QIDS = {"Q21510859", "Q21502402"}
@@ -248,6 +248,15 @@ def _parse_numeric(value: str) -> Optional[float]:
         return None
 
 
+def _safe_regex_fullmatch(pattern: str, value: str) -> bool:
+    import re
+
+    try:
+        return re.fullmatch(pattern, value) is not None
+    except re.error:
+        return False
+
+
 def _supported_constraint_violations(
     properties: dict[str, list[str]],
     property_id: str,
@@ -264,11 +273,9 @@ def _supported_constraint_violations(
             patterns = _qualifier_values(constraint, "P1793")
             if not patterns:
                 continue
-            import re
-
             matched = True
             for value in target_values:
-                if not any(re.fullmatch(pattern, value) for pattern in patterns):
+                if not any(_safe_regex_fullmatch(pattern, value) for pattern in patterns):
                     matched = False
                     break
             if not matched:
@@ -300,7 +307,10 @@ def _supported_constraint_violations(
     return violations
 
 
-def _reconstruct_pre_repair_properties(record: dict[str, Any], world_state_entry: dict[str, Any]) -> dict[str, list[str]]:
+def _reconstruct_pre_repair_properties(
+    record: dict[str, Any],
+    world_state_entry: dict[str, Any],
+) -> dict[str, list[str]]:
     properties = copy.deepcopy(world_state_entry.get("L1_ego_node", {}).get("properties", {}))
     return reconstruct_properties_with_pre_repair_target(record, properties)
 
@@ -509,7 +519,9 @@ def _mapped_constraint_qid(record: dict[str, Any]) -> str | None:
     violation_context = record.get("violation_context")
     if not isinstance(violation_context, dict):
         return None
-    violation_name = violation_context.get("report_violation_type_normalized") or violation_context.get("report_violation_type")
+    violation_name = violation_context.get("report_violation_type_normalized") or violation_context.get(
+        "report_violation_type"
+    )
     if not isinstance(violation_name, str):
         return None
     normalized_mapping = {normalize_text(key): value for key, value in VIOLATION_TO_CONSTRAINT_MAP.items()}
@@ -534,7 +546,9 @@ def _historical_constraint_context(
         constraint_delta.get("signature_after") or constraint_delta.get("new_constraints")
     )
     if not changed_constraint_types:
-        changed_constraint_types = set(_signature_constraint_qids(signature_after) + _signature_constraint_qids(signature_before))
+        changed_constraint_types = set(
+            _signature_constraint_qids(signature_after) + _signature_constraint_qids(signature_before)
+        )
     mapped_constraint_qid = _mapped_constraint_qid(record)
     target_constraint_qid = None
     if isinstance(mapped_constraint_qid, str):
@@ -551,7 +565,10 @@ def _historical_constraint_context(
     return changed_constraint_types, signature_before, signature_after, target_constraint_qid
 
 
-def _signature_qualifiers_for_constraint(signature: list[dict[str, Any]], constraint_qid: str | None) -> list[dict[str, Any]]:
+def _signature_qualifiers_for_constraint(
+    signature: list[dict[str, Any]],
+    constraint_qid: str | None,
+) -> list[dict[str, Any]]:
     qualifiers: list[dict[str, Any]] = []
     if not isinstance(constraint_qid, str) or not constraint_qid:
         return qualifiers
@@ -779,9 +796,7 @@ def _proposal_admits_current_values(
         ]
         if not patterns:
             return None
-        import re
-
-        return all(any(re.fullmatch(pattern, value) for pattern in patterns) for value in current_values)
+        return all(any(_safe_regex_fullmatch(pattern, value) for pattern in patterns) for value in current_values)
     return None
 
 
@@ -1070,7 +1085,9 @@ def evaluate_track_diagnosis(
         "ambiguous_prediction": ambiguous_prediction,
         "confidence": confidence,
         "rationale": rationale,
-        "provider_error": provider_error.strip() if isinstance(provider_error, str) and provider_error.strip() else None,
+        "provider_error": (
+            provider_error.strip() if isinstance(provider_error, str) and provider_error.strip() else None
+        ),
         "token_usage": _token_usage(manifest_record),
     }
 
@@ -1421,7 +1438,11 @@ def evaluate_benchmark(
         "ablation_bundle": ablation_bundle,
         "selection_manifest": str(selection_manifest_path) if selection_manifest_path else None,
     }
-    summary = summarize_trace_iterable(iter_jsonl(out_traces_path), inputs) if out_traces_path else summarize_traces(traces, inputs)
+    summary = (
+        summarize_trace_iterable(iter_jsonl(out_traces_path), inputs)
+        if out_traces_path
+        else summarize_traces(traces, inputs)
+    )
     if out_summary_path:
         write_json(out_summary_path, summary)
 

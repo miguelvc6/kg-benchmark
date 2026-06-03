@@ -1,0 +1,16 @@
+{
+  "created_at_utc": "2026-06-03T12:52:01Z",
+  "inputs": {
+    "classified_benchmark": "data/04_classified_benchmark.jsonl",
+    "selection_manifest": "reports/benchmark_selection/core_v1_seed_13.json",
+    "world_state": "data/03_world_state.json"
+  },
+  "manifest_type": "phase_e_non_llm_baseline_run",
+  "manifest_version": "phase_e_v1",
+  "selected_cases": 4800,
+  "selected_track_counts": {
+    "A_BOX": 4204,
+    "T_BOX": 596
+  },
+  "tier": "core"
+}

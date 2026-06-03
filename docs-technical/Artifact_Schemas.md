@@ -314,6 +314,33 @@ The summary aggregates results by:
 - ablation bundle
 - popularity bucket
 
+## Non-LLM Baseline Artifacts
+
+`src/non_llm_baselines.py` writes a Phase E run directory under `reports/non_llm_baselines/`.
+
+The default core-v1 directory is `reports/non_llm_baselines/core_v1_phase_e/` and contains:
+
+- `run_config.json`
+- `baseline_summary.json`
+- `baseline_summary.md`
+- one subdirectory per non-LLM baseline
+
+Track-diagnosis baseline directories contain:
+
+- `track_diagnoses.jsonl`
+- `evaluation_traces.jsonl`
+- `evaluation_summary.json`
+- `baseline_summary.json`
+
+Proposal baseline directories contain:
+
+- `a_box_proposals.jsonl`
+- `evaluation_traces.jsonl`
+- `evaluation_summary.json`
+- `baseline_summary.json`
+
+The `invalid_empty` baseline intentionally does not write normalized proposal JSONL. It writes `raw_invalid_proposals.jsonl` plus a `run_manifest.jsonl` with proposal `parse_error` rows so evaluator lower-bound behavior can be measured without feeding malformed proposals into the normalizers.
+
 ## Reasoning-Floor Artifacts
 
 `src/reasoning_floor.py` writes a run directory under `reports/reasoning_floor/` containing:
