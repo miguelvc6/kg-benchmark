@@ -5,87 +5,87 @@
     "rate": null
   },
   "Tbox_causal_precision": {
-    "denominator": 0,
-    "numerator": 0,
-    "rate": null
+    "denominator": 51,
+    "numerator": 51,
+    "rate": 1.0
   },
   "Tbox_coincidental_rate": {
-    "denominator": 0,
-    "numerator": 0,
-    "rate": null
+    "denominator": 27,
+    "numerator": 27,
+    "rate": 1.0
   },
   "Tbox_polarity_error_rate": {
-    "denominator": 0,
+    "denominator": 108,
     "numerator": 0,
-    "rate": null
+    "rate": 0.0
   },
   "Tbox_unknown_causality_rate": {
-    "denominator": 0,
+    "denominator": 108,
     "numerator": 0,
-    "rate": null
+    "rate": 0.0
   },
   "TypeA_overclaim_rate": {
-    "denominator": 0,
+    "denominator": 23,
     "numerator": 0,
-    "rate": null
+    "rate": 0.0
   },
   "TypeB_leakage_suspicion_rate": {
-    "denominator": 0,
+    "denominator": 77,
     "numerator": 0,
-    "rate": null
+    "rate": 0.0
   },
   "TypeB_local_derived_precision": {
-    "denominator": 0,
-    "numerator": 0,
-    "rate": null
+    "denominator": 22,
+    "numerator": 22,
+    "rate": 1.0
   },
   "TypeB_local_precision": {
-    "denominator": 0,
-    "numerator": 0,
-    "rate": null
+    "denominator": 77,
+    "numerator": 76,
+    "rate": 0.987012987012987
   },
   "TypeC_confirmed_external_rate": {
-    "denominator": 0,
+    "denominator": 62,
     "numerator": 0,
-    "rate": null
+    "rate": 0.0
   },
   "TypeC_local_missed_rate": {
-    "denominator": 0,
+    "denominator": 62,
     "numerator": 0,
-    "rate": null
+    "rate": 0.0
   },
   "TypeC_unknown_or_incomplete_rate": {
-    "denominator": 0,
-    "numerator": 0,
-    "rate": null
+    "denominator": 102,
+    "numerator": 36,
+    "rate": 0.35294117647058826
   },
-  "annotation_completeness_rate": 0.0,
-  "complete_row_count": 0,
+  "annotation_completeness_rate": 0.94,
+  "complete_row_count": 423,
   "diagnostic_or_exclude_rate": {
-    "denominator": 0,
-    "numerator": 0,
-    "rate": null
+    "denominator": 423,
+    "numerator": 92,
+    "rate": 0.21749408983451538
   },
   "label_precision_by_stratum": {
     "TBOX_COINCIDENTAL_SCHEMA_CHANGE": {
-      "denominator": 0,
-      "numerator": 0,
-      "rate": null
+      "denominator": 27,
+      "numerator": 27,
+      "rate": 1.0
     },
     "TBOX_DIRECTIONAL_RELAXATION_OR_RESTRICTION": {
-      "denominator": 0,
-      "numerator": 0,
-      "rate": null
+      "denominator": 25,
+      "numerator": 25,
+      "rate": 1.0
     },
     "TBOX_SCHEMA_UPDATE": {
-      "denominator": 0,
-      "numerator": 0,
-      "rate": null
+      "denominator": 26,
+      "numerator": 26,
+      "rate": 1.0
     },
     "TBOX_UNKNOWN_TBOX_CAUSALITY": {
-      "denominator": 0,
+      "denominator": 30,
       "numerator": 0,
-      "rate": null
+      "rate": 0.0
     },
     "TypeA_DELETE_AMBIGUOUS": {
       "denominator": 0,
@@ -93,102 +93,102 @@
       "rate": null
     },
     "TypeA_FORMAT_NORMALIZATION": {
-      "denominator": 0,
-      "numerator": 0,
-      "rate": null
+      "denominator": 26,
+      "numerator": 26,
+      "rate": 1.0
     },
     "TypeA_FORMAT_VALUE_PRUNING": {
-      "denominator": 0,
-      "numerator": 0,
-      "rate": null
+      "denominator": 26,
+      "numerator": 26,
+      "rate": 1.0
     },
     "TypeA_MULTIPLICITY_NORMALIZATION": {
-      "denominator": 0,
-      "numerator": 0,
-      "rate": null
+      "denominator": 10,
+      "numerator": 10,
+      "rate": 1.0
     },
     "TypeA_REJECTION_FORMAT_INVALID": {
-      "denominator": 0,
-      "numerator": 0,
-      "rate": null
+      "denominator": 23,
+      "numerator": 23,
+      "rate": 1.0
     },
     "TypeA_SELF_LINK_REJECTION": {
-      "denominator": 0,
-      "numerator": 0,
-      "rate": null
+      "denominator": 15,
+      "numerator": 15,
+      "rate": 1.0
     },
     "TypeA_SET_MEMBERSHIP_REJECTION": {
-      "denominator": 0,
-      "numerator": 0,
-      "rate": null
+      "denominator": 26,
+      "numerator": 26,
+      "rate": 1.0
     },
     "TypeA_TARGET_REQUIRED_CLAIM": {
-      "denominator": 0,
-      "numerator": 0,
-      "rate": null
+      "denominator": 10,
+      "numerator": 10,
+      "rate": 1.0
     },
     "TypeB_LOCAL_SELECTION_CONFIRMED": {
-      "denominator": 0,
-      "numerator": 0,
-      "rate": null
+      "denominator": 30,
+      "numerator": 30,
+      "rate": 1.0
     },
     "TypeB_LOCAL_TEXT_CONFIRMED": {
-      "denominator": 0,
-      "numerator": 0,
-      "rate": null
+      "denominator": 25,
+      "numerator": 24,
+      "rate": 0.96
     },
     "TypeB_LOCAL_TEXT_DERIVED": {
-      "denominator": 0,
-      "numerator": 0,
-      "rate": null
+      "denominator": 22,
+      "numerator": 22,
+      "rate": 1.0
     },
     "TypeC_EXTERNAL_BY_ELIMINATION_LITERAL_TRUTH": {
-      "denominator": 0,
-      "numerator": 0,
-      "rate": null
+      "denominator": 31,
+      "numerator": 27,
+      "rate": 0.8709677419354839
     },
     "TypeC_EXTERNAL_BY_ELIMINATION_QID_TRUTH": {
-      "denominator": 0,
-      "numerator": 0,
-      "rate": null
+      "denominator": 31,
+      "numerator": 31,
+      "rate": 1.0
     },
     "TypeC_UNKNOWN_BAD_TARGET_OR_CONTEXT": {
-      "denominator": 0,
-      "numerator": 0,
-      "rate": null
+      "denominator": 10,
+      "numerator": 2,
+      "rate": 0.2
     },
     "TypeC_UNKNOWN_FOCUS_QID_DOMAIN_REASONING": {
-      "denominator": 0,
-      "numerator": 0,
-      "rate": null
+      "denominator": 8,
+      "numerator": 8,
+      "rate": 1.0
     },
     "TypeC_UNKNOWN_FORMAT_PRUNING_RETAINED_UNVERIFIED": {
-      "denominator": 0,
-      "numerator": 0,
-      "rate": null
+      "denominator": 2,
+      "numerator": 2,
+      "rate": 1.0
     },
     "TypeC_UNKNOWN_MULTIPLICITY_ARTIFACT": {
-      "denominator": 0,
-      "numerator": 0,
-      "rate": null
+      "denominator": 5,
+      "numerator": 5,
+      "rate": 1.0
     },
     "TypeC_UNKNOWN_OR_SPARSE_DIAGNOSTIC": {
-      "denominator": 0,
-      "numerator": 0,
-      "rate": null
+      "denominator": 5,
+      "numerator": 1,
+      "rate": 0.2
     },
     "TypeC_UNKNOWN_SELECTION_AMBIGUOUS": {
-      "denominator": 0,
-      "numerator": 0,
-      "rate": null
+      "denominator": 10,
+      "numerator": 10,
+      "rate": 1.0
     }
   },
   "main_score_keep_rate": {
-    "denominator": 0,
-    "numerator": 0,
-    "rate": null
+    "denominator": 326,
+    "numerator": 305,
+    "rate": 0.9355828220858896
   },
   "partially_annotated_row_count": 0,
   "row_count": 450,
-  "unannotated_row_count": 450
+  "unannotated_row_count": 27
 }
