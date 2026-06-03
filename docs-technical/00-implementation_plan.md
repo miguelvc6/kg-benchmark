@@ -546,11 +546,11 @@ Required stratification keys:
 
 ### Phase C completion output — completed 2026-05-22
 
-Phase C is completed in `00-phase_C_completion.md`. The repository implementation is in `src/lib/benchmark_selection.py`, `src/select_benchmark_cases.py`, and the group-key bridge in `src/splitter.py`. Phase D readiness artifacts and current audit policy are described below.
+Phase C is completed in `00-phase_C_completion.md`. The repository implementation is in `src/lib/benchmark_selection.py`, `src/select_benchmark_cases.py`, and the group-key bridge in `src/splitter.py`. Phase D audit artifacts and current audit policy are described below.
 
 ## 4. Phase D — Classification audit
 
-**Completion status:** readiness artifacts complete; human annotation pending
+**Completion status:** complete on 2026-06-03
 
 **Implementation update:** Phase D now uses the deterministic audit builder in `src/lib/manual_audit.py` and `src/build_audit_sample.py`, the summary script in `src/audit_summarize.py`, and generated case cards from `scripts/generate_manual_audit_case_cards.py`.
 
@@ -558,9 +558,12 @@ Phase C is completed in `00-phase_C_completion.md`. The repository implementatio
 
 - `reports/manual_audit/audit_phase_d_v1_seed_13.jsonl`
 - `reports/manual_audit/audit_phase_d_v1_seed_13.csv`
+- `reports/manual_audit/audit_phase_d_v1_seed_13_annotated.csv`
 - `reports/manual_audit/audit_annotation_schema.json`
 - `reports/manual_audit/audit_phase_d_v1_results.json`
 - `reports/manual_audit/audit_phase_d_v1_summary.md`
+- `reports/manual_audit/audit_phase_d_v1_policy.json`
+- `reports/manual_audit/audit_phase_d_v1_policy.md`
 - `reports/manual_audit/case_cards_by_stratum/`
 
 ### Phase D decision summary
@@ -580,7 +583,7 @@ The audit is no longer a broad sample of old `LOCAL_TEXT`, `LOCAL_FOCUS_PREREPAI
 **Dependencies:** B10, C1
 **Output:** `reports/manual_audit/audit_phase_d_v1_seed_13.jsonl` and `.csv`
 
-**Status:** readiness complete
+**Status:** complete
 
 Build a deterministic 450-case sample from the canonical lean Stage 4 file and the Phase C dev/core manifests:
 
@@ -658,7 +661,7 @@ Sampling policy:
 **Dependencies:** D1
 **Output:** `reports/manual_audit/audit_annotation_schema.json`
 
-**Status:** readiness complete
+**Status:** complete
 
 The audit schema contains prefilled classifier and split metadata plus human annotation fields.
 
@@ -716,7 +719,7 @@ Rubric additions:
 **Dependencies:** D2
 **Output:** audit labels and notes
 
-**Status:** pending human annotation
+**Status:** complete
 
 Audit each sampled case.
 
@@ -746,7 +749,7 @@ Audit each sampled case.
 **Dependencies:** D3
 **Output:** `reports/manual_audit/audit_phase_d_v1_policy.json` and `.md`
 
-**Status:** repository implementation complete; blocked on human annotation values
+**Status:** complete
 
 Define which cases count in main core vs challenge/diagnostic:
 
@@ -786,9 +789,9 @@ Without `--require-complete`, the script writes a blocked/incomplete report that
 - Audit-informed policy report is `ready` only after every sampled case has human annotation values.
 - Incomplete annotation files produce `blocked_incomplete_annotations`, not a paper-facing policy claim.
 
-### Phase D readiness output — completed before human audit
+### Phase D validation output
 
-Readiness artifacts have been regenerated from the canonical lean Stage 4 file `data/04_classified_benchmark.jsonl`.
+Audit artifacts have been regenerated from the canonical lean Stage 4 file `data/04_classified_benchmark.jsonl`, and the annotated CSV has been summarized into the current Phase D reports.
 
 Current validation:
 
@@ -803,8 +806,12 @@ Current validation:
 - Core diagnostic subtypes in main score: 0.
 - Audit sample rows: 450.
 - Audit JSONL validates against `audit_annotation_schema.json`.
-- Manual-audit summary handles the unannotated CSV and reports 450 unannotated rows.
-- Audit-informed policy script exists and reports `blocked_incomplete_annotations` until human labels are filled.
+- Annotated audit rows: 450 complete, 0 unannotated.
+- Manual-audit summary reports annotation completeness 1.0000.
+- Audit-informed policy report status: `ready`.
+- Audit-informed policy main case IDs: 305.
+- Unknown/low-confidence cases in audit policy main case IDs: 0.
+- Diagnostic/unknown strata in audit policy main case IDs: 0.
 - Case cards are regenerated under `reports/manual_audit/case_cards_by_stratum/`.
 
 Current expected rare-stratum underfills:
@@ -817,7 +824,7 @@ Operational commands:
 
 ```bash
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python src/build_audit_sample.py --core-manifest reports/benchmark_selection/core_v1_seed_13.json --dev-manifest reports/benchmark_selection/dev_prompt_v1_seed_13.json --output-jsonl reports/manual_audit/audit_phase_d_v1_seed_13.jsonl --output-csv reports/manual_audit/audit_phase_d_v1_seed_13.csv --output-schema reports/manual_audit/audit_annotation_schema.json
-UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python src/audit_summarize.py --annotations reports/manual_audit/audit_phase_d_v1_seed_13.csv --out-json reports/manual_audit/audit_phase_d_v1_results.json --out-md reports/manual_audit/audit_phase_d_v1_summary.md
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python src/audit_summarize.py --annotations reports/manual_audit/audit_phase_d_v1_seed_13_annotated.csv --out-json reports/manual_audit/audit_phase_d_v1_results.json --out-md reports/manual_audit/audit_phase_d_v1_summary.md
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python src/apply_audit_policy.py --annotations reports/manual_audit/audit_phase_d_v1_seed_13_annotated.csv --out-json reports/manual_audit/audit_phase_d_v1_policy.json --out-md reports/manual_audit/audit_phase_d_v1_policy.md
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python scripts/generate_manual_audit_case_cards.py --audit-csv reports/manual_audit/audit_phase_d_v1_seed_13.csv --classified-benchmark data/04_classified_benchmark.jsonl --output-dir reports/manual_audit/case_cards_by_stratum
 ```
@@ -1647,8 +1654,8 @@ If these claims cannot be supported, add Guardian-lite or expand the method cont
 - [ ] Add classifier unit tests.
 - [ ] Add old/new transition matrix script.
 - [ ] Add core/dev selection manifests.
-- [ ] Add audit sample generator.
-- [ ] Add audit annotation template.
+- [x] Add audit sample generator.
+- [x] Add audit annotation template.
 - [ ] Add non-LLM baselines.
 - [ ] Add prompt representation variants.
 - [ ] Add few-shot exemplar selector with leakage controls.
