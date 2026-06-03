@@ -808,6 +808,24 @@ def _metric_from_rows(rows: list[dict[str, str]], field: str, good_values: set[s
     return {"numerator": numerator, "denominator": len(annotated), "rate": _rate(numerator, len(annotated))}
 
 
+def _typec_good_values_for_stratum(stratum: str) -> set[str]:
+    if stratum in {
+        "TypeC_EXTERNAL_BY_ELIMINATION_QID_TRUTH",
+        "TypeC_EXTERNAL_BY_ELIMINATION_LITERAL_TRUTH",
+    }:
+        return {"external_confirmed", "external_by_elimination_ok"}
+    if stratum == "TypeC_UNKNOWN_BAD_TARGET_OR_CONTEXT":
+        return {"bad_target", "unknown_or_incomplete"}
+    if stratum.startswith("TypeC_UNKNOWN"):
+        return {"unknown_or_incomplete", "bad_target"}
+    return {
+        "external_confirmed",
+        "external_by_elimination_ok",
+        "unknown_or_incomplete",
+        "bad_target",
+    }
+
+
 def _bool_from_csv(value: Any) -> bool:
     return str(value).strip().lower() in {"true", "1", "yes"}
 
@@ -844,7 +862,7 @@ def summarize_annotations(rows: list[dict[str, str]]) -> dict[str, Any]:
             by_stratum[stratum] = _metric_from_rows(
                 stratum_rows,
                 "typec_judgment",
-                {"external_confirmed", "external_by_elimination_ok", "unknown_or_incomplete"},
+                _typec_good_values_for_stratum(stratum),
             )
         elif stratum.startswith("TypeA_DELETE"):
             by_stratum[stratum] = _metric_from_rows(stratum_rows, "typea_judgment", {"delete_ambiguous_ok"})

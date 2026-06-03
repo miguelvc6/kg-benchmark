@@ -397,6 +397,62 @@ class ManualAuditTests(unittest.TestCase):
         self.assertEqual(summary["TypeA_overclaim_rate"]["rate"], 1.0)
         self.assertEqual(summary["diagnostic_or_exclude_rate"]["rate"], 2 / 3)
 
+    def test_label_precision_uses_stratum_specific_good_values(self) -> None:
+        def row(case_id: str, cls: str, subtype: str, stratum: str, field: str, judgment: str) -> dict[str, str]:
+            values = {name: "" for name in AUDIT_FIELDNAMES}
+            values.update(
+                {
+                    "case_id": case_id,
+                    "class": cls,
+                    "subtype": subtype,
+                    "selection_stratum": stratum,
+                    field: judgment,
+                }
+            )
+            return values
+
+        rows = [
+            row(
+                "typec-bad-target",
+                "TypeC",
+                "UNKNOWN_BAD_TARGET_OR_CONTEXT",
+                "TypeC_UNKNOWN_BAD_TARGET_OR_CONTEXT",
+                "typec_judgment",
+                "bad_target",
+            ),
+            row(
+                "typec-elim",
+                "TypeC",
+                "EXTERNAL_BY_ELIMINATION",
+                "TypeC_EXTERNAL_BY_ELIMINATION_QID_TRUTH",
+                "typec_judgment",
+                "external_by_elimination_ok",
+            ),
+            row(
+                "tbox-unknown",
+                "T_BOX",
+                "UNKNOWN_TBOX_CAUSALITY",
+                "TBOX_UNKNOWN_TBOX_CAUSALITY",
+                "tbox_judgment",
+                "unknown_causality",
+            ),
+            row(
+                "typeb-selection",
+                "TypeB",
+                "LOCAL_SELECTION_CONFIRMED",
+                "TypeB_LOCAL_SELECTION_CONFIRMED",
+                "typeb_judgment",
+                "local_confirmed",
+            ),
+        ]
+
+        by_stratum = summarize_annotations(rows)["label_precision_by_stratum"]
+
+        self.assertEqual(by_stratum["TypeC_UNKNOWN_BAD_TARGET_OR_CONTEXT"]["rate"], 1.0)
+        self.assertEqual(by_stratum["TypeC_EXTERNAL_BY_ELIMINATION_QID_TRUTH"]["rate"], 1.0)
+        self.assertEqual(by_stratum["TBOX_UNKNOWN_TBOX_CAUSALITY"]["rate"], 1.0)
+        self.assertEqual(by_stratum["TypeB_LOCAL_SELECTION_CONFIRMED"]["rate"], 1.0)
+
     def test_summary_handles_unannotated_rows_without_crashing(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             path = Path(tmp_dir) / "audit.csv"

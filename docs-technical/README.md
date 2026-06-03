@@ -11,6 +11,7 @@ This area contains repository-facing documentation: how the benchmark is built, 
 - [Proposal Validation](./Proposal_Validation.md): A-box and T-box proposal normalization contracts and runtime modules.
 - [Evaluation Harness](./Evaluation_Harness.md): benchmark scoring workflow, outputs, and metric semantics.
 - [Reasoning Floor](./Reasoning_Floor.md): zero-shot baseline runner, ablation bundles, and provider interface.
+- [LLM Endpoint Smoke Test](./LLM_Endpoint_Smoke_Test.md): quick CLI checks for local Ollama, Azure AI, and university OpenAI-compatible endpoints.
 - [Reasoning Floor Viewer](./Reasoning_Floor_Viewer.md): Streamlit debugger for browsing runs, prompts, outputs, and evaluation traces.
 - [Track Diagnosis](./Track_Diagnosis.md): separate A-box vs T-box diagnostic task and scoring outputs.
 - [T-BOX Update Analysis](./TBox_Update_Analysis.md): streaming frequency analysis for property-level T-box revisions in Stage 4.

@@ -1,8 +1,8 @@
 {
   "Delete_ambiguity_confirmation_rate": {
-    "denominator": 0,
-    "numerator": 0,
-    "rate": null
+    "denominator": 27,
+    "numerator": 27,
+    "rate": 1.0
   },
   "Tbox_causal_precision": {
     "denominator": 51,
@@ -21,8 +21,8 @@
   },
   "Tbox_unknown_causality_rate": {
     "denominator": 108,
-    "numerator": 0,
-    "rate": 0.0
+    "numerator": 30,
+    "rate": 0.2777777777777778
   },
   "TypeA_overclaim_rate": {
     "denominator": 23,
@@ -59,12 +59,12 @@
     "numerator": 36,
     "rate": 0.35294117647058826
   },
-  "annotation_completeness_rate": 0.94,
-  "complete_row_count": 423,
+  "annotation_completeness_rate": 1.0,
+  "complete_row_count": 450,
   "diagnostic_or_exclude_rate": {
-    "denominator": 423,
-    "numerator": 92,
-    "rate": 0.21749408983451538
+    "denominator": 450,
+    "numerator": 119,
+    "rate": 0.2644444444444444
   },
   "label_precision_by_stratum": {
     "TBOX_COINCIDENTAL_SCHEMA_CHANGE": {
@@ -84,13 +84,13 @@
     },
     "TBOX_UNKNOWN_TBOX_CAUSALITY": {
       "denominator": 30,
-      "numerator": 0,
-      "rate": 0.0
+      "numerator": 30,
+      "rate": 1.0
     },
     "TypeA_DELETE_AMBIGUOUS": {
-      "denominator": 0,
-      "numerator": 0,
-      "rate": null
+      "denominator": 27,
+      "numerator": 27,
+      "rate": 1.0
     },
     "TypeA_FORMAT_NORMALIZATION": {
       "denominator": 26,
@@ -154,8 +154,8 @@
     },
     "TypeC_UNKNOWN_BAD_TARGET_OR_CONTEXT": {
       "denominator": 10,
-      "numerator": 2,
-      "rate": 0.2
+      "numerator": 10,
+      "rate": 1.0
     },
     "TypeC_UNKNOWN_FOCUS_QID_DOMAIN_REASONING": {
       "denominator": 8,
@@ -190,5 +190,5 @@
   },
   "partially_annotated_row_count": 0,
   "row_count": 450,
-  "unannotated_row_count": 27
+  "unannotated_row_count": 0
 }
