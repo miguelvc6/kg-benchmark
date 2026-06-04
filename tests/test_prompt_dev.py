@@ -5,10 +5,13 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from guardian.model_provider import StaticResponseProvider
 from lib.prompt_dev import (
+    PromptDevEvaluateOptions,
     PromptDevMatrixOptions,
     PromptDevRenderOptions,
     build_prompt_dev_matrix,
+    evaluate_prompt_dev_prompts,
     render_prompt_dev_prompts,
     select_examples,
 )
@@ -156,6 +159,72 @@ class PromptDevTests(unittest.TestCase):
             self.assertEqual(summary["counts"]["rendered_prompts"], 2)
             self.assertTrue((root / "out" / "prompt_dev_rendered_prompts.jsonl").exists())
             self.assertTrue((root / "out" / "prompt_dev_prompt_review.md").exists())
+
+    def test_evaluate_prompts_writes_dev_scoring_artifacts_with_static_provider(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            classified = root / "classified.jsonl"
+            records = [_abox_record("abox", "Q1", "P1"), _tbox_record("tbox", "Q2", "P2")]
+            classified.write_text("\n".join(json.dumps(record) for record in records) + "\n", encoding="utf-8")
+            manifest = root / "dev.json"
+            manifest.write_text(json.dumps({"selected_case_ids": ["abox", "tbox"]}), encoding="utf-8")
+            world_state = root / "world.json"
+            world_state.write_text("{}", encoding="utf-8")
+
+            def resolver(metadata: dict) -> dict:
+                if metadata["task_type"] == "track_diagnosis":
+                    return {
+                        "case_id": metadata["case_id"],
+                        "predicted_track": metadata["historical_track"],
+                        "confidence": "high",
+                        "rationale": "static test diagnosis",
+                    }
+                if metadata["proposal_track_used"] == "T_BOX":
+                    return {
+                        "case_id": metadata["case_id"],
+                        "target": {"pid": "P2", "constraint_type_qid": "Q21510859"},
+                        "proposal": {
+                            "action": "RELAXATION_SET_EXPANSION",
+                            "signature_after": [
+                                {
+                                    "constraint_qid": "Q21510859",
+                                    "snaktype": "VALUE",
+                                    "rank": "normal",
+                                    "qualifiers": [{"property_id": "P2305", "values": ["Q5"]}],
+                                }
+                            ],
+                        },
+                    }
+                return {
+                    "case_id": metadata["case_id"],
+                    "target": {"qid": "Q1", "pid": "P1"},
+                    "ops": [{"op": "SET", "pid": "P1", "value": "Q5", "rank": "normal"}],
+                }
+
+            summary = evaluate_prompt_dev_prompts(
+                PromptDevEvaluateOptions(
+                    classified_benchmark=classified,
+                    world_state=world_state,
+                    dev_manifest=manifest,
+                    output_dir=root / "eval",
+                    max_cases=2,
+                    representations=("hybrid_json_nl",),
+                    example_policies=("zero_shot",),
+                    context_bundles=("minimal_case",),
+                    tasks=("track_diagnosis", "repair_proposal"),
+                    repair_track_modes=("oracle",),
+                ),
+                provider=StaticResponseProvider(resolver, provider_name="static", model="static-model"),
+            )
+
+            self.assertEqual(summary["counts"]["evaluated_prompts"], 4)
+            self.assertEqual(summary["counts"]["matrix_rows"], 2)
+            self.assertTrue((root / "eval" / "prompt_dev_evaluation_summary.json").exists())
+            self.assertTrue((root / "eval" / "prompt_dev_evaluation_comparison.md").exists())
+            for result in summary["results"]:
+                matrix_dir = Path(result["output_dir"])
+                self.assertTrue((matrix_dir / "run_manifest.jsonl").exists())
+                self.assertTrue((matrix_dir / "evaluation_summary.json").exists())
 
 
 if __name__ == "__main__":

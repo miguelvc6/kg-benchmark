@@ -79,6 +79,41 @@ This writes:
 
 The render command opens the Stage 4 artifact and world-state index, builds the same sanitized context bundles used by the reasoning-floor runner, selects dev-only few-shot examples when requested, and writes prompts for manual review. It does not run LLM inference.
 
+## Evaluate Prompt Variants On The Dev Manifest
+
+After static review, run selected prompt variants on the dev manifest only:
+
+```bash
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-prompt-dev evaluate \
+  --classified-benchmark data/04_classified_benchmark.jsonl \
+  --world-state data/03_world_state.json \
+  --dev-manifest reports/benchmark_selection/dev_prompt_v1_seed_13.json \
+  --core-manifest reports/benchmark_selection/core_v1_seed_13.json \
+  --output-dir reports/prompt_dev/evaluation_prompt_dev_v1 \
+  --model-endpoint ollama \
+  --max-cases 24 \
+  --representations hybrid_json_nl,pure_nl \
+  --example-policies zero_shot,matched_2shot \
+  --context-bundles logic_only,local_graph \
+  --tasks track_diagnosis,repair_proposal \
+  --repair-track-modes oracle
+```
+
+`evaluate` runs LLM inference. Keep it restricted to the dev manifest and do not use it on the frozen core selection.
+
+The command writes:
+
+- `rendered_prompts/` with the prompt pack used for the run
+- `matrices/<matrix_id>/raw_model_responses.jsonl`
+- `matrices/<matrix_id>/run_manifest.jsonl`
+- `matrices/<matrix_id>/a_box_proposals.jsonl`, `t_box_proposals.jsonl`, or `track_diagnoses.jsonl`
+- `matrices/<matrix_id>/evaluation_traces.jsonl`
+- `matrices/<matrix_id>/evaluation_summary.json`
+- `prompt_dev_evaluation_summary.json`
+- `prompt_dev_evaluation_comparison.md`
+
+Each matrix row is scored in its own directory so prompt variants for the same case cannot overwrite each other.
+
 ## Few-Shot Leakage Controls
 
 The example selector excludes:

@@ -13,7 +13,7 @@ This area contains repository-facing documentation: how the benchmark is built, 
 - [Evaluation Harness](./Evaluation_Harness.md): benchmark scoring workflow, outputs, and metric semantics.
 - [Non-LLM Baselines](./Non_LLM_Baselines.md): Phase E deterministic track, symbolic TypeA, local lookup, and evaluator lower-bound baselines.
 - [Reasoning Floor](./Reasoning_Floor.md): zero-shot baseline runner, ablation bundles, and provider interface.
-- [Phase F Prompt Development](./Phase_F_Prompt_Development.md): dev-only prompt matrix, template rendering, few-shot controls, and freeze artifacts.
+- [Phase F Prompt Development](./Prompt_Development.md): dev-only prompt matrix, template rendering, few-shot controls, and freeze artifacts.
 - [LLM Endpoint Smoke Test](./LLM_Endpoint_Smoke_Test.md): quick CLI checks for local Ollama, Azure AI, and university OpenAI-compatible endpoints.
 - [Reasoning Floor Viewer](./Reasoning_Floor_Viewer.md): Streamlit debugger for browsing runs, prompts, outputs, and evaluation traces.
 - [Track Diagnosis](./Track_Diagnosis.md): separate A-box vs T-box diagnostic task and scoring outputs.

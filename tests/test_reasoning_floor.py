@@ -1,5 +1,5 @@
-import json
 import importlib.util
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -9,8 +9,8 @@ from unittest.mock import patch
 from guardian.model_provider import BatchExecutionResult, StaticResponseProvider
 from guardian.prompts import get_prompt_template
 from guardian.reasoning import (
-    _disable_generation_progress,
     _collect_selected_records_in_order,
+    _disable_generation_progress,
     build_prompt_bundle,
     build_track_diagnosis_prompt_bundle,
     run_reasoning_floor,
@@ -465,6 +465,20 @@ class ReasoningFloorTests(unittest.TestCase):
         self.assertTrue(all(row.get("custom_id") for row in manifest_rows))
         self.assertEqual(summary["usage"]["prompt_tokens"], 0)
         self.assertEqual(summary["usage"]["completion_tokens"], 0)
+
+    def test_reasoning_floor_rejects_batch_for_non_openai_runtime_endpoint(self) -> None:
+        root, classified_path, world_state_path, selection_manifest_path, resolver = self._make_stub_fixture()
+        with self.assertRaisesRegex(RuntimeError, "standard OpenAI provider"):
+            run_reasoning_floor(
+                classified_path=classified_path,
+                world_state_path=world_state_path,
+                output_dir=root / "outputs",
+                provider=StaticResponseProvider(resolver, provider_name="azure", model="stub-model"),
+                ablation_bundles=["minimal_case"],
+                selection_manifest_path=selection_manifest_path,
+                execution_mode="batch",
+                batch_poll_interval_seconds=0.0,
+            )
 
     def test_reasoning_floor_parallel_stub_run(self) -> None:
         root, classified_path, world_state_path, selection_manifest_path, resolver = self._make_stub_fixture()

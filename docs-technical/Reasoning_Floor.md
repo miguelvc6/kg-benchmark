@@ -52,36 +52,54 @@ Current implementations:
 
 - `OpenAIChatProvider`
 - `OllamaChatProvider`
+- Azure endpoint mode through `OpenAIChatProvider` with `AZURE_OPENAI_*`
+- University endpoint mode through an OpenAI-compatible Responses API provider with `UNIVERSITY_OPENAI_*`
 - `StaticResponseProvider` for deterministic tests
 
-The default provider is selected from `.env` or the shell with `MODEL_PROVIDER`.
+The default provider is selected from `.env` or the shell with `MODEL_ENDPOINT` when present, otherwise `MODEL_PROVIDER`.
+The CLI can override this directly with `--model-endpoint ollama|azure|university|openai`.
 
 Supported runtime settings:
 
-- `MODEL_PROVIDER=openai`
+- `MODEL_ENDPOINT=openai` or legacy `MODEL_PROVIDER=openai`
+- optional `MODEL_ENDPOINT=openai|ollama|azure|university`
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL`
 - optional `OPENAI_BASE_URL`
 - optional `OPENAI_REASONING_EFFORT` to send `reasoning: {"effort": ...}` on OpenAI chat-completions requests
-- `MODEL_PROVIDER=ollama`
+- `MODEL_ENDPOINT=ollama` or legacy `MODEL_PROVIDER=ollama`
 - `OLLAMA_MODEL`
 - optional `OLLAMA_BASE_URL` (defaults to `http://localhost:11434/api`)
 - optional `OLLAMA_API_KEY` for direct `ollama.com/api` access
 - optional `OLLAMA_KEEP_ALIVE` to keep a model resident between requests
 - optional `OLLAMA_CONTEXT_LENGTH` to send `num_ctx` on each Ollama chat request
 - optional `REASONING_FLOOR_PARALLEL_WORKERS` to override the runner's inferred worker count in `parallel` mode
+- `MODEL_ENDPOINT=azure`
+- `AZURE_OPENAI_ENDPOINT`
+- `AZURE_OPENAI_DEPLOYMENT`
+- `AZURE_OPENAI_API_KEY`
+- optional `AZURE_OPENAI_INPUT_COST_PER_1M_TOKENS`
+- optional `AZURE_OPENAI_OUTPUT_COST_PER_1M_TOKENS`
+- `MODEL_ENDPOINT=university`
+- `UNIVERSITY_OPENAI_BASE_URL`
+- `UNIVERSITY_OPENAI_MODEL`
+- `UNIVERSITY_OPENAI_API_KEY`
+- optional `UNIVERSITY_OPENAI_INPUT_COST_PER_1M_TOKENS`
+- optional `UNIVERSITY_OPENAI_OUTPUT_COST_PER_1M_TOKENS`
 
 Process environment variables still take precedence over values loaded from `.env`.
 
 For provider API keys, use only the raw secret value in `.env`. Do not include the variable name again or a `Bearer ` prefix.
 
-`src/reasoning_floor.py` also accepts `--model` to override the model name from `.env` without changing provider selection.
+`src/reasoning_floor.py` also accepts `--model` to override the model name from `.env` and `--model-endpoint`
+to choose the endpoint configuration for a run.
 
 When `OPENAI_REASONING_EFFORT` is set, the OpenAI adapter includes that value in both synchronous and batch chat-completions payloads. The accepted values are `none`, `minimal`, `low`, `medium`, `high`, and `xhigh`.
 
 Execution CLI settings:
 
 - `--execution-mode sync|parallel|batch`
+- `--model-endpoint ollama|azure|university|openai`
 - `--proposal-track-mode oracle|diagnosis_routed`
 - `--parallel-workers` for `parallel` mode
 - `--batch-completion-window` (defaults to `24h`)
@@ -90,8 +108,12 @@ Execution CLI settings:
 
 If `--execution-mode` is omitted:
 
-- `MODEL_PROVIDER=openai` defaults to batch execution
+- the OpenAI endpoint defaults to batch execution
 - other providers default to synchronous execution
+
+Azure and university endpoint modes default to synchronous execution. Use `--execution-mode parallel` for concurrent
+case-level requests if the endpoint allows it. Batch mode remains intended for the standard OpenAI chat-completions
+provider.
 
 `parallel` mode keeps the existing per-case request pattern but overlaps multiple cases with a bounded thread pool. This is the recommended throughput mode for Ollama because Ollama does not expose a provider batch API for text generation in this repository.
 

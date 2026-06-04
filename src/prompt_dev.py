@@ -10,8 +10,10 @@ from lib.prompt_dev import (
     DEFAULT_RENDER_TASKS,
     EXAMPLE_POLICIES,
     REPAIR_TRACK_MODES,
+    PromptDevEvaluateOptions,
     PromptDevMatrixOptions,
     PromptDevRenderOptions,
+    evaluate_prompt_dev_prompts,
     freeze_prompt_dev_config,
     render_prompt_dev_prompts,
     write_prompt_dev_matrix,
@@ -63,7 +65,7 @@ def _add_axis_args(parser: argparse.ArgumentParser, *, render_defaults: bool = F
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Prepare Phase F prompt-development artifacts without LLM inference.")
+    parser = argparse.ArgumentParser(description="Prepare and evaluate Phase F prompt-development artifacts.")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     matrix_parser = subparsers.add_parser("matrix", help="Write the Phase F prompt-development run matrix.")
@@ -85,6 +87,32 @@ def parse_args() -> argparse.Namespace:
         help="Allow few-shot examples from the same property. Disabled by default for leakage control.",
     )
     _add_axis_args(render_parser, render_defaults=True)
+
+    evaluate_parser = subparsers.add_parser(
+        "evaluate",
+        help="Run dev-manifest prompt variants through a model endpoint and score them.",
+    )
+    evaluate_parser.add_argument("--classified-benchmark", default="data/04_classified_benchmark.jsonl")
+    evaluate_parser.add_argument("--world-state", default="data/03_world_state.json")
+    evaluate_parser.add_argument("--dev-manifest", default="reports/benchmark_selection/dev_prompt_v1_seed_13.json")
+    evaluate_parser.add_argument("--core-manifest", default=None)
+    evaluate_parser.add_argument("--output-dir", default="reports/prompt_dev/evaluation_prompt_dev_v1")
+    evaluate_parser.add_argument("--model", default=None, help="Override the model name configured in .env.")
+    evaluate_parser.add_argument(
+        "--model-endpoint",
+        choices=("ollama", "azure", "university", "openai"),
+        default=None,
+        help="Choose the model endpoint configuration. Defaults to MODEL_ENDPOINT or MODEL_PROVIDER from .env.",
+    )
+    evaluate_parser.add_argument("--seed", type=int, default=13)
+    evaluate_parser.add_argument("--max-cases", type=int, default=24)
+    evaluate_parser.add_argument("--example-count", type=int, default=2)
+    evaluate_parser.add_argument(
+        "--allow-same-property-examples",
+        action="store_true",
+        help="Allow few-shot examples from the same property. Disabled by default for leakage control.",
+    )
+    _add_axis_args(evaluate_parser, render_defaults=True)
 
     freeze_parser = subparsers.add_parser("freeze", help="Write a frozen Phase F prompt configuration.")
     freeze_parser.add_argument("--output", default="reports/prompt_dev/final_prompts_prompt_dev_v1.json")
@@ -139,6 +167,33 @@ def main() -> int:
         print(f"[done] rendered={summary['counts']['rendered_prompts']}")
         print(f"[done] prompts={summary['outputs']['prompts_jsonl']}")
         print(f"[done] review={summary['outputs']['review_markdown']}")
+        return 0
+
+    if args.command == "evaluate":
+        summary = evaluate_prompt_dev_prompts(
+            PromptDevEvaluateOptions(
+                classified_benchmark=Path(args.classified_benchmark),
+                world_state=Path(args.world_state),
+                dev_manifest=Path(args.dev_manifest),
+                core_manifest=Path(args.core_manifest) if args.core_manifest else None,
+                output_dir=Path(args.output_dir),
+                model_endpoint=args.model_endpoint,
+                model_name=args.model,
+                seed=args.seed,
+                max_cases=args.max_cases,
+                representations=_csv_tuple(args.representations, ("hybrid_json_nl",)),
+                example_policies=_csv_tuple(args.example_policies, ("zero_shot",)),
+                context_bundles=_csv_tuple(args.context_bundles, DEFAULT_CONTEXT_BUNDLES),
+                tasks=_csv_tuple(args.tasks, DEFAULT_RENDER_TASKS),
+                repair_track_modes=_csv_tuple(args.repair_track_modes, ("oracle",)),
+                include_abstention=args.include_abstention,
+                example_count=args.example_count,
+                allow_same_property_examples=args.allow_same_property_examples,
+            )
+        )
+        print(f"[done] evaluated_prompts={summary['counts']['evaluated_prompts']}")
+        print(f"[done] summary={args.output_dir}/prompt_dev_evaluation_summary.json")
+        print(f"[done] comparison={summary['outputs']['comparison_markdown']}")
         return 0
 
     if args.command == "freeze":

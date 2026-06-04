@@ -261,6 +261,7 @@ def _openai_usage_payload(
     metadata: dict[str, Any],
     model: str,
     provider_name: str,
+    provider_env_prefix: str = "OPENAI",
 ) -> dict[str, Any]:
     usage = raw_response.get("usage") or {}
     prompt_tokens = usage.get("prompt_tokens")
@@ -273,7 +274,7 @@ def _openai_usage_payload(
         if isinstance(cached_value, int):
             cached_tokens = cached_value
     estimated_cost_usd, rate_card = _estimate_cost_usd(
-        provider_env_prefix="OPENAI",
+        provider_env_prefix=provider_env_prefix,
         prompt_tokens=prompt_tokens if isinstance(prompt_tokens, int) else None,
         completion_tokens=completion_tokens if isinstance(completion_tokens, int) else None,
     )
@@ -297,6 +298,7 @@ def _parse_openai_chat_completion_response(
     metadata: dict[str, Any],
     model: str,
     provider_name: str,
+    provider_env_prefix: str = "OPENAI",
 ) -> tuple[Any, dict[str, Any]]:
     text = _openai_message_content(raw_response)
     parsed_payload = _extract_json_payload(text)
@@ -305,8 +307,66 @@ def _parse_openai_chat_completion_response(
         metadata=metadata,
         model=model,
         provider_name=provider_name,
+        provider_env_prefix=provider_env_prefix,
     )
     return parsed_payload if parsed_payload is not None else text, usage_payload
+
+
+def _responses_output_text(raw_response: dict[str, Any]) -> str:
+    output_text = raw_response.get("output_text")
+    if isinstance(output_text, str) and output_text.strip():
+        return output_text
+    output = raw_response.get("output")
+    parts: list[str] = []
+    if isinstance(output, list):
+        for item in output:
+            if not isinstance(item, dict):
+                continue
+            content = item.get("content")
+            if not isinstance(content, list):
+                continue
+            for part in content:
+                if not isinstance(part, dict):
+                    continue
+                text = part.get("text")
+                if isinstance(text, str):
+                    parts.append(text)
+    if parts:
+        return "\n".join(parts)
+    return ""
+
+
+def _responses_usage_payload(
+    *,
+    raw_response: dict[str, Any],
+    metadata: dict[str, Any],
+    model: str,
+    provider_name: str,
+    provider_env_prefix: str,
+) -> dict[str, Any]:
+    usage = raw_response.get("usage") or {}
+    input_tokens = usage.get("input_tokens")
+    output_tokens = usage.get("output_tokens")
+    total_tokens = usage.get("total_tokens")
+    if total_tokens is None and isinstance(input_tokens, int) and isinstance(output_tokens, int):
+        total_tokens = input_tokens + output_tokens
+    estimated_cost_usd, rate_card = _estimate_cost_usd(
+        provider_env_prefix=provider_env_prefix,
+        prompt_tokens=input_tokens if isinstance(input_tokens, int) else None,
+        completion_tokens=output_tokens if isinstance(output_tokens, int) else None,
+    )
+    usage_payload = {
+        "prompt_tokens": input_tokens,
+        "completion_tokens": output_tokens,
+        "total_tokens": total_tokens,
+        "cached_tokens": None,
+        "estimated_cost_usd": estimated_cost_usd,
+        "model": raw_response.get("model") if isinstance(raw_response.get("model"), str) else model,
+        "provider": provider_name,
+        "request_metadata": metadata,
+    }
+    usage_payload.update(rate_card)
+    return usage_payload
 
 
 def _write_json_file(path: Path, payload: dict[str, Any]) -> None:
@@ -387,19 +447,26 @@ class OpenAIChatProvider:
     reasoning_effort: str | None = None
     timeout: int = 120
     provider_name: str = "openai"
+    provider_env_prefix: str = "OPENAI"
+    api_key_env_name: str = "OPENAI_API_KEY"
+    model_env_name: str = "OPENAI_MODEL"
+    base_url_env_name: str = "OPENAI_BASE_URL"
 
     def __post_init__(self) -> None:
         load_dotenv()
-        self.api_key = _normalize_api_key("OPENAI_API_KEY", self.api_key or os.getenv("OPENAI_API_KEY"))
-        self.model = self.model or os.getenv("OPENAI_MODEL")
-        self.base_url = (self.base_url or os.getenv("OPENAI_BASE_URL") or "https://api.openai.com/v1").rstrip("/")
+        self.api_key = _normalize_api_key(self.api_key_env_name, self.api_key or os.getenv(self.api_key_env_name))
+        self.model = self.model or os.getenv(self.model_env_name)
+        default_base_url = "https://api.openai.com/v1" if self.provider_name == "openai" else ""
+        self.base_url = (self.base_url or os.getenv(self.base_url_env_name) or default_base_url).rstrip("/")
         self.reasoning_effort = _normalize_openai_reasoning_effort(
-            self.reasoning_effort or os.getenv("OPENAI_REASONING_EFFORT")
+            self.reasoning_effort or (os.getenv("OPENAI_REASONING_EFFORT") if self.provider_name == "openai" else None)
         )
         if not self.api_key:
-            raise RuntimeError("OPENAI_API_KEY is required for the OpenAI provider.")
+            raise RuntimeError(f"{self.api_key_env_name} is required for the {self.provider_name} provider.")
         if not self.model:
-            raise RuntimeError("OPENAI_MODEL is required for the OpenAI provider.")
+            raise RuntimeError(f"{self.model_env_name} is required for the {self.provider_name} provider.")
+        if not self.base_url:
+            raise RuntimeError(f"{self.base_url_env_name} is required for the {self.provider_name} provider.")
 
     def _auth_headers(self) -> dict[str, str]:
         return {"Authorization": f"Bearer {self.api_key}"}
@@ -420,17 +487,17 @@ class OpenAIChatProvider:
             detail = f" Details: {error_message}"
         if response.status_code == 401:
             raise RuntimeError(
-                "OpenAI authentication failed (401 Unauthorized). "
-                "Check OPENAI_API_KEY in your shell or .env. "
-                "The value must be the raw API key only, not `OPENAI_API_KEY=...` or `Bearer ...`."
+                f"{self.provider_name} authentication failed (401 Unauthorized). "
+                f"Check {self.api_key_env_name} in your shell or .env. "
+                f"The value must be the raw API key only, not `{self.api_key_env_name}=...` or `Bearer ...`."
             ) from exc
         if response.status_code == 400:
             raise RuntimeError(
-                f"OpenAI {action} failed (400 Bad Request). "
+                f"{self.provider_name} {action} failed (400 Bad Request). "
                 "Check the configured model and request parameters."
                 f"{detail}"
             ) from exc
-        raise RuntimeError(f"OpenAI {action} failed ({response.status_code}).{detail}") from exc
+        raise RuntimeError(f"{self.provider_name} {action} failed ({response.status_code}).{detail}") from exc
 
     def _download_file(self, file_id: str, destination: Path) -> Path:
         response = requests.get(
@@ -481,6 +548,7 @@ class OpenAIChatProvider:
             metadata=metadata,
             model=self.model,
             provider_name=self.provider_name,
+            provider_env_prefix=self.provider_env_prefix,
         )
         return raw_response, parsed_payload, usage_payload
 
@@ -646,15 +714,19 @@ class OpenAIChatProvider:
                 error_message = json.dumps(error_block, ensure_ascii=False)
 
         if isinstance(status_code, int) and status_code >= 400:
-            body_error = ((response_body.get("error") or {}).get("message")) if isinstance(response_body, dict) else None
+            body_error = (
+                ((response_body.get("error") or {}).get("message"))
+                if isinstance(response_body, dict)
+                else None
+            )
             usage_payload = {
                 "prompt_tokens": None,
                 "completion_tokens": None,
                 "total_tokens": None,
                 "cached_tokens": None,
                 "estimated_cost_usd": None,
-                "input_cost_per_1m_tokens_usd": _env_float("OPENAI_INPUT_COST_PER_1M_TOKENS"),
-                "output_cost_per_1m_tokens_usd": _env_float("OPENAI_OUTPUT_COST_PER_1M_TOKENS"),
+                "input_cost_per_1m_tokens_usd": _env_float(f"{self.provider_env_prefix}_INPUT_COST_PER_1M_TOKENS"),
+                "output_cost_per_1m_tokens_usd": _env_float(f"{self.provider_env_prefix}_OUTPUT_COST_PER_1M_TOKENS"),
                 "model": metadata.get("model", self.model),
                 "provider": self.provider_name,
                 "request_metadata": metadata,
@@ -672,6 +744,7 @@ class OpenAIChatProvider:
                 metadata=metadata,
                 model=self.model,
                 provider_name=self.provider_name,
+                provider_env_prefix=self.provider_env_prefix,
             )
             return response_body, parsed_payload, usage_payload, error_message
 
@@ -681,8 +754,8 @@ class OpenAIChatProvider:
             "total_tokens": None,
             "cached_tokens": None,
             "estimated_cost_usd": None,
-            "input_cost_per_1m_tokens_usd": _env_float("OPENAI_INPUT_COST_PER_1M_TOKENS"),
-            "output_cost_per_1m_tokens_usd": _env_float("OPENAI_OUTPUT_COST_PER_1M_TOKENS"),
+            "input_cost_per_1m_tokens_usd": _env_float(f"{self.provider_env_prefix}_INPUT_COST_PER_1M_TOKENS"),
+            "output_cost_per_1m_tokens_usd": _env_float(f"{self.provider_env_prefix}_OUTPUT_COST_PER_1M_TOKENS"),
             "model": metadata.get("model", self.model),
             "provider": self.provider_name,
             "request_metadata": metadata,
@@ -782,14 +855,117 @@ class OllamaChatProvider:
         return raw_response, parsed_payload if parsed_payload is not None else text, usage_payload
 
 
-def create_model_provider(model_name: str | None = None) -> ModelProvider:
+@dataclass
+class OpenAIResponsesProvider:
+    api_key: str | None = None
+    model: str | None = None
+    base_url: str | None = None
+    timeout: int = 120
+    provider_name: str = "university"
+    provider_env_prefix: str = "UNIVERSITY_OPENAI"
+
+    def __post_init__(self) -> None:
+        load_dotenv()
+        self.api_key = _normalize_api_key(
+            f"{self.provider_env_prefix}_API_KEY",
+            self.api_key or os.getenv(f"{self.provider_env_prefix}_API_KEY"),
+        )
+        self.model = self.model or os.getenv(f"{self.provider_env_prefix}_MODEL")
+        self.base_url = (self.base_url or os.getenv(f"{self.provider_env_prefix}_BASE_URL") or "").rstrip("/")
+        if not self.api_key:
+            raise RuntimeError(f"{self.provider_env_prefix}_API_KEY is required for the {self.provider_name} provider.")
+        if not self.model:
+            raise RuntimeError(f"{self.provider_env_prefix}_MODEL is required for the {self.provider_name} provider.")
+        if not self.base_url:
+            raise RuntimeError(
+                f"{self.provider_env_prefix}_BASE_URL is required for the {self.provider_name} provider."
+            )
+
+    def _json_headers(self) -> dict[str, str]:
+        return {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+
+    def _handle_http_error(self, response: Response, exc: HTTPError) -> None:
+        detail = ""
+        try:
+            error_payload = response.json()
+        except ValueError:
+            error_payload = {}
+        error = error_payload.get("error") if isinstance(error_payload, dict) else None
+        if isinstance(error, dict) and isinstance(error.get("message"), str):
+            detail = f" Details: {error['message']}"
+        if response.status_code == 401:
+            raise RuntimeError(
+                f"{self.provider_name} authentication failed (401 Unauthorized). "
+                f"Check {self.provider_env_prefix}_API_KEY in your shell or .env."
+            ) from exc
+        raise RuntimeError(f"{self.provider_name} Responses request failed ({response.status_code}).{detail}") from exc
+
+    def generate(
+        self,
+        prompt: str,
+        system_prompt: str,
+        response_format: dict[str, Any],
+        metadata: dict[str, Any],
+    ) -> tuple[Any, Any, dict[str, Any]]:
+        payload: dict[str, Any] = {
+            "model": self.model,
+            "input": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt},
+            ],
+        }
+        if response_format.get("type") == "json_object":
+            payload["text"] = {"format": {"type": "json_object"}}
+        request_body = _encode_json_body(payload, metadata=metadata, provider_name=self.provider_name)
+        response = requests.post(
+            f"{self.base_url}/responses",
+            headers=self._json_headers(),
+            data=request_body,
+            timeout=self.timeout,
+        )
+        try:
+            response.raise_for_status()
+        except HTTPError as exc:
+            self._handle_http_error(response, exc)
+        raw_response = response.json()
+        text = _responses_output_text(raw_response)
+        parsed_payload = _extract_json_payload(text)
+        usage_payload = _responses_usage_payload(
+            raw_response=raw_response,
+            metadata=metadata,
+            model=self.model,
+            provider_name=self.provider_name,
+            provider_env_prefix=self.provider_env_prefix,
+        )
+        return raw_response, parsed_payload if parsed_payload is not None else text, usage_payload
+
+
+def create_model_provider(model_name: str | None = None, model_endpoint: str | None = None) -> ModelProvider:
     load_dotenv()
-    provider_name = os.getenv("MODEL_PROVIDER", "openai").strip().lower()
+    provider_name = (
+        model_endpoint or os.getenv("MODEL_ENDPOINT") or os.getenv("MODEL_PROVIDER") or "openai"
+    ).strip().lower()
     if provider_name == "openai":
         return OpenAIChatProvider(model=model_name)
     if provider_name == "ollama":
         return OllamaChatProvider(model=model_name)
-    raise RuntimeError(f"Unsupported MODEL_PROVIDER: {provider_name}")
+    if provider_name == "azure":
+        return OpenAIChatProvider(
+            api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+            model=model_name or os.getenv("AZURE_OPENAI_DEPLOYMENT"),
+            base_url=os.getenv("AZURE_OPENAI_ENDPOINT"),
+            provider_name="azure",
+            provider_env_prefix="AZURE_OPENAI",
+            api_key_env_name="AZURE_OPENAI_API_KEY",
+            model_env_name="AZURE_OPENAI_DEPLOYMENT",
+            base_url_env_name="AZURE_OPENAI_ENDPOINT",
+        )
+    if provider_name == "university":
+        return OpenAIResponsesProvider(model=model_name)
+    raise RuntimeError(f"Unsupported model endpoint: {provider_name}")
 
 
 @dataclass

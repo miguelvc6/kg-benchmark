@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 from guardian.model_provider import (
     OllamaChatProvider,
     OpenAIChatProvider,
+    OpenAIResponsesProvider,
     StaticResponseProvider,
     _format_batch_progress,
     create_model_provider,
@@ -131,6 +132,54 @@ class OpenAIChatProviderTests(unittest.TestCase):
 
             self.assertIsInstance(provider, OpenAIChatProvider)
             self.assertEqual(provider.model, "override-model")
+
+    def test_factory_can_select_azure_endpoint(self) -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "AZURE_OPENAI_API_KEY": "azure-key",
+                "AZURE_OPENAI_DEPLOYMENT": "gpt-5.4-nano",
+                "AZURE_OPENAI_ENDPOINT": "https://example.azure.com/openai/v1",
+                "OPENAI_API_KEY": "wrong-openai-key",
+            },
+            clear=True,
+        ):
+            provider = create_model_provider(model_endpoint="azure")
+
+        self.assertIsInstance(provider, OpenAIChatProvider)
+        self.assertEqual(provider.provider_name, "azure")
+        self.assertEqual(provider.api_key, "azure-key")
+        self.assertEqual(provider.model, "gpt-5.4-nano")
+        self.assertEqual(provider.base_url, "https://example.azure.com/openai/v1")
+
+    def test_factory_can_select_university_endpoint(self) -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "UNIVERSITY_OPENAI_API_KEY": "university-key",
+                "UNIVERSITY_OPENAI_MODEL": "Qwen/Qwen3-4B",
+                "UNIVERSITY_OPENAI_BASE_URL": "https://demosite.ml.jku.at/v1",
+            },
+            clear=True,
+        ):
+            provider = create_model_provider(model_endpoint="university")
+
+        self.assertIsInstance(provider, OpenAIResponsesProvider)
+        self.assertEqual(provider.provider_name, "university")
+        self.assertEqual(provider.model, "Qwen/Qwen3-4B")
+
+    def test_factory_prefers_model_endpoint_over_model_provider_env(self) -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "MODEL_PROVIDER": "openai",
+                "OLLAMA_MODEL": "llama3.2",
+            },
+            clear=True,
+        ):
+            provider = create_model_provider(model_endpoint="ollama")
+
+        self.assertIsInstance(provider, OllamaChatProvider)
 
     def test_strips_common_api_key_wrappers(self) -> None:
         with patch.dict(os.environ, {"OPENAI_MODEL": "test-model"}, clear=True):
@@ -329,6 +378,40 @@ class OllamaChatProviderTests(unittest.TestCase):
         request_payload = post.call_args.kwargs["json"]
         self.assertEqual(request_payload["keep_alive"], "30m")
         self.assertEqual(request_payload["options"], {"num_ctx": 4096})
+
+
+class OpenAIResponsesProviderTests(unittest.TestCase):
+    def test_maps_university_responses_output(self) -> None:
+        response = MagicMock()
+        response.json.return_value = {
+            "id": "resp_1",
+            "model": "Qwen/Qwen3-4B",
+            "output_text": "{\"case_id\": \"c1\"}",
+            "usage": {"input_tokens": 13, "output_tokens": 5, "total_tokens": 18},
+        }
+
+        with patch("guardian.model_provider.requests.post", return_value=response) as post:
+            provider = OpenAIResponsesProvider(
+                api_key="test-key",
+                model="Qwen/Qwen3-4B",
+                base_url="https://demosite.ml.jku.at/v1",
+            )
+            raw, parsed, usage = provider.generate(
+                prompt="{}",
+                system_prompt="Return JSON only.",
+                response_format={"type": "json_object"},
+                metadata={"case_id": "c1"},
+            )
+
+        self.assertEqual(parsed, {"case_id": "c1"})
+        self.assertEqual(usage["provider"], "university")
+        self.assertEqual(usage["prompt_tokens"], 13)
+        self.assertEqual(usage["completion_tokens"], 5)
+        self.assertEqual(raw["id"], "resp_1")
+        request_payload = json.loads(post.call_args.kwargs["data"].decode("utf-8"))
+        self.assertEqual(request_payload["model"], "Qwen/Qwen3-4B")
+        self.assertEqual(request_payload["input"][0]["role"], "system")
+        self.assertEqual(request_payload["input"][1]["role"], "user")
 
 
 class StaticResponseProviderBatchTests(unittest.TestCase):

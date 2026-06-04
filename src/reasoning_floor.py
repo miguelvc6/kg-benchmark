@@ -19,6 +19,15 @@ def main() -> int:
     )
     parser.add_argument("--model", default=None, help="Override the model name configured in .env.")
     parser.add_argument(
+        "--model-endpoint",
+        choices=("ollama", "azure", "university", "openai"),
+        default=None,
+        help=(
+            "Choose the model endpoint configuration to use. "
+            "Defaults to MODEL_ENDPOINT or MODEL_PROVIDER from .env when omitted."
+        ),
+    )
+    parser.add_argument(
         "--execution-mode",
         choices=("sync", "parallel", "batch"),
         default=None,
@@ -71,6 +80,7 @@ def main() -> int:
         output_dir=args.output_dir,
         resume_run_dir=args.resume_run_dir,
         model_name=args.model,
+        model_endpoint=args.model_endpoint,
         execution_mode=args.execution_mode,
         proposal_track_mode=args.proposal_track_mode,
         parallel_workers=args.parallel_workers,
