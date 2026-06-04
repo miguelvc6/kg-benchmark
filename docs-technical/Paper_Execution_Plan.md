@@ -141,13 +141,15 @@ This produces:
 
 ## 7. Configure the Model Provider
 
-The reasoning-floor runner supports OpenAI and Ollama providers.
+The reasoning-floor runner supports explicit endpoint selection for OpenAI, Ollama, Azure, and the university
+OpenAI-compatible Responses endpoint.
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` for one of the supported providers.
+Edit `.env` for one of the supported endpoint configurations. The runner reads `MODEL_ENDPOINT` first when it is
+present, then falls back to `MODEL_PROVIDER`.
 
 OpenAI:
 
@@ -181,7 +183,7 @@ OPENAI_OUTPUT_COST_PER_1M_TOKENS=10.00
 Ollama:
 
 ```dotenv
-MODEL_PROVIDER=ollama
+MODEL_ENDPOINT=ollama
 OLLAMA_MODEL=llama3.2
 ```
 
@@ -210,6 +212,24 @@ Optional for cost estimation in summaries:
 ```dotenv
 OLLAMA_INPUT_COST_PER_1M_TOKENS=0.00
 OLLAMA_OUTPUT_COST_PER_1M_TOKENS=0.00
+```
+
+Azure:
+
+```dotenv
+MODEL_ENDPOINT=azure
+AZURE_OPENAI_ENDPOINT=https://mvazquez-it-184686-ki.openai.azure.com/openai/v1
+AZURE_OPENAI_DEPLOYMENT=gpt-5.4-nano
+AZURE_OPENAI_API_KEY=YOUR_API_KEY
+```
+
+University endpoint:
+
+```dotenv
+MODEL_ENDPOINT=university
+UNIVERSITY_OPENAI_BASE_URL=https://demosite.ml.jku.at/v1
+UNIVERSITY_OPENAI_MODEL=Qwen/Qwen3-4B
+UNIVERSITY_OPENAI_API_KEY=YOUR_API_KEY
 ```
 
 `src/reasoning_floor.py` auto-loads `.env` from the repository root or a parent directory. Shell-exported variables still override `.env` values when both are set.
@@ -252,6 +272,10 @@ uv run python src/reasoning_floor.py \
   --selection-manifest reports/benchmark_selection/paper_eval_tbox_cap_100_seed_13.json \
   --output-dir reports/reasoning_floor
 ```
+
+Use `--model-endpoint ollama|azure|university|openai` to choose the endpoint for a single run without editing `.env`.
+Azure, university, and Ollama runs default to synchronous execution; use `--execution-mode parallel` when the endpoint can
+handle concurrent requests. Batch execution is currently reserved for the standard OpenAI provider.
 
 If the run is interrupted, resume it by pointing `--resume-run-dir` at that concrete run directory. The runner will append only the missing requests and then rebuild evaluation from the merged artifacts:
 

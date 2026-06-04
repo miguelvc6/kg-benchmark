@@ -10,7 +10,7 @@ from contextlib import ExitStack
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterable, Optional
+from typing import Any, Callable, Iterable, Optional
 
 from tqdm import tqdm
 
@@ -20,8 +20,8 @@ from guardian.model_provider import BatchModelProvider, ModelProvider, create_mo
 from guardian.patch_parser import load_schema as load_a_box_schema
 from guardian.patch_parser import normalize_proposal as normalize_a_box_proposal
 from guardian.prompts import get_prompt_template
-from guardian.tbox_parser import load_schema as load_t_box_schema
 from guardian.tbox_parser import KNOWN_CONSTRAINT_TYPE_QIDS
+from guardian.tbox_parser import load_schema as load_t_box_schema
 from guardian.tbox_parser import normalize_proposal as normalize_t_box_proposal
 from guardian.track_parser import load_schema as load_track_schema
 from guardian.track_parser import normalize_diagnosis
@@ -1428,6 +1428,7 @@ def run_reasoning_floor(
     resume_run_dir: str | Path | None = None,
     provider: Optional[ModelProvider] = None,
     model_name: str | None = None,
+    model_endpoint: str | None = None,
     ablation_bundles: Iterable[str] = ABLATION_BUNDLES,
     case_ids: Optional[Iterable[str]] = None,
     selection_manifest_path: str | Path | None = None,
@@ -1442,7 +1443,7 @@ def run_reasoning_floor(
     run_started_utc = _utc_now()
     run_started_at = time.perf_counter()
     if provider is None:
-        provider = create_model_provider(model_name)
+        provider = create_model_provider(model_name, model_endpoint=model_endpoint)
     selected_model = getattr(provider, "model", None) or model_name or "unknown-model"
     selected_provider = (
         getattr(provider, "provider_name", None) or provider.__class__.__name__.replace("ChatProvider", "").lower()
@@ -1460,6 +1461,11 @@ def run_reasoning_floor(
     if normalized_execution_mode == "batch" and not isinstance(provider, BatchModelProvider):
         raise RuntimeError(
             f"Execution mode 'batch' is not supported by provider {provider.__class__.__name__}."
+        )
+    if normalized_execution_mode == "batch" and selected_provider not in {"openai", "static"}:
+        raise RuntimeError(
+            "Execution mode 'batch' is currently supported only for the standard OpenAI provider. "
+            f"Use --execution-mode sync or --execution-mode parallel for endpoint {selected_provider!r}."
         )
     if parallel_workers is not None and parallel_workers < 1:
         raise ValueError("parallel_workers must be at least 1 when provided.")

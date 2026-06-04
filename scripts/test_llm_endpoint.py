@@ -176,8 +176,16 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Smoke-test configured LLM inference endpoints.")
     parser.add_argument(
         "approach",
+        nargs="?",
         choices=("ollama", "azure", "university", "all"),
+        default=None,
         help="Endpoint family to test.",
+    )
+    parser.add_argument(
+        "--model-endpoint",
+        choices=("ollama", "azure", "university", "all"),
+        default=None,
+        help="Endpoint family to test. Equivalent to the positional approach argument.",
     )
     parser.add_argument("--prompt", default=DEFAULT_PROMPT, help="Prompt to send to the selected endpoint.")
     parser.add_argument("--timeout", type=float, default=60.0, help="Request timeout in seconds.")
@@ -190,7 +198,10 @@ def main() -> int:
     else:
         load_dotenv()
 
-    names = tuple(TESTERS) if args.approach == "all" else (args.approach,)
+    approach = args.model_endpoint or args.approach
+    if approach is None:
+        parser.error("choose an endpoint with the positional approach or --model-endpoint")
+    names = tuple(TESTERS) if approach == "all" else (approach,)
     results = [_run_one(name, prompt=args.prompt, timeout=args.timeout) for name in names]
     return 0 if all(results) else 1
 

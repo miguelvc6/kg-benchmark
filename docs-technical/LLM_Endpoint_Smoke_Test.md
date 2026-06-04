@@ -43,6 +43,12 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python scripts/test_llm_endpoint.py univ
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python scripts/test_llm_endpoint.py all
 ```
 
+The same selector is available as `--model-endpoint`:
+
+```bash
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-test-llm-endpoint --model-endpoint azure
+```
+
 After `uv sync`, the console entry point is also available:
 
 ```bash

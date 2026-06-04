@@ -44,6 +44,7 @@ kg-select-benchmark-cases = "select_benchmark_cases:main"
 kg-evaluate = "evaluate:main"
 kg-reasoning-floor = "reasoning_floor:main"
 kg-non-llm-baselines = "non_llm_baselines:main"
+kg-prompt-dev = "prompt_dev:main"
 kg-reasoning-floor-viewer = "scripts.reasoning_floor_viewer:main"
 kg-test-llm-endpoint = "scripts.test_llm_endpoint:main"
 kg-analyze-tbox-updates = "scripts.analyze_tbox_updates:main"
@@ -57,6 +58,7 @@ py-modules = [
     "evaluate",
     "fetcher",
     "non_llm_baselines",
+    "prompt_dev",
     "reasoning_floor",
     "select_benchmark_cases",
     "splitter",

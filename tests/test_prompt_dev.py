@@ -1,0 +1,162 @@
+from __future__ import annotations
+
+import json
+import tempfile
+import unittest
+from pathlib import Path
+
+from lib.prompt_dev import (
+    PromptDevMatrixOptions,
+    PromptDevRenderOptions,
+    build_prompt_dev_matrix,
+    render_prompt_dev_prompts,
+    select_examples,
+)
+from scripts.prompt_dev_templates import render_prompt_dev_prompt
+
+
+def _abox_record(case_id: str, qid: str, pid: str = "P1", subtype: str = "LOCAL_TEXT_CONFIRMED") -> dict:
+    return {
+        "id": case_id,
+        "track": "A_BOX",
+        "qid": qid,
+        "property": pid,
+        "labels_en": {"qid": "Example item", "property": "Example property"},
+        "violation_context": {"value": "Q1", "report_violation_type_qids": ["Q21503250"]},
+        "repair_target": {"kind": "A_BOX", "action": "UPDATE", "old_value": ["Q1"], "new_value": ["Q5"]},
+        "classification": {
+            "class": "TypeB",
+            "subtype": subtype,
+            "confidence": "high",
+            "constraint_types": [{"qid": "Q21503250"}],
+            "diagnostics": {"truth_source": "repair_target.new_value", "truth_tokens": ["Q5"]},
+        },
+        "popularity": {"bucket": "mid", "score": 0.5},
+    }
+
+
+def _tbox_record(case_id: str, qid: str, pid: str = "P2", revision: str = "r1") -> dict:
+    signature = [
+        {
+            "constraint_qid": "Q21510859",
+            "snaktype": "VALUE",
+            "rank": "normal",
+            "qualifiers": [{"property_id": "P2305", "values": ["Q5"]}],
+        }
+    ]
+    return {
+        "id": case_id,
+        "track": "T_BOX",
+        "qid": qid,
+        "property": pid,
+        "labels_en": {"qid": "Example item", "property": "Example property"},
+        "violation_context": {"value": "Q1", "report_violation_type_qids": ["Q21510859"]},
+        "repair_target": {
+            "kind": "T_BOX",
+            "property_revision_id": revision,
+            "constraint_delta": {
+                "changed_constraint_types": ["Q21510859"],
+                "signature_after": signature,
+            },
+        },
+        "classification": {
+            "class": "T_BOX",
+            "subtype": "RELAXATION_SET_EXPANSION",
+            "confidence": "high",
+            "constraint_types": [{"qid": "Q21510859"}],
+            "diagnostics": {"truth_source": "constraint_delta", "truth_tokens": ["Q5"]},
+        },
+        "popularity": {"bucket": "mid", "score": 0.5},
+    }
+
+
+class PromptDevTests(unittest.TestCase):
+    def test_matrix_expands_axes_without_inference_fields(self) -> None:
+        matrix = build_prompt_dev_matrix(
+            PromptDevMatrixOptions(
+                representations=("hybrid_json_nl", "pure_nl"),
+                example_policies=("zero_shot",),
+                context_bundles=("logic_only",),
+                tasks=("track_diagnosis", "repair_proposal"),
+                repair_track_modes=("oracle", "diagnosis_routed"),
+            )
+        )
+
+        self.assertEqual(matrix["counts"]["rows"], 6)
+        self.assertTrue(all(row["run_scope"] == "dev_only" for row in matrix["rows"]))
+        self.assertIn("parse_validity", matrix["rows"][0]["metrics"])
+
+    def test_few_shot_selection_excludes_same_case_qid_property_and_core(self) -> None:
+        eval_record = _abox_record("eval", "Q1", "P1")
+        same_qid = _abox_record("same_qid", "Q1", "P9")
+        same_property = _abox_record("same_property", "Q2", "P1")
+        blocked_core = _abox_record("blocked_core", "Q3", "P3")
+        usable = _abox_record("usable", "Q4", "P4")
+
+        examples = select_examples(
+            eval_record=eval_record,
+            candidate_records=[same_qid, same_property, blocked_core, usable],
+            policy="matched_2shot",
+            task="a_box_repair",
+            seed=13,
+            blocked_core={"case_ids": {"blocked_core"}, "group_keys": set(), "tbox_revision_keys": set()},
+        )
+
+        self.assertEqual([example["case_id"] for example in examples], ["usable"])
+        self.assertEqual(examples[0]["output_payload"]["target"]["qid"], "Q4")
+
+    def test_template_rendering_keeps_contract_and_examples_visible(self) -> None:
+        prompt = render_prompt_dev_prompt(
+            task="track_diagnosis",
+            representation="compact_table",
+            case_payload={"id": "case_1", "qid": "Q1", "property": "P1", "violation_context": {"value": "Q2"}},
+            examples=[
+                {
+                    "input_payload": {
+                        "id": "case_0",
+                        "qid": "Q0",
+                        "property": "P1",
+                        "violation_context": {"value": "Q2"},
+                    },
+                    "output_payload": {"case_id": "case_0", "predicted_track": "A_BOX"},
+                }
+            ],
+        )
+
+        self.assertIn("predicted_track", prompt.user_prompt)
+        self.assertIn("Example 1 input", prompt.user_prompt)
+        self.assertIn("case.id", prompt.user_prompt)
+
+    def test_render_prompts_writes_prompt_artifacts_without_provider_calls(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            classified = root / "classified.jsonl"
+            records = [_abox_record("eval", "Q1", "P1"), _tbox_record("example", "Q2", "P2")]
+            classified.write_text("\n".join(json.dumps(record) for record in records) + "\n", encoding="utf-8")
+            manifest = root / "dev.json"
+            manifest.write_text(json.dumps({"selected_case_ids": ["eval", "example"]}), encoding="utf-8")
+            world_state = root / "world.json"
+            world_state.write_text("{}", encoding="utf-8")
+
+            summary = render_prompt_dev_prompts(
+                PromptDevRenderOptions(
+                    classified_benchmark=classified,
+                    world_state=world_state,
+                    dev_manifest=manifest,
+                    output_dir=root / "out",
+                    max_cases=1,
+                    representations=("hybrid_json_nl",),
+                    example_policies=("zero_shot",),
+                    context_bundles=("minimal_case",),
+                    tasks=("track_diagnosis", "repair_proposal"),
+                    repair_track_modes=("oracle",),
+                )
+            )
+
+            self.assertEqual(summary["counts"]["rendered_prompts"], 2)
+            self.assertTrue((root / "out" / "prompt_dev_rendered_prompts.jsonl").exists())
+            self.assertTrue((root / "out" / "prompt_dev_prompt_review.md").exists())
+
+
+if __name__ == "__main__":
+    unittest.main()

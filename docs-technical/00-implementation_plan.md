@@ -945,6 +945,10 @@ Current core-v1 headline checks:
 
 ## 6. Phase F — Prompt development on dev only
 
+**Implementation status:** repository support implemented; LLM inference not run.
+
+**Implementation update:** Phase F now has a no-inference prompt-development CLI in `src/prompt_dev.py`, reviewable prompt templates in `scripts/prompt_dev_templates.py`, and technical documentation in `Prompt_Development.md`. The CLI can write the prompt-development matrix, render dev-only prompt review artifacts with leakage-controlled few-shot examples, and freeze the selected prompt configuration before main-core experiments.
+
 ### Task F1 — Build prompt-development run matrix
 
 **Type:** Prompt development / evaluation design
