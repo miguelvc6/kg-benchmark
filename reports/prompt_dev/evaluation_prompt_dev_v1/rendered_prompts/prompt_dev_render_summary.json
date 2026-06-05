@@ -1,0 +1,93 @@
+{
+  "counts": {
+    "by_class": {
+      "T_BOX": 12,
+      "TypeA": 8,
+      "TypeB": 4
+    },
+    "by_class_subtype": {
+      "T_BOX:COINCIDENTAL_SCHEMA_CHANGE": 3,
+      "T_BOX:RELAXATION_SET_EXPANSION": 3,
+      "T_BOX:RESTRICTION_SET_CONTRACTION": 3,
+      "T_BOX:SCHEMA_UPDATE": 3,
+      "TypeA:DELETE_AMBIGUOUS": 1,
+      "TypeA:FORMAT_NORMALIZATION": 1,
+      "TypeA:FORMAT_VALUE_PRUNING": 1,
+      "TypeA:MULTIPLICITY_NORMALIZATION": 1,
+      "TypeA:REJECTION_FORMAT_INVALID": 1,
+      "TypeA:SELF_LINK_REJECTION": 1,
+      "TypeA:SET_MEMBERSHIP_REJECTION": 1,
+      "TypeA:TARGET_REQUIRED_CLAIM": 1,
+      "TypeB:LOCAL_FOCUS_NON_TARGET_PROPERTY": 1,
+      "TypeB:LOCAL_MIXED": 1,
+      "TypeB:LOCAL_SELECTION_CONFIRMED": 1,
+      "TypeB:LOCAL_TEXT_CONFIRMED": 1
+    },
+    "by_context_bundle": {
+      "local_graph": 48,
+      "logic_only": 48
+    },
+    "by_example_policy": {
+      "zero_shot": 96
+    },
+    "by_representation": {
+      "hybrid_json_nl": 96
+    },
+    "by_selection_stratum": {
+      "DEV_TBOX_COINCIDENTAL_SCHEMA_CHANGE": 3,
+      "DEV_TBOX_RELAXATION_SET_EXPANSION": 3,
+      "DEV_TBOX_RESTRICTION_SET_CONTRACTION": 3,
+      "DEV_TBOX_SCHEMA_UPDATE": 3,
+      "DEV_TYPEA_AMBIGUOUS_DELETE": 1,
+      "DEV_TYPEA_CLEAN_RULE_REJECTION": 7,
+      "DEV_TYPEB_LOCAL": 4
+    },
+    "by_subtype": {
+      "COINCIDENTAL_SCHEMA_CHANGE": 3,
+      "DELETE_AMBIGUOUS": 1,
+      "FORMAT_NORMALIZATION": 1,
+      "FORMAT_VALUE_PRUNING": 1,
+      "LOCAL_FOCUS_NON_TARGET_PROPERTY": 1,
+      "LOCAL_MIXED": 1,
+      "LOCAL_SELECTION_CONFIRMED": 1,
+      "LOCAL_TEXT_CONFIRMED": 1,
+      "MULTIPLICITY_NORMALIZATION": 1,
+      "REJECTION_FORMAT_INVALID": 1,
+      "RELAXATION_SET_EXPANSION": 3,
+      "RESTRICTION_SET_CONTRACTION": 3,
+      "SCHEMA_UPDATE": 3,
+      "SELF_LINK_REJECTION": 1,
+      "SET_MEMBERSHIP_REJECTION": 1,
+      "TARGET_REQUIRED_CLAIM": 1
+    },
+    "by_task": {
+      "a_box_repair": 24,
+      "t_box_repair": 24,
+      "track_diagnosis": 48
+    },
+    "by_track": {
+      "A_BOX": 12,
+      "T_BOX": 12
+    },
+    "eval_cases": 24,
+    "matrix_rows": 4,
+    "rendered_prompts": 96,
+    "skipped_prompts": 0
+  },
+  "created_at_utc": "2026-06-05T17:35:39Z",
+  "inputs": {
+    "classified_benchmark": "data/04_classified_benchmark.jsonl",
+    "core_manifest": null,
+    "dev_manifest": "reports/benchmark_selection/dev_prompt_v1_seed_13.json",
+    "max_cases": 24,
+    "sample_strategy": "stratified",
+    "world_state": "data/03_world_state.json"
+  },
+  "manifest_type": "prompt_dev_rendered_prompt_summary",
+  "manifest_version": "prompt_dev_v1",
+  "note": "No LLM inference was run. These artifacts contain prompts only.",
+  "outputs": {
+    "prompts_jsonl": "reports/prompt_dev/evaluation_prompt_dev_v1/rendered_prompts/prompt_dev_rendered_prompts.jsonl",
+    "review_markdown": "reports/prompt_dev/evaluation_prompt_dev_v1/rendered_prompts/prompt_dev_prompt_review.md"
+  }
+}

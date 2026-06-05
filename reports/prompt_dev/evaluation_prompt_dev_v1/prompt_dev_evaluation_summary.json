@@ -1,0 +1,499 @@
+{
+  "manifest_type": "prompt_dev_evaluation_summary",
+  "manifest_version": "prompt_dev_v1",
+  "created_at_utc": "2026-06-05T19:24:50Z",
+  "run_id": "prompt_dev_eval_20260605T173743",
+  "provider": "university",
+  "model": "Qwen/Qwen3-4B",
+  "inputs": {
+    "classified_benchmark": "data/04_classified_benchmark.jsonl",
+    "world_state": "data/03_world_state.json",
+    "dev_manifest": "reports/benchmark_selection/dev_prompt_v1_seed_13.json",
+    "core_manifest": null,
+    "render_summary": "reports/prompt_dev/evaluation_prompt_dev_v1/rendered_prompts/prompt_dev_render_summary.json",
+    "sample_strategy": "stratified",
+    "max_cases": 24
+  },
+  "outputs": {
+    "output_dir": "reports/prompt_dev/evaluation_prompt_dev_v1",
+    "comparison_markdown": "reports/prompt_dev/evaluation_prompt_dev_v1/prompt_dev_evaluation_comparison.md"
+  },
+  "counts": {
+    "rendered_prompts": 96,
+    "evaluated_prompts": 96,
+    "matrix_rows": 4,
+    "by_parse_status": {
+      "normalized": 95,
+      "request_error": 1
+    }
+  },
+  "results": [
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_zero_shot_logic_only_track_diagnosis_diagnosis_no_abstain",
+      "output_dir": "reports/prompt_dev/evaluation_prompt_dev_v1/matrices/prompt_dev_001_hybrid_json_nl_zero_shot_logic_only_track_diagnosis_diagnosis_no_abstain",
+      "representation": "hybrid_json_nl",
+      "example_policy": "zero_shot",
+      "context_bundle": "logic_only",
+      "task": "track_diagnosis",
+      "track_mode": null,
+      "include_abstention": false,
+      "case_ids": [
+        "reform_Q105784190_P3628_2414087018",
+        "reform_Q115933554_P31_2442704771",
+        "reform_Q1510431_P10225_2403749973",
+        "reform_Q1767760_P4529_2172698999",
+        "reform_Q20888952_P4216_2361580316",
+        "reform_Q254745_P1346_1580835843",
+        "reform_Q33203_P2347_2236583436",
+        "reform_Q43200_P5082_2442820132",
+        "reform_Q439712_P1770_2433393062",
+        "reform_Q55972075_P108_2441343882",
+        "reform_Q95217667_P950_2330325818",
+        "reform_Q96483507_P2529_2442137584",
+        "repair_Q113204689_1702770107",
+        "repair_Q117185537_2442854831",
+        "repair_Q131148728_2447350025",
+        "repair_Q135501945_2388790244",
+        "repair_Q1371101_2439762625",
+        "repair_Q2131024_2445785456",
+        "repair_Q423757_2425335643",
+        "repair_Q55682174_2297178353",
+        "repair_Q63898844_2333536236",
+        "repair_Q94762277_2446321758",
+        "repair_Q97573807_2403110875",
+        "repair_Q979055_2441520750"
+      ],
+      "counts": {
+        "normalized": 24,
+        "parse_error": 0,
+        "request_error": 0,
+        "skipped": 0,
+        "by_parse_status": {
+          "normalized": 24
+        },
+        "by_historical_track": {
+          "A_BOX": 12,
+          "T_BOX": 12
+        },
+        "by_task": {
+          "track_diagnosis": 24
+        },
+        "by_context": {
+          "logic_only": 24
+        }
+      },
+      "evaluation_summary": "reports/prompt_dev/evaluation_prompt_dev_v1/matrices/prompt_dev_001_hybrid_json_nl_zero_shot_logic_only_track_diagnosis_diagnosis_no_abstain/evaluation_summary.json",
+      "overall_metrics": {
+        "count": 24,
+        "accepted_rate": 0.0,
+        "functional_success_rate": 0.0,
+        "exact_historical_agreement_rate": 0.0,
+        "semantic_success_rate": 0.0,
+        "semantic_family_success_rate": 0.0,
+        "information_preservation_mean": 0.0,
+        "provenance_completeness_mean": 0.0,
+        "auditability_complete_rate": 0.0,
+        "conversion_rate": null,
+        "tokens_to_fix_mean": null,
+        "a_box_exact_action_match_rate": 0.0,
+        "a_box_exact_value_match_rate": 0.0,
+        "a_box_regression_pass_rate": 0.0,
+        "exact_action_match_rate": 0.0,
+        "exact_signature_match_rate": 0.0,
+        "changed_constraint_type_hit_rate": 0.0,
+        "signature_after_jaccard_mean": 0.0,
+        "t_box_target_constraint_match_rate": 0.0,
+        "proposal_admits_current_values_rate": null,
+        "metric_applicability": {
+          "semantic_success": 12,
+          "semantic_family_success": 12,
+          "information_preservation": 12,
+          "auditability_complete": 24,
+          "conversion_rate": 0,
+          "tokens_to_fix": 0,
+          "a_box_exact_action_match": 12,
+          "a_box_exact_value_match": 12,
+          "a_box_regression_pass": 12,
+          "exact_action_match": 12,
+          "exact_signature_match": 12,
+          "changed_constraint_type_hit": 12,
+          "signature_after_jaccard": 12,
+          "t_box_target_constraint_match": 12,
+          "proposal_admits_current_values": 0
+        },
+        "proposal_parse_error_count": 0,
+        "proposal_parse_error_rate": 0.0,
+        "proposal_request_error_count": 0,
+        "proposal_request_error_rate": 0.0,
+        "proposal_parse_errors_by_message": {},
+        "track_diagnosis_request_error_count": 0,
+        "track_diagnosis_request_error_rate": 0.0,
+        "token_usage_total_mean": null,
+        "track_diagnosis_accuracy": 0.5416666666666666,
+        "track_diagnosis_present_rate": 1.0
+      },
+      "parse_errors": {
+        "proposal_parse_error_count": 0,
+        "proposal_parse_error_rate": 0.0,
+        "by_message": {}
+      },
+      "request_errors": {
+        "proposal_request_error_count": 0,
+        "proposal_request_error_rate": 0.0,
+        "track_diagnosis_request_error_count": 0,
+        "track_diagnosis_request_error_rate": 0.0
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_zero_shot_logic_only_repair_proposal_oracle_no_abstain",
+      "output_dir": "reports/prompt_dev/evaluation_prompt_dev_v1/matrices/prompt_dev_002_hybrid_json_nl_zero_shot_logic_only_repair_proposal_oracle_no_abstain",
+      "representation": "hybrid_json_nl",
+      "example_policy": "zero_shot",
+      "context_bundle": "logic_only",
+      "task": "repair_proposal",
+      "track_mode": "oracle",
+      "include_abstention": false,
+      "case_ids": [
+        "reform_Q105784190_P3628_2414087018",
+        "reform_Q115933554_P31_2442704771",
+        "reform_Q1510431_P10225_2403749973",
+        "reform_Q1767760_P4529_2172698999",
+        "reform_Q20888952_P4216_2361580316",
+        "reform_Q254745_P1346_1580835843",
+        "reform_Q33203_P2347_2236583436",
+        "reform_Q43200_P5082_2442820132",
+        "reform_Q439712_P1770_2433393062",
+        "reform_Q55972075_P108_2441343882",
+        "reform_Q95217667_P950_2330325818",
+        "reform_Q96483507_P2529_2442137584",
+        "repair_Q113204689_1702770107",
+        "repair_Q117185537_2442854831",
+        "repair_Q131148728_2447350025",
+        "repair_Q135501945_2388790244",
+        "repair_Q1371101_2439762625",
+        "repair_Q2131024_2445785456",
+        "repair_Q423757_2425335643",
+        "repair_Q55682174_2297178353",
+        "repair_Q63898844_2333536236",
+        "repair_Q94762277_2446321758",
+        "repair_Q97573807_2403110875",
+        "repair_Q979055_2441520750"
+      ],
+      "counts": {
+        "normalized": 24,
+        "parse_error": 0,
+        "request_error": 0,
+        "skipped": 0,
+        "by_parse_status": {
+          "normalized": 24
+        },
+        "by_historical_track": {
+          "A_BOX": 12,
+          "T_BOX": 12
+        },
+        "by_task": {
+          "a_box_repair": 12,
+          "t_box_repair": 12
+        },
+        "by_context": {
+          "logic_only": 24
+        }
+      },
+      "evaluation_summary": "reports/prompt_dev/evaluation_prompt_dev_v1/matrices/prompt_dev_002_hybrid_json_nl_zero_shot_logic_only_repair_proposal_oracle_no_abstain/evaluation_summary.json",
+      "overall_metrics": {
+        "count": 24,
+        "accepted_rate": 0.16666666666666666,
+        "functional_success_rate": 0.16666666666666666,
+        "exact_historical_agreement_rate": 0.25,
+        "semantic_success_rate": 0.0,
+        "semantic_family_success_rate": 0.0,
+        "information_preservation_mean": 0.2916666666666667,
+        "provenance_completeness_mean": 1.0,
+        "auditability_complete_rate": 1.0,
+        "conversion_rate": 0.16666666666666666,
+        "tokens_to_fix_mean": 2466.75,
+        "a_box_exact_action_match_rate": 0.8333333333333334,
+        "a_box_exact_value_match_rate": 0.3333333333333333,
+        "a_box_regression_pass_rate": 0.8333333333333334,
+        "exact_action_match_rate": 0.16666666666666666,
+        "exact_signature_match_rate": 0.4166666666666667,
+        "changed_constraint_type_hit_rate": 0.0,
+        "signature_after_jaccard_mean": 0.4166666666666667,
+        "t_box_target_constraint_match_rate": 0.9166666666666666,
+        "proposal_admits_current_values_rate": null,
+        "metric_applicability": {
+          "semantic_success": 12,
+          "semantic_family_success": 12,
+          "information_preservation": 12,
+          "auditability_complete": 24,
+          "conversion_rate": 24,
+          "tokens_to_fix": 4,
+          "a_box_exact_action_match": 12,
+          "a_box_exact_value_match": 12,
+          "a_box_regression_pass": 12,
+          "exact_action_match": 12,
+          "exact_signature_match": 12,
+          "changed_constraint_type_hit": 12,
+          "signature_after_jaccard": 12,
+          "t_box_target_constraint_match": 12,
+          "proposal_admits_current_values": 0
+        },
+        "proposal_parse_error_count": 0,
+        "proposal_parse_error_rate": 0.0,
+        "proposal_request_error_count": 0,
+        "proposal_request_error_rate": 0.0,
+        "proposal_parse_errors_by_message": {},
+        "track_diagnosis_request_error_count": 0,
+        "track_diagnosis_request_error_rate": 0.0,
+        "token_usage_total_mean": 2553.3333333333335,
+        "track_diagnosis_accuracy": 0.0,
+        "track_diagnosis_present_rate": 0.0
+      },
+      "parse_errors": {
+        "proposal_parse_error_count": 0,
+        "proposal_parse_error_rate": 0.0,
+        "by_message": {}
+      },
+      "request_errors": {
+        "proposal_request_error_count": 0,
+        "proposal_request_error_rate": 0.0,
+        "track_diagnosis_request_error_count": 0,
+        "track_diagnosis_request_error_rate": 0.0
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_003_hybrid_json_nl_zero_shot_local_graph_track_diagnosis_diagnosis_no_abstain",
+      "output_dir": "reports/prompt_dev/evaluation_prompt_dev_v1/matrices/prompt_dev_003_hybrid_json_nl_zero_shot_local_graph_track_diagnosis_diagnosis_no_abstain",
+      "representation": "hybrid_json_nl",
+      "example_policy": "zero_shot",
+      "context_bundle": "local_graph",
+      "task": "track_diagnosis",
+      "track_mode": null,
+      "include_abstention": false,
+      "case_ids": [
+        "reform_Q105784190_P3628_2414087018",
+        "reform_Q115933554_P31_2442704771",
+        "reform_Q1510431_P10225_2403749973",
+        "reform_Q1767760_P4529_2172698999",
+        "reform_Q20888952_P4216_2361580316",
+        "reform_Q254745_P1346_1580835843",
+        "reform_Q33203_P2347_2236583436",
+        "reform_Q43200_P5082_2442820132",
+        "reform_Q439712_P1770_2433393062",
+        "reform_Q55972075_P108_2441343882",
+        "reform_Q95217667_P950_2330325818",
+        "reform_Q96483507_P2529_2442137584",
+        "repair_Q113204689_1702770107",
+        "repair_Q117185537_2442854831",
+        "repair_Q131148728_2447350025",
+        "repair_Q135501945_2388790244",
+        "repair_Q1371101_2439762625",
+        "repair_Q2131024_2445785456",
+        "repair_Q423757_2425335643",
+        "repair_Q55682174_2297178353",
+        "repair_Q63898844_2333536236",
+        "repair_Q94762277_2446321758",
+        "repair_Q97573807_2403110875",
+        "repair_Q979055_2441520750"
+      ],
+      "counts": {
+        "normalized": 24,
+        "parse_error": 0,
+        "request_error": 0,
+        "skipped": 0,
+        "by_parse_status": {
+          "normalized": 24
+        },
+        "by_historical_track": {
+          "A_BOX": 12,
+          "T_BOX": 12
+        },
+        "by_task": {
+          "track_diagnosis": 24
+        },
+        "by_context": {
+          "local_graph": 24
+        }
+      },
+      "evaluation_summary": "reports/prompt_dev/evaluation_prompt_dev_v1/matrices/prompt_dev_003_hybrid_json_nl_zero_shot_local_graph_track_diagnosis_diagnosis_no_abstain/evaluation_summary.json",
+      "overall_metrics": {
+        "count": 24,
+        "accepted_rate": 0.0,
+        "functional_success_rate": 0.0,
+        "exact_historical_agreement_rate": 0.0,
+        "semantic_success_rate": 0.0,
+        "semantic_family_success_rate": 0.0,
+        "information_preservation_mean": 0.0,
+        "provenance_completeness_mean": 0.0,
+        "auditability_complete_rate": 0.0,
+        "conversion_rate": null,
+        "tokens_to_fix_mean": null,
+        "a_box_exact_action_match_rate": 0.0,
+        "a_box_exact_value_match_rate": 0.0,
+        "a_box_regression_pass_rate": 0.0,
+        "exact_action_match_rate": 0.0,
+        "exact_signature_match_rate": 0.0,
+        "changed_constraint_type_hit_rate": 0.0,
+        "signature_after_jaccard_mean": 0.0,
+        "t_box_target_constraint_match_rate": 0.0,
+        "proposal_admits_current_values_rate": null,
+        "metric_applicability": {
+          "semantic_success": 12,
+          "semantic_family_success": 12,
+          "information_preservation": 12,
+          "auditability_complete": 24,
+          "conversion_rate": 0,
+          "tokens_to_fix": 0,
+          "a_box_exact_action_match": 12,
+          "a_box_exact_value_match": 12,
+          "a_box_regression_pass": 12,
+          "exact_action_match": 12,
+          "exact_signature_match": 12,
+          "changed_constraint_type_hit": 12,
+          "signature_after_jaccard": 12,
+          "t_box_target_constraint_match": 12,
+          "proposal_admits_current_values": 0
+        },
+        "proposal_parse_error_count": 0,
+        "proposal_parse_error_rate": 0.0,
+        "proposal_request_error_count": 0,
+        "proposal_request_error_rate": 0.0,
+        "proposal_parse_errors_by_message": {},
+        "track_diagnosis_request_error_count": 0,
+        "track_diagnosis_request_error_rate": 0.0,
+        "token_usage_total_mean": null,
+        "track_diagnosis_accuracy": 0.6666666666666666,
+        "track_diagnosis_present_rate": 1.0
+      },
+      "parse_errors": {
+        "proposal_parse_error_count": 0,
+        "proposal_parse_error_rate": 0.0,
+        "by_message": {}
+      },
+      "request_errors": {
+        "proposal_request_error_count": 0,
+        "proposal_request_error_rate": 0.0,
+        "track_diagnosis_request_error_count": 0,
+        "track_diagnosis_request_error_rate": 0.0
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_004_hybrid_json_nl_zero_shot_local_graph_repair_proposal_oracle_no_abstain",
+      "output_dir": "reports/prompt_dev/evaluation_prompt_dev_v1/matrices/prompt_dev_004_hybrid_json_nl_zero_shot_local_graph_repair_proposal_oracle_no_abstain",
+      "representation": "hybrid_json_nl",
+      "example_policy": "zero_shot",
+      "context_bundle": "local_graph",
+      "task": "repair_proposal",
+      "track_mode": "oracle",
+      "include_abstention": false,
+      "case_ids": [
+        "reform_Q105784190_P3628_2414087018",
+        "reform_Q115933554_P31_2442704771",
+        "reform_Q1510431_P10225_2403749973",
+        "reform_Q1767760_P4529_2172698999",
+        "reform_Q20888952_P4216_2361580316",
+        "reform_Q254745_P1346_1580835843",
+        "reform_Q33203_P2347_2236583436",
+        "reform_Q43200_P5082_2442820132",
+        "reform_Q439712_P1770_2433393062",
+        "reform_Q55972075_P108_2441343882",
+        "reform_Q95217667_P950_2330325818",
+        "reform_Q96483507_P2529_2442137584",
+        "repair_Q113204689_1702770107",
+        "repair_Q117185537_2442854831",
+        "repair_Q131148728_2447350025",
+        "repair_Q135501945_2388790244",
+        "repair_Q1371101_2439762625",
+        "repair_Q2131024_2445785456",
+        "repair_Q423757_2425335643",
+        "repair_Q55682174_2297178353",
+        "repair_Q63898844_2333536236",
+        "repair_Q94762277_2446321758",
+        "repair_Q97573807_2403110875",
+        "repair_Q979055_2441520750"
+      ],
+      "counts": {
+        "normalized": 23,
+        "parse_error": 0,
+        "request_error": 1,
+        "skipped": 0,
+        "by_parse_status": {
+          "normalized": 23,
+          "request_error": 1
+        },
+        "by_historical_track": {
+          "A_BOX": 12,
+          "T_BOX": 12
+        },
+        "by_task": {
+          "a_box_repair": 12,
+          "t_box_repair": 12
+        },
+        "by_context": {
+          "local_graph": 24
+        }
+      },
+      "evaluation_summary": "reports/prompt_dev/evaluation_prompt_dev_v1/matrices/prompt_dev_004_hybrid_json_nl_zero_shot_local_graph_repair_proposal_oracle_no_abstain/evaluation_summary.json",
+      "overall_metrics": {
+        "count": 24,
+        "accepted_rate": 0.3333333333333333,
+        "functional_success_rate": 0.3333333333333333,
+        "exact_historical_agreement_rate": 0.375,
+        "semantic_success_rate": 0.0,
+        "semantic_family_success_rate": 0.0,
+        "information_preservation_mean": 0.5833333333333334,
+        "provenance_completeness_mean": 0.9583333333333334,
+        "auditability_complete_rate": 0.9583333333333334,
+        "conversion_rate": 0.3333333333333333,
+        "tokens_to_fix_mean": 3518.5,
+        "a_box_exact_action_match_rate": 0.75,
+        "a_box_exact_value_match_rate": 0.6666666666666666,
+        "a_box_regression_pass_rate": 0.9166666666666666,
+        "exact_action_match_rate": 0.25,
+        "exact_signature_match_rate": 0.3333333333333333,
+        "changed_constraint_type_hit_rate": 0.0,
+        "signature_after_jaccard_mean": 0.3333333333333333,
+        "t_box_target_constraint_match_rate": 0.9166666666666666,
+        "proposal_admits_current_values_rate": null,
+        "metric_applicability": {
+          "semantic_success": 12,
+          "semantic_family_success": 12,
+          "information_preservation": 12,
+          "auditability_complete": 24,
+          "conversion_rate": 24,
+          "tokens_to_fix": 8,
+          "a_box_exact_action_match": 12,
+          "a_box_exact_value_match": 12,
+          "a_box_regression_pass": 12,
+          "exact_action_match": 12,
+          "exact_signature_match": 12,
+          "changed_constraint_type_hit": 12,
+          "signature_after_jaccard": 12,
+          "t_box_target_constraint_match": 12,
+          "proposal_admits_current_values": 0
+        },
+        "proposal_parse_error_count": 0,
+        "proposal_parse_error_rate": 0.0,
+        "proposal_request_error_count": 1,
+        "proposal_request_error_rate": 0.041666666666666664,
+        "proposal_parse_errors_by_message": {},
+        "track_diagnosis_request_error_count": 0,
+        "track_diagnosis_request_error_rate": 0.0,
+        "token_usage_total_mean": 3351.304347826087,
+        "track_diagnosis_accuracy": 0.0,
+        "track_diagnosis_present_rate": 0.0
+      },
+      "parse_errors": {
+        "proposal_parse_error_count": 0,
+        "proposal_parse_error_rate": 0.0,
+        "by_message": {}
+      },
+      "request_errors": {
+        "proposal_request_error_count": 1,
+        "proposal_request_error_rate": 0.041666666666666664,
+        "track_diagnosis_request_error_count": 0,
+        "track_diagnosis_request_error_rate": 0.0
+      }
+    }
+  ]
+}
