@@ -108,9 +108,25 @@ def parse_args() -> argparse.Namespace:
     evaluate_parser.add_argument("--max-cases", type=int, default=24)
     evaluate_parser.add_argument("--example-count", type=int, default=2)
     evaluate_parser.add_argument(
+        "--max-prompt-chars",
+        type=int,
+        default=None,
+        help="Skip prompts whose system+user prompt length exceeds this character count.",
+    )
+    evaluate_parser.add_argument(
         "--allow-same-property-examples",
         action="store_true",
         help="Allow few-shot examples from the same property. Disabled by default for leakage control.",
+    )
+    evaluate_parser.add_argument(
+        "--no-resume",
+        action="store_true",
+        help="Do not skip existing prompt results in the output directory.",
+    )
+    evaluate_parser.add_argument(
+        "--retry-failures",
+        action="store_true",
+        help="When resuming, retry existing request_error and parse_error rows instead of leaving them as-is.",
     )
     _add_axis_args(evaluate_parser, render_defaults=True)
 
@@ -162,6 +178,9 @@ def main() -> int:
                 include_abstention=args.include_abstention,
                 example_count=args.example_count,
                 allow_same_property_examples=args.allow_same_property_examples,
+                resume_existing=not args.no_resume,
+                retry_failures=args.retry_failures,
+                max_prompt_chars=args.max_prompt_chars,
             )
         )
         print(f"[done] rendered={summary['counts']['rendered_prompts']}")

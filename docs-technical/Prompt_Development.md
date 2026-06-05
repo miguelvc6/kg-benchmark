@@ -101,6 +101,45 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-prompt-dev evaluate \
 
 `evaluate` runs LLM inference. Keep it restricted to the dev manifest and do not use it on the frozen core selection.
 
+When using the university endpoint, the Responses provider supports endpoint-resilience settings in `.env`:
+
+```dotenv
+UNIVERSITY_OPENAI_TIMEOUT_SECONDS=240
+UNIVERSITY_OPENAI_MAX_OUTPUT_TOKENS=1024
+UNIVERSITY_OPENAI_MAX_RETRIES=4
+UNIVERSITY_OPENAI_RETRY_BASE_SECONDS=2
+UNIVERSITY_OPENAI_RETRY_MAX_SECONDS=20
+```
+
+Retryable failures are HTTP `429`, `500`, `502`, `503`, `504`, read timeouts, connection timeouts, and temporary
+connection errors. HTTP `400` context-window failures are not retried; reduce prompt size instead.
+
+The evaluate command resumes by default when the output directory already contains matrix artifacts. Existing normalized
+rows are skipped. Existing `request_error` and `parse_error` rows are also left in place unless you explicitly retry
+them:
+
+```bash
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-prompt-dev evaluate \
+  --output-dir reports/prompt_dev/evaluation_prompt_dev_v1 \
+  --model-endpoint university \
+  --retry-failures
+```
+
+Use `--no-resume` only when you intentionally want to append fresh attempts for every rendered prompt in the output
+directory.
+
+Use `--max-prompt-chars` to avoid submitting prompts that are likely to exceed the endpoint context window:
+
+```bash
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-prompt-dev evaluate \
+  --output-dir reports/prompt_dev/evaluation_prompt_dev_v1 \
+  --model-endpoint university \
+  --max-prompt-chars 120000
+```
+
+Oversized prompts are recorded as local `request_error` rows with a provider-error message explaining the character
+limit, and no endpoint request is made for those prompts.
+
 The command writes:
 
 - `rendered_prompts/` with the prompt pack used for the run

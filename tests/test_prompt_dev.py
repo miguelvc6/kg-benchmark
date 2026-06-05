@@ -225,6 +225,100 @@ class PromptDevTests(unittest.TestCase):
                 matrix_dir = Path(result["output_dir"])
                 self.assertTrue((matrix_dir / "run_manifest.jsonl").exists())
                 self.assertTrue((matrix_dir / "evaluation_summary.json").exists())
+                if result["task"] == "repair_proposal":
+                    self.assertEqual(result["request_errors"]["track_diagnosis_request_error_count"], 0)
+
+    def test_evaluate_prompts_can_retry_existing_failures(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            classified = root / "classified.jsonl"
+            records = [_tbox_record("tbox", "Q2", "P2")]
+            classified.write_text("\n".join(json.dumps(record) for record in records) + "\n", encoding="utf-8")
+            manifest = root / "dev.json"
+            manifest.write_text(json.dumps({"selected_case_ids": ["tbox"]}), encoding="utf-8")
+            world_state = root / "world.json"
+            world_state.write_text("{}", encoding="utf-8")
+            options = PromptDevEvaluateOptions(
+                classified_benchmark=classified,
+                world_state=world_state,
+                dev_manifest=manifest,
+                output_dir=root / "eval",
+                max_cases=1,
+                representations=("hybrid_json_nl",),
+                example_policies=("zero_shot",),
+                context_bundles=("minimal_case",),
+                tasks=("track_diagnosis",),
+            )
+
+            evaluate_prompt_dev_prompts(
+                options,
+                provider=StaticResponseProvider(lambda _metadata: "not-json", provider_name="static", model="static"),
+            )
+            skipped_summary = evaluate_prompt_dev_prompts(
+                options,
+                provider=StaticResponseProvider(
+                    lambda metadata: {
+                        "case_id": metadata["case_id"],
+                        "predicted_track": metadata["historical_track"],
+                        "confidence": "high",
+                    },
+                    provider_name="static",
+                    model="static",
+                ),
+            )
+            retried_summary = evaluate_prompt_dev_prompts(
+                PromptDevEvaluateOptions(
+                    **{**options.__dict__, "retry_failures": True}
+                ),
+                provider=StaticResponseProvider(
+                    lambda metadata: {
+                        "case_id": metadata["case_id"],
+                        "predicted_track": metadata["historical_track"],
+                        "confidence": "high",
+                    },
+                    provider_name="static",
+                    model="static",
+                ),
+            )
+
+            self.assertEqual(skipped_summary["counts"]["by_parse_status"], {"skipped_existing_parse_error": 1})
+            self.assertEqual(retried_summary["counts"]["by_parse_status"], {"normalized": 1})
+            matrix_dir = Path(retried_summary["results"][0]["output_dir"])
+            self.assertTrue((matrix_dir / "track_diagnoses.jsonl").exists())
+
+    def test_evaluate_prompts_can_skip_oversized_prompts_before_provider_call(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            classified = root / "classified.jsonl"
+            classified.write_text(json.dumps(_tbox_record("tbox", "Q2", "P2")) + "\n", encoding="utf-8")
+            manifest = root / "dev.json"
+            manifest.write_text(json.dumps({"selected_case_ids": ["tbox"]}), encoding="utf-8")
+            world_state = root / "world.json"
+            world_state.write_text("{}", encoding="utf-8")
+
+            def fail_if_called(_metadata: dict) -> dict:
+                raise AssertionError("provider should not be called for oversized prompts")
+
+            summary = evaluate_prompt_dev_prompts(
+                PromptDevEvaluateOptions(
+                    classified_benchmark=classified,
+                    world_state=world_state,
+                    dev_manifest=manifest,
+                    output_dir=root / "eval",
+                    max_cases=1,
+                    representations=("hybrid_json_nl",),
+                    example_policies=("zero_shot",),
+                    context_bundles=("minimal_case",),
+                    tasks=("track_diagnosis",),
+                    max_prompt_chars=1,
+                ),
+                provider=StaticResponseProvider(fail_if_called, provider_name="static", model="static"),
+            )
+
+            self.assertEqual(summary["counts"]["by_parse_status"], {"request_error": 1})
+            matrix_dir = Path(summary["results"][0]["output_dir"])
+            manifest_row = json.loads((matrix_dir / "run_manifest.jsonl").read_text(encoding="utf-8").splitlines()[0])
+            self.assertIn("exceeds --max-prompt-chars", manifest_row["provider_error"])
 
 
 if __name__ == "__main__":

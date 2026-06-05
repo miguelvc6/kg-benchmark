@@ -10,12 +10,20 @@ from guardian.model_provider import (
     OpenAIChatProvider,
     OpenAIResponsesProvider,
     StaticResponseProvider,
+    _extract_json_payload,
     _format_batch_progress,
     create_model_provider,
 )
 
 
 class OpenAIChatProviderTests(unittest.TestCase):
+    def test_extracts_json_after_qwen_thinking_preamble(self) -> None:
+        payload = _extract_json_payload(
+            '<think>reasoning with {"not": "the answer"}</think>\n\n{"case_id": "c1", "predicted_track": "T_BOX"}'
+        )
+
+        self.assertEqual(payload, {"case_id": "c1", "predicted_track": "T_BOX"})
+
     def test_formats_batch_progress_with_eta(self) -> None:
         formatted = _format_batch_progress(
             {"total": 10, "completed": 4, "failed": 1},
@@ -381,8 +389,32 @@ class OllamaChatProviderTests(unittest.TestCase):
 
 
 class OpenAIResponsesProviderTests(unittest.TestCase):
+    def test_loads_university_retry_timeout_and_output_settings_from_env(self) -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "UNIVERSITY_OPENAI_API_KEY": "test-key",
+                "UNIVERSITY_OPENAI_MODEL": "Qwen/Qwen3-4B",
+                "UNIVERSITY_OPENAI_BASE_URL": "https://demosite.ml.jku.at/v1",
+                "UNIVERSITY_OPENAI_TIMEOUT_SECONDS": "240",
+                "UNIVERSITY_OPENAI_MAX_OUTPUT_TOKENS": "1024",
+                "UNIVERSITY_OPENAI_MAX_RETRIES": "0",
+                "UNIVERSITY_OPENAI_RETRY_BASE_SECONDS": "0.5",
+                "UNIVERSITY_OPENAI_RETRY_MAX_SECONDS": "3",
+            },
+            clear=True,
+        ):
+            provider = OpenAIResponsesProvider()
+
+        self.assertEqual(provider.timeout, 240)
+        self.assertEqual(provider.max_output_tokens, 1024)
+        self.assertEqual(provider.max_retries, 0)
+        self.assertEqual(provider.retry_base_seconds, 0.5)
+        self.assertEqual(provider.retry_max_seconds, 3.0)
+
     def test_maps_university_responses_output(self) -> None:
         response = MagicMock()
+        response.status_code = 200
         response.json.return_value = {
             "id": "resp_1",
             "model": "Qwen/Qwen3-4B",
@@ -412,6 +444,70 @@ class OpenAIResponsesProviderTests(unittest.TestCase):
         self.assertEqual(request_payload["model"], "Qwen/Qwen3-4B")
         self.assertEqual(request_payload["input"][0]["role"], "system")
         self.assertEqual(request_payload["input"][1]["role"], "user")
+
+    def test_university_responses_payload_sets_max_output_tokens(self) -> None:
+        response = MagicMock()
+        response.status_code = 200
+        response.json.return_value = {
+            "id": "resp_1",
+            "model": "Qwen/Qwen3-4B",
+            "output_text": "{\"case_id\": \"c1\"}",
+            "usage": {"input_tokens": 13, "output_tokens": 5, "total_tokens": 18},
+        }
+
+        with patch("guardian.model_provider.requests.post", return_value=response) as post:
+            provider = OpenAIResponsesProvider(
+                api_key="test-key",
+                model="Qwen/Qwen3-4B",
+                base_url="https://demosite.ml.jku.at/v1",
+                max_output_tokens=1024,
+            )
+            provider.generate(
+                prompt="{}",
+                system_prompt="Return JSON only.",
+                response_format={"type": "json_object"},
+                metadata={"case_id": "c1"},
+            )
+
+        request_payload = json.loads(post.call_args.kwargs["data"].decode("utf-8"))
+        self.assertEqual(request_payload["max_output_tokens"], 1024)
+
+    def test_university_responses_retries_retryable_status(self) -> None:
+        retry_response = MagicMock()
+        retry_response.status_code = 504
+        success_response = MagicMock()
+        success_response.status_code = 200
+        success_response.raise_for_status.return_value = None
+        success_response.json.return_value = {
+            "id": "resp_1",
+            "model": "Qwen/Qwen3-4B",
+            "output_text": "{\"case_id\": \"c1\"}",
+            "usage": {"input_tokens": 13, "output_tokens": 5, "total_tokens": 18},
+        }
+
+        with (
+            patch("guardian.model_provider.requests.post", side_effect=[retry_response, success_response]) as post,
+            patch("guardian.model_provider.time.sleep") as sleep,
+            patch("guardian.model_provider.random.uniform", return_value=0.0),
+        ):
+            provider = OpenAIResponsesProvider(
+                api_key="test-key",
+                model="Qwen/Qwen3-4B",
+                base_url="https://demosite.ml.jku.at/v1",
+                max_retries=1,
+                retry_base_seconds=0.1,
+                retry_max_seconds=0.1,
+            )
+            _raw, parsed, _usage = provider.generate(
+                prompt="{}",
+                system_prompt="Return JSON only.",
+                response_format={"type": "json_object"},
+                metadata={"case_id": "c1"},
+            )
+
+        self.assertEqual(parsed, {"case_id": "c1"})
+        self.assertEqual(post.call_count, 2)
+        sleep.assert_called_once()
 
 
 class StaticResponseProviderBatchTests(unittest.TestCase):

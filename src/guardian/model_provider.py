@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import random
 import re
 import time
 from dataclasses import dataclass
@@ -75,7 +76,20 @@ def _extract_json_payload(raw_text: str) -> Any:
     try:
         return json.loads(text)
     except json.JSONDecodeError:
-        return None
+        pass
+
+    decoder = json.JSONDecoder()
+    parsed_payload = None
+    for index, character in enumerate(text):
+        if character != "{":
+            continue
+        try:
+            candidate, _end = decoder.raw_decode(text[index:])
+        except json.JSONDecodeError:
+            continue
+        if isinstance(candidate, dict):
+            parsed_payload = candidate
+    return parsed_payload
 
 
 def _default_response_format(response_format: dict[str, Any]) -> str | None:
@@ -113,6 +127,17 @@ def _env_int(name: str) -> int | None:
     except ValueError:
         return None
     return value if value > 0 else None
+
+
+def _env_retry_count(name: str) -> int | None:
+    raw = os.getenv(name)
+    if raw in (None, ""):
+        return None
+    try:
+        value = int(raw)
+    except ValueError:
+        return None
+    return value if value >= 0 else None
 
 
 def _ollama_keep_alive_value(value: Any) -> str | int | None:
@@ -861,6 +886,10 @@ class OpenAIResponsesProvider:
     model: str | None = None
     base_url: str | None = None
     timeout: int = 120
+    max_output_tokens: int | None = None
+    max_retries: int = 4
+    retry_base_seconds: float = 2.0
+    retry_max_seconds: float = 20.0
     provider_name: str = "university"
     provider_env_prefix: str = "UNIVERSITY_OPENAI"
 
@@ -872,6 +901,14 @@ class OpenAIResponsesProvider:
         )
         self.model = self.model or os.getenv(f"{self.provider_env_prefix}_MODEL")
         self.base_url = (self.base_url or os.getenv(f"{self.provider_env_prefix}_BASE_URL") or "").rstrip("/")
+        self.timeout = _env_int(f"{self.provider_env_prefix}_TIMEOUT_SECONDS") or self.timeout
+        self.max_output_tokens = self.max_output_tokens or _env_int(f"{self.provider_env_prefix}_MAX_OUTPUT_TOKENS")
+        env_max_retries = _env_retry_count(f"{self.provider_env_prefix}_MAX_RETRIES")
+        self.max_retries = env_max_retries if env_max_retries is not None else self.max_retries
+        self.retry_base_seconds = (
+            _env_float(f"{self.provider_env_prefix}_RETRY_BASE_SECONDS") or self.retry_base_seconds
+        )
+        self.retry_max_seconds = _env_float(f"{self.provider_env_prefix}_RETRY_MAX_SECONDS") or self.retry_max_seconds
         if not self.api_key:
             raise RuntimeError(f"{self.provider_env_prefix}_API_KEY is required for the {self.provider_name} provider.")
         if not self.model:
@@ -880,6 +917,15 @@ class OpenAIResponsesProvider:
             raise RuntimeError(
                 f"{self.provider_env_prefix}_BASE_URL is required for the {self.provider_name} provider."
             )
+        if self.retry_base_seconds <= 0:
+            self.retry_base_seconds = 2.0
+        if self.retry_max_seconds <= 0:
+            self.retry_max_seconds = self.retry_base_seconds
+
+    def _retry_delay_seconds(self, retry_index: int) -> float:
+        exponential_delay = self.retry_base_seconds * (2 ** max(0, retry_index - 1))
+        capped_delay = min(exponential_delay, self.retry_max_seconds)
+        return min(self.retry_max_seconds, capped_delay + random.uniform(0, min(1.0, self.retry_base_seconds)))
 
     def _json_headers(self) -> dict[str, str]:
         return {
@@ -903,6 +949,35 @@ class OpenAIResponsesProvider:
             ) from exc
         raise RuntimeError(f"{self.provider_name} Responses request failed ({response.status_code}).{detail}") from exc
 
+    def _post_responses(self, request_body: bytes) -> Response:
+        retryable_statuses = {429, 500, 502, 503, 504}
+        retryable_exceptions = (requests.Timeout, requests.ConnectionError)
+        last_error: Exception | None = None
+        for attempt in range(self.max_retries + 1):
+            try:
+                response = requests.post(
+                    f"{self.base_url}/responses",
+                    headers=self._json_headers(),
+                    data=request_body,
+                    timeout=self.timeout,
+                )
+            except retryable_exceptions as exc:
+                last_error = exc
+                if attempt >= self.max_retries:
+                    raise RuntimeError(
+                        f"{self.provider_name} Responses request failed after {attempt + 1} attempt(s): {exc}"
+                    ) from exc
+            else:
+                if response.status_code not in retryable_statuses or attempt >= self.max_retries:
+                    return response
+                last_error = RuntimeError(f"retryable HTTP {response.status_code}")
+            time.sleep(self._retry_delay_seconds(attempt + 1))
+        if last_error is not None:
+            raise RuntimeError(
+                f"{self.provider_name} Responses request failed after {self.max_retries + 1} attempt(s): {last_error}"
+            ) from last_error
+        raise RuntimeError(f"{self.provider_name} Responses request failed before a response was returned.")
+
     def generate(
         self,
         prompt: str,
@@ -919,13 +994,10 @@ class OpenAIResponsesProvider:
         }
         if response_format.get("type") == "json_object":
             payload["text"] = {"format": {"type": "json_object"}}
+        if isinstance(self.max_output_tokens, int) and self.max_output_tokens > 0:
+            payload["max_output_tokens"] = self.max_output_tokens
         request_body = _encode_json_body(payload, metadata=metadata, provider_name=self.provider_name)
-        response = requests.post(
-            f"{self.base_url}/responses",
-            headers=self._json_headers(),
-            data=request_body,
-            timeout=self.timeout,
-        )
+        response = self._post_responses(request_body)
         try:
             response.raise_for_status()
         except HTTPError as exc:

@@ -93,6 +93,9 @@ class PromptDevEvaluateOptions:
     core_manifest: Path | None = None
     example_count: int = 2
     allow_same_property_examples: bool = False
+    resume_existing: bool = True
+    retry_failures: bool = False
+    max_prompt_chars: int | None = None
 
 
 def _utc_now() -> str:
@@ -898,6 +901,75 @@ def _record_prompt_dev_result(
     return manifest_record
 
 
+def _write_missing_diagnosis_manifest_rows(
+    *,
+    matrix_dir: Path,
+    matrix_id: str,
+    run_id: str,
+    case_ids: Iterable[str],
+    provider: ModelProvider,
+) -> None:
+    for case_id in sorted(set(case_ids)):
+        _append_jsonl(
+            matrix_dir / "run_manifest.jsonl",
+            {
+                "run_id": run_id,
+                "matrix_id": matrix_id,
+                "case_id": case_id,
+                "ablation_bundle": matrix_id,
+                "task_type": "track_diagnosis",
+                "prompt_dev_task": "track_diagnosis",
+                "provider": getattr(provider, "provider_name", provider.__class__.__name__),
+                "model": getattr(provider, "model", "unknown-model"),
+                "usage": _usage_block(_empty_usage(provider, {"case_id": case_id}), None),
+                "timestamp_utc": _utc_now(),
+                "parse_status": "missing",
+                "skip_reason": "not_run_for_repair_proposal_prompt_matrix",
+            },
+        )
+
+
+def _prompt_manifest_key(prompt_record: dict[str, Any]) -> tuple[str, str]:
+    task_type = "track_diagnosis" if prompt_record.get("task") == "track_diagnosis" else "proposal"
+    return prompt_record["case_id"], task_type
+
+
+def _latest_manifest_rows(manifest_path: Path) -> dict[tuple[str, str], dict[str, Any]]:
+    rows: dict[tuple[str, str], dict[str, Any]] = {}
+    if not manifest_path.exists():
+        return rows
+    for row in iter_jsonl(manifest_path):
+        if not isinstance(row, dict):
+            continue
+        case_id = row.get("case_id")
+        task_type = row.get("task_type")
+        if not isinstance(case_id, str) or not isinstance(task_type, str):
+            continue
+        if row.get("skip_reason") == "not_run_for_repair_proposal_prompt_matrix":
+            continue
+        rows[(case_id, task_type)] = row
+    return rows
+
+
+def _should_skip_existing_prompt_result(
+    existing_row: dict[str, Any] | None,
+    *,
+    retry_failures: bool,
+) -> tuple[bool, str | None]:
+    if not existing_row:
+        return False, None
+    parse_status = existing_row.get("parse_status")
+    if parse_status == "normalized":
+        return True, "skipped_existing_normalized"
+    if parse_status in {"request_error", "parse_error"} and not retry_failures:
+        return True, f"skipped_existing_{parse_status}"
+    return False, None
+
+
+def _prompt_char_count(prompt_record: dict[str, Any]) -> int:
+    return len(str(prompt_record.get("system_prompt") or "")) + len(str(prompt_record.get("user_prompt") or ""))
+
+
 def evaluate_prompt_dev_prompts(
     options: PromptDevEvaluateOptions,
     *,
@@ -947,6 +1019,7 @@ def evaluate_prompt_dev_prompts(
             matrix_id = prompt_record["matrix_id"]
             matrix_dir = output_dir / "matrices" / matrix_id
             matrix_dir.mkdir(parents=True, exist_ok=True)
+            existing_rows = _latest_manifest_rows(matrix_dir / "run_manifest.jsonl") if options.resume_existing else {}
             record = records_by_id[prompt_record["case_id"]]
             world_state_entry = world_store.get(record["id"])
             metadata = _prompt_record_metadata(
@@ -956,32 +1029,57 @@ def evaluate_prompt_dev_prompts(
                 record=record,
                 world_state_entry=world_state_entry,
             )
-            started = time.perf_counter()
-            try:
-                raw_response, parsed_payload, usage = provider.generate(
-                    prompt_record["user_prompt"],
-                    prompt_record["system_prompt"],
-                    prompt_record["response_format"],
-                    metadata,
-                )
-                elapsed_seconds = time.perf_counter() - started
-                error_message = None
-            except Exception as exc:
-                raw_response = None
-                parsed_payload = None
-                usage = _empty_usage(provider, metadata)
-                elapsed_seconds = time.perf_counter() - started
-                error_message = str(exc)
-            manifest_record = _record_prompt_dev_result(
-                matrix_dir=matrix_dir,
-                prompt_record=prompt_record,
-                metadata=metadata,
-                raw_response=raw_response,
-                parsed_payload=parsed_payload,
-                usage=usage,
-                elapsed_seconds=elapsed_seconds,
-                error_message=error_message,
+            existing_row = existing_rows.get(_prompt_manifest_key(prompt_record))
+            should_skip, skip_status = _should_skip_existing_prompt_result(
+                existing_row,
+                retry_failures=options.retry_failures,
             )
+            started = time.perf_counter()
+            if should_skip:
+                manifest_record = dict(existing_row or {})
+                manifest_record["parse_status"] = skip_status
+            else:
+                prompt_char_count = _prompt_char_count(prompt_record)
+                if options.max_prompt_chars is not None and prompt_char_count > options.max_prompt_chars:
+                    manifest_record = _record_prompt_dev_result(
+                        matrix_dir=matrix_dir,
+                        prompt_record=prompt_record,
+                        metadata=metadata,
+                        raw_response=None,
+                        parsed_payload=None,
+                        usage=_empty_usage(provider, metadata),
+                        elapsed_seconds=None,
+                        error_message=(
+                            f"prompt length {prompt_char_count} exceeds --max-prompt-chars "
+                            f"{options.max_prompt_chars}"
+                        ),
+                    )
+                else:
+                    try:
+                        raw_response, parsed_payload, usage = provider.generate(
+                            prompt_record["user_prompt"],
+                            prompt_record["system_prompt"],
+                            prompt_record["response_format"],
+                            metadata,
+                        )
+                        elapsed_seconds = time.perf_counter() - started
+                        error_message = None
+                    except Exception as exc:
+                        raw_response = None
+                        parsed_payload = None
+                        usage = _empty_usage(provider, metadata)
+                        elapsed_seconds = time.perf_counter() - started
+                        error_message = str(exc)
+                    manifest_record = _record_prompt_dev_result(
+                        matrix_dir=matrix_dir,
+                        prompt_record=prompt_record,
+                        metadata=metadata,
+                        raw_response=raw_response,
+                        parsed_payload=parsed_payload,
+                        usage=usage,
+                        elapsed_seconds=elapsed_seconds,
+                        error_message=error_message,
+                    )
             prompt_counts[manifest_record["parse_status"]] += 1
             matrices.setdefault(
                 matrix_id,
@@ -1005,6 +1103,14 @@ def evaluate_prompt_dev_prompts(
     for matrix_id, matrix_info in sorted(matrices.items()):
         matrix_dir = Path(matrix_info["output_dir"])
         unique_case_ids = sorted(set(matrix_info["case_ids"]))
+        if matrix_info["task"] == "repair_proposal":
+            _write_missing_diagnosis_manifest_rows(
+                matrix_dir=matrix_dir,
+                matrix_id=matrix_id,
+                run_id=run_id,
+                case_ids=unique_case_ids,
+                provider=provider,
+            )
         _, eval_summary = evaluate_benchmark(
             classified_path=options.classified_benchmark,
             world_state_path=options.world_state,
