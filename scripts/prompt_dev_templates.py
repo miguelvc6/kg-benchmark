@@ -160,7 +160,7 @@ def _format_input_section(payload: dict[str, Any], representation: str) -> str:
 
 TRACK_DIAGNOSIS_CONTRACT = """Return exactly one JSON object:
 {
-  "case_id": "<copy input id exactly>",
+  "case_id": "<copy input id exactly; this is the neutral prompt-visible id>",
   "predicted_track": "A_BOX" | "T_BOX" | "AMBIGUOUS",
   "confidence": "low" | "medium" | "high" | "0.0-1.0 as a string",
   "rationale": "<short evidence-based explanation>"
@@ -169,7 +169,7 @@ TRACK_DIAGNOSIS_CONTRACT = """Return exactly one JSON object:
 
 A_BOX_REPAIR_CONTRACT = """Return exactly one JSON object:
 {
-  "case_id": "<copy input id exactly>",
+  "case_id": "<copy input id exactly; this is the neutral prompt-visible id>",
   "target": {"qid": "Q...", "pid": "P..."},
   "ops": [
     {
@@ -180,14 +180,14 @@ A_BOX_REPAIR_CONTRACT = """Return exactly one JSON object:
     }
   ],
   "rationale": "<short evidence-based explanation>",
-  "provenance": [{"kind": "KG" | "HISTORY" | "OTHER", "node_id": "Q...", "snippet": "<visible evidence>"}],
+  "provenance": [{"kind": "KG" | "OTHER", "node_id": "Q...", "snippet": "<visible evidence>"}],
   "uncertainty": {"confidence": 0.0, "notes": "<short uncertainty note>"}
 }
 """
 
 T_BOX_REPAIR_CONTRACT = """Return exactly one JSON object:
 {
-  "case_id": "<copy input id exactly>",
+  "case_id": "<copy input id exactly; this is the neutral prompt-visible id>",
   "target": {"pid": "P...", "constraint_type_qid": "Q..."},
   "proposal": {
     "action": "RELAXATION_RANGE_WIDENED"
@@ -206,9 +206,12 @@ T_BOX_REPAIR_CONTRACT = """Return exactly one JSON object:
     ]
   },
   "rationale": "<short evidence-based explanation>",
-  "provenance": [{"kind": "KG" | "HISTORY" | "OTHER", "node_id": "Q...", "snippet": "<visible evidence>"}],
+  "provenance": [{"kind": "KG" | "OTHER", "node_id": "Q...", "snippet": "<visible evidence>"}],
   "uncertainty": {"confidence": 0.0, "notes": "<short uncertainty note>"}
 }
+Do not put report_violation_type_qids into signature_after unless those QIDs are visible semantic changed constraint
+values in the supplied constraint context. If exact post-reform schema values are not visible, choose action
+SCHEMA_UPDATE with low confidence rather than inventing an exact signature.
 """
 
 ABSTENTION_CONTRACT = """If the visible evidence is insufficient, return exactly:
@@ -241,7 +244,8 @@ def render_prompt_dev_prompt(
     prompt_name = f"{PROMPT_DEV_VERSION}_{task}_{representation}"
     system_prompt = (
         "You are evaluating knowledge-graph repair capability under a controlled benchmark prompt. "
-        "Use only the evidence in the prompt. Return valid JSON only; no markdown and no code fences."
+        "Use only the evidence in the prompt. Return valid JSON only; no markdown and no code fences. "
+        "Do not include <think> tags, chain-of-thought, markdown, or text before/after JSON."
     )
     if task == "track_diagnosis":
         task_instruction = (
@@ -260,7 +264,9 @@ def render_prompt_dev_prompt(
         task_instruction = (
             "Propose an executable T-box schema reform for the focus property. "
             "Use constraint-family QIDs from the supplied context as constraint_type_qid values. "
-            "Do not copy ordinary entity/type QIDs into constraint-family fields."
+            "Do not copy ordinary entity/type QIDs into constraint-family fields. "
+            "Do not treat report_violation_type_qids as the repaired constraint signature unless the same QIDs are "
+            "visible changed constraint values."
         )
         contract = T_BOX_REPAIR_CONTRACT
 

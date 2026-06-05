@@ -64,6 +64,7 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-prompt-dev render \
   --core-manifest reports/benchmark_selection/core_v1_seed_13.json \
   --output-dir reports/prompt_dev/rendered_prompt_dev_v1 \
   --max-cases 24 \
+  --sample-strategy stratified \
   --representations hybrid_json_nl \
   --example-policies zero_shot \
   --context-bundles logic_only,local_graph \
@@ -79,6 +80,15 @@ This writes:
 
 The render command opens the Stage 4 artifact and world-state index, builds the same sanitized context bundles used by the reasoning-floor runner, selects dev-only few-shot examples when requested, and writes prompts for manual review. It does not run LLM inference.
 
+`--sample-strategy stratified` is the prompt-development default. It samples the dev manifest by rotating across
+historical track, classification class/subtype, and the manifest `selection_stratum` before applying `--max-cases`.
+Use `--sample-strategy manifest_order` only when reproducing the literal manifest order. Render summaries report case
+counts by track, class, subtype, class/subtype, and selection stratum.
+
+Prompt-visible case IDs are neutralized to values such as `case_000001`. The prompt asks the model to copy this neutral
+ID, and the evaluation path maps it back to the internal benchmark case ID before normalization and scoring. The raw
+benchmark IDs remain internal run metadata and should not appear in model-visible prompt text.
+
 ## Evaluate Prompt Variants On The Dev Manifest
 
 After static review, run selected prompt variants on the dev manifest only:
@@ -92,6 +102,7 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-prompt-dev evaluate \
   --output-dir reports/prompt_dev/evaluation_prompt_dev_v1 \
   --model-endpoint ollama \
   --max-cases 24 \
+  --sample-strategy stratified \
   --representations hybrid_json_nl,pure_nl \
   --example-policies zero_shot,matched_2shot \
   --context-bundles logic_only,local_graph \
@@ -144,6 +155,10 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-prompt-dev evaluate \
 Oversized prompts are recorded as local `request_error` rows with a provider-error message explaining the character
 limit, and no endpoint request is made for those prompts.
 
+Top-level `prompt_dev_evaluation_summary.json` and `prompt_dev_evaluation_comparison.md` are written even when an
+individual matrix scoring step fails. Per-matrix result blocks include normalized, parse-error, request-error, and
+skipped counts, plus counters by historical track, prompt task, and context bundle.
+
 The command writes:
 
 - `rendered_prompts/` with the prompt pack used for the run
@@ -177,6 +192,19 @@ Matched examples rank candidates by:
 - same popularity bucket.
 
 Use `--allow-same-property-examples` only for explicit precedent-retrieval experiments.
+
+For few-shot prompt development, `--core-manifest` is required by default so examples can exclude core cases and core
+T-box property-revision groups. If you intentionally want to render or evaluate few-shot prompts without this guard,
+pass `--allow-core-example-risk` and treat the output as a leakage-risk experiment, not a paper-facing prompt-selection
+run.
+
+## T-Box Temporal Context Policy
+
+T-box repair prompts must not expose post-reform target-property constraints that already contain the answer. When a
+benchmark case has `repair_target.constraint_delta.signature_before` or `old_constraints`, prompt development exposes
+that pre-reform constraint signature. When no pre-reform signature is available, prompt development exposes only a
+compact constraint-family inventory plus the visible violation context, not the full current L4 target-property
+constraint payload. Local graph prompts follow the same L4 temporal policy and do not expose `sitelinks_count`.
 
 ## Freeze Final Prompt Configuration
 

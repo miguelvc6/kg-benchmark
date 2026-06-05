@@ -35,6 +35,7 @@ EXAMPLE_POLICIES = (
 REPAIR_TRACK_MODES = ("oracle", "diagnosis_routed")
 DEFAULT_CONTEXT_BUNDLES = ("logic_only", "local_graph")
 DEFAULT_RENDER_TASKS = ("track_diagnosis", "repair_proposal")
+SAMPLE_STRATEGIES = ("manifest_order", "stratified")
 T_BOX_ACTIONS = {
     "RELAXATION_RANGE_WIDENED",
     "RESTRICTION_RANGE_NARROWED",
@@ -72,6 +73,8 @@ class PromptDevRenderOptions:
     core_manifest: Path | None = None
     example_count: int = 2
     allow_same_property_examples: bool = False
+    sample_strategy: str = "stratified"
+    allow_core_example_risk: bool = False
 
 
 @dataclass(frozen=True)
@@ -97,6 +100,8 @@ class PromptDevEvaluateOptions:
     retry_failures: bool = False
     max_prompt_chars: int | None = None
     progress_callback: Callable[[dict[str, Any]], None] | None = None
+    sample_strategy: str = "stratified"
+    allow_core_example_risk: bool = False
 
 
 def _utc_now() -> str:
@@ -111,6 +116,90 @@ def _stable_hash(*parts: Any) -> str:
 def _ordered_csv(values: Iterable[str] | None, default: Iterable[str]) -> tuple[str, ...]:
     result = tuple(value.strip() for value in values or default if isinstance(value, str) and value.strip())
     return result or tuple(default)
+
+
+def _classification_parts(record: dict[str, Any]) -> tuple[str, str]:
+    classification = record.get("classification") if isinstance(record.get("classification"), dict) else {}
+    cls = classification.get("class")
+    subtype = classification.get("subtype")
+    return (
+        cls if isinstance(cls, str) and cls else "unknown",
+        subtype if isinstance(subtype, str) and subtype else "unknown",
+    )
+
+
+def _manifest_annotation(manifest: dict[str, Any], case_id: str) -> dict[str, Any]:
+    annotations = manifest.get("case_annotations") if isinstance(manifest.get("case_annotations"), dict) else {}
+    annotation = annotations.get(case_id)
+    return annotation if isinstance(annotation, dict) else {}
+
+
+def _selection_stratum(manifest: dict[str, Any], case_id: str) -> str:
+    annotation = _manifest_annotation(manifest, case_id)
+    value = annotation.get("selection_stratum")
+    return value if isinstance(value, str) and value else "unknown"
+
+
+def _prompt_dev_stratum_key(manifest: dict[str, Any], record: dict[str, Any]) -> tuple[str, str, str, str]:
+    cls, subtype = _classification_parts(record)
+    return (
+        str(record.get("track") or "unknown"),
+        cls,
+        subtype,
+        _selection_stratum(manifest, str(record.get("id") or "")),
+    )
+
+
+def _stratified_case_ids(
+    ordered_ids: list[str],
+    by_id: dict[str, dict[str, Any]],
+    manifest: dict[str, Any],
+    *,
+    max_cases: int,
+    seed: int,
+) -> list[str]:
+    if max_cases <= 0:
+        return []
+    buckets: dict[tuple[str, str, str, str], list[str]] = {}
+    for case_id in ordered_ids:
+        record = by_id.get(case_id)
+        if record is None:
+            continue
+        buckets.setdefault(_prompt_dev_stratum_key(manifest, record), []).append(case_id)
+    for key, values in buckets.items():
+        values.sort(key=lambda case_id: (_stable_hash(seed, "prompt_dev_sample", *key, case_id), case_id))
+
+    track_to_keys: dict[str, list[tuple[str, str, str, str]]] = {}
+    for key in sorted(buckets):
+        track_to_keys.setdefault(key[0], []).append(key)
+    track_order = sorted(track_to_keys)
+    selected: list[str] = []
+    selected_set: set[str] = set()
+    track_positions = {track: 0 for track in track_order}
+
+    while len(selected) < max_cases:
+        made_progress = False
+        for track in track_order:
+            keys = track_to_keys[track]
+            if not keys:
+                continue
+            for _ in range(len(keys)):
+                key = keys[track_positions[track] % len(keys)]
+                track_positions[track] += 1
+                while buckets[key] and buckets[key][0] in selected_set:
+                    buckets[key].pop(0)
+                if not buckets[key]:
+                    continue
+                case_id = buckets[key].pop(0)
+                selected.append(case_id)
+                selected_set.add(case_id)
+                made_progress = True
+                break
+            if len(selected) >= max_cases:
+                break
+        if not made_progress:
+            break
+    return selected
 
 
 def build_prompt_dev_matrix(options: PromptDevMatrixOptions | None = None) -> dict[str, Any]:
@@ -260,22 +349,31 @@ def _load_manifest_records(
     manifest_path: Path,
     *,
     max_cases: int | None,
+    sample_strategy: str = "stratified",
+    seed: int = 13,
 ) -> list[dict[str, Any]]:
+    if sample_strategy not in SAMPLE_STRATEGIES:
+        raise ValueError(f"Unsupported prompt-dev sample strategy: {sample_strategy}")
     manifest = load_selection_manifest(manifest_path)
     ids = [case_id for case_id in manifest.get("selected_case_ids", []) if isinstance(case_id, str)]
-    if max_cases is not None:
-        ids = ids[: max(0, max_cases)]
     id_set = set(ids)
     by_id = {
         record["id"]: record
         for record in iter_jsonl(classified_path)
         if isinstance(record, dict) and isinstance(record.get("id"), str) and record["id"] in id_set
     }
+    ids = [case_id for case_id in ids if case_id in by_id]
+    if max_cases is not None:
+        limit = max(0, max_cases)
+        if sample_strategy == "manifest_order":
+            ids = ids[:limit]
+        else:
+            ids = _stratified_case_ids(ids, by_id, manifest, max_cases=limit, seed=seed)
     return [by_id[case_id] for case_id in ids if case_id in by_id]
 
 
 def _load_all_manifest_records(classified_path: Path, manifest_path: Path) -> list[dict[str, Any]]:
-    return _load_manifest_records(classified_path, manifest_path, max_cases=None)
+    return _load_manifest_records(classified_path, manifest_path, max_cases=None, sample_strategy="manifest_order")
 
 
 def _metadata(record: dict[str, Any]) -> dict[str, Any]:
@@ -323,6 +421,65 @@ def _repair_action(record: dict[str, Any]) -> str:
     rt = record.get("repair_target") if isinstance(record.get("repair_target"), dict) else {}
     classification = record.get("classification") if isinstance(record.get("classification"), dict) else {}
     return str(rt.get("action") or classification.get("subtype") or "unknown")
+
+
+def _visible_case_id_map(records: Iterable[dict[str, Any]]) -> dict[str, str]:
+    mapping: dict[str, str] = {}
+    for index, record in enumerate(records, start=1):
+        case_id = record.get("id")
+        if isinstance(case_id, str) and case_id and case_id not in mapping:
+            mapping[case_id] = f"case_{index:06d}"
+    return mapping
+
+
+def _replace_exact_string(value: Any, old: str, new: str) -> Any:
+    if value == old:
+        return new
+    if isinstance(value, dict):
+        return {key: _replace_exact_string(child, old, new) for key, child in value.items()}
+    if isinstance(value, list):
+        return [_replace_exact_string(child, old, new) for child in value]
+    return value
+
+
+def _model_visible_payload(payload: dict[str, Any], *, raw_case_id: str, visible_case_id: str) -> dict[str, Any]:
+    visible = _replace_exact_string(payload, raw_case_id, visible_case_id)
+    if isinstance(visible, dict):
+        visible["id"] = visible_case_id
+    return visible if isinstance(visible, dict) else payload
+
+
+def _model_visible_output(
+    payload: dict[str, Any] | None,
+    *,
+    raw_case_id: str,
+    visible_case_id: str,
+) -> dict[str, Any] | None:
+    if payload is None:
+        return None
+    visible = _replace_exact_string(payload, raw_case_id, visible_case_id)
+    if isinstance(visible, dict):
+        visible["case_id"] = visible_case_id
+    return visible if isinstance(visible, dict) else payload
+
+
+def _case_summary_counts(
+    records: Iterable[dict[str, Any]],
+    manifest: dict[str, Any] | None = None,
+) -> dict[str, dict[str, int]]:
+    record_list = list(records)
+    return {
+        "by_track": dict(Counter(str(record.get("track") or "unknown") for record in record_list)),
+        "by_class": dict(Counter(_classification_parts(record)[0] for record in record_list)),
+        "by_subtype": dict(Counter(_classification_parts(record)[1] for record in record_list)),
+        "by_class_subtype": dict(Counter(":".join(_classification_parts(record)) for record in record_list)),
+        "by_selection_stratum": dict(
+            Counter(
+                _selection_stratum(manifest, str(record.get("id") or "")) if manifest is not None else "unknown"
+                for record in record_list
+            )
+        ),
+    }
 
 
 def _example_sort_key(
@@ -483,7 +640,7 @@ def _gold_a_box_output(record: dict[str, Any]) -> dict[str, Any] | None:
         "target": {"qid": qid, "pid": pid},
         "ops": ops,
         "rationale": "Demonstration answer reconstructed from the dev example's historical repaired value.",
-        "provenance": [{"kind": "HISTORY", "snippet": "dev example historical repair target"}],
+        "provenance": [{"kind": "OTHER", "snippet": "dev example visible repair target"}],
         "uncertainty": {"confidence": 0.95, "notes": "Gold demonstration only; not a model output."},
     }
 
@@ -511,7 +668,7 @@ def _gold_t_box_output(record: dict[str, Any]) -> dict[str, Any] | None:
         "target": {"pid": pid, "constraint_type_qid": target_constraint},
         "proposal": {"action": action, "signature_after": signature_after},
         "rationale": "Demonstration answer reconstructed from the dev example's historical constraint signature.",
-        "provenance": [{"kind": "HISTORY", "snippet": "dev example historical property revision"}],
+        "provenance": [{"kind": "OTHER", "snippet": "dev example visible property-revision context"}],
         "uncertainty": {"confidence": 0.95, "notes": "Gold demonstration only; not a model output."},
     }
 
@@ -527,13 +684,35 @@ def _task_for_record(matrix_task: str, record: dict[str, Any], track_mode: str |
     return None
 
 
+def _uses_few_shot(example_policies: Iterable[str]) -> bool:
+    return any(policy != "zero_shot" for policy in example_policies)
+
+
+def _validate_core_example_guard(options: PromptDevRenderOptions | PromptDevEvaluateOptions) -> None:
+    if not _uses_few_shot(options.example_policies):
+        return
+    if options.core_manifest is not None and options.core_manifest.exists():
+        return
+    if options.allow_core_example_risk:
+        return
+    raise ValueError(
+        "Few-shot prompt development requires --core-manifest so examples can exclude core cases. "
+        "Pass --allow-core-example-risk only for an explicit leakage-risk experiment."
+    )
+
+
 def render_prompt_dev_prompts(options: PromptDevRenderOptions) -> dict[str, Any]:
+    _validate_core_example_guard(options)
+    manifest = load_selection_manifest(options.dev_manifest)
     eval_records = _load_manifest_records(
         options.classified_benchmark,
         options.dev_manifest,
         max_cases=options.max_cases,
+        sample_strategy=options.sample_strategy,
+        seed=options.seed,
     )
     candidate_records = _load_all_manifest_records(options.classified_benchmark, options.dev_manifest)
+    visible_case_ids = _visible_case_id_map(candidate_records)
     blocked_core = _blocked_core_sets(options.core_manifest)
     matrix = build_prompt_dev_matrix(
         PromptDevMatrixOptions(
@@ -557,6 +736,8 @@ def render_prompt_dev_prompts(options: PromptDevRenderOptions) -> dict[str, Any]
     log = logging.getLogger("prompt_dev")
     with WorldStateStore(options.world_state, log) as world_store:
         for record in eval_records:
+            raw_case_id = record["id"]
+            visible_case_id = visible_case_ids.get(raw_case_id, f"case_{_stable_hash(raw_case_id)[:12]}")
             world_state_entry = world_store.get(record["id"])
             for row in matrix["rows"]:
                 task = _task_for_record(row["task"], record, row.get("track_mode"))
@@ -567,6 +748,11 @@ def render_prompt_dev_prompts(options: PromptDevRenderOptions) -> dict[str, Any]
                     record,
                     world_state_entry,
                     row["context_bundle"],
+                )
+                case_payload = _model_visible_payload(
+                    case_payload,
+                    raw_case_id=raw_case_id,
+                    visible_case_id=visible_case_id,
                 )
                 examples = select_examples(
                     eval_record=record,
@@ -582,9 +768,26 @@ def render_prompt_dev_prompts(options: PromptDevRenderOptions) -> dict[str, Any]
                     candidate = next((item for item in candidate_records if item.get("id") == example["case_id"]), None)
                     if candidate is None:
                         continue
+                    candidate_raw_case_id = candidate["id"]
+                    candidate_visible_case_id = visible_case_ids.get(
+                        candidate_raw_case_id,
+                        f"case_{_stable_hash(candidate_raw_case_id)[:12]}",
+                    )
                     candidate_world = world_store.get(candidate["id"])
                     example_payload, _ = _bundle_payload_and_audit(candidate, candidate_world, row["context_bundle"])
-                    example["input_payload"] = example_payload
+                    example["input_payload"] = _model_visible_payload(
+                        example_payload,
+                        raw_case_id=candidate_raw_case_id,
+                        visible_case_id=candidate_visible_case_id,
+                    )
+                    visible_output = _model_visible_output(
+                        example.get("output_payload") if isinstance(example.get("output_payload"), dict) else None,
+                        raw_case_id=candidate_raw_case_id,
+                        visible_case_id=candidate_visible_case_id,
+                    )
+                    if visible_output is not None:
+                        example["output_payload"] = visible_output
+                    example["visible_case_id"] = candidate_visible_case_id
                 rendered = render_prompt_dev_prompt(
                     task=task,
                     representation=row["representation"],
@@ -594,7 +797,8 @@ def render_prompt_dev_prompts(options: PromptDevRenderOptions) -> dict[str, Any]
                 )
                 prompt_record = {
                     "matrix_id": row["matrix_id"],
-                    "case_id": record["id"],
+                    "case_id": raw_case_id,
+                    "visible_case_id": visible_case_id,
                     "task": task,
                     "historical_track": record.get("track"),
                     "representation": row["representation"],
@@ -628,6 +832,8 @@ def render_prompt_dev_prompts(options: PromptDevRenderOptions) -> dict[str, Any]
             "world_state": str(options.world_state),
             "dev_manifest": str(options.dev_manifest),
             "core_manifest": str(options.core_manifest) if options.core_manifest else None,
+            "sample_strategy": options.sample_strategy,
+            "max_cases": options.max_cases,
         },
         "outputs": {
             "prompts_jsonl": str(prompts_path),
@@ -642,6 +848,7 @@ def render_prompt_dev_prompts(options: PromptDevRenderOptions) -> dict[str, Any]
             "by_representation": dict(Counter(record["representation"] for record in prompt_records)),
             "by_example_policy": dict(Counter(record["example_policy"] for record in prompt_records)),
             "by_context_bundle": dict(Counter(record["context_bundle"] for record in prompt_records)),
+            **_case_summary_counts(eval_records, manifest),
         },
         "note": "No LLM inference was run. These artifacts contain prompts only.",
     }
@@ -662,7 +869,7 @@ def _prompt_review_markdown(prompt_records: list[dict[str, Any]], summary: dict[
     for record in prompt_records[:12]:
         lines.extend(
             [
-                f"## {record['matrix_id']} / {record['case_id']}",
+                f"## {record['matrix_id']} / {record.get('visible_case_id') or record['case_id']}",
                 "",
                 f"- Task: `{record['task']}`",
                 f"- Representation: `{record['representation']}`",
@@ -771,10 +978,12 @@ def _empty_usage(provider: ModelProvider, metadata: dict[str, Any]) -> dict[str,
     }
 
 
-def _payload_with_case_id(payload: Any, case_id: str) -> Any:
+def _payload_with_case_id(payload: Any, case_id: str, visible_case_id: str | None = None) -> Any:
     if not isinstance(payload, dict):
         return payload
     normalized = dict(payload)
+    if visible_case_id and normalized.get("case_id") == visible_case_id:
+        normalized["case_id"] = case_id
     if not isinstance(normalized.get("case_id"), str) or not normalized.get("case_id", "").strip():
         normalized["case_id"] = case_id
     return normalized
@@ -794,6 +1003,7 @@ def _prompt_record_metadata(
         "run_id": run_id,
         "matrix_id": prompt_record["matrix_id"],
         "case_id": prompt_record["case_id"],
+        "visible_case_id": prompt_record.get("visible_case_id"),
         "ablation_bundle": prompt_record["matrix_id"],
         "context_bundle": prompt_record["context_bundle"],
         "representation": prompt_record["representation"],
@@ -832,6 +1042,7 @@ def _record_prompt_dev_result(
             "run_id",
             "matrix_id",
             "case_id",
+            "visible_case_id",
             "ablation_bundle",
             "context_bundle",
             "representation",
@@ -857,6 +1068,7 @@ def _record_prompt_dev_result(
             "run_id",
             "matrix_id",
             "case_id",
+            "visible_case_id",
             "ablation_bundle",
             "prompt_name",
             "track",
@@ -878,7 +1090,11 @@ def _record_prompt_dev_result(
         return manifest_record
 
     try:
-        normalized_payload = _payload_with_case_id(parsed_payload, prompt_record["case_id"])
+        normalized_payload = _payload_with_case_id(
+            parsed_payload,
+            prompt_record["case_id"],
+            prompt_record.get("visible_case_id") if isinstance(prompt_record.get("visible_case_id"), str) else None,
+        )
         if metadata["task_type"] == "track_diagnosis":
             normalized = normalize_diagnosis(normalized_payload)
             _append_jsonl(matrix_dir / "track_diagnoses.jsonl", normalized.to_dict())
@@ -967,6 +1183,14 @@ def _should_skip_existing_prompt_result(
     return False, None
 
 
+def _status_bucket(parse_status: str) -> str:
+    if parse_status in {"normalized", "parse_error", "request_error"}:
+        return parse_status
+    if parse_status.startswith("skipped"):
+        return "skipped"
+    return parse_status
+
+
 def _prompt_char_count(prompt_record: dict[str, Any]) -> int:
     return len(str(prompt_record.get("system_prompt") or "")) + len(str(prompt_record.get("user_prompt") or ""))
 
@@ -1001,6 +1225,8 @@ def evaluate_prompt_dev_prompts(
             core_manifest=options.core_manifest,
             example_count=options.example_count,
             allow_same_property_examples=options.allow_same_property_examples,
+            sample_strategy=options.sample_strategy,
+            allow_core_example_risk=options.allow_core_example_risk,
         )
     )
     prompt_records = [
@@ -1012,6 +1238,8 @@ def evaluate_prompt_dev_prompts(
         options.classified_benchmark,
         options.dev_manifest,
         max_cases=options.max_cases,
+        sample_strategy=options.sample_strategy,
+        seed=options.seed,
     )
     records_by_id = {record["id"]: record for record in eval_records if isinstance(record.get("id"), str)}
     provider = provider or create_model_provider(options.model_name, model_endpoint=options.model_endpoint)
@@ -1110,10 +1338,18 @@ def evaluate_prompt_dev_prompts(
                     "include_abstention": prompt_record["include_abstention"],
                     "case_ids": [],
                     "counts": Counter(),
+                    "status_counts": Counter(),
+                    "by_historical_track": Counter(),
+                    "by_task": Counter(),
+                    "by_context": Counter(),
                 },
             )
             matrices[matrix_id]["case_ids"].append(prompt_record["case_id"])
             matrices[matrix_id]["counts"][manifest_record["parse_status"]] += 1
+            matrices[matrix_id]["status_counts"][_status_bucket(manifest_record["parse_status"])] += 1
+            matrices[matrix_id]["by_historical_track"][prompt_record.get("historical_track") or "unknown"] += 1
+            matrices[matrix_id]["by_task"][prompt_record["task"]] += 1
+            matrices[matrix_id]["by_context"][prompt_record["context_bundle"]] += 1
             _notify_progress(
                 options.progress_callback,
                 {
@@ -1137,30 +1373,65 @@ def evaluate_prompt_dev_prompts(
                 case_ids=unique_case_ids,
                 provider=provider,
             )
-        _, eval_summary = evaluate_benchmark(
-            classified_path=options.classified_benchmark,
-            world_state_path=options.world_state,
-            a_box_proposals_path=matrix_dir / "a_box_proposals.jsonl",
-            t_box_proposals_path=matrix_dir / "t_box_proposals.jsonl",
-            track_diagnoses_path=matrix_dir / "track_diagnoses.jsonl",
-            run_manifest_path=matrix_dir / "run_manifest.jsonl",
-            ablation_bundle=matrix_id,
-            case_ids=unique_case_ids,
-            out_traces_path=matrix_dir / "evaluation_traces.jsonl",
-            out_summary_path=matrix_dir / "evaluation_summary.json",
-            collect_traces=False,
-            classified_records=eval_records,
-            classified_input_path=options.classified_benchmark,
+        evaluation_error = None
+        try:
+            _, eval_summary = evaluate_benchmark(
+                classified_path=options.classified_benchmark,
+                world_state_path=options.world_state,
+                a_box_proposals_path=matrix_dir / "a_box_proposals.jsonl",
+                t_box_proposals_path=matrix_dir / "t_box_proposals.jsonl",
+                track_diagnoses_path=matrix_dir / "track_diagnoses.jsonl",
+                run_manifest_path=matrix_dir / "run_manifest.jsonl",
+                ablation_bundle=matrix_id,
+                case_ids=unique_case_ids,
+                out_traces_path=matrix_dir / "evaluation_traces.jsonl",
+                out_summary_path=matrix_dir / "evaluation_summary.json",
+                collect_traces=False,
+                classified_records=eval_records,
+                classified_input_path=options.classified_benchmark,
+            )
+        except Exception as exc:
+            evaluation_error = str(exc)
+            eval_summary = {
+                "manifest_type": "prompt_dev_matrix_evaluation_summary",
+                "manifest_version": PROMPT_DEV_VERSION,
+                "created_at_utc": _utc_now(),
+                "ablation_bundle": matrix_id,
+                "overall_metrics": {},
+                "parse_errors": {},
+                "request_errors": {},
+                "evaluation_error": evaluation_error,
+            }
+            write_json(matrix_dir / "evaluation_summary.json", eval_summary)
+            (matrix_dir / "evaluation_traces.jsonl").touch()
+        status_counts = (
+            matrix_info.get("status_counts") if isinstance(matrix_info.get("status_counts"), Counter) else Counter()
         )
+        detailed_counts = {
+            "normalized": status_counts.get("normalized", 0),
+            "parse_error": status_counts.get("parse_error", 0),
+            "request_error": status_counts.get("request_error", 0),
+            "skipped": status_counts.get("skipped", 0),
+            "by_parse_status": dict(matrix_info["counts"]),
+            "by_historical_track": dict(matrix_info.get("by_historical_track", {})),
+            "by_task": dict(matrix_info.get("by_task", {})),
+            "by_context": dict(matrix_info.get("by_context", {})),
+        }
         result = {
-            **{key: value for key, value in matrix_info.items() if key != "counts"},
+            **{
+                key: value
+                for key, value in matrix_info.items()
+                if key not in {"counts", "status_counts", "by_historical_track", "by_task", "by_context"}
+            },
             "case_ids": unique_case_ids,
-            "counts": dict(matrix_info["counts"]),
+            "counts": detailed_counts,
             "evaluation_summary": str(matrix_dir / "evaluation_summary.json"),
             "overall_metrics": eval_summary.get("overall_metrics", {}),
             "parse_errors": eval_summary.get("parse_errors", {}),
             "request_errors": eval_summary.get("request_errors", {}),
         }
+        if evaluation_error is not None:
+            result["evaluation_error"] = evaluation_error
         results.append(result)
 
     summary = {
@@ -1176,6 +1447,8 @@ def evaluate_prompt_dev_prompts(
             "dev_manifest": str(options.dev_manifest),
             "core_manifest": str(options.core_manifest) if options.core_manifest else None,
             "render_summary": str(render_dir / "prompt_dev_render_summary.json"),
+            "sample_strategy": options.sample_strategy,
+            "max_cases": options.max_cases,
         },
         "outputs": {
             "output_dir": str(output_dir),

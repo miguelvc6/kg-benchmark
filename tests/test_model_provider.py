@@ -24,6 +24,35 @@ class OpenAIChatProviderTests(unittest.TestCase):
 
         self.assertEqual(payload, {"case_id": "c1", "predicted_track": "T_BOX"})
 
+    def test_extracts_full_proposal_not_nested_uncertainty_after_thinking(self) -> None:
+        payload = _extract_json_payload(
+            """<think>I considered returning {"case_id": "wrong"}.</think>
+```json
+{
+  "case_id": "case_000001",
+  "target": {"pid": "P2", "constraint_type_qid": "Q21510859"},
+  "proposal": {
+    "action": "RELAXATION_SET_EXPANSION",
+    "signature_after": [
+      {
+        "constraint_qid": "Q21510859",
+        "snaktype": "VALUE",
+        "rank": "normal",
+        "qualifiers": [{"property_id": "P2305", "values": ["Q5"]}]
+      }
+    ]
+  },
+  "rationale": "visible evidence supports the schema change",
+  "provenance": [{"kind": "KG", "snippet": "visible constraint evidence"}],
+  "uncertainty": {"confidence": 0.7, "notes": "not exact"}
+}
+```"""
+        )
+
+        self.assertEqual(payload["case_id"], "case_000001")
+        self.assertIn("proposal", payload)
+        self.assertEqual(payload["uncertainty"]["notes"], "not exact")
+
     def test_formats_batch_progress_with_eta(self) -> None:
         formatted = _format_batch_progress(
             {"total": 10, "completed": 4, "failed": 1},

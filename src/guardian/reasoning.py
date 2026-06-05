@@ -187,7 +187,9 @@ def _build_run_config_payload(
         "selected_case_count": len(normalized_case_ids),
         "generation_strategy": generation_strategy,
         "selected_generation_records_path": (
-            str(selected_generation_records_path.resolve()) if isinstance(selected_generation_records_path, Path) else None
+            str(selected_generation_records_path.resolve())
+            if isinstance(selected_generation_records_path, Path)
+            else None
         ),
         "started_at_utc": started_at_utc,
     }
@@ -310,7 +312,8 @@ def _routing_info_from_existing_diagnosis(
         }
     if not isinstance(diagnosis_row, dict):
         raise RuntimeError(
-            "Cannot resume diagnosis-routed proposal generation because an existing normalized diagnosis row is missing."
+            "Cannot resume diagnosis-routed proposal generation because an existing normalized diagnosis row is "
+            "missing."
         )
     predicted_track = diagnosis_row.get("predicted_track")
     if predicted_track not in {"A_BOX", "T_BOX", "AMBIGUOUS"}:
@@ -660,7 +663,9 @@ def _violation_values(record: dict[str, Any]) -> list[str]:
 
 def _mapped_constraint_qid(record: dict[str, Any]) -> str | None:
     violation_context = _sanitized_violation_context(record)
-    raw_value = violation_context.get("report_violation_type_normalized") or violation_context.get("report_violation_type")
+    raw_value = violation_context.get("report_violation_type_normalized") or violation_context.get(
+        "report_violation_type"
+    )
     if not isinstance(raw_value, str):
         return None
     normalized_mapping = {normalize_text(key): value for key, value in VIOLATION_TO_CONSTRAINT_MAP.items()}
@@ -709,6 +714,71 @@ def _fallback_constraints(constraints: list[dict[str, Any]]) -> list[dict[str, A
     return selected
 
 
+def _constraint_family_inventory(constraints: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    inventory: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for constraint in constraints:
+        if not isinstance(constraint, dict):
+            continue
+        constraint_type = constraint.get("constraint_type")
+        constraint_qid = _constraint_type_qid(constraint)
+        fallback_key = json.dumps(constraint_type, ensure_ascii=False, sort_keys=True) if constraint_type else ""
+        key = constraint_qid or fallback_key
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        entry: dict[str, Any] = {}
+        if constraint_qid:
+            entry["constraint_qid"] = constraint_qid
+        if isinstance(constraint_type, dict):
+            label = constraint_type.get("label") or constraint_type.get("label_en")
+            if isinstance(label, str) and label:
+                entry["label"] = label
+        if entry:
+            inventory.append(entry)
+    return inventory
+
+
+def _t_box_pre_reform_constraints_payload(
+    record: dict[str, Any],
+    constraints_payload: dict[str, Any],
+    valid_constraints: list[dict[str, Any]],
+) -> tuple[Optional[dict[str, Any]], dict[str, Any]] | None:
+    if record.get("track") != "T_BOX":
+        return None
+    repair_target = record.get("repair_target") if isinstance(record.get("repair_target"), dict) else {}
+    constraint_delta = (
+        repair_target.get("constraint_delta") if isinstance(repair_target.get("constraint_delta"), dict) else {}
+    )
+    signature_before = constraint_delta.get("signature_before") or constraint_delta.get("old_constraints")
+    audit = {
+        "constraint_count_before": len(valid_constraints),
+        "constraint_count_after": 0,
+        "temporal_policy": None,
+    }
+    if isinstance(signature_before, list) and signature_before:
+        before_constraints = [constraint for constraint in signature_before if isinstance(constraint, dict)]
+        pruned_payload = {
+            key: value
+            for key, value in constraints_payload.items()
+            if key not in {"constraints", "constraint_count", "property_revision_id"}
+        }
+        pruned_payload["constraints"] = before_constraints
+        pruned_payload["temporal_policy"] = "pre_change_signature_before"
+        audit["constraint_count_after"] = len(before_constraints)
+        audit["temporal_policy"] = "pre_change_signature_before"
+        return pruned_payload, audit
+
+    compact_payload = {
+        "temporal_policy": "compact_inventory_no_pre_change_signature",
+        "constraint_family_inventory": _constraint_family_inventory(valid_constraints),
+        "violation_context": _sanitized_violation_context(record),
+    }
+    audit["constraint_count_after"] = len(compact_payload["constraint_family_inventory"])
+    audit["temporal_policy"] = "compact_inventory_no_pre_change_signature"
+    return compact_payload, audit
+
+
 def _pruned_constraints_payload(
     record: dict[str, Any],
     world_state_entry: Optional[dict[str, Any]],
@@ -726,6 +796,9 @@ def _pruned_constraints_payload(
         "constraint_count_before": len(valid_constraints),
         "constraint_count_after": 0,
     }
+    t_box_pre_reform_payload = _t_box_pre_reform_constraints_payload(record, constraints_payload, valid_constraints)
+    if t_box_pre_reform_payload is not None:
+        return t_box_pre_reform_payload
     if not valid_constraints:
         if constraints_payload:
             constraints_payload["constraints"] = []
@@ -755,7 +828,10 @@ def _pruned_constraints_payload(
     return pruned_payload, audit
 
 
-def _pruned_l1_ego_node(record: dict[str, Any], world_state_entry: Optional[dict[str, Any]]) -> Optional[dict[str, Any]]:
+def _pruned_l1_ego_node(
+    record: dict[str, Any],
+    world_state_entry: Optional[dict[str, Any]],
+) -> Optional[dict[str, Any]]:
     if not isinstance(world_state_entry, dict):
         return None
     l1_node = world_state_entry.get("L1_ego_node")
@@ -766,7 +842,6 @@ def _pruned_l1_ego_node(record: dict[str, Any], world_state_entry: Optional[dict
         "qid": l1_node.get("qid"),
         "label": l1_node.get("label"),
         "description": l1_node.get("description"),
-        "sitelinks_count": l1_node.get("sitelinks_count"),
     }
     properties = reconstruct_properties_with_pre_repair_target(record, l1_node.get("properties"))
     if isinstance(target_pid, str) and target_pid in properties:
@@ -2165,7 +2240,13 @@ def run_reasoning_floor(
                 finalized_custom_ids.add(custom_id)
                 mark_completed()
 
-            retry_summary = {"eligible": len(pending_retries), "attempted": 0, "succeeded": 0, "failed": 0, "unrecoverable": 0}
+            retry_summary = {
+                "eligible": len(pending_retries),
+                "attempted": 0,
+                "succeeded": 0,
+                "failed": 0,
+                "unrecoverable": 0,
+            }
             if pending_retries:
                 _emit_runtime_status(
                     progress,
@@ -2613,7 +2694,8 @@ def run_reasoning_floor(
                     if diagnosis_request_count > 0:
                         _emit_runtime_status(
                             progress,
-                            f"Prepared {diagnosis_request_count} diagnosis batch requests; submitting provider batch job.",
+                            f"Prepared {diagnosis_request_count} diagnosis batch requests; submitting provider "
+                            "batch job.",
                         )
                         batch_started_at = time.perf_counter()
                         diagnosis_execution = provider.execute_batch(
@@ -2766,7 +2848,8 @@ def run_reasoning_floor(
                     if proposal_request_count > 0:
                         _emit_runtime_status(
                             progress,
-                            f"Prepared {proposal_request_count} routed proposal batch requests; submitting provider batch job.",
+                            f"Prepared {proposal_request_count} routed proposal batch requests; submitting provider "
+                            "batch job.",
                         )
                         batch_started_at = time.perf_counter()
                         proposal_execution = provider.execute_batch(
@@ -2940,7 +3023,9 @@ def run_reasoning_floor(
                 if isinstance(multiplier, (int, float))
             }
         )
-        batch_pricing_applied = any(bool((record.get("usage") or {}).get("batch_pricing_applied")) for record in usage_manifest)
+        batch_pricing_applied = any(
+            bool((record.get("usage") or {}).get("batch_pricing_applied")) for record in usage_manifest
+        )
         summary["run_info"] = {
             "run_id": run_id,
             "provider": selected_provider,

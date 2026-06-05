@@ -68,18 +68,44 @@ class BatchModelProvider(Protocol):
         ...
 
 
-def _extract_json_payload(raw_text: str) -> Any:
-    text = raw_text.strip()
-    if text.startswith("```"):
+def _json_candidate_size(candidate: dict[str, Any]) -> int:
+    try:
+        return len(json.dumps(candidate, ensure_ascii=False, sort_keys=True))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _strip_non_json_model_text(raw_text: str) -> str:
+    text = re.sub(r"<think\b[^>]*>.*?</think>", "", raw_text, flags=re.IGNORECASE | re.DOTALL).strip()
+    if "```" in text:
         lines = [line for line in text.splitlines() if not line.strip().startswith("```")]
         text = "\n".join(lines).strip()
+    return text
+
+
+def _looks_like_task_payload(candidate: dict[str, Any]) -> bool:
+    if not isinstance(candidate.get("case_id"), str):
+        return False
+    if "predicted_track" in candidate:
+        return True
+    if "target" in candidate and "ops" in candidate:
+        return True
+    if "target" in candidate and "proposal" in candidate:
+        return True
+    if candidate.get("abstain") is True:
+        return True
+    return False
+
+
+def _extract_json_payload(raw_text: str) -> Any:
+    text = _strip_non_json_model_text(raw_text)
     try:
         return json.loads(text)
     except json.JSONDecodeError:
         pass
 
     decoder = json.JSONDecoder()
-    parsed_payload = None
+    candidates: list[dict[str, Any]] = []
     for index, character in enumerate(text):
         if character != "{":
             continue
@@ -88,8 +114,19 @@ def _extract_json_payload(raw_text: str) -> Any:
         except json.JSONDecodeError:
             continue
         if isinstance(candidate, dict):
-            parsed_payload = candidate
-    return parsed_payload
+            candidates.append(candidate)
+    if not candidates:
+        return None
+
+    task_payloads = [candidate for candidate in candidates if _looks_like_task_payload(candidate)]
+    if task_payloads:
+        return max(task_payloads, key=_json_candidate_size)
+
+    with_case_id = [candidate for candidate in candidates if isinstance(candidate.get("case_id"), str)]
+    if with_case_id:
+        return max(with_case_id, key=_json_candidate_size)
+
+    return max(candidates, key=_json_candidate_size)
 
 
 def _default_response_format(response_format: dict[str, Any]) -> str | None:

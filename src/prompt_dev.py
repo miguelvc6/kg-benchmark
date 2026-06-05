@@ -13,6 +13,7 @@ from lib.prompt_dev import (
     DEFAULT_RENDER_TASKS,
     EXAMPLE_POLICIES,
     REPAIR_TRACK_MODES,
+    SAMPLE_STRATEGIES,
     PromptDevEvaluateOptions,
     PromptDevMatrixOptions,
     PromptDevRenderOptions,
@@ -113,9 +114,20 @@ def parse_args() -> argparse.Namespace:
     render_parser.add_argument("--max-cases", type=int, default=24)
     render_parser.add_argument("--example-count", type=int, default=2)
     render_parser.add_argument(
+        "--sample-strategy",
+        choices=SAMPLE_STRATEGIES,
+        default="stratified",
+        help="Case sampling strategy for --max-cases. Prompt development defaults to stratified.",
+    )
+    render_parser.add_argument(
         "--allow-same-property-examples",
         action="store_true",
         help="Allow few-shot examples from the same property. Disabled by default for leakage control.",
+    )
+    render_parser.add_argument(
+        "--allow-core-example-risk",
+        action="store_true",
+        help="Allow few-shot prompt rendering without a core manifest. Use only for explicit leakage-risk experiments.",
     )
     _add_axis_args(render_parser, render_defaults=True)
 
@@ -139,6 +151,12 @@ def parse_args() -> argparse.Namespace:
     evaluate_parser.add_argument("--max-cases", type=int, default=24)
     evaluate_parser.add_argument("--example-count", type=int, default=2)
     evaluate_parser.add_argument(
+        "--sample-strategy",
+        choices=SAMPLE_STRATEGIES,
+        default="stratified",
+        help="Case sampling strategy for --max-cases. Prompt development defaults to stratified.",
+    )
+    evaluate_parser.add_argument(
         "--max-prompt-chars",
         type=int,
         default=None,
@@ -148,6 +166,11 @@ def parse_args() -> argparse.Namespace:
         "--allow-same-property-examples",
         action="store_true",
         help="Allow few-shot examples from the same property. Disabled by default for leakage control.",
+    )
+    evaluate_parser.add_argument(
+        "--allow-core-example-risk",
+        action="store_true",
+        help="Allow few-shot evaluation without a core manifest. Use only for explicit leakage-risk experiments.",
     )
     evaluate_parser.add_argument(
         "--no-resume",
@@ -214,6 +237,8 @@ def main() -> int:
                 include_abstention=args.include_abstention,
                 example_count=args.example_count,
                 allow_same_property_examples=args.allow_same_property_examples,
+                sample_strategy=args.sample_strategy,
+                allow_core_example_risk=args.allow_core_example_risk,
             )
         )
         print(f"[done] rendered={summary['counts']['rendered_prompts']}")
@@ -247,6 +272,8 @@ def main() -> int:
                     retry_failures=args.retry_failures,
                     max_prompt_chars=args.max_prompt_chars,
                     progress_callback=progress_callback,
+                    sample_strategy=args.sample_strategy,
+                    allow_core_example_risk=args.allow_core_example_risk,
                 )
             )
         print(f"[done] evaluated_prompts={summary['counts']['evaluated_prompts']}")

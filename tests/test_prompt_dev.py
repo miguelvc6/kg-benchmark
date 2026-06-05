@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from collections import Counter
 from pathlib import Path
+from unittest.mock import patch
 
 from guardian.model_provider import StaticResponseProvider
 from lib.prompt_dev import (
@@ -74,6 +75,20 @@ def _tbox_record(case_id: str, qid: str, pid: str = "P2", revision: str = "r1") 
     }
 
 
+def _manifest(case_ids: list[str], records: list[dict]) -> dict:
+    annotations = {}
+    for record in records:
+        classification = record.get("classification", {})
+        subtype = classification.get("subtype") or "unknown"
+        prefix = "DEV_TBOX" if record.get("track") == "T_BOX" else "DEV_ABOX"
+        annotations[record["id"]] = {
+            "selection_stratum": f"{prefix}_{subtype}",
+            "group_key": f"group:{record['id']}",
+            "tbox_revision_key": record.get("repair_target", {}).get("property_revision_id"),
+        }
+    return {"selected_case_ids": case_ids, "case_annotations": annotations}
+
+
 class PromptDevTests(unittest.TestCase):
     def test_matrix_expands_axes_without_inference_fields(self) -> None:
         matrix = build_prompt_dev_matrix(
@@ -138,7 +153,7 @@ class PromptDevTests(unittest.TestCase):
             records = [_abox_record("eval", "Q1", "P1"), _tbox_record("example", "Q2", "P2")]
             classified.write_text("\n".join(json.dumps(record) for record in records) + "\n", encoding="utf-8")
             manifest = root / "dev.json"
-            manifest.write_text(json.dumps({"selected_case_ids": ["eval", "example"]}), encoding="utf-8")
+            manifest.write_text(json.dumps(_manifest(["eval", "example"], records)), encoding="utf-8")
             world_state = root / "world.json"
             world_state.write_text("{}", encoding="utf-8")
 
@@ -158,8 +173,198 @@ class PromptDevTests(unittest.TestCase):
             )
 
             self.assertEqual(summary["counts"]["rendered_prompts"], 2)
+            self.assertEqual(summary["counts"]["by_track"], {"A_BOX": 1})
             self.assertTrue((root / "out" / "prompt_dev_rendered_prompts.jsonl").exists())
             self.assertTrue((root / "out" / "prompt_dev_prompt_review.md").exists())
+
+    def test_stratified_max_cases_includes_a_box_and_t_box_when_available(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            tbox_records = [_tbox_record(f"reform_tbox_{index:03d}", f"Q{index}", "P2") for index in range(30)]
+            abox_records = [_abox_record(f"repair_abox_{index:03d}", f"Q{index + 100}", "P1") for index in range(5)]
+            records = tbox_records + abox_records
+            classified = root / "classified.jsonl"
+            classified.write_text("\n".join(json.dumps(record) for record in records) + "\n", encoding="utf-8")
+            manifest = root / "dev.json"
+            manifest.write_text(json.dumps(_manifest([record["id"] for record in records], records)), encoding="utf-8")
+            world_state = root / "world.json"
+            world_state.write_text("{}", encoding="utf-8")
+
+            summary = render_prompt_dev_prompts(
+                PromptDevRenderOptions(
+                    classified_benchmark=classified,
+                    world_state=world_state,
+                    dev_manifest=manifest,
+                    output_dir=root / "out",
+                    max_cases=24,
+                    representations=("hybrid_json_nl",),
+                    example_policies=("zero_shot",),
+                    context_bundles=("minimal_case",),
+                    tasks=("track_diagnosis",),
+                )
+            )
+
+            self.assertGreater(summary["counts"]["by_track"].get("A_BOX", 0), 0)
+            self.assertGreater(summary["counts"]["by_track"].get("T_BOX", 0), 0)
+
+    def test_rendered_prompt_text_uses_neutral_case_ids(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            records = [_abox_record("repair_case_raw", "Q1", "P1"), _tbox_record("reform_case_raw", "Q2", "P2")]
+            classified = root / "classified.jsonl"
+            classified.write_text("\n".join(json.dumps(record) for record in records) + "\n", encoding="utf-8")
+            manifest = root / "dev.json"
+            manifest.write_text(json.dumps(_manifest([record["id"] for record in records], records)), encoding="utf-8")
+            world_state = root / "world.json"
+            world_state.write_text("{}", encoding="utf-8")
+
+            render_prompt_dev_prompts(
+                PromptDevRenderOptions(
+                    classified_benchmark=classified,
+                    world_state=world_state,
+                    dev_manifest=manifest,
+                    output_dir=root / "out",
+                    max_cases=2,
+                    representations=("hybrid_json_nl",),
+                    example_policies=("zero_shot",),
+                    context_bundles=("minimal_case",),
+                    tasks=("track_diagnosis",),
+                )
+            )
+
+            rendered_rows = [
+                json.loads(line)
+                for line in (root / "out" / "prompt_dev_rendered_prompts.jsonl")
+                .read_text(encoding="utf-8")
+                .splitlines()
+            ]
+            self.assertTrue(all(row["visible_case_id"].startswith("case_") for row in rendered_rows))
+            prompt_text = "\n".join(row["system_prompt"] + "\n" + row["user_prompt"] for row in rendered_rows)
+            self.assertNotIn("repair_case_raw", prompt_text)
+            self.assertNotIn("reform_case_raw", prompt_text)
+
+    def test_local_graph_prompt_payload_omits_sitelinks_count(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            record = _abox_record("repair_case_raw", "Q1", "P1")
+            classified = root / "classified.jsonl"
+            classified.write_text(json.dumps(record) + "\n", encoding="utf-8")
+            manifest = root / "dev.json"
+            manifest.write_text(json.dumps(_manifest([record["id"]], [record])), encoding="utf-8")
+            world_state = root / "world.json"
+            world_state.write_text(
+                json.dumps(
+                    {
+                        "repair_case_raw": {
+                            "L1_ego_node": {
+                                "qid": "Q1",
+                                "label": "Example",
+                                "description": "Example item",
+                                "sitelinks_count": 999,
+                                "properties": {"P1": [{"value": "Q1"}]},
+                            }
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            render_prompt_dev_prompts(
+                PromptDevRenderOptions(
+                    classified_benchmark=classified,
+                    world_state=world_state,
+                    dev_manifest=manifest,
+                    output_dir=root / "out",
+                    max_cases=1,
+                    representations=("hybrid_json_nl",),
+                    example_policies=("zero_shot",),
+                    context_bundles=("local_graph",),
+                    tasks=("track_diagnosis",),
+                )
+            )
+
+            prompt_text = (root / "out" / "prompt_dev_rendered_prompts.jsonl").read_text(encoding="utf-8")
+            self.assertNotIn("sitelinks_count", prompt_text)
+
+    def test_tbox_prompts_use_pre_reform_constraints_not_current_answer(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            record = _tbox_record("reform_case_raw", "Q2", "P2")
+            record["repair_target"]["constraint_delta"]["signature_before"] = [
+                {
+                    "constraint_qid": "Q21510859",
+                    "snaktype": "VALUE",
+                    "rank": "normal",
+                    "qualifiers": [{"property_id": "P2305", "values": ["Q_BEFORE"]}],
+                }
+            ]
+            classified = root / "classified.jsonl"
+            classified.write_text(json.dumps(record) + "\n", encoding="utf-8")
+            manifest = root / "dev.json"
+            manifest.write_text(json.dumps(_manifest([record["id"]], [record])), encoding="utf-8")
+            world_state = root / "world.json"
+            world_state.write_text(
+                json.dumps(
+                    {
+                        "reform_case_raw": {
+                            "L4_constraints": {
+                                "constraints": [
+                                    {
+                                        "constraint_type": {"qid": "Q21510859", "label": "allowed entity types"},
+                                        "qualifiers": [{"property_id": "P2305", "values": ["Q_AFTER"]}],
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            render_prompt_dev_prompts(
+                PromptDevRenderOptions(
+                    classified_benchmark=classified,
+                    world_state=world_state,
+                    dev_manifest=manifest,
+                    output_dir=root / "out",
+                    max_cases=1,
+                    representations=("hybrid_json_nl",),
+                    example_policies=("zero_shot",),
+                    context_bundles=("logic_only",),
+                    tasks=("repair_proposal",),
+                    repair_track_modes=("oracle",),
+                )
+            )
+
+            prompt_text = (root / "out" / "prompt_dev_rendered_prompts.jsonl").read_text(encoding="utf-8")
+            self.assertIn("Q_BEFORE", prompt_text)
+            self.assertNotIn("Q_AFTER", prompt_text)
+
+    def test_few_shot_requires_core_manifest_unless_explicitly_allowed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            records = [_abox_record("eval", "Q1", "P1"), _abox_record("example", "Q2", "P2")]
+            classified = root / "classified.jsonl"
+            classified.write_text("\n".join(json.dumps(record) for record in records) + "\n", encoding="utf-8")
+            manifest = root / "dev.json"
+            manifest.write_text(json.dumps(_manifest([record["id"] for record in records], records)), encoding="utf-8")
+            world_state = root / "world.json"
+            world_state.write_text("{}", encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "requires --core-manifest"):
+                render_prompt_dev_prompts(
+                    PromptDevRenderOptions(
+                        classified_benchmark=classified,
+                        world_state=world_state,
+                        dev_manifest=manifest,
+                        output_dir=root / "out",
+                        max_cases=1,
+                        representations=("hybrid_json_nl",),
+                        example_policies=("matched_2shot",),
+                        context_bundles=("minimal_case",),
+                        tasks=("track_diagnosis",),
+                    )
+                )
 
     def test_evaluate_prompts_writes_dev_scoring_artifacts_with_static_provider(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -175,14 +380,14 @@ class PromptDevTests(unittest.TestCase):
             def resolver(metadata: dict) -> dict:
                 if metadata["task_type"] == "track_diagnosis":
                     return {
-                        "case_id": metadata["case_id"],
+                        "case_id": metadata["visible_case_id"],
                         "predicted_track": metadata["historical_track"],
                         "confidence": "high",
                         "rationale": "static test diagnosis",
                     }
                 if metadata["proposal_track_used"] == "T_BOX":
                     return {
-                        "case_id": metadata["case_id"],
+                        "case_id": metadata["visible_case_id"],
                         "target": {"pid": "P2", "constraint_type_qid": "Q21510859"},
                         "proposal": {
                             "action": "RELAXATION_SET_EXPANSION",
@@ -197,7 +402,7 @@ class PromptDevTests(unittest.TestCase):
                         },
                     }
                 return {
-                    "case_id": metadata["case_id"],
+                    "case_id": metadata["visible_case_id"],
                     "target": {"qid": "Q1", "pid": "P1"},
                     "ops": [{"op": "SET", "pid": "P1", "value": "Q5", "rank": "normal"}],
                 }
@@ -325,6 +530,46 @@ class PromptDevTests(unittest.TestCase):
             matrix_dir = Path(summary["results"][0]["output_dir"])
             manifest_row = json.loads((matrix_dir / "run_manifest.jsonl").read_text(encoding="utf-8").splitlines()[0])
             self.assertIn("exceeds --max-prompt-chars", manifest_row["provider_error"])
+
+    def test_evaluate_writes_top_level_summary_when_matrix_evaluation_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            record = _abox_record("repair_case_raw", "Q1", "P1")
+            classified = root / "classified.jsonl"
+            classified.write_text(json.dumps(record) + "\n", encoding="utf-8")
+            manifest = root / "dev.json"
+            manifest.write_text(json.dumps(_manifest([record["id"]], [record])), encoding="utf-8")
+            world_state = root / "world.json"
+            world_state.write_text("{}", encoding="utf-8")
+
+            with patch("lib.prompt_dev.evaluate_benchmark", side_effect=RuntimeError("scoring failed")):
+                summary = evaluate_prompt_dev_prompts(
+                    PromptDevEvaluateOptions(
+                        classified_benchmark=classified,
+                        world_state=world_state,
+                        dev_manifest=manifest,
+                        output_dir=root / "eval",
+                        max_cases=1,
+                        representations=("hybrid_json_nl",),
+                        example_policies=("zero_shot",),
+                        context_bundles=("minimal_case",),
+                        tasks=("track_diagnosis",),
+                    ),
+                    provider=StaticResponseProvider(
+                        lambda metadata: {
+                            "case_id": metadata["visible_case_id"],
+                            "predicted_track": metadata["historical_track"],
+                            "confidence": "high",
+                        },
+                        provider_name="static",
+                        model="static",
+                    ),
+                )
+
+            self.assertTrue((root / "eval" / "prompt_dev_evaluation_summary.json").exists())
+            self.assertTrue((root / "eval" / "prompt_dev_evaluation_comparison.md").exists())
+            self.assertIn("evaluation_error", summary["results"][0])
+            self.assertEqual(summary["results"][0]["counts"]["normalized"], 1)
 
 
 if __name__ == "__main__":
