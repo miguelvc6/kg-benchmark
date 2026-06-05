@@ -8,7 +8,7 @@ from collections import Counter
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 from classifier import WorldStateStore
 from guardian.evaluator import evaluate_benchmark, write_json
@@ -96,6 +96,7 @@ class PromptDevEvaluateOptions:
     resume_existing: bool = True
     retry_failures: bool = False
     max_prompt_chars: int | None = None
+    progress_callback: Callable[[dict[str, Any]], None] | None = None
 
 
 def _utc_now() -> str:
@@ -970,6 +971,11 @@ def _prompt_char_count(prompt_record: dict[str, Any]) -> int:
     return len(str(prompt_record.get("system_prompt") or "")) + len(str(prompt_record.get("user_prompt") or ""))
 
 
+def _notify_progress(callback: Callable[[dict[str, Any]], None] | None, event: dict[str, Any]) -> None:
+    if callback is not None:
+        callback(event)
+
+
 def evaluate_prompt_dev_prompts(
     options: PromptDevEvaluateOptions,
     *,
@@ -1012,6 +1018,16 @@ def evaluate_prompt_dev_prompts(
     run_id = f"prompt_dev_eval_{datetime.now(UTC).strftime('%Y%m%dT%H%M%S')}"
     matrices: dict[str, dict[str, Any]] = {}
     prompt_counts = Counter()
+    _notify_progress(
+        options.progress_callback,
+        {
+            "event": "start",
+            "total": len(prompt_records),
+            "unit": "prompt",
+            "provider": getattr(provider, "provider_name", provider.__class__.__name__),
+            "model": getattr(provider, "model", options.model_name or "unknown-model"),
+        },
+    )
 
     log = logging.getLogger("prompt_dev")
     with WorldStateStore(options.world_state, log) as world_store:
@@ -1098,6 +1114,16 @@ def evaluate_prompt_dev_prompts(
             )
             matrices[matrix_id]["case_ids"].append(prompt_record["case_id"])
             matrices[matrix_id]["counts"][manifest_record["parse_status"]] += 1
+            _notify_progress(
+                options.progress_callback,
+                {
+                    "event": "advance",
+                    "matrix_id": matrix_id,
+                    "case_id": prompt_record["case_id"],
+                    "task": prompt_record["task"],
+                    "parse_status": manifest_record["parse_status"],
+                },
+            )
 
     results: list[dict[str, Any]] = []
     for matrix_id, matrix_info in sorted(matrices.items()):

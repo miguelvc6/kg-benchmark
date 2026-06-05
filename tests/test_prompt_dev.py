@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import tempfile
 import unittest
+from collections import Counter
 from pathlib import Path
 
 from guardian.model_provider import StaticResponseProvider
@@ -201,6 +202,7 @@ class PromptDevTests(unittest.TestCase):
                     "ops": [{"op": "SET", "pid": "P1", "value": "Q5", "rank": "normal"}],
                 }
 
+            progress_events = []
             summary = evaluate_prompt_dev_prompts(
                 PromptDevEvaluateOptions(
                     classified_benchmark=classified,
@@ -213,11 +215,15 @@ class PromptDevTests(unittest.TestCase):
                     context_bundles=("minimal_case",),
                     tasks=("track_diagnosis", "repair_proposal"),
                     repair_track_modes=("oracle",),
+                    progress_callback=progress_events.append,
                 ),
                 provider=StaticResponseProvider(resolver, provider_name="static", model="static-model"),
             )
 
             self.assertEqual(summary["counts"]["evaluated_prompts"], 4)
+            self.assertEqual(progress_events[0]["event"], "start")
+            self.assertEqual(progress_events[0]["total"], 4)
+            self.assertEqual(Counter(event["event"] for event in progress_events)["advance"], 4)
             self.assertEqual(summary["counts"]["matrix_rows"], 2)
             self.assertTrue((root / "eval" / "prompt_dev_evaluation_summary.json").exists())
             self.assertTrue((root / "eval" / "prompt_dev_evaluation_comparison.md").exists())

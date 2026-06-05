@@ -101,6 +101,10 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-prompt-dev evaluate \
 
 `evaluate` runs LLM inference. Keep it restricted to the dev manifest and do not use it on the frozen core selection.
 
+During evaluation, the CLI shows a `tqdm` progress bar over rendered prompt requests. The postfix reports prompt outcomes
+as they are observed, including normalized rows, skipped resumed rows, request errors, and parse errors. Use
+`--no-progress` when writing logs to files or running in an environment where terminal progress output is undesirable.
+
 When using the university endpoint, the Responses provider supports endpoint-resilience settings in `.env`:
 
 ```dotenv

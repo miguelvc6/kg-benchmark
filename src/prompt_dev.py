@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 from pathlib import Path
+
+from tqdm.auto import tqdm
 
 from lib.prompt_dev import (
     DEFAULT_CONTEXT_BUNDLES,
@@ -26,6 +29,34 @@ def _csv_tuple(value: str | None, default: tuple[str, ...]) -> tuple[str, ...]:
         return default
     parsed = tuple(item.strip() for item in value.split(",") if item.strip())
     return parsed or default
+
+
+def _status_text(counts: Counter[str]) -> str:
+    if not counts:
+        return ""
+    return ", ".join(f"{status}={count}" for status, count in sorted(counts.items()))
+
+
+def _make_evaluate_progress_bar(*, disabled: bool):
+    counts: Counter[str] = Counter()
+    bar = tqdm(total=0, desc="Evaluating prompts", unit="prompt", disable=disabled)
+
+    def progress_callback(event: dict) -> None:
+        event_name = event.get("event")
+        if event_name == "start":
+            bar.reset(total=int(event.get("total") or 0))
+            provider = event.get("provider") or "provider"
+            model = event.get("model") or "model"
+            bar.set_description(f"Evaluating prompts [{provider}/{model}]")
+            return
+        if event_name != "advance":
+            return
+        status = str(event.get("parse_status") or "unknown")
+        counts[status] += 1
+        bar.update(1)
+        bar.set_postfix_str(_status_text(counts), refresh=False)
+
+    return bar, progress_callback
 
 
 def _add_axis_args(parser: argparse.ArgumentParser, *, render_defaults: bool = False) -> None:
@@ -128,6 +159,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="When resuming, retry existing request_error and parse_error rows instead of leaving them as-is.",
     )
+    evaluate_parser.add_argument(
+        "--no-progress",
+        action="store_true",
+        help="Disable the tqdm progress bar for prompt evaluation.",
+    )
     _add_axis_args(evaluate_parser, render_defaults=True)
 
     freeze_parser = subparsers.add_parser("freeze", help="Write a frozen Phase F prompt configuration.")
@@ -178,9 +214,6 @@ def main() -> int:
                 include_abstention=args.include_abstention,
                 example_count=args.example_count,
                 allow_same_property_examples=args.allow_same_property_examples,
-                resume_existing=not args.no_resume,
-                retry_failures=args.retry_failures,
-                max_prompt_chars=args.max_prompt_chars,
             )
         )
         print(f"[done] rendered={summary['counts']['rendered_prompts']}")
@@ -189,27 +222,33 @@ def main() -> int:
         return 0
 
     if args.command == "evaluate":
-        summary = evaluate_prompt_dev_prompts(
-            PromptDevEvaluateOptions(
-                classified_benchmark=Path(args.classified_benchmark),
-                world_state=Path(args.world_state),
-                dev_manifest=Path(args.dev_manifest),
-                core_manifest=Path(args.core_manifest) if args.core_manifest else None,
-                output_dir=Path(args.output_dir),
-                model_endpoint=args.model_endpoint,
-                model_name=args.model,
-                seed=args.seed,
-                max_cases=args.max_cases,
-                representations=_csv_tuple(args.representations, ("hybrid_json_nl",)),
-                example_policies=_csv_tuple(args.example_policies, ("zero_shot",)),
-                context_bundles=_csv_tuple(args.context_bundles, DEFAULT_CONTEXT_BUNDLES),
-                tasks=_csv_tuple(args.tasks, DEFAULT_RENDER_TASKS),
-                repair_track_modes=_csv_tuple(args.repair_track_modes, ("oracle",)),
-                include_abstention=args.include_abstention,
-                example_count=args.example_count,
-                allow_same_property_examples=args.allow_same_property_examples,
+        progress_bar, progress_callback = _make_evaluate_progress_bar(disabled=args.no_progress)
+        with progress_bar:
+            summary = evaluate_prompt_dev_prompts(
+                PromptDevEvaluateOptions(
+                    classified_benchmark=Path(args.classified_benchmark),
+                    world_state=Path(args.world_state),
+                    dev_manifest=Path(args.dev_manifest),
+                    core_manifest=Path(args.core_manifest) if args.core_manifest else None,
+                    output_dir=Path(args.output_dir),
+                    model_endpoint=args.model_endpoint,
+                    model_name=args.model,
+                    seed=args.seed,
+                    max_cases=args.max_cases,
+                    representations=_csv_tuple(args.representations, ("hybrid_json_nl",)),
+                    example_policies=_csv_tuple(args.example_policies, ("zero_shot",)),
+                    context_bundles=_csv_tuple(args.context_bundles, DEFAULT_CONTEXT_BUNDLES),
+                    tasks=_csv_tuple(args.tasks, DEFAULT_RENDER_TASKS),
+                    repair_track_modes=_csv_tuple(args.repair_track_modes, ("oracle",)),
+                    include_abstention=args.include_abstention,
+                    example_count=args.example_count,
+                    allow_same_property_examples=args.allow_same_property_examples,
+                    resume_existing=not args.no_resume,
+                    retry_failures=args.retry_failures,
+                    max_prompt_chars=args.max_prompt_chars,
+                    progress_callback=progress_callback,
+                )
             )
-        )
         print(f"[done] evaluated_prompts={summary['counts']['evaluated_prompts']}")
         print(f"[done] summary={args.output_dir}/prompt_dev_evaluation_summary.json")
         print(f"[done] comparison={summary['outputs']['comparison_markdown']}")
