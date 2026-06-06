@@ -357,15 +357,16 @@ class ReasoningFloorTests(unittest.TestCase):
         )
 
         def resolver(metadata: dict[str, Any]) -> dict[str, Any]:
+            visible_case_id = metadata.get("visible_case_id") or metadata["case_id"]
             if metadata["task_type"] == "track_diagnosis":
                 return {
-                    "case_id": metadata["case_id"],
+                    "case_id": visible_case_id,
                     "predicted_track": "T_BOX" if metadata["case_id"] == "reform_case" else "A_BOX",
                     "confidence": "high",
                 }
             if metadata["case_id"] == "reform_case":
                 return {
-                    "case_id": "reform_case",
+                    "case_id": visible_case_id,
                     "target": {"pid": "P31", "constraint_type_qid": "Q21510859"},
                     "proposal": {
                         "action": "RELAXATION_SET_EXPANSION",
@@ -380,7 +381,7 @@ class ReasoningFloorTests(unittest.TestCase):
                     },
                 }
             return {
-                "case_id": "repair_case",
+                "case_id": visible_case_id,
                 "target": {"qid": "Q1", "pid": "P31"},
                 "ops": [{"op": "SET", "pid": "P31", "value": "Q5"}],
             }
@@ -408,6 +409,15 @@ class ReasoningFloorTests(unittest.TestCase):
         self.assertEqual(summary["usage"]["completion_tokens"], 0)
         self.assertIn("stub_model", summary["run_info"]["output_dir"])
         self.assertEqual(summary["inputs"]["selection_manifest"], str(selection_manifest_path))
+        run_dir = Path(summary["run_info"]["output_dir"])
+        run_config = json.loads((run_dir / "run_config.json").read_text(encoding="utf-8"))
+        manifest_rows = self._read_jsonl(run_dir / "run_manifest.jsonl")
+        raw_rows = self._read_jsonl(run_dir / "raw_model_responses.jsonl")
+        t_box_rows = self._read_jsonl(run_dir / "minimal_case" / "t_box_proposals.jsonl")
+        self.assertEqual(run_config["visible_case_id_map"], {"reform_case": "case_000001"})
+        self.assertTrue(all(row.get("visible_case_id") == "case_000001" for row in manifest_rows))
+        self.assertTrue(all(row.get("parsed_payload", {}).get("case_id") == "case_000001" for row in raw_rows))
+        self.assertEqual(t_box_rows[0]["case_id"], "reform_case")
         self.assertEqual(summary["run_info"]["evaluation"]["classified_record_strategy"], "memory_cache")
         self.assertIsNone(summary["run_info"]["evaluation"]["filtered_classified_path"])
         self.assertEqual(summary["parse_errors"]["proposal_parse_error_count"], 0)
@@ -719,7 +729,7 @@ class ReasoningFloorTests(unittest.TestCase):
 
     def test_prompt_bundles_use_named_templates(self) -> None:
         record = {
-            "id": "repair_case",
+            "id": "repair_raw_case",
             "qid": "Q1",
             "property": "P31",
             "track": "A_BOX",
@@ -749,6 +759,9 @@ class ReasoningFloorTests(unittest.TestCase):
         self.assertNotIn('"persistence_check"', proposal_bundle.prompt)
         self.assertNotIn('"repair_target"', proposal_bundle.prompt)
         self.assertNotIn('"track":', proposal_bundle.prompt)
+        self.assertNotIn("repair_raw_case", proposal_bundle.prompt)
+        self.assertNotIn("repair_raw_case", diagnosis_bundle.prompt)
+        self.assertEqual(_extract_input_case(proposal_bundle.prompt)["id"].startswith("case_"), True)
 
     def test_t_box_prompt_bundle_prunes_local_graph_context(self) -> None:
         record = {
@@ -1041,6 +1054,7 @@ class ReasoningFloorTests(unittest.TestCase):
         self.assertNotIn("Q43229", template.user_prompt_template)
         self.assertNotIn("Q_CONSTRAINT_", template.user_prompt_template)
         self.assertNotIn("Q_ITEM_", template.user_prompt_template)
+        self.assertNotIn("reform_case", template.user_prompt_template)
         self.assertIn("constraint-family QIDs from the supplied constraint context", template.user_prompt_template)
         self.assertIn("Do not copy violating entity or type QIDs into constraint_type_qid", template.user_prompt_template)
 

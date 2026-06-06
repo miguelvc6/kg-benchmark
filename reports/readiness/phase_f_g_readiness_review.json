@@ -1,0 +1,252 @@
+{
+  "manifest_type": "phase_f_g_readiness_review",
+  "manifest_version": "v1",
+  "created_at_local": "2026-06-06",
+  "verdict": "READY WITH WARNINGS",
+  "scope": [
+    "Phase F prompt development on dev only",
+    "Phase G main reasoning-floor experiment readiness"
+  ],
+  "blocking_issues": [],
+  "non_blocking_warnings": [
+    "Current Phase F run is a small zero-shot candidate, not a frozen prompt run.",
+    "One endpoint request error occurred in the local_graph repair matrix.",
+    "Track diagnosis sanity is modest: 13/24 logic_only and 16/24 local_graph.",
+    "Raw Qwen outputs frequently include <think> text, although JSON extraction recovered all non-request-error cases.",
+    "T-box semantic-family quality remains weak in the current run.",
+    "Rendered JSONL keeps raw benchmark IDs in internal metadata; model-visible message text is clean."
+  ],
+  "artifact_consistency": {
+    "phase_d_audit_policy_ready": true,
+    "dev_core_case_overlap": 0,
+    "dev_core_tbox_revision_overlap": 0,
+    "dev_manifest": {
+      "path": "reports/benchmark_selection/dev_prompt_v1_seed_13.json",
+      "selected_cases": 600,
+      "main_score_case_ids": 481,
+      "diagnostic_case_ids": 119,
+      "by_track": {
+        "A_BOX": 360,
+        "T_BOX": 240
+      }
+    },
+    "core_manifest": {
+      "path": "reports/benchmark_selection/core_v1_seed_13.json",
+      "selected_cases": 4800,
+      "main_score_case_ids": 3818,
+      "diagnostic_case_ids": 982,
+      "by_track": {
+        "A_BOX": 4204,
+        "T_BOX": 596
+      }
+    },
+    "prompt_dev_render": {
+      "path": "reports/prompt_dev/evaluation_prompt_dev_v1/rendered_prompts/prompt_dev_render_summary.json",
+      "rendered_prompts": 96,
+      "eval_cases": 24,
+      "matrix_rows": 4,
+      "skipped_prompts": 0,
+      "by_track": {
+        "A_BOX": 12,
+        "T_BOX": 12
+      },
+      "by_task": {
+        "track_diagnosis": 48,
+        "a_box_repair": 24,
+        "t_box_repair": 24
+      }
+    },
+    "prompt_dev_evaluation": {
+      "path": "reports/prompt_dev/evaluation_prompt_dev_v1/prompt_dev_evaluation_summary.json",
+      "run_id": "prompt_dev_eval_20260605T173743",
+      "provider": "university",
+      "model": "Qwen/Qwen3-4B",
+      "evaluated_prompts": 96,
+      "normalized": 95,
+      "parse_error": 0,
+      "request_error": 1,
+      "matrix_rows": [
+        {
+          "matrix_id": "prompt_dev_001_hybrid_json_nl_zero_shot_logic_only_track_diagnosis_diagnosis_no_abstain",
+          "normalized": 24,
+          "parse_error": 0,
+          "request_error": 0,
+          "skipped": 0,
+          "by_historical_track": {
+            "A_BOX": 12,
+            "T_BOX": 12
+          },
+          "by_task": {
+            "track_diagnosis": 24
+          },
+          "by_context": {
+            "logic_only": 24
+          },
+          "track_diagnosis_accuracy": 0.5416666666666666
+        },
+        {
+          "matrix_id": "prompt_dev_002_hybrid_json_nl_zero_shot_logic_only_repair_proposal_oracle_no_abstain",
+          "normalized": 24,
+          "parse_error": 0,
+          "request_error": 0,
+          "skipped": 0,
+          "by_historical_track": {
+            "A_BOX": 12,
+            "T_BOX": 12
+          },
+          "by_task": {
+            "a_box_repair": 12,
+            "t_box_repair": 12
+          },
+          "by_context": {
+            "logic_only": 24
+          },
+          "proposal_parse_error_rate": 0.0,
+          "proposal_request_error_rate": 0.0,
+          "t_box_target_constraint_match_rate": 0.9166666666666666,
+          "a_box_exact_value_match_rate": 0.3333333333333333
+        },
+        {
+          "matrix_id": "prompt_dev_003_hybrid_json_nl_zero_shot_local_graph_track_diagnosis_diagnosis_no_abstain",
+          "normalized": 24,
+          "parse_error": 0,
+          "request_error": 0,
+          "skipped": 0,
+          "by_historical_track": {
+            "A_BOX": 12,
+            "T_BOX": 12
+          },
+          "by_task": {
+            "track_diagnosis": 24
+          },
+          "by_context": {
+            "local_graph": 24
+          },
+          "track_diagnosis_accuracy": 0.6666666666666666
+        },
+        {
+          "matrix_id": "prompt_dev_004_hybrid_json_nl_zero_shot_local_graph_repair_proposal_oracle_no_abstain",
+          "normalized": 23,
+          "parse_error": 0,
+          "request_error": 1,
+          "skipped": 0,
+          "by_historical_track": {
+            "A_BOX": 12,
+            "T_BOX": 12
+          },
+          "by_task": {
+            "a_box_repair": 12,
+            "t_box_repair": 12
+          },
+          "by_context": {
+            "local_graph": 24
+          },
+          "proposal_parse_error_rate": 0.0,
+          "proposal_request_error_rate": 0.041666666666666664,
+          "t_box_target_constraint_match_rate": 0.9166666666666666,
+          "a_box_exact_value_match_rate": 0.6666666666666666
+        }
+      ]
+    },
+    "phase_e_baselines": {
+      "path": "reports/non_llm_baselines/core_v1_phase_e",
+      "exists": true,
+      "run_config_exists": true
+    }
+  },
+  "prompt_leakage_checklist": {
+    "prompt_dev_raw_repair_reform_ids_absent_from_model_visible_text": true,
+    "reasoning_floor_raw_repair_reform_ids_absent_from_model_visible_text": true,
+    "neutral_visible_case_ids_used": true,
+    "visible_ids_mapped_back_before_normalization": true,
+    "sitelinks_count_absent": true,
+    "classification_labels_absent": true,
+    "historical_track_absent": true,
+    "repair_target_absent": true,
+    "persistence_check_absent": true,
+    "build_metadata_absent": true,
+    "local_graph_target_l3_edges_suppressed": true,
+    "tbox_temporal_policy_pre_reform_or_compact": true,
+    "tbox_report_qid_anti_copy_instruction_present": true,
+    "provenance_history_not_invited_without_visible_revision": true,
+    "few_shot_requires_core_manifest_or_explicit_risk_flag": true
+  },
+  "commands_run": [
+    {
+      "command": "UV_PROJECT_ENVIRONMENT=.venv-wsl uv run --extra dev python -m pytest tests/test_prompt_dev.py tests/test_model_provider.py tests/test_reasoning_floor.py tests/test_track_parser.py tests/test_tbox_parser.py tests/test_patch_parser.py",
+      "status": "passed",
+      "result": "103 passed"
+    },
+    {
+      "command": "rg -n \"paper_eval_tbox_cap_100|/home/mvazquez|LLM inference not run|minimal_case/evaluation_summary\" docs-technical/Paper_Execution_Plan.md docs-technical/00-implementation_plan.md docs-technical/Reasoning_Floor.md",
+      "status": "passed",
+      "result": "no matches"
+    },
+    {
+      "command": "structured JSON artifact and model-visible prompt leakage scan",
+      "status": "passed",
+      "result": "0 raw repair_/reform_ leaks, 0 sitelinks_count leaks, 0 forbidden metadata term leaks in model-visible prompt text"
+    }
+  ],
+  "patches_made": [
+    {
+      "path": "src/guardian/reasoning.py",
+      "summary": "Added Phase G neutral prompt-visible case IDs, persisted visible_case_id_map, and mapped visible IDs back to benchmark IDs before normalization/evaluation."
+    },
+    {
+      "path": "src/guardian/prompts.py",
+      "summary": "Removed raw repair/reform example IDs, strengthened JSON-only/no-chain-of-thought instructions, and clarified T-box report-QID anti-copy policy."
+    },
+    {
+      "path": "tests/test_reasoning_floor.py",
+      "summary": "Added coverage for neutral prompt-visible IDs and benchmark-ID restoration in static-provider reasoning-floor runs."
+    },
+    {
+      "path": "docs-technical/00-implementation_plan.md",
+      "summary": "Updated Phase F status and Phase G command guidance."
+    },
+    {
+      "path": "docs-technical/Paper_Execution_Plan.md",
+      "summary": "Replaced stale paper_eval_tbox_cap_100 references with current dev/core manifest runbook guidance."
+    },
+    {
+      "path": "docs-technical/Reasoning_Floor.md",
+      "summary": "Clarified current WSL paths, terminology, manifest/scoring split, and runbook behavior."
+    }
+  ],
+  "phase_f_next_run_recommendation": {
+    "max_cases": "72 minimum, preferably 96",
+    "representations": [
+      "hybrid_json_nl"
+    ],
+    "example_policies": [
+      "zero_shot"
+    ],
+    "context_bundles": [
+      "logic_only",
+      "local_graph"
+    ],
+    "repair_track_modes": [
+      "oracle"
+    ],
+    "notes": [
+      "Pass core manifest even for zero-shot.",
+      "Postpone few-shot until zero-shot parse/request stability is confirmed.",
+      "Test abstention after the zero-shot prompt is stable."
+    ],
+    "go_no_go_thresholds": {
+      "proposal_parse_error_rate_max": 0.02,
+      "request_error_rate_after_retry_max": 0.01,
+      "local_graph_track_diagnosis_macro_f1_or_balanced_accuracy_min": 0.65,
+      "proposal_normalization_rate_min": 0.98,
+      "prompt_leakage_allowed": false
+    }
+  },
+  "phase_g_dry_run_recommendation": [
+    "Run tiny static-provider/no-credit dry runs before API-backed main scoring.",
+    "Exercise oracle and diagnosis_routed repair modes.",
+    "Exercise resume-run-dir behavior.",
+    "Exercise synthetic skipped AMBIGUOUS rows.",
+    "Use reports/benchmark_selection/core_v1_seed_13.json and filter headline scoring to main_score_case_ids."
+  ]
+}

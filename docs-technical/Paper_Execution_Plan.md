@@ -17,7 +17,8 @@ Running this plan produces the current paper-relevant artifacts:
 - `data/04_classified_benchmark_full.jsonl`
 - `data/05_splits.json`
 - `reports/classifier_stats.json`
-- `reports/benchmark_selection/paper_eval_tbox_cap_100_seed_13.json`
+- `reports/benchmark_selection/dev_prompt_v1_seed_13.json`
+- `reports/benchmark_selection/core_v1_seed_13.json`
 - `reports/reasoning_floor/<RUN_ID>/raw_model_responses.jsonl`
 - `reports/reasoning_floor/<RUN_ID>/run_manifest.jsonl`
 - `reports/reasoning_floor/<RUN_ID>/<bundle>/a_box_proposals.jsonl`
@@ -27,7 +28,8 @@ Running this plan produces the current paper-relevant artifacts:
 - `reports/reasoning_floor/<RUN_ID>/<bundle>/evaluation_summary.json`
 - `reports/reasoning_floor/<RUN_ID>/reasoning_floor_summary.json`
 
-The reasoning-floor run already performs evaluation, so no extra command is required to obtain paper-ready baseline summaries.
+The reasoning-floor run evaluates every selected core case. Headline paper scores must be filtered to
+`core_v1_seed_13.json` `main_score_case_ids`; `diagnostic_case_ids` are reported separately as challenge diagnostics.
 
 ## Prerequisites
 
@@ -43,7 +45,7 @@ If your dump is elsewhere on disk, link it into the repository path used by the 
 ## 1. Environment Setup
 
 ```bash
-cd /home/mvazquez/kg-benchmark
+cd /mnt/c/Code/kg-benchmark
 
 export UV_PROJECT_ENVIRONMENT=.venv-wsl
 uv sync
@@ -113,21 +115,30 @@ This produces:
 - `data/04_classified_benchmark_full.jsonl`
 - `reports/classifier_stats.json`
 
-## 5. Build the Deterministic Paper Subset Manifest
+## 5. Build Phase C Dev/Core Manifests
 
-Generate the frozen paper subset that keeps all A-box cases and caps T-box cases at `100` per property revision:
+Generate the prompt-development dev manifest first, then the final core manifest while excluding dev groups:
 
 ```bash
 uv run python src/select_benchmark_cases.py \
+  --tier dev \
   --classified-benchmark data/04_classified_benchmark.jsonl \
-  --output reports/benchmark_selection/paper_eval_tbox_cap_100_seed_13.json \
-  --tbox-cap-per-update 100 \
-  --seed 13
+  --output reports/benchmark_selection/dev_prompt_v1_seed_13.json
+
+uv run python src/select_benchmark_cases.py \
+  --tier core \
+  --classified-benchmark data/04_classified_benchmark.jsonl \
+  --exclude-manifest reports/benchmark_selection/dev_prompt_v1_seed_13.json \
+  --output reports/benchmark_selection/core_v1_seed_13.json
 ```
 
 This produces:
 
-- `reports/benchmark_selection/paper_eval_tbox_cap_100_seed_13.json`
+- `reports/benchmark_selection/dev_prompt_v1_seed_13.json`
+- `reports/benchmark_selection/core_v1_seed_13.json`
+
+Use the dev manifest only for prompt development. Use the core manifest for Phase G final experiments. For headline
+paper scores, filter final evaluation to `main_score_case_ids`; use `diagnostic_case_ids` for diagnostic analysis.
 
 ## 6. Build Deterministic Splits
 
@@ -263,13 +274,14 @@ Create a base output directory for the paper run:
 mkdir -p reports/reasoning_floor
 ```
 
-Run the zero-shot baseline over the deterministic paper subset. The runner will create a subdirectory named `<run_id>_<provider>_<model>` under the base output directory:
+Run the zero-shot baseline over the deterministic core manifest. The runner will create a subdirectory named
+`<run_id>_<provider>_<model>` under the base output directory:
 
 ```bash
 uv run python src/reasoning_floor.py \
   --classified-benchmark data/04_classified_benchmark.jsonl \
   --world-state data/03_world_state.json \
-  --selection-manifest reports/benchmark_selection/paper_eval_tbox_cap_100_seed_13.json \
+  --selection-manifest reports/benchmark_selection/core_v1_seed_13.json \
   --output-dir reports/reasoning_floor
 ```
 
@@ -283,7 +295,7 @@ If the run is interrupted, resume it by pointing `--resume-run-dir` at that conc
 uv run python src/reasoning_floor.py \
   --classified-benchmark data/04_classified_benchmark.jsonl \
   --world-state data/03_world_state.json \
-  --selection-manifest reports/benchmark_selection/paper_eval_tbox_cap_100_seed_13.json \
+  --selection-manifest reports/benchmark_selection/core_v1_seed_13.json \
   --resume-run-dir reports/reasoning_floor/<RUN_ID>_<provider>_<model>
 ```
 
@@ -293,7 +305,7 @@ For Ollama throughput runs, prefer explicit parallel execution:
 uv run python src/reasoning_floor.py \
   --classified-benchmark data/04_classified_benchmark.jsonl \
   --world-state data/03_world_state.json \
-  --selection-manifest reports/benchmark_selection/paper_eval_tbox_cap_100_seed_13.json \
+  --selection-manifest reports/benchmark_selection/core_v1_seed_13.json \
   --output-dir reports/reasoning_floor \
   --execution-mode parallel \
   --parallel-workers 2
@@ -305,7 +317,7 @@ The same resume flag works for parallel runs:
 uv run python src/reasoning_floor.py \
   --classified-benchmark data/04_classified_benchmark.jsonl \
   --world-state data/03_world_state.json \
-  --selection-manifest reports/benchmark_selection/paper_eval_tbox_cap_100_seed_13.json \
+  --selection-manifest reports/benchmark_selection/core_v1_seed_13.json \
   --execution-mode parallel \
   --parallel-workers 2 \
   --resume-run-dir reports/reasoning_floor/<RUN_ID>_<provider>_<model>
@@ -319,7 +331,7 @@ If you want to override the `.env` model name for a single run:
 uv run python src/reasoning_floor.py \
   --classified-benchmark data/04_classified_benchmark.jsonl \
   --world-state data/03_world_state.json \
-  --selection-manifest reports/benchmark_selection/paper_eval_tbox_cap_100_seed_13.json \
+  --selection-manifest reports/benchmark_selection/core_v1_seed_13.json \
   --output-dir reports/reasoning_floor \
   --model llama3.2:latest \
   --execution-mode parallel \
@@ -368,16 +380,18 @@ sed -n '1,240p' "$RUN_DIR"/reasoning_floor_summary.json
 Inspect the per-bundle summaries:
 
 ```bash
-sed -n '1,240p' "$RUN_DIR"/minimal_case/evaluation_summary.json
 sed -n '1,240p' "$RUN_DIR"/logic_only/evaluation_summary.json
 sed -n '1,240p' "$RUN_DIR"/local_graph/evaluation_summary.json
 ```
+
+The default run only writes `logic_only` and `local_graph`. Inspect `minimal_case` only when you explicitly ran
+`--ablation-bundles minimal_case,logic_only,local_graph`.
 
 Inspect the benchmark summary artifacts:
 
 ```bash
 sed -n '1,240p' reports/classifier_stats.json
-sed -n '1,240p' reports/benchmark_selection/paper_eval_tbox_cap_100_seed_13.json
+sed -n '1,240p' reports/benchmark_selection/core_v1_seed_13.json
 sed -n '1,240p' data/05_splits.json
 ```
 
@@ -389,24 +403,28 @@ Use this only if you want to rescore existing proposal outputs without rerunning
 uv run python src/evaluate.py \
   --classified-benchmark data/04_classified_benchmark.jsonl \
   --world-state data/03_world_state.json \
-  --selection-manifest reports/benchmark_selection/paper_eval_tbox_cap_100_seed_13.json \
-  --a-box-proposals "$RUN_DIR"/minimal_case/a_box_proposals.jsonl \
-  --t-box-proposals "$RUN_DIR"/minimal_case/t_box_proposals.jsonl \
-  --track-diagnoses "$RUN_DIR"/minimal_case/track_diagnoses.jsonl \
+  --selection-manifest reports/benchmark_selection/core_v1_seed_13.json \
+  --a-box-proposals "$RUN_DIR"/logic_only/a_box_proposals.jsonl \
+  --t-box-proposals "$RUN_DIR"/logic_only/t_box_proposals.jsonl \
+  --track-diagnoses "$RUN_DIR"/logic_only/track_diagnoses.jsonl \
   --run-manifest "$RUN_DIR"/run_manifest.jsonl \
-  --ablation-bundle minimal_case \
-  --out-traces "$RUN_DIR"/minimal_case/evaluation_traces_rerun.jsonl \
-  --out-summary "$RUN_DIR"/minimal_case/evaluation_summary_rerun.json
+  --ablation-bundle logic_only \
+  --out-traces "$RUN_DIR"/logic_only/evaluation_traces_rerun.jsonl \
+  --out-summary "$RUN_DIR"/logic_only/evaluation_summary_rerun.json
 ```
 
-Repeat with `logic_only` and `local_graph` if needed.
+Repeat with `local_graph` if needed. To rerun headline-only scoring, pass the `main_score_case_ids` as `--case-ids`:
+
+```bash
+MAIN_SCORE_CASE_IDS=$(uv run python -c 'import json; print(",".join(json.load(open("reports/benchmark_selection/core_v1_seed_13.json"))["main_score_case_ids"]))')
+```
 
 ## 11. Minimal End-to-End Command List
 
 If you only want the shortest strict sequence, run these in order:
 
 ```bash
-cd /home/mvazquez/kg-benchmark
+cd /mnt/c/Code/kg-benchmark
 export UV_PROJECT_ENVIRONMENT=.venv-wsl
 uv sync
 mkdir -p data reports logs
@@ -416,10 +434,12 @@ uv run python -m unittest discover -s tests
 uv run python src/fetcher.py
 uv run python src/fetcher.py --validate-only
 uv run python src/classifier.py
-uv run python src/select_benchmark_cases.py --classified-benchmark data/04_classified_benchmark.jsonl --output reports/benchmark_selection/paper_eval_tbox_cap_100_seed_13.json --tbox-cap-per-update 100 --seed 13
+uv run python src/select_benchmark_cases.py --tier dev --classified-benchmark data/04_classified_benchmark.jsonl --output reports/benchmark_selection/dev_prompt_v1_seed_13.json
+uv run python src/select_benchmark_cases.py --tier core --classified-benchmark data/04_classified_benchmark.jsonl --exclude-manifest reports/benchmark_selection/dev_prompt_v1_seed_13.json --output reports/benchmark_selection/core_v1_seed_13.json
 uv run python src/splitter.py
 cp .env.example .env
-uv run python src/reasoning_floor.py --classified-benchmark data/04_classified_benchmark.jsonl --world-state data/03_world_state.json --selection-manifest reports/benchmark_selection/paper_eval_tbox_cap_100_seed_13.json --output-dir reports/reasoning_floor
+uv run python src/reasoning_floor.py --classified-benchmark data/04_classified_benchmark.jsonl --world-state data/03_world_state.json --selection-manifest reports/benchmark_selection/core_v1_seed_13.json --output-dir reports/reasoning_floor
 ```
 
-That sequence builds the benchmark, the frozen paper subset, the splits, and the zero-shot paper outputs from the current codebase.
+That sequence builds the benchmark, the frozen dev/core manifests, the splits, and the zero-shot selected-core outputs
+from the current codebase.

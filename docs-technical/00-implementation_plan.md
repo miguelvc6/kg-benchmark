@@ -945,7 +945,8 @@ Current core-v1 headline checks:
 
 ## 6. Phase F — Prompt development on dev only
 
-**Implementation status:** repository support implemented; LLM inference not run.
+**Implementation status:** repository support implemented; dev-only prompt inference has been run for the current
+`evaluation_prompt_dev_v1` smoke/candidate artifacts. Final prompt freezing is still pending.
 
 **Implementation update:** Phase F now has a no-inference prompt-development CLI in `src/prompt_dev.py`, reviewable prompt templates in `scripts/prompt_dev_templates.py`, and technical documentation in `Prompt_Development.md`. The CLI can write the prompt-development matrix, render dev-only prompt review artifacts with leakage-controlled few-shot examples, and freeze the selected prompt configuration before main-core experiments.
 
@@ -1127,6 +1128,22 @@ Run final prompts on a tiny stratified sample.
 
 - No blocking parser/evaluator bug.
 - Estimated cost/throughput is acceptable.
+
+Current core command shape:
+
+```bash
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python src/reasoning_floor.py \
+  --classified-benchmark data/04_classified_benchmark.jsonl \
+  --world-state data/03_world_state.json \
+  --selection-manifest reports/benchmark_selection/core_v1_seed_13.json \
+  --output-dir reports/reasoning_floor \
+  --ablation-bundles logic_only,local_graph \
+  --proposal-track-mode oracle
+```
+
+For headline paper scores, rerun or filter evaluation to
+`reports/benchmark_selection/core_v1_seed_13.json` `main_score_case_ids`. Keep `diagnostic_case_ids` separate for
+challenge-slice reporting.
 
 ### Task G2 — Pilot run on 1,000–1,500 cases
 

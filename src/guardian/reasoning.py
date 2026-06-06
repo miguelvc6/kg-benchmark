@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -32,6 +33,10 @@ from lib.utils import iter_jsonl, normalize_text
 
 def _utc_now() -> str:
     return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _stable_hash(*parts: Any) -> str:
+    return hashlib.sha1("|".join(str(part) for part in parts).encode("utf-8")).hexdigest()
 
 
 ABLATION_BUNDLES = ("minimal_case", "logic_only", "local_graph")
@@ -955,14 +960,30 @@ def _sanitized_case_payload(record: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def prompt_visible_case_id(raw_case_id: str, index: int | None = None) -> str:
+    if isinstance(index, int) and index > 0:
+        return f"case_{index:06d}"
+    return f"case_{_stable_hash('prompt_visible_case_id', raw_case_id)[:12]}"
+
+
+def _model_visible_case_payload(case_payload: dict[str, Any], visible_case_id: str | None) -> dict[str, Any]:
+    if not visible_case_id:
+        return case_payload
+    visible_payload = dict(case_payload)
+    visible_payload["id"] = visible_case_id
+    return visible_payload
+
+
 def _bundle_payload_and_audit(
     record: dict[str, Any],
     world_state_entry: Optional[dict[str, Any]],
     bundle: str,
+    *,
+    visible_case_id: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     if bundle not in ABLATION_BUNDLES:
         raise ValueError(f"Unsupported ablation bundle: {bundle}")
-    case_payload = _sanitized_case_payload(record)
+    case_payload = _model_visible_case_payload(_sanitized_case_payload(record), visible_case_id)
     if bundle == "minimal_case":
         return case_payload, {"constraint_count_before": 0, "constraint_count_after": 0}
     if bundle == "logic_only":
@@ -980,8 +1001,14 @@ def build_prompt_bundle(
     bundle: str,
     *,
     proposal_track: str | None = None,
+    visible_case_id: str | None = None,
 ) -> PromptBundle:
-    case_payload, context_audit = _bundle_payload_and_audit(record, world_state_entry, bundle)
+    case_payload, context_audit = _bundle_payload_and_audit(
+        record,
+        world_state_entry,
+        bundle,
+        visible_case_id=visible_case_id or prompt_visible_case_id(str(record.get("id") or "")),
+    )
     effective_track = proposal_track or record.get("track")
     prompt_template_name = (
         "reasoning_floor_t_box_zero_shot" if effective_track == "T_BOX" else "reasoning_floor_a_box_zero_shot"
@@ -1001,8 +1028,15 @@ def build_track_diagnosis_prompt_bundle(
     record: dict[str, Any],
     world_state_entry: Optional[dict[str, Any]],
     bundle: str,
+    *,
+    visible_case_id: str | None = None,
 ) -> PromptBundle:
-    case_payload, context_audit = _bundle_payload_and_audit(record, world_state_entry, bundle)
+    case_payload, context_audit = _bundle_payload_and_audit(
+        record,
+        world_state_entry,
+        bundle,
+        visible_case_id=visible_case_id or prompt_visible_case_id(str(record.get("id") or "")),
+    )
     prompt_template = get_prompt_template("reasoning_floor_track_diagnosis_zero_shot")
     return PromptBundle(
         ablation_bundle=bundle,
@@ -1267,6 +1301,7 @@ def _request_metadata(
     *,
     run_id: str,
     case_id: str,
+    visible_case_id: str | None,
     bundle: str,
     prompt_name: str,
     historical_track: str | None,
@@ -1280,6 +1315,7 @@ def _request_metadata(
     payload = {
         "run_id": run_id,
         "case_id": case_id,
+        "visible_case_id": visible_case_id,
         "ablation_bundle": bundle,
         "prompt_name": prompt_name,
         "track": historical_track,
@@ -1310,10 +1346,12 @@ def _empty_usage_payload(provider_name: str, model: str, metadata: dict[str, Any
     }
 
 
-def _prepare_payload_for_case_id(raw_payload: Any, case_id: Any) -> Any:
+def _prepare_payload_for_case_id(raw_payload: Any, case_id: Any, visible_case_id: Any = None) -> Any:
     if not isinstance(raw_payload, dict):
         return raw_payload
     payload = dict(raw_payload)
+    if isinstance(visible_case_id, str) and payload.get("case_id") == visible_case_id:
+        payload["case_id"] = case_id
     if (not isinstance(payload.get("case_id"), str) or not payload.get("case_id", "").strip()) and isinstance(
         case_id, str
     ):
@@ -1334,9 +1372,9 @@ def _proposal_track_for_request(request_info: dict[str, Any]) -> str | None:
     return None
 
 
-def _routed_track_from_diagnosis_payload(parsed_payload: Any, case_id: str) -> str:
+def _routed_track_from_diagnosis_payload(parsed_payload: Any, case_id: str, visible_case_id: str | None = None) -> str:
     try:
-        normalized = normalize_diagnosis(_prepare_payload_for_case_id(parsed_payload, case_id))
+        normalized = normalize_diagnosis(_prepare_payload_for_case_id(parsed_payload, case_id, visible_case_id))
     except Exception:
         return UNROUTABLE_TRACK
     predicted_track = normalized.predicted_track
@@ -1357,6 +1395,7 @@ def _record_skipped_proposal_result(
     manifest_record = {
         "run_id": request_info.get("run_id"),
         "case_id": request_info.get("case_id"),
+        "visible_case_id": request_info.get("visible_case_id"),
         "ablation_bundle": request_info.get("ablation_bundle"),
         "prompt_name": request_info.get("prompt_name"),
         "track": request_info.get("track"),
@@ -1375,6 +1414,7 @@ def _record_skipped_proposal_result(
     raw_record = {
         "run_id": request_info.get("run_id"),
         "case_id": request_info.get("case_id"),
+        "visible_case_id": request_info.get("visible_case_id"),
         "ablation_bundle": request_info.get("ablation_bundle"),
         "prompt_name": request_info.get("prompt_name"),
         "track": request_info.get("track"),
@@ -1409,6 +1449,7 @@ def _record_request_result(
     manifest_record = {
         "run_id": request_info.get("run_id"),
         "case_id": request_info.get("case_id"),
+        "visible_case_id": request_info.get("visible_case_id"),
         "ablation_bundle": request_info.get("ablation_bundle"),
         "prompt_name": request_info.get("prompt_name"),
         "track": request_info.get("track"),
@@ -1426,6 +1467,7 @@ def _record_request_result(
     raw_record = {
         "run_id": request_info.get("run_id"),
         "case_id": request_info.get("case_id"),
+        "visible_case_id": request_info.get("visible_case_id"),
         "ablation_bundle": request_info.get("ablation_bundle"),
         "prompt_name": request_info.get("prompt_name"),
         "track": request_info.get("track"),
@@ -1453,7 +1495,11 @@ def _record_request_result(
         return manifest_record
 
     try:
-        normalization_payload = _prepare_payload_for_case_id(parsed_payload, request_info.get("case_id"))
+        normalization_payload = _prepare_payload_for_case_id(
+            parsed_payload,
+            request_info.get("case_id"),
+            request_info.get("visible_case_id"),
+        )
         if request_info.get("task_type") == "track_diagnosis":
             normalized_diagnosis = normalize_diagnosis(normalization_payload)
             _append_jsonl_record(track_fh, normalized_diagnosis.to_dict())
@@ -1611,6 +1657,10 @@ def run_reasoning_floor(
         output_dir=out_dir,
     )
     selected_case_ids = generation_selection.case_ids
+    visible_case_id_by_raw = {
+        case_id: prompt_visible_case_id(case_id, index)
+        for index, case_id in enumerate(selected_case_ids, start=1)
+    }
     bundle_list = [bundle for bundle in ablation_bundles if bundle in ABLATION_BUNDLES]
     if not bundle_list:
         raise ValueError("At least one supported ablation bundle is required.")
@@ -1633,6 +1683,8 @@ def run_reasoning_floor(
         selected_generation_records_path=generation_selection.records_path,
         started_at_utc=run_started_utc,
     )
+    expected_run_config["prompt_visible_case_id_policy"] = "case_000001_ordered_by_generation_selection"
+    expected_run_config["visible_case_id_map"] = dict(visible_case_id_by_raw)
     if resume_requested:
         _validate_resume_run_config(existing_run_config, expected_run_config)
         if isinstance(existing_run_config, dict) and isinstance(existing_run_config.get("started_at_utc"), str):
@@ -1716,10 +1768,17 @@ def run_reasoning_floor(
             bundle: str,
             world_state_entry: Optional[dict[str, Any]],
         ) -> tuple[PromptBundle, dict[str, Any]]:
-            diagnosis_bundle = build_track_diagnosis_prompt_bundle(record, world_state_entry, bundle)
+            visible_case_id = visible_case_id_by_raw.get(record["id"], prompt_visible_case_id(record["id"]))
+            diagnosis_bundle = build_track_diagnosis_prompt_bundle(
+                record,
+                world_state_entry,
+                bundle,
+                visible_case_id=visible_case_id,
+            )
             diagnosis_metadata = _request_metadata(
                 run_id=run_id,
                 case_id=record["id"],
+                visible_case_id=visible_case_id,
                 bundle=bundle,
                 prompt_name=diagnosis_bundle.prompt_name,
                 historical_track=record.get("track"),
@@ -1739,15 +1798,18 @@ def run_reasoning_floor(
             proposal_track_used: str,
             routing_source: str,
         ) -> tuple[PromptBundle, dict[str, Any]]:
+            visible_case_id = visible_case_id_by_raw.get(record["id"], prompt_visible_case_id(record["id"]))
             proposal_bundle = build_prompt_bundle(
                 record,
                 world_state_entry,
                 bundle,
                 proposal_track=proposal_track_used,
+                visible_case_id=visible_case_id,
             )
             proposal_metadata = _request_metadata(
                 run_id=run_id,
                 case_id=record["id"],
+                visible_case_id=visible_case_id,
                 bundle=bundle,
                 prompt_name=proposal_bundle.prompt_name,
                 historical_track=record.get("track"),
@@ -1775,6 +1837,7 @@ def run_reasoning_floor(
             return _request_metadata(
                 run_id=run_id,
                 case_id=record["id"],
+                visible_case_id=visible_case_id_by_raw.get(record["id"], prompt_visible_case_id(record["id"])),
                 bundle=bundle,
                 prompt_name="skipped_proposal_no_track",
                 historical_track=record.get("track"),
@@ -1924,6 +1987,9 @@ def run_reasoning_floor(
                     "proposal_track_used": _routed_track_from_diagnosis_payload(
                         diagnosis_result.parsed_payload,
                         record["id"],
+                        diagnosis_metadata.get("visible_case_id")
+                        if isinstance(diagnosis_metadata.get("visible_case_id"), str)
+                        else None,
                     ),
                     "routing_source": "diagnosis_prediction",
                     "context_audit": diagnosis_metadata.get("context_audit") or {},
@@ -2739,6 +2805,9 @@ def run_reasoning_floor(
                                     else _routed_track_from_diagnosis_payload(
                                         parsed_payload,
                                         str(request_info.get("case_id")),
+                                        request_info.get("visible_case_id")
+                                        if isinstance(request_info.get("visible_case_id"), str)
+                                        else None,
                                     )
                                 ),
                                 "routing_source": "diagnosis_prediction",

@@ -1,6 +1,6 @@
 # Reasoning Floor
 
-The zero-shot baseline runner is [reasoning_floor.py](/home/mvazquez/kg-benchmark/src/reasoning_floor.py).
+The zero-shot baseline runner is [reasoning_floor.py](/mnt/c/Code/kg-benchmark/src/reasoning_floor.py).
 
 ## Objective
 
@@ -8,11 +8,21 @@ This runner implements the pre-Guardian reasoning floor described in the concept
 
 It executes one track-diagnosis call per case per ablation bundle and then generates a proposal either from the historical track or from the diagnosed track, depending on `--proposal-track-mode`.
 
-It also executes a separate diagnostic call that asks the model to classify each case as `A_BOX`, `T_BOX`, or `AMBIGUOUS`.
+It also executes a separate track-diagnosis call that asks the model to classify each case as `A_BOX`, `T_BOX`, or
+`AMBIGUOUS`.
 
 The runner also accepts `--selection-manifest` so paper runs can target a deterministic benchmark subset without creating a second Stage 4 JSONL artifact.
 
 The default execution mode is provider-aware. OpenAI runs default to batch mode, while other providers default to synchronous execution. You can still override this with `--execution-mode`.
+
+Terminology:
+
+- `dev`: the prompt-development manifest; never used for final scores.
+- `core selected`: all `selected_case_ids` in `core_v1_seed_13.json`, including diagnostic/challenge cases.
+- `main score`: `main_score_case_ids`, used for headline paper scores.
+- `diagnostic/challenge`: `diagnostic_case_ids`, reported separately.
+- `oracle`: proposal generation uses the historical benchmark track.
+- `diagnosis_routed`: proposal generation uses the predicted track; `AMBIGUOUS` skips proposal generation.
 
 ## Ablation Bundles
 
@@ -267,9 +277,9 @@ This prevents summaries from collapsing plausible narrower T-box reforms to zero
 
 ## Test Coverage
 
-The dry-run integration path is covered by [tests/test_reasoning_floor.py](/home/mvazquez/kg-benchmark/tests/test_reasoning_floor.py).
+The dry-run integration path is covered by [tests/test_reasoning_floor.py](/mnt/c/Code/kg-benchmark/tests/test_reasoning_floor.py).
 
-The diagnosis normalization path is covered by [tests/test_track_parser.py](/home/mvazquez/kg-benchmark/tests/test_track_parser.py).
+The diagnosis normalization path is covered by [tests/test_track_parser.py](/mnt/c/Code/kg-benchmark/tests/test_track_parser.py).
 
 ## Phase C Selection Manifests
 
@@ -294,6 +304,9 @@ The core manifest must expose:
 - `diagnostic_case_ids` for challenge analysis
 - `case_annotations` with `selection_stratum`, `analysis_slice`, `main_score`, and `diagnostic_only`
 
-The runner can consume the manifest through `--selection-manifest`. Evaluation and aggregation should use the manifest annotations to separate headline scores from diagnostic slices. Dev/pilot manifests must not be used for final benchmark scores.
+The runner can consume the manifest through `--selection-manifest`. Evaluation and aggregation should use the manifest
+annotations to separate headline scores from diagnostic slices. Today this means passing `main_score_case_ids` through
+`--case-ids` when rerunning `src/evaluate.py` for headline-only summaries, or otherwise filtering aggregated outputs by
+the manifest annotations. Dev/pilot manifests must not be used for final benchmark scores.
 
 For TypeC reporting, use `EXTERNAL_BY_ELIMINATION` / IC-E-elim for the main no-retrieval stress slice and IC-U for `UNKNOWN_*` diagnostics. Do not describe IC-E-elim as confirmed external evidence unless a post-audit `EXTERNAL_CONFIRMED` label exists.
