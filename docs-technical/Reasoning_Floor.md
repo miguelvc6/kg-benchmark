@@ -269,7 +269,19 @@ To make A-box evaluation easier to debug, grouped and overall summaries now also
 - `semantic_success` now reports family-level compatibility, not literal action-label equality
 - traces also expose `comparison.literal_action_match`, `comparison.semantic_family_match`, `comparison.target_constraint_match`, `comparison.exact_action_match`, `comparison.exact_signature_match`, `comparison.changed_constraint_type_hit`, `metrics.semantic_family_success`, `metrics.signature_after_jaccard`, `metrics.t_box_target_constraint_match`, and `details.proposal_admits_current_values` where applicable
 
+When historical T-box target constraint or `signature_after` details are unavailable in the classified benchmark,
+target/signature proxy metrics are treated as non-applicable rather than failed. Exact acceptance remains strict:
+missing historical signatures cannot produce exact-signature credit, but family-level semantic scoring can still use the
+historical reform subtype when the proposed schema-change family is otherwise compatible.
+
 For new reasoning-floor runs, T-box normalization is also strict about constraint-family IDs. The runner passes a case-local allowlist into the T-box parser, so malformed outputs such as entity/type QIDs used in `constraint_type_qid` become proposal `parse_error` rows and are omitted from normalized T-box proposal JSONL artifacts.
+
+The shared zero-shot prompt templates now follow the Phase F `prompt_dev_v3` failure-taxonomy discipline: A-box prompts
+forbid using constraint/type/report QIDs as replacement claim values unless they are explicit target-value evidence,
+preserve retained values, and prefer targeted removal over deleting all values when only one visible value is bad. T-box
+prompts include an action decision tree and instruct the model not to invent `signature_after` under compact temporal
+context. Track-diagnosis prompts warn that constraint-report vocabulary alone does not imply T-box, while visible
+property-level schema-change evidence should support T-box.
 
 Grouped and overall summaries now expose metric applicability counts so T-box-only metrics can be interpreted with their true denominator.
 

@@ -1,0 +1,106 @@
+{
+  "manifest_type": "phase_f_96_zero_shot_delta_review",
+  "manifest_version": "v1",
+  "created_at_local": "2026-06-07",
+  "reference_report": "reports/readiness/phase_f_g_readiness_review.md",
+  "evaluated_run": "reports/prompt_dev/evaluation_prompt_dev_v1_96_zero_shot",
+  "run_id": "prompt_dev_eval_20260607T110915",
+  "provider": "university",
+  "model": "Qwen/Qwen3-4B",
+  "verdict": "READY TO CONTINUE PHASE F; NOT READY TO FREEZE FOR PHASE G MAIN SCORING",
+  "criteria": {
+    "balanced_96_case_run": {
+      "status": "PASS",
+      "eval_cases": 96,
+      "by_track": {
+        "A_BOX": 48,
+        "T_BOX": 48
+      }
+    },
+    "proposal_parse_error_rate_max_0_02": {
+      "status": "PASS",
+      "parse_errors": 0,
+      "proposal_prompts": 192,
+      "rate": 0.0
+    },
+    "request_error_rate_max_0_01": {
+      "status": "PASS",
+      "request_errors": 0,
+      "evaluated_prompts": 384,
+      "rate": 0.0
+    },
+    "local_graph_track_diagnosis_threshold": {
+      "status": "PASS_NARROW",
+      "balanced_accuracy": 0.65625,
+      "macro_f1": 0.6579011741682974
+    },
+    "proposal_normalization_min_0_98": {
+      "status": "PASS",
+      "normalized_proposals": 192,
+      "proposal_prompts": 192,
+      "rate": 1.0
+    },
+    "prompt_leakage": {
+      "status": "PASS",
+      "raw_repair_reform_id_hits": 0,
+      "sitelinks_count_hits": 0,
+      "benchmark_metadata_hits": 0,
+      "false_positive_build_hits": 4
+    },
+    "token_budget": {
+      "status": "PASS",
+      "prompt_chars_max": 18398,
+      "observed_total_tokens_max": 5916
+    },
+    "prompt_quality_freeze": {
+      "status": "FAIL",
+      "reason": "Accepted rate and T-box semantic-family success remain too low for Phase G main scoring."
+    }
+  },
+  "matrix_metrics": [
+    {
+      "matrix": "prompt_dev_001_hybrid_json_nl_zero_shot_logic_only_track_diagnosis_diagnosis_no_abstain",
+      "task": "track_diagnosis",
+      "request_errors": 0,
+      "parse_errors": 0,
+      "accuracy": 0.6666666666666666,
+      "balanced_accuracy": 0.6666666666666667,
+      "macro_f1": 0.6869724770642202
+    },
+    {
+      "matrix": "prompt_dev_003_hybrid_json_nl_zero_shot_local_graph_track_diagnosis_diagnosis_no_abstain",
+      "task": "track_diagnosis",
+      "request_errors": 0,
+      "parse_errors": 0,
+      "accuracy": 0.65625,
+      "balanced_accuracy": 0.65625,
+      "macro_f1": 0.6579011741682974
+    },
+    {
+      "matrix": "prompt_dev_002_hybrid_json_nl_zero_shot_logic_only_repair_proposal_oracle_no_abstain",
+      "task": "repair_proposal",
+      "request_errors": 0,
+      "parse_errors": 0,
+      "accepted_rate": 0.19791666666666666,
+      "a_box_exact_value_match_rate": 0.3958333333333333,
+      "t_box_semantic_family_success_rate": 0.0625,
+      "auditability_complete_rate": 1.0
+    },
+    {
+      "matrix": "prompt_dev_004_hybrid_json_nl_zero_shot_local_graph_repair_proposal_oracle_no_abstain",
+      "task": "repair_proposal",
+      "request_errors": 0,
+      "parse_errors": 0,
+      "accepted_rate": 0.19791666666666666,
+      "a_box_exact_value_match_rate": 0.3958333333333333,
+      "t_box_semantic_family_success_rate": 0.10416666666666667,
+      "auditability_complete_rate": 1.0
+    }
+  ],
+  "recommendation": [
+    "Continue Phase F prompt development.",
+    "Keep this run as the 96-case zero-shot baseline candidate.",
+    "Do not freeze prompts for Phase G main scoring yet.",
+    "Proceed with Phase G static/no-credit dry-run preparation in parallel."
+  ]
+}

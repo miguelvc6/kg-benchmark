@@ -35,7 +35,7 @@ EXAMPLE_POLICIES = (
 REPAIR_TRACK_MODES = ("oracle", "diagnosis_routed")
 DEFAULT_CONTEXT_BUNDLES = ("logic_only", "local_graph")
 DEFAULT_RENDER_TASKS = ("track_diagnosis", "repair_proposal")
-SAMPLE_STRATEGIES = ("manifest_order", "stratified")
+SAMPLE_STRATEGIES = ("manifest_order", "stratified", "diverse_stratified")
 T_BOX_ACTIONS = {
     "RELAXATION_RANGE_WIDENED",
     "RESTRICTION_RANGE_NARROWED",
@@ -157,6 +157,7 @@ def _stratified_case_ids(
     *,
     max_cases: int,
     seed: int,
+    diversify_instances: bool = False,
 ) -> list[str]:
     if max_cases <= 0:
         return []
@@ -175,7 +176,34 @@ def _stratified_case_ids(
     track_order = sorted(track_to_keys)
     selected: list[str] = []
     selected_set: set[str] = set()
+    used_qids: set[str] = set()
+    used_properties: set[str] = set()
     track_positions = {track: 0 for track in track_order}
+
+    def pop_candidate(key: tuple[str, str, str, str]) -> str | None:
+        while buckets[key] and buckets[key][0] in selected_set:
+            buckets[key].pop(0)
+        if not buckets[key]:
+            return None
+        if not diversify_instances:
+            return buckets[key].pop(0)
+        best_index = 0
+        best_score: tuple[int, int, str] | None = None
+        for index, candidate_id in enumerate(buckets[key]):
+            if candidate_id in selected_set:
+                continue
+            candidate = by_id.get(candidate_id) or {}
+            qid = candidate.get("qid")
+            pid = candidate.get("property")
+            score = (
+                0 if isinstance(qid, str) and qid in used_qids else 1,
+                0 if isinstance(pid, str) and pid in used_properties else 1,
+                _stable_hash(seed, "diverse_prompt_dev_sample", candidate_id),
+            )
+            if best_score is None or score > best_score:
+                best_index = index
+                best_score = score
+        return buckets[key].pop(best_index)
 
     while len(selected) < max_cases:
         made_progress = False
@@ -186,13 +214,18 @@ def _stratified_case_ids(
             for _ in range(len(keys)):
                 key = keys[track_positions[track] % len(keys)]
                 track_positions[track] += 1
-                while buckets[key] and buckets[key][0] in selected_set:
-                    buckets[key].pop(0)
-                if not buckets[key]:
+                case_id = pop_candidate(key)
+                if case_id is None:
                     continue
-                case_id = buckets[key].pop(0)
                 selected.append(case_id)
                 selected_set.add(case_id)
+                record = by_id.get(case_id) or {}
+                qid = record.get("qid")
+                pid = record.get("property")
+                if isinstance(qid, str):
+                    used_qids.add(qid)
+                if isinstance(pid, str):
+                    used_properties.add(pid)
                 made_progress = True
                 break
             if len(selected) >= max_cases:
@@ -368,7 +401,14 @@ def _load_manifest_records(
         if sample_strategy == "manifest_order":
             ids = ids[:limit]
         else:
-            ids = _stratified_case_ids(ids, by_id, manifest, max_cases=limit, seed=seed)
+            ids = _stratified_case_ids(
+                ids,
+                by_id,
+                manifest,
+                max_cases=limit,
+                seed=seed,
+                diversify_instances=sample_strategy == "diverse_stratified",
+            )
     return [by_id[case_id] for case_id in ids if case_id in by_id]
 
 
@@ -466,7 +506,7 @@ def _model_visible_output(
 def _case_summary_counts(
     records: Iterable[dict[str, Any]],
     manifest: dict[str, Any] | None = None,
-) -> dict[str, dict[str, int]]:
+) -> dict[str, Any]:
     record_list = list(records)
     return {
         "by_track": dict(Counter(str(record.get("track") or "unknown") for record in record_list)),
@@ -478,6 +518,10 @@ def _case_summary_counts(
                 _selection_stratum(manifest, str(record.get("id") or "")) if manifest is not None else "unknown"
                 for record in record_list
             )
+        ),
+        "unique_qids": len({record.get("qid") for record in record_list if isinstance(record.get("qid"), str)}),
+        "unique_properties": len(
+            {record.get("property") for record in record_list if isinstance(record.get("property"), str)}
         ),
     }
 

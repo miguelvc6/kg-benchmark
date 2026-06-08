@@ -117,7 +117,10 @@ def parse_args() -> argparse.Namespace:
         "--sample-strategy",
         choices=SAMPLE_STRATEGIES,
         default="stratified",
-        help="Case sampling strategy for --max-cases. Prompt development defaults to stratified.",
+        help=(
+            "Case sampling strategy for --max-cases. Use diverse_stratified for broader canaries that prefer unseen "
+            "focus QIDs and properties inside balanced strata."
+        ),
     )
     render_parser.add_argument(
         "--allow-same-property-examples",
@@ -154,7 +157,10 @@ def parse_args() -> argparse.Namespace:
         "--sample-strategy",
         choices=SAMPLE_STRATEGIES,
         default="stratified",
-        help="Case sampling strategy for --max-cases. Prompt development defaults to stratified.",
+        help=(
+            "Case sampling strategy for --max-cases. Use diverse_stratified for broader canaries that prefer unseen "
+            "focus QIDs and properties inside balanced strata."
+        ),
     )
     evaluate_parser.add_argument(
         "--max-prompt-chars",

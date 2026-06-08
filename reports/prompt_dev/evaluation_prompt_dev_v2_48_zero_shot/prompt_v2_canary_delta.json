@@ -1,0 +1,597 @@
+{
+  "acceptance": {
+    "no_leakage": true,
+    "normalization_no_regression": true,
+    "proposal_parse_error_rate_le_2pct": true,
+    "request_error_rate_le_1pct": true
+  },
+  "improvements": {
+    "a_box_constraint_type_value": {
+      "delta": -0.041666666666666685,
+      "v1_rate": 0.2916666666666667,
+      "v2_rate": 0.25
+    },
+    "a_box_over_delete": {
+      "delta": 0.03125,
+      "v1_rate": 0.40625,
+      "v2_rate": 0.4375
+    },
+    "t_box_directional_without_visible_evidence": {
+      "delta": -0.42708333333333337,
+      "v1_rate": 0.4479166666666667,
+      "v2_rate": 0.020833333333333332
+    },
+    "t_box_invented_signature_after": {
+      "delta": -0.6145833333333333,
+      "v1_rate": 0.6354166666666666,
+      "v2_rate": 0.020833333333333332
+    },
+    "t_box_report_qid_copy": {
+      "delta": -0.04166666666666667,
+      "v1_rate": 0.0625,
+      "v2_rate": 0.020833333333333332
+    },
+    "typec_concrete_failed_repair": {
+      "delta": -0.020833333333333315,
+      "v1_rate": 0.22916666666666666,
+      "v2_rate": 0.20833333333333334
+    }
+  },
+  "recommendation": "narrower_v3_before_v2_96",
+  "recommendation_rationale": [
+    "v2 preserves operational stability and sharply reduces T-box invented signatures and unsupported directional actions.",
+    "v2 does not sufficiently improve A-box value selection and worsens the A-box over-delete heuristic.",
+    "v2 track diagnosis is lower than v1_96 on both logic_only and local_graph samples, so v2 should not be scaled to v2_96 as-is.",
+    "Use a narrower v3 that keeps T-box signature discipline but revises A-box operation/value-source guidance and softens the track-diagnosis wording."
+  ],
+  "v1": {
+    "a_box_by_subtype": {
+      "DELETE_AMBIGUOUS": {
+        "exact_value": 4,
+        "n": 6,
+        "rate": 0.6666666666666666
+      },
+      "EXTERNAL_BY_ELIMINATION": {
+        "exact_value": 0,
+        "n": 6,
+        "rate": 0.0
+      },
+      "FORMAT_NORMALIZATION": {
+        "exact_value": 4,
+        "n": 6,
+        "rate": 0.6666666666666666
+      },
+      "FORMAT_VALUE_PRUNING": {
+        "exact_value": 4,
+        "n": 6,
+        "rate": 0.6666666666666666
+      },
+      "LOCAL_FOCUS_NON_TARGET_PROPERTY": {
+        "exact_value": 0,
+        "n": 6,
+        "rate": 0.0
+      },
+      "LOCAL_MIXED": {
+        "exact_value": 0,
+        "n": 6,
+        "rate": 0.0
+      },
+      "LOCAL_SELECTION_CONFIRMED": {
+        "exact_value": 5,
+        "n": 6,
+        "rate": 0.8333333333333334
+      },
+      "LOCAL_TEXT_CONFIRMED": {
+        "exact_value": 1,
+        "n": 2,
+        "rate": 0.5
+      },
+      "LOCAL_TEXT_DERIVED": {
+        "exact_value": 0,
+        "n": 6,
+        "rate": 0.0
+      },
+      "MULTIPLICITY_NORMALIZATION": {
+        "exact_value": 3,
+        "n": 6,
+        "rate": 0.5
+      },
+      "REJECTION_FORMAT_INVALID": {
+        "exact_value": 3,
+        "n": 6,
+        "rate": 0.5
+      },
+      "SELF_LINK_REJECTION": {
+        "exact_value": 5,
+        "n": 6,
+        "rate": 0.8333333333333334
+      },
+      "SET_MEMBERSHIP_REJECTION": {
+        "exact_value": 6,
+        "n": 6,
+        "rate": 1.0
+      },
+      "TARGET_REQUIRED_CLAIM": {
+        "exact_value": 3,
+        "n": 6,
+        "rate": 0.5
+      },
+      "UNKNOWN_BAD_TARGET_OR_CONTEXT": {
+        "exact_value": 0,
+        "n": 6,
+        "rate": 0.0
+      },
+      "UNKNOWN_INCOMPLETE_LOCAL_CONTEXT": {
+        "exact_value": 0,
+        "n": 2,
+        "rate": 0.0
+      },
+      "UNKNOWN_MULTIPLICITY_ARTIFACT": {
+        "exact_value": 0,
+        "n": 2,
+        "rate": 0.0
+      },
+      "UNKNOWN_SELECTION_AMBIGUOUS": {
+        "exact_value": 0,
+        "n": 6,
+        "rate": 0.0
+      }
+    },
+    "bug_rates": {
+      "a_box_constraint_type_value": {
+        "count": 28,
+        "denominator": 96,
+        "rate": 0.2916666666666667
+      },
+      "a_box_over_delete": {
+        "count": 39,
+        "denominator": 96,
+        "rate": 0.40625
+      },
+      "t_box_directional_without_visible_evidence": {
+        "count": 43,
+        "denominator": 96,
+        "rate": 0.4479166666666667
+      },
+      "t_box_invented_signature_after": {
+        "count": 61,
+        "denominator": 96,
+        "rate": 0.6354166666666666
+      },
+      "t_box_report_qid_copy": {
+        "count": 6,
+        "denominator": 96,
+        "rate": 0.0625
+      },
+      "typec_concrete_failed_repair": {
+        "count": 22,
+        "denominator": 96,
+        "rate": 0.22916666666666666
+      }
+    },
+    "counts": {
+      "by_parse_status": {
+        "normalized": 1,
+        "skipped_existing_normalized": 383
+      },
+      "evaluated_prompts": 384,
+      "matrix_rows": 4,
+      "rendered_prompts": 384
+    },
+    "leaks": {},
+    "local_vs_logic": {},
+    "matrices": [
+      {
+        "context": "logic_only",
+        "matrix": "prompt_dev_001_hybrid_json_nl_zero_shot_logic_only_track_diagnosis_diagnosis_no_abstain",
+        "n": 96,
+        "task": "track_diagnosis",
+        "track_correct": 64,
+        "track_total": 96
+      },
+      {
+        "a_box_constraint_type_value": 16,
+        "a_box_exact_value": 19,
+        "a_box_over_delete": 16,
+        "a_box_total": 48,
+        "context": "logic_only",
+        "matrix": "prompt_dev_002_hybrid_json_nl_zero_shot_logic_only_repair_proposal_oracle_no_abstain",
+        "n": 96,
+        "t_box_directional_without_visible_evidence": 20,
+        "t_box_invented_signature_after": 27,
+        "t_box_target_match": 41,
+        "t_box_total": 48,
+        "task": "repair_proposal",
+        "typec_concrete_failed_repair": 11
+      },
+      {
+        "context": "local_graph",
+        "matrix": "prompt_dev_003_hybrid_json_nl_zero_shot_local_graph_track_diagnosis_diagnosis_no_abstain",
+        "n": 96,
+        "task": "track_diagnosis",
+        "track_correct": 63,
+        "track_total": 96
+      },
+      {
+        "a_box_constraint_type_value": 12,
+        "a_box_exact_value": 19,
+        "a_box_over_delete": 23,
+        "a_box_total": 48,
+        "context": "local_graph",
+        "matrix": "prompt_dev_004_hybrid_json_nl_zero_shot_local_graph_repair_proposal_oracle_no_abstain",
+        "n": 96,
+        "t_box_directional_without_visible_evidence": 23,
+        "t_box_invented_signature_after": 34,
+        "t_box_report_qid_copy": 6,
+        "t_box_target_match": 41,
+        "t_box_total": 48,
+        "task": "repair_proposal",
+        "typec_concrete_failed_repair": 11
+      }
+    ],
+    "render_counts": {
+      "by_class": {
+        "T_BOX": 48,
+        "TypeA": 24,
+        "TypeB": 13,
+        "TypeC": 11
+      },
+      "by_class_subtype": {
+        "T_BOX:COINCIDENTAL_SCHEMA_CHANGE": 12,
+        "T_BOX:RELAXATION_SET_EXPANSION": 12,
+        "T_BOX:RESTRICTION_SET_CONTRACTION": 12,
+        "T_BOX:SCHEMA_UPDATE": 12,
+        "TypeA:DELETE_AMBIGUOUS": 3,
+        "TypeA:FORMAT_NORMALIZATION": 3,
+        "TypeA:FORMAT_VALUE_PRUNING": 3,
+        "TypeA:MULTIPLICITY_NORMALIZATION": 3,
+        "TypeA:REJECTION_FORMAT_INVALID": 3,
+        "TypeA:SELF_LINK_REJECTION": 3,
+        "TypeA:SET_MEMBERSHIP_REJECTION": 3,
+        "TypeA:TARGET_REQUIRED_CLAIM": 3,
+        "TypeB:LOCAL_FOCUS_NON_TARGET_PROPERTY": 3,
+        "TypeB:LOCAL_MIXED": 3,
+        "TypeB:LOCAL_SELECTION_CONFIRMED": 3,
+        "TypeB:LOCAL_TEXT_CONFIRMED": 1,
+        "TypeB:LOCAL_TEXT_DERIVED": 3,
+        "TypeC:EXTERNAL_BY_ELIMINATION": 3,
+        "TypeC:UNKNOWN_BAD_TARGET_OR_CONTEXT": 3,
+        "TypeC:UNKNOWN_INCOMPLETE_LOCAL_CONTEXT": 1,
+        "TypeC:UNKNOWN_MULTIPLICITY_ARTIFACT": 1,
+        "TypeC:UNKNOWN_SELECTION_AMBIGUOUS": 3
+      },
+      "by_context_bundle": {
+        "local_graph": 192,
+        "logic_only": 192
+      },
+      "by_example_policy": {
+        "zero_shot": 384
+      },
+      "by_representation": {
+        "hybrid_json_nl": 384
+      },
+      "by_selection_stratum": {
+        "DEV_TBOX_COINCIDENTAL_SCHEMA_CHANGE": 12,
+        "DEV_TBOX_RELAXATION_SET_EXPANSION": 12,
+        "DEV_TBOX_RESTRICTION_SET_CONTRACTION": 12,
+        "DEV_TBOX_SCHEMA_UPDATE": 12,
+        "DEV_TYPEA_AMBIGUOUS_DELETE": 3,
+        "DEV_TYPEA_CLEAN_RULE_REJECTION": 21,
+        "DEV_TYPEB_LOCAL": 13,
+        "DEV_TYPEC_EXTERNAL_OR_UNKNOWN": 11
+      },
+      "by_subtype": {
+        "COINCIDENTAL_SCHEMA_CHANGE": 12,
+        "DELETE_AMBIGUOUS": 3,
+        "EXTERNAL_BY_ELIMINATION": 3,
+        "FORMAT_NORMALIZATION": 3,
+        "FORMAT_VALUE_PRUNING": 3,
+        "LOCAL_FOCUS_NON_TARGET_PROPERTY": 3,
+        "LOCAL_MIXED": 3,
+        "LOCAL_SELECTION_CONFIRMED": 3,
+        "LOCAL_TEXT_CONFIRMED": 1,
+        "LOCAL_TEXT_DERIVED": 3,
+        "MULTIPLICITY_NORMALIZATION": 3,
+        "REJECTION_FORMAT_INVALID": 3,
+        "RELAXATION_SET_EXPANSION": 12,
+        "RESTRICTION_SET_CONTRACTION": 12,
+        "SCHEMA_UPDATE": 12,
+        "SELF_LINK_REJECTION": 3,
+        "SET_MEMBERSHIP_REJECTION": 3,
+        "TARGET_REQUIRED_CLAIM": 3,
+        "UNKNOWN_BAD_TARGET_OR_CONTEXT": 3,
+        "UNKNOWN_INCOMPLETE_LOCAL_CONTEXT": 1,
+        "UNKNOWN_MULTIPLICITY_ARTIFACT": 1,
+        "UNKNOWN_SELECTION_AMBIGUOUS": 3
+      },
+      "by_task": {
+        "a_box_repair": 96,
+        "t_box_repair": 96,
+        "track_diagnosis": 192
+      },
+      "by_track": {
+        "A_BOX": 48,
+        "T_BOX": 48
+      },
+      "eval_cases": 96,
+      "matrix_rows": 4,
+      "rendered_prompts": 384,
+      "skipped_prompts": 0
+    },
+    "run_id": "prompt_dev_eval_20260607T110915"
+  },
+  "v2": {
+    "a_box_by_subtype": {
+      "DELETE_AMBIGUOUS": {
+        "exact_value": 2,
+        "n": 4,
+        "rate": 0.5
+      },
+      "EXTERNAL_BY_ELIMINATION": {
+        "exact_value": 0,
+        "n": 2,
+        "rate": 0.0
+      },
+      "FORMAT_NORMALIZATION": {
+        "exact_value": 0,
+        "n": 4,
+        "rate": 0.0
+      },
+      "FORMAT_VALUE_PRUNING": {
+        "exact_value": 2,
+        "n": 4,
+        "rate": 0.5
+      },
+      "LOCAL_FOCUS_NON_TARGET_PROPERTY": {
+        "exact_value": 0,
+        "n": 2,
+        "rate": 0.0
+      },
+      "LOCAL_MIXED": {
+        "exact_value": 0,
+        "n": 2,
+        "rate": 0.0
+      },
+      "LOCAL_SELECTION_CONFIRMED": {
+        "exact_value": 0,
+        "n": 2,
+        "rate": 0.0
+      },
+      "LOCAL_TEXT_CONFIRMED": {
+        "exact_value": 0,
+        "n": 2,
+        "rate": 0.0
+      },
+      "LOCAL_TEXT_DERIVED": {
+        "exact_value": 0,
+        "n": 2,
+        "rate": 0.0
+      },
+      "MULTIPLICITY_NORMALIZATION": {
+        "exact_value": 3,
+        "n": 4,
+        "rate": 0.75
+      },
+      "REJECTION_FORMAT_INVALID": {
+        "exact_value": 3,
+        "n": 4,
+        "rate": 0.75
+      },
+      "SELF_LINK_REJECTION": {
+        "exact_value": 3,
+        "n": 4,
+        "rate": 0.75
+      },
+      "SET_MEMBERSHIP_REJECTION": {
+        "exact_value": 2,
+        "n": 2,
+        "rate": 1.0
+      },
+      "TARGET_REQUIRED_CLAIM": {
+        "exact_value": 1,
+        "n": 2,
+        "rate": 0.5
+      },
+      "UNKNOWN_BAD_TARGET_OR_CONTEXT": {
+        "exact_value": 0,
+        "n": 2,
+        "rate": 0.0
+      },
+      "UNKNOWN_INCOMPLETE_LOCAL_CONTEXT": {
+        "exact_value": 0,
+        "n": 2,
+        "rate": 0.0
+      },
+      "UNKNOWN_MULTIPLICITY_ARTIFACT": {
+        "exact_value": 0,
+        "n": 2,
+        "rate": 0.0
+      },
+      "UNKNOWN_SELECTION_AMBIGUOUS": {
+        "exact_value": 0,
+        "n": 2,
+        "rate": 0.0
+      }
+    },
+    "bug_rates": {
+      "a_box_constraint_type_value": {
+        "count": 12,
+        "denominator": 48,
+        "rate": 0.25
+      },
+      "a_box_over_delete": {
+        "count": 21,
+        "denominator": 48,
+        "rate": 0.4375
+      },
+      "t_box_directional_without_visible_evidence": {
+        "count": 1,
+        "denominator": 48,
+        "rate": 0.020833333333333332
+      },
+      "t_box_invented_signature_after": {
+        "count": 1,
+        "denominator": 48,
+        "rate": 0.020833333333333332
+      },
+      "t_box_report_qid_copy": {
+        "count": 1,
+        "denominator": 48,
+        "rate": 0.020833333333333332
+      },
+      "typec_concrete_failed_repair": {
+        "count": 10,
+        "denominator": 48,
+        "rate": 0.20833333333333334
+      }
+    },
+    "counts": {
+      "by_parse_status": {
+        "normalized": 191,
+        "parse_error": 1
+      },
+      "evaluated_prompts": 192,
+      "matrix_rows": 4,
+      "rendered_prompts": 192
+    },
+    "leaks": {},
+    "local_vs_logic": {},
+    "matrices": [
+      {
+        "context": "logic_only",
+        "matrix": "prompt_dev_001_hybrid_json_nl_zero_shot_logic_only_track_diagnosis_diagnosis_no_abstain",
+        "n": 48,
+        "task": "track_diagnosis",
+        "track_correct": 22,
+        "track_total": 48
+      },
+      {
+        "a_box_constraint_type_value": 6,
+        "a_box_exact_value": 8,
+        "a_box_over_delete": 13,
+        "a_box_total": 24,
+        "context": "logic_only",
+        "matrix": "prompt_dev_002_hybrid_json_nl_zero_shot_logic_only_repair_proposal_oracle_no_abstain",
+        "n": 48,
+        "t_box_semantic_family": 5,
+        "t_box_total": 24,
+        "task": "repair_proposal",
+        "typec_concrete_failed_repair": 5
+      },
+      {
+        "context": "local_graph",
+        "matrix": "prompt_dev_003_hybrid_json_nl_zero_shot_local_graph_track_diagnosis_diagnosis_no_abstain",
+        "n": 48,
+        "task": "track_diagnosis",
+        "track_correct": 25,
+        "track_total": 48
+      },
+      {
+        "a_box_constraint_type_value": 6,
+        "a_box_exact_value": 8,
+        "a_box_over_delete": 8,
+        "a_box_total": 24,
+        "context": "local_graph",
+        "matrix": "prompt_dev_004_hybrid_json_nl_zero_shot_local_graph_repair_proposal_oracle_no_abstain",
+        "n": 48,
+        "t_box_directional_without_visible_evidence": 1,
+        "t_box_invented_signature_after": 1,
+        "t_box_report_qid_copy": 1,
+        "t_box_semantic_family": 5,
+        "t_box_total": 24,
+        "task": "repair_proposal",
+        "typec_concrete_failed_repair": 5
+      }
+    ],
+    "render_counts": {
+      "by_class": {
+        "T_BOX": 24,
+        "TypeA": 14,
+        "TypeB": 5,
+        "TypeC": 5
+      },
+      "by_class_subtype": {
+        "T_BOX:COINCIDENTAL_SCHEMA_CHANGE": 6,
+        "T_BOX:RELAXATION_SET_EXPANSION": 6,
+        "T_BOX:RESTRICTION_SET_CONTRACTION": 6,
+        "T_BOX:SCHEMA_UPDATE": 6,
+        "TypeA:DELETE_AMBIGUOUS": 2,
+        "TypeA:FORMAT_NORMALIZATION": 2,
+        "TypeA:FORMAT_VALUE_PRUNING": 2,
+        "TypeA:MULTIPLICITY_NORMALIZATION": 2,
+        "TypeA:REJECTION_FORMAT_INVALID": 2,
+        "TypeA:SELF_LINK_REJECTION": 2,
+        "TypeA:SET_MEMBERSHIP_REJECTION": 1,
+        "TypeA:TARGET_REQUIRED_CLAIM": 1,
+        "TypeB:LOCAL_FOCUS_NON_TARGET_PROPERTY": 1,
+        "TypeB:LOCAL_MIXED": 1,
+        "TypeB:LOCAL_SELECTION_CONFIRMED": 1,
+        "TypeB:LOCAL_TEXT_CONFIRMED": 1,
+        "TypeB:LOCAL_TEXT_DERIVED": 1,
+        "TypeC:EXTERNAL_BY_ELIMINATION": 1,
+        "TypeC:UNKNOWN_BAD_TARGET_OR_CONTEXT": 1,
+        "TypeC:UNKNOWN_INCOMPLETE_LOCAL_CONTEXT": 1,
+        "TypeC:UNKNOWN_MULTIPLICITY_ARTIFACT": 1,
+        "TypeC:UNKNOWN_SELECTION_AMBIGUOUS": 1
+      },
+      "by_context_bundle": {
+        "local_graph": 96,
+        "logic_only": 96
+      },
+      "by_example_policy": {
+        "zero_shot": 192
+      },
+      "by_representation": {
+        "hybrid_json_nl": 192
+      },
+      "by_selection_stratum": {
+        "DEV_TBOX_COINCIDENTAL_SCHEMA_CHANGE": 6,
+        "DEV_TBOX_RELAXATION_SET_EXPANSION": 6,
+        "DEV_TBOX_RESTRICTION_SET_CONTRACTION": 6,
+        "DEV_TBOX_SCHEMA_UPDATE": 6,
+        "DEV_TYPEA_AMBIGUOUS_DELETE": 2,
+        "DEV_TYPEA_CLEAN_RULE_REJECTION": 12,
+        "DEV_TYPEB_LOCAL": 5,
+        "DEV_TYPEC_EXTERNAL_OR_UNKNOWN": 5
+      },
+      "by_subtype": {
+        "COINCIDENTAL_SCHEMA_CHANGE": 6,
+        "DELETE_AMBIGUOUS": 2,
+        "EXTERNAL_BY_ELIMINATION": 1,
+        "FORMAT_NORMALIZATION": 2,
+        "FORMAT_VALUE_PRUNING": 2,
+        "LOCAL_FOCUS_NON_TARGET_PROPERTY": 1,
+        "LOCAL_MIXED": 1,
+        "LOCAL_SELECTION_CONFIRMED": 1,
+        "LOCAL_TEXT_CONFIRMED": 1,
+        "LOCAL_TEXT_DERIVED": 1,
+        "MULTIPLICITY_NORMALIZATION": 2,
+        "REJECTION_FORMAT_INVALID": 2,
+        "RELAXATION_SET_EXPANSION": 6,
+        "RESTRICTION_SET_CONTRACTION": 6,
+        "SCHEMA_UPDATE": 6,
+        "SELF_LINK_REJECTION": 2,
+        "SET_MEMBERSHIP_REJECTION": 1,
+        "TARGET_REQUIRED_CLAIM": 1,
+        "UNKNOWN_BAD_TARGET_OR_CONTEXT": 1,
+        "UNKNOWN_INCOMPLETE_LOCAL_CONTEXT": 1,
+        "UNKNOWN_MULTIPLICITY_ARTIFACT": 1,
+        "UNKNOWN_SELECTION_AMBIGUOUS": 1
+      },
+      "by_task": {
+        "a_box_repair": 48,
+        "t_box_repair": 48,
+        "track_diagnosis": 96
+      },
+      "by_track": {
+        "A_BOX": 24,
+        "T_BOX": 24
+      },
+      "eval_cases": 48,
+      "matrix_rows": 4,
+      "rendered_prompts": 192,
+      "skipped_prompts": 0
+    },
+    "run_id": "prompt_dev_eval_20260607T152438"
+  }
+}

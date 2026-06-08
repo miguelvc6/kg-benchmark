@@ -571,6 +571,74 @@ class PromptDevTests(unittest.TestCase):
             self.assertIn("evaluation_error", summary["results"][0])
             self.assertEqual(summary["results"][0]["counts"]["normalized"], 1)
 
+    def test_diverse_stratified_prefers_qid_and_property_diversity(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            repeated = [
+                _abox_record(f"repair_repeat_{index:03d}", "Q_REPEAT", "P_REPEAT")
+                for index in range(8)
+            ]
+            diverse = [
+                _abox_record(f"repair_diverse_{index:03d}", f"Q_DIVERSE_{index}", f"P_DIVERSE_{index}")
+                for index in range(8)
+            ]
+            tbox_records = [
+                _tbox_record(f"reform_tbox_{index:03d}", f"Q_TBOX_{index}", f"P_TBOX_{index}")
+                for index in range(8)
+            ]
+            records = repeated + diverse + tbox_records
+            classified = root / "classified.jsonl"
+            classified.write_text("\n".join(json.dumps(record) for record in records) + "\n", encoding="utf-8")
+            manifest = root / "dev.json"
+            manifest.write_text(json.dumps(_manifest([record["id"] for record in records], records)), encoding="utf-8")
+            world_state = root / "world.json"
+            world_state.write_text("{}", encoding="utf-8")
+
+            summary = render_prompt_dev_prompts(
+                PromptDevRenderOptions(
+                    classified_benchmark=classified,
+                    world_state=world_state,
+                    dev_manifest=manifest,
+                    output_dir=root / "out",
+                    max_cases=12,
+                    sample_strategy="diverse_stratified",
+                    representations=("hybrid_json_nl",),
+                    example_policies=("zero_shot",),
+                    context_bundles=("minimal_case",),
+                    tasks=("track_diagnosis",),
+                )
+            )
+
+            self.assertGreater(summary["counts"]["unique_qids"], 4)
+            self.assertGreater(summary["counts"]["unique_properties"], 4)
+
+    def test_prompt_dev_v3_templates_include_failure_taxonomy_rules(self) -> None:
+        a_box = render_prompt_dev_prompt(
+            task="a_box_repair",
+            representation="hybrid_json_nl",
+            case_payload={"id": "case_000001"},
+        )
+        t_box = render_prompt_dev_prompt(
+            task="t_box_repair",
+            representation="hybrid_json_nl",
+            case_payload={"id": "case_000001"},
+        )
+        diagnosis = render_prompt_dev_prompt(
+            task="track_diagnosis",
+            representation="hybrid_json_nl",
+            case_payload={"id": "case_000001"},
+        )
+
+        self.assertIn("Prompt version: prompt_dev_v3", a_box.user_prompt)
+        self.assertIn("Replacement values must come from visible old-value normalization", a_box.user_prompt)
+        self.assertIn("Preserve retained values", a_box.user_prompt)
+        self.assertIn("targeted REMOVE", a_box.user_prompt)
+        self.assertIn("Action decision tree", t_box.user_prompt)
+        self.assertIn("compact_inventory_no_pre_change_signature", t_box.user_prompt)
+        self.assertIn("Do not invent a full signature_after", t_box.user_prompt)
+        self.assertIn("A constraint report alone does not imply T_BOX", diagnosis.user_prompt)
+        self.assertIn("property-level schema-change evidence", diagnosis.user_prompt)
+
 
 if __name__ == "__main__":
     unittest.main()

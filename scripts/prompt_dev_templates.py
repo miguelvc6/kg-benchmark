@@ -4,7 +4,7 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
-PROMPT_DEV_VERSION = "prompt_dev_v1"
+PROMPT_DEV_VERSION = "prompt_dev_v3"
 
 REPRESENTATIONS = (
     "hybrid_json_nl",
@@ -165,6 +165,15 @@ TRACK_DIAGNOSIS_CONTRACT = """Return exactly one JSON object:
   "confidence": "low" | "medium" | "high" | "0.0-1.0 as a string",
   "rationale": "<short evidence-based explanation>"
 }
+Decision rule:
+- Diagnose the likely repair locus, not the vocabulary of the report.
+- A constraint report alone does not imply T_BOX. If the likely fix is to change, remove, or normalize the focus
+  entity's claim value, choose A_BOX.
+- Choose T_BOX when the visible evidence points to a property-level rule change, such as changed constraint families,
+  schema-change context, or a report that is better resolved by editing the constraint than by editing one entity.
+- Choose AMBIGUOUS when both claim repair and schema reform remain plausible from the visible evidence.
+- Do not use AMBIGUOUS merely because the case is hard; use it only when the visible evidence supports neither repair
+  locus clearly.
 """
 
 A_BOX_REPAIR_CONTRACT = """Return exactly one JSON object:
@@ -183,6 +192,25 @@ A_BOX_REPAIR_CONTRACT = """Return exactly one JSON object:
   "provenance": [{"kind": "KG" | "OTHER", "node_id": "Q...", "snippet": "<visible evidence>"}],
   "uncertainty": {"confidence": 0.0, "notes": "<short uncertainty note>"}
 }
+Value-source rules:
+- Replacement values must come from visible old-value normalization, visible local evidence, retained values, or
+  explicit prompt evidence for the target value.
+- Do not use constraint-family QIDs, allowed-type QIDs, report type QIDs, or constraint class QIDs as replacement claim
+  values unless that QID is explicitly visible as the target claim value evidence.
+- Do not invent a new entity value. If no replacement value is visible, remove only the specific visible bad value; do
+  not delete retained values.
+
+Operation rubric:
+- Use SET when the final target property should contain exactly one visible value.
+- Use ADD only to add a visible missing value while preserving existing retained values.
+- Use REMOVE to remove a specific visible bad value while preserving all other retained values.
+- Use DELETE_ALL only when the prompt evidence shows every current target value should be removed and no retained value
+  remains.
+- If evidence is insufficient for a replacement value, a targeted REMOVE is safer than SET to a constraint/type QID or
+  DELETE_ALL.
+- Preserve retained values. Do not over-delete merely to satisfy a constraint.
+- For TypeC or unknown/insufficient-evidence cases, avoid hallucinated replacements; make the smallest visible repair
+  and report low confidence.
 """
 
 T_BOX_REPAIR_CONTRACT = """Return exactly one JSON object:
@@ -212,6 +240,22 @@ T_BOX_REPAIR_CONTRACT = """Return exactly one JSON object:
 Do not put report_violation_type_qids into signature_after unless those QIDs are visible semantic changed constraint
 values in the supplied constraint context. If exact post-reform schema values are not visible, choose action
 SCHEMA_UPDATE with low confidence rather than inventing an exact signature.
+
+Action decision tree:
+- RELAXATION_SET_EXPANSION: visible evidence shows the allowed set became larger.
+- RESTRICTION_SET_CONTRACTION: visible evidence shows the allowed set became smaller.
+- RELAXATION_RANGE_WIDENED: visible evidence shows numeric/date bounds became wider.
+- RESTRICTION_RANGE_NARROWED: visible evidence shows numeric/date bounds became narrower.
+- SCHEMA_UPDATE: the schema changed but exact direction or post-reform values are not visible.
+- COINCIDENTAL_SCHEMA_CHANGE: a schema change is visible but the evidence does not support a causal repair for the
+  reported violation.
+
+Signature discipline:
+- Do not invent a full signature_after.
+- Do not copy violating item/type QIDs or report_violation_type_qids into signature_after unless they are visible
+  changed constraint values.
+- If the prompt exposes compact_inventory_no_pre_change_signature, exact post-reform values are not visible; prefer
+  SCHEMA_UPDATE with low confidence and an empty signature_after unless a changed constraint value is explicitly shown.
 """
 
 ABSTENTION_CONTRACT = """If the visible evidence is insufficient, return exactly:
@@ -251,13 +295,16 @@ def render_prompt_dev_prompt(
         task_instruction = (
             "Decide whether the visible historical repair case should be treated as A_BOX, T_BOX, or AMBIGUOUS. "
             "A_BOX edits the focus entity claim. T_BOX edits the property constraint or schema rule. "
-            "AMBIGUOUS means the visible evidence does not support choosing safely."
+            "AMBIGUOUS means the visible evidence does not support choosing safely. "
+            "A constraint report alone does not imply T_BOX, but property-level schema-change evidence does. "
+            "Decide based on likely repair locus."
         )
         contract = TRACK_DIAGNOSIS_CONTRACT
     elif task == "a_box_repair":
         task_instruction = (
             "Propose an executable A-box repair transaction for the focus entity and target property. "
-            "Preserve useful values when the evidence supports them; do not over-delete just to satisfy a rule."
+            "Choose values only from visible target-value evidence. Preserve useful values when the evidence supports "
+            "them; use targeted REMOVE instead of DELETE_ALL when only one visible value is bad."
         )
         contract = A_BOX_REPAIR_CONTRACT
     else:
@@ -266,7 +313,8 @@ def render_prompt_dev_prompt(
             "Use constraint-family QIDs from the supplied context as constraint_type_qid values. "
             "Do not copy ordinary entity/type QIDs into constraint-family fields. "
             "Do not treat report_violation_type_qids as the repaired constraint signature unless the same QIDs are "
-            "visible changed constraint values."
+            "visible changed constraint values. Prefer SCHEMA_UPDATE with low confidence when exact direction or "
+            "post-reform values are not visible."
         )
         contract = T_BOX_REPAIR_CONTRACT
 

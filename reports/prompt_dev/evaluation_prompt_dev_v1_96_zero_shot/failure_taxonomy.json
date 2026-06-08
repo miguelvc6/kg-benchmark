@@ -1,0 +1,1867 @@
+{
+  "answers": {
+    "Are T-box compact-policy cases impossible to match exactly from visible evidence?": "Yes. The sampled T-box prompts use compact_inventory_no_pre_change_signature, so exact signature matching is not visible-evidence feasible and should be separated in reporting.",
+    "Are T-box failures mostly target-family correct but action/signature wrong?": "No for exact target-family because most compact cases have no gold target family. Failures are dominated by invented signature_after and directional action choices without visible pre-change evidence.",
+    "Are TypeA clean/rule cases failing?": "Yes. TypeA/clean-rule A-box cases still show wrong-value and operation errors, especially constraint/type QIDs being used as replacement values. This is a prompt bug.",
+    "Are TypeB local_graph cases failing to use visible local evidence?": "Yes. Local-graph TypeB failures remain and are counted under missing local evidence use. This is a prompt bug.",
+    "Are TypeC cases hallucinating repairs?": "Yes. TypeC A-box cases produce concrete repairs despite insufficient evidence. This supports testing abstention after the zero-shot repair prompt is stable."
+  },
+  "case_count": 96,
+  "examples": {
+    "a_box": {
+      "constraint/type QID used as repaired entity value": [
+        {
+          "case_id": "repair_Q2131024_2445785456",
+          "class": "TypeA",
+          "context": "logic_only",
+          "expected": [],
+          "ops": [
+            "SET"
+          ],
+          "score_slice": "diagnostic_only",
+          "subtype": "DELETE_AMBIGUOUS",
+          "values": [
+            "Q29934200"
+          ]
+        },
+        {
+          "case_id": "repair_Q63898844_2333536236",
+          "class": "TypeA",
+          "context": "logic_only",
+          "expected": [
+            "Q99868032"
+          ],
+          "ops": [
+            "REMOVE"
+          ],
+          "score_slice": "main_score",
+          "subtype": "SET_MEMBERSHIP_REJECTION",
+          "values": [
+            "Q59496158"
+          ]
+        },
+        {
+          "case_id": "repair_Q979055_2441520750",
+          "class": "TypeB",
+          "context": "logic_only",
+          "expected": [
+            "Q35896"
+          ],
+          "ops": [
+            "REMOVE",
+            "ADD"
+          ],
+          "score_slice": "main_score",
+          "subtype": "LOCAL_FOCUS_NON_TARGET_PROPERTY",
+          "values": [
+            "Q125097315",
+            "Q29934200"
+          ]
+        },
+        {
+          "case_id": "repair_Q135504042_2388911715",
+          "class": "TypeC",
+          "context": "logic_only",
+          "expected": [
+            "Q200",
+            "Q203",
+            "Q37136"
+          ],
+          "ops": [
+            "REMOVE",
+            "REMOVE",
+            "ADD",
+            "ADD",
+            "ADD"
+          ],
+          "score_slice": "main_score",
+          "subtype": "EXTERNAL_BY_ELIMINATION",
+          "values": [
+            "Q200",
+            "Q203",
+            "Q2",
+            "Q5",
+            "Q11"
+          ]
+        },
+        {
+          "case_id": "repair_Q555237_2446323135",
+          "class": "TypeC",
+          "context": "logic_only",
+          "expected": [
+            "Q8493045"
+          ],
+          "ops": [
+            "SET"
+          ],
+          "score_slice": "diagnostic_only",
+          "subtype": "UNKNOWN_MULTIPLICITY_ARTIFACT",
+          "values": [
+            "Q54828448"
+          ]
+        }
+      ],
+      "expected TypeC insufficient-evidence failure": [
+        {
+          "case_id": "repair_Q135504042_2388911715",
+          "class": "TypeC",
+          "context": "logic_only",
+          "expected": [
+            "Q200",
+            "Q203",
+            "Q37136"
+          ],
+          "ops": [
+            "REMOVE",
+            "REMOVE",
+            "ADD",
+            "ADD",
+            "ADD"
+          ],
+          "score_slice": "main_score",
+          "subtype": "EXTERNAL_BY_ELIMINATION",
+          "values": [
+            "Q200",
+            "Q203",
+            "Q2",
+            "Q5",
+            "Q11"
+          ]
+        },
+        {
+          "case_id": "repair_Q27126389_2425267918",
+          "class": "TypeC",
+          "context": "logic_only",
+          "expected": [
+            "30414747",
+            "3836830"
+          ],
+          "ops": [
+            "SET"
+          ],
+          "score_slice": "diagnostic_only",
+          "subtype": "UNKNOWN_BAD_TARGET_OR_CONTEXT",
+          "values": [
+            "Q27126389"
+          ]
+        },
+        {
+          "case_id": "repair_Q137441618_2444110605",
+          "class": "TypeC",
+          "context": "logic_only",
+          "expected": [
+            "Heftye family"
+          ],
+          "ops": [
+            "SET"
+          ],
+          "score_slice": "diagnostic_only",
+          "subtype": "UNKNOWN_INCOMPLETE_LOCAL_CONTEXT",
+          "values": [
+            "Heftye"
+          ]
+        },
+        {
+          "case_id": "repair_Q555237_2446323135",
+          "class": "TypeC",
+          "context": "logic_only",
+          "expected": [
+            "Q8493045"
+          ],
+          "ops": [
+            "SET"
+          ],
+          "score_slice": "diagnostic_only",
+          "subtype": "UNKNOWN_MULTIPLICITY_ARTIFACT",
+          "values": [
+            "Q54828448"
+          ]
+        },
+        {
+          "case_id": "repair_Q2624046_2362908932",
+          "class": "TypeC",
+          "context": "logic_only",
+          "expected": [
+            "Q6483963"
+          ],
+          "ops": [
+            "REMOVE",
+            "ADD"
+          ],
+          "score_slice": "diagnostic_only",
+          "subtype": "UNKNOWN_SELECTION_AMBIGUOUS",
+          "values": [
+            "Q6483963",
+            "Q740445"
+          ]
+        }
+      ],
+      "hallucinated value": [
+        {
+          "case_id": "repair_Q135504042_2388911715",
+          "class": "TypeC",
+          "context": "logic_only",
+          "expected": [
+            "Q200",
+            "Q203",
+            "Q37136"
+          ],
+          "ops": [
+            "REMOVE",
+            "REMOVE",
+            "ADD",
+            "ADD",
+            "ADD"
+          ],
+          "score_slice": "main_score",
+          "subtype": "EXTERNAL_BY_ELIMINATION",
+          "values": [
+            "Q200",
+            "Q203",
+            "Q2",
+            "Q5",
+            "Q11"
+          ]
+        },
+        {
+          "case_id": "repair_Q100536073_1295665587",
+          "class": "TypeB",
+          "context": "logic_only",
+          "expected": [
+            "2013/si/157/made"
+          ],
+          "ops": [
+            "SET"
+          ],
+          "score_slice": "main_score",
+          "subtype": "LOCAL_TEXT_DERIVED",
+          "values": [
+            "si/157/2013"
+          ]
+        },
+        {
+          "case_id": "repair_Q1546466_2297182718",
+          "class": "TypeA",
+          "context": "logic_only",
+          "expected": [],
+          "ops": [
+            "REMOVE",
+            "ADD"
+          ],
+          "score_slice": "main_score",
+          "subtype": "REJECTION_FORMAT_INVALID",
+          "values": [
+            "pka0194",
+            "10000000"
+          ]
+        },
+        {
+          "case_id": "repair_Q135633362_2404100208",
+          "class": "TypeA",
+          "context": "logic_only",
+          "expected": [
+            "Q135633362"
+          ],
+          "ops": [
+            "SET"
+          ],
+          "score_slice": "main_score",
+          "subtype": "TARGET_REQUIRED_CLAIM",
+          "values": [
+            "Q21767"
+          ]
+        },
+        {
+          "case_id": "repair_Q100539602_1295668038",
+          "class": "TypeB",
+          "context": "logic_only",
+          "expected": [
+            "2014/si/484/made"
+          ],
+          "ops": [
+            "SET"
+          ],
+          "score_slice": "main_score",
+          "subtype": "LOCAL_TEXT_DERIVED",
+          "values": [
+            "SI/484/made"
+          ]
+        }
+      ],
+      "missing local evidence use": [
+        {
+          "case_id": "repair_Q979055_2441520750",
+          "class": "TypeB",
+          "context": "local_graph",
+          "expected": [
+            "Q35896"
+          ],
+          "ops": [
+            "SET"
+          ],
+          "score_slice": "main_score",
+          "subtype": "LOCAL_FOCUS_NON_TARGET_PROPERTY",
+          "values": [
+            "Q125097315"
+          ]
+        },
+        {
+          "case_id": "repair_Q117185537_2442854831",
+          "class": "TypeB",
+          "context": "local_graph",
+          "expected": [
+            "Q2359069",
+            "Q259167",
+            "Q5229639"
+          ],
+          "ops": [
+            "DELETE_ALL",
+            "DELETE_ALL",
+            "DELETE_ALL"
+          ],
+          "score_slice": "main_score",
+          "subtype": "LOCAL_MIXED",
+          "values": []
+        },
+        {
+          "case_id": "repair_Q94762277_2446321758",
+          "class": "TypeB",
+          "context": "local_graph",
+          "expected": [
+            "1012560481"
+          ],
+          "ops": [
+            "DELETE_ALL",
+            "DELETE_ALL"
+          ],
+          "score_slice": "main_score",
+          "subtype": "LOCAL_SELECTION_CONFIRMED",
+          "values": []
+        },
+        {
+          "case_id": "repair_Q1371101_2439762625",
+          "class": "TypeB",
+          "context": "local_graph",
+          "expected": [
+            "Hamad bin Mohammed Al Sharqi"
+          ],
+          "ops": [
+            "SET"
+          ],
+          "score_slice": "main_score",
+          "subtype": "LOCAL_TEXT_CONFIRMED",
+          "values": [
+            "Emirati Sheikh"
+          ]
+        },
+        {
+          "case_id": "repair_Q100536719_1295663835",
+          "class": "TypeB",
+          "context": "local_graph",
+          "expected": [
+            "2013/si/333/made"
+          ],
+          "ops": [
+            "SET"
+          ],
+          "score_slice": "main_score",
+          "subtype": "LOCAL_TEXT_DERIVED",
+          "values": [
+            "si/333/made"
+          ]
+        }
+      ],
+      "over-delete": [
+        {
+          "case_id": "repair_Q55682174_2297178353",
+          "class": "TypeA",
+          "context": "logic_only",
+          "expected": [
+            "1051188857"
+          ],
+          "ops": [
+            "REMOVE"
+          ],
+          "score_slice": "main_score",
+          "subtype": "FORMAT_VALUE_PRUNING",
+          "values": [
+            "pkd0121"
+          ]
+        },
+        {
+          "case_id": "repair_Q97573807_2403110875",
+          "class": "TypeA",
+          "context": "logic_only",
+          "expected": [
+            "244833559"
+          ],
+          "ops": [
+            "REMOVE"
+          ],
+          "score_slice": "main_score",
+          "subtype": "MULTIPLICITY_NORMALIZATION",
+          "values": [
+            "244833559"
+          ]
+        },
+        {
+          "case_id": "repair_Q131148728_2447350025",
+          "class": "TypeA",
+          "context": "logic_only",
+          "expected": [
+            "Q131148694",
+            "Q131148704"
+          ],
+          "ops": [
+            "REMOVE"
+          ],
+          "score_slice": "main_score",
+          "subtype": "SELF_LINK_REJECTION",
+          "values": [
+            "Q131148728"
+          ]
+        },
+        {
+          "case_id": "repair_Q63898844_2333536236",
+          "class": "TypeA",
+          "context": "logic_only",
+          "expected": [
+            "Q99868032"
+          ],
+          "ops": [
+            "REMOVE"
+          ],
+          "score_slice": "main_score",
+          "subtype": "SET_MEMBERSHIP_REJECTION",
+          "values": [
+            "Q59496158"
+          ]
+        },
+        {
+          "case_id": "repair_Q979055_2441520750",
+          "class": "TypeB",
+          "context": "logic_only",
+          "expected": [
+            "Q35896"
+          ],
+          "ops": [
+            "REMOVE",
+            "ADD"
+          ],
+          "score_slice": "main_score",
+          "subtype": "LOCAL_FOCUS_NON_TARGET_PROPERTY",
+          "values": [
+            "Q125097315",
+            "Q29934200"
+          ]
+        }
+      ],
+      "under-repair": [
+        {
+          "case_id": "repair_Q2131024_2445785456",
+          "class": "TypeA",
+          "context": "logic_only",
+          "expected": [],
+          "ops": [
+            "SET"
+          ],
+          "score_slice": "diagnostic_only",
+          "subtype": "DELETE_AMBIGUOUS",
+          "values": [
+            "Q29934200"
+          ]
+        },
+        {
+          "case_id": "repair_Q117185537_2442854831",
+          "class": "TypeB",
+          "context": "logic_only",
+          "expected": [
+            "Q2359069",
+            "Q259167",
+            "Q5229639"
+          ],
+          "ops": [
+            "SET"
+          ],
+          "score_slice": "main_score",
+          "subtype": "LOCAL_MIXED",
+          "values": [
+            "Q54828449"
+          ]
+        },
+        {
+          "case_id": "repair_Q100536719_1295663835",
+          "class": "TypeB",
+          "context": "logic_only",
+          "expected": [
+            "2013/si/333/made"
+          ],
+          "ops": [
+            "SET"
+          ],
+          "score_slice": "main_score",
+          "subtype": "LOCAL_TEXT_DERIVED",
+          "values": [
+            "S.I. No. 333/2013"
+          ]
+        },
+        {
+          "case_id": "repair_Q27126389_2425267918",
+          "class": "TypeC",
+          "context": "logic_only",
+          "expected": [
+            "30414747",
+            "3836830"
+          ],
+          "ops": [
+            "SET"
+          ],
+          "score_slice": "diagnostic_only",
+          "subtype": "UNKNOWN_BAD_TARGET_OR_CONTEXT",
+          "values": [
+            "Q27126389"
+          ]
+        },
+        {
+          "case_id": "repair_Q137441618_2444110605",
+          "class": "TypeC",
+          "context": "logic_only",
+          "expected": [
+            "Heftye family"
+          ],
+          "ops": [
+            "SET"
+          ],
+          "score_slice": "diagnostic_only",
+          "subtype": "UNKNOWN_INCOMPLETE_LOCAL_CONTEXT",
+          "values": [
+            "Heftye"
+          ]
+        }
+      ],
+      "wrong operation": [
+        {
+          "case_id": "repair_Q2131024_2445785456",
+          "class": "TypeA",
+          "context": "logic_only",
+          "expected": [],
+          "ops": [
+            "SET"
+          ],
+          "score_slice": "diagnostic_only",
+          "subtype": "DELETE_AMBIGUOUS",
+          "values": [
+            "Q29934200"
+          ]
+        },
+        {
+          "case_id": "repair_Q97573807_2403110875",
+          "class": "TypeA",
+          "context": "logic_only",
+          "expected": [
+            "244833559"
+          ],
+          "ops": [
+            "REMOVE"
+          ],
+          "score_slice": "main_score",
+          "subtype": "MULTIPLICITY_NORMALIZATION",
+          "values": [
+            "244833559"
+          ]
+        },
+        {
+          "case_id": "repair_Q117185537_2442854831",
+          "class": "TypeB",
+          "context": "logic_only",
+          "expected": [
+            "Q2359069",
+            "Q259167",
+            "Q5229639"
+          ],
+          "ops": [
+            "SET"
+          ],
+          "score_slice": "main_score",
+          "subtype": "LOCAL_MIXED",
+          "values": [
+            "Q54828449"
+          ]
+        },
+        {
+          "case_id": "repair_Q137380855_2442556509",
+          "class": "TypeA",
+          "context": "logic_only",
+          "expected": [],
+          "ops": [
+            "SET"
+          ],
+          "score_slice": "main_score",
+          "subtype": "REJECTION_FORMAT_INVALID",
+          "values": [
+            "Q137380855"
+          ]
+        },
+        {
+          "case_id": "repair_Q837185_2441191823",
+          "class": "TypeB",
+          "context": "logic_only",
+          "expected": [
+            "Q1028"
+          ],
+          "ops": [
+            "REMOVE"
+          ],
+          "score_slice": "main_score",
+          "subtype": "LOCAL_FOCUS_NON_TARGET_PROPERTY",
+          "values": [
+            "Q837185"
+          ]
+        }
+      ],
+      "wrong value": [
+        {
+          "case_id": "repair_Q2131024_2445785456",
+          "class": "TypeA",
+          "context": "logic_only",
+          "expected": [],
+          "ops": [
+            "SET"
+          ],
+          "score_slice": "diagnostic_only",
+          "subtype": "DELETE_AMBIGUOUS",
+          "values": [
+            "Q29934200"
+          ]
+        },
+        {
+          "case_id": "repair_Q97573807_2403110875",
+          "class": "TypeA",
+          "context": "logic_only",
+          "expected": [
+            "244833559"
+          ],
+          "ops": [
+            "REMOVE"
+          ],
+          "score_slice": "main_score",
+          "subtype": "MULTIPLICITY_NORMALIZATION",
+          "values": [
+            "244833559"
+          ]
+        },
+        {
+          "case_id": "repair_Q979055_2441520750",
+          "class": "TypeB",
+          "context": "logic_only",
+          "expected": [
+            "Q35896"
+          ],
+          "ops": [
+            "REMOVE",
+            "ADD"
+          ],
+          "score_slice": "main_score",
+          "subtype": "LOCAL_FOCUS_NON_TARGET_PROPERTY",
+          "values": [
+            "Q125097315",
+            "Q29934200"
+          ]
+        },
+        {
+          "case_id": "repair_Q117185537_2442854831",
+          "class": "TypeB",
+          "context": "logic_only",
+          "expected": [
+            "Q2359069",
+            "Q259167",
+            "Q5229639"
+          ],
+          "ops": [
+            "SET"
+          ],
+          "score_slice": "main_score",
+          "subtype": "LOCAL_MIXED",
+          "values": [
+            "Q54828449"
+          ]
+        },
+        {
+          "case_id": "repair_Q100536719_1295663835",
+          "class": "TypeB",
+          "context": "logic_only",
+          "expected": [
+            "2013/si/333/made"
+          ],
+          "ops": [
+            "SET"
+          ],
+          "score_slice": "main_score",
+          "subtype": "LOCAL_TEXT_DERIVED",
+          "values": [
+            "S.I. No. 333/2013"
+          ]
+        }
+      ]
+    },
+    "t_box": {
+      "compact temporal policy makes exact signature impossible": [
+        {
+          "action": "RESTRICTION_RANGE_NARROWED",
+          "case_id": "reform_Q254745_P1346_1580835843",
+          "changed_constraint_types": [],
+          "context": "logic_only",
+          "score_slice": "diagnostic_only",
+          "signature_after_len": 1,
+          "subtype": "COINCIDENTAL_SCHEMA_CHANGE",
+          "target": "Q21510855",
+          "temporal_policy": "compact_inventory_no_pre_change_signature"
+        },
+        {
+          "action": "SCHEMA_UPDATE",
+          "case_id": "reform_Q96483507_P2529_2442137584",
+          "changed_constraint_types": [
+            "Q21503247"
+          ],
+          "context": "logic_only",
+          "score_slice": "main_score",
+          "signature_after_len": 0,
+          "subtype": "RELAXATION_SET_EXPANSION",
+          "target": "Q19474404",
+          "temporal_policy": "compact_inventory_no_pre_change_signature"
+        },
+        {
+          "action": "RELAXATION_RANGE_WIDENED",
+          "case_id": "reform_Q20888952_P4216_2361580316",
+          "changed_constraint_types": [],
+          "context": "logic_only",
+          "score_slice": "main_score",
+          "signature_after_len": 1,
+          "subtype": "RESTRICTION_SET_CONTRACTION",
+          "target": "Q53869507",
+          "temporal_policy": "compact_inventory_no_pre_change_signature"
+        },
+        {
+          "action": "RESTRICTION_RANGE_NARROWED",
+          "case_id": "reform_Q95217667_P950_2330325818",
+          "changed_constraint_types": [],
+          "context": "logic_only",
+          "score_slice": "main_score",
+          "signature_after_len": 1,
+          "subtype": "SCHEMA_UPDATE",
+          "target": "Q108139345",
+          "temporal_policy": "compact_inventory_no_pre_change_signature"
+        },
+        {
+          "action": "SCHEMA_UPDATE",
+          "case_id": "reform_Q33203_P2347_2236583436",
+          "changed_constraint_types": [],
+          "context": "logic_only",
+          "score_slice": "diagnostic_only",
+          "signature_after_len": 0,
+          "subtype": "COINCIDENTAL_SCHEMA_CHANGE",
+          "target": "Q19474404",
+          "temporal_policy": "compact_inventory_no_pre_change_signature"
+        }
+      ],
+      "directional action chosen without visible evidence": [
+        {
+          "action": "RESTRICTION_RANGE_NARROWED",
+          "case_id": "reform_Q254745_P1346_1580835843",
+          "changed_constraint_types": [],
+          "context": "logic_only",
+          "score_slice": "diagnostic_only",
+          "signature_after_len": 1,
+          "subtype": "COINCIDENTAL_SCHEMA_CHANGE",
+          "target": "Q21510855",
+          "temporal_policy": "compact_inventory_no_pre_change_signature"
+        },
+        {
+          "action": "RELAXATION_RANGE_WIDENED",
+          "case_id": "reform_Q20888952_P4216_2361580316",
+          "changed_constraint_types": [],
+          "context": "logic_only",
+          "score_slice": "main_score",
+          "signature_after_len": 1,
+          "subtype": "RESTRICTION_SET_CONTRACTION",
+          "target": "Q53869507",
+          "temporal_policy": "compact_inventory_no_pre_change_signature"
+        },
+        {
+          "action": "RESTRICTION_RANGE_NARROWED",
+          "case_id": "reform_Q95217667_P950_2330325818",
+          "changed_constraint_types": [],
+          "context": "logic_only",
+          "score_slice": "main_score",
+          "signature_after_len": 1,
+          "subtype": "SCHEMA_UPDATE",
+          "target": "Q108139345",
+          "temporal_policy": "compact_inventory_no_pre_change_signature"
+        },
+        {
+          "action": "RELAXATION_RANGE_WIDENED",
+          "case_id": "reform_Q43200_P5082_2442820132",
+          "changed_constraint_types": [],
+          "context": "logic_only",
+          "score_slice": "main_score",
+          "signature_after_len": 1,
+          "subtype": "RESTRICTION_SET_CONTRACTION",
+          "target": "Q108139345",
+          "temporal_policy": "compact_inventory_no_pre_change_signature"
+        },
+        {
+          "action": "RELAXATION_RANGE_WIDENED",
+          "case_id": "reform_Q105784190_P3628_2414087018",
+          "changed_constraint_types": [],
+          "context": "logic_only",
+          "score_slice": "main_score",
+          "signature_after_len": 1,
+          "subtype": "SCHEMA_UPDATE",
+          "target": "Q21502404",
+          "temporal_policy": "compact_inventory_no_pre_change_signature"
+        }
+      ],
+      "exact mismatch but plausible schema update": [
+        {
+          "action": "SCHEMA_UPDATE",
+          "case_id": "reform_Q96483507_P2529_2442137584",
+          "changed_constraint_types": [
+            "Q21503247"
+          ],
+          "context": "logic_only",
+          "score_slice": "main_score",
+          "signature_after_len": 0,
+          "subtype": "RELAXATION_SET_EXPANSION",
+          "target": "Q19474404",
+          "temporal_policy": "compact_inventory_no_pre_change_signature"
+        },
+        {
+          "action": "SCHEMA_UPDATE",
+          "case_id": "reform_Q33203_P2347_2236583436",
+          "changed_constraint_types": [],
+          "context": "logic_only",
+          "score_slice": "diagnostic_only",
+          "signature_after_len": 0,
+          "subtype": "COINCIDENTAL_SCHEMA_CHANGE",
+          "target": "Q19474404",
+          "temporal_policy": "compact_inventory_no_pre_change_signature"
+        },
+        {
+          "action": "SCHEMA_UPDATE",
+          "case_id": "reform_Q115933554_P31_2442704771",
+          "changed_constraint_types": [],
+          "context": "logic_only",
+          "score_slice": "main_score",
+          "signature_after_len": 0,
+          "subtype": "RELAXATION_SET_EXPANSION",
+          "target": "Q52558054",
+          "temporal_policy": "compact_inventory_no_pre_change_signature"
+        },
+        {
+          "action": "SCHEMA_UPDATE",
+          "case_id": "reform_Q1510431_P10225_2403749973",
+          "changed_constraint_types": [],
+          "context": "logic_only",
+          "score_slice": "diagnostic_only",
+          "signature_after_len": 0,
+          "subtype": "COINCIDENTAL_SCHEMA_CHANGE",
+          "target": "Q52004125",
+          "temporal_policy": "compact_inventory_no_pre_change_signature"
+        },
+        {
+          "action": "SCHEMA_UPDATE",
+          "case_id": "reform_Q55972075_P108_2441343882",
+          "changed_constraint_types": [],
+          "context": "logic_only",
+          "score_slice": "main_score",
+          "signature_after_len": 1,
+          "subtype": "RELAXATION_SET_EXPANSION",
+          "target": "Q21510851",
+          "temporal_policy": "compact_inventory_no_pre_change_signature"
+        }
+      ],
+      "invented signature_after": [
+        {
+          "action": "RESTRICTION_RANGE_NARROWED",
+          "case_id": "reform_Q254745_P1346_1580835843",
+          "changed_constraint_types": [],
+          "context": "logic_only",
+          "score_slice": "diagnostic_only",
+          "signature_after_len": 1,
+          "subtype": "COINCIDENTAL_SCHEMA_CHANGE",
+          "target": "Q21510855",
+          "temporal_policy": "compact_inventory_no_pre_change_signature"
+        },
+        {
+          "action": "RELAXATION_RANGE_WIDENED",
+          "case_id": "reform_Q20888952_P4216_2361580316",
+          "changed_constraint_types": [],
+          "context": "logic_only",
+          "score_slice": "main_score",
+          "signature_after_len": 1,
+          "subtype": "RESTRICTION_SET_CONTRACTION",
+          "target": "Q53869507",
+          "temporal_policy": "compact_inventory_no_pre_change_signature"
+        },
+        {
+          "action": "RESTRICTION_RANGE_NARROWED",
+          "case_id": "reform_Q95217667_P950_2330325818",
+          "changed_constraint_types": [],
+          "context": "logic_only",
+          "score_slice": "main_score",
+          "signature_after_len": 1,
+          "subtype": "SCHEMA_UPDATE",
+          "target": "Q108139345",
+          "temporal_policy": "compact_inventory_no_pre_change_signature"
+        },
+        {
+          "action": "RELAXATION_RANGE_WIDENED",
+          "case_id": "reform_Q43200_P5082_2442820132",
+          "changed_constraint_types": [],
+          "context": "logic_only",
+          "score_slice": "main_score",
+          "signature_after_len": 1,
+          "subtype": "RESTRICTION_SET_CONTRACTION",
+          "target": "Q108139345",
+          "temporal_policy": "compact_inventory_no_pre_change_signature"
+        },
+        {
+          "action": "RELAXATION_RANGE_WIDENED",
+          "case_id": "reform_Q105784190_P3628_2414087018",
+          "changed_constraint_types": [],
+          "context": "logic_only",
+          "score_slice": "main_score",
+          "signature_after_len": 1,
+          "subtype": "SCHEMA_UPDATE",
+          "target": "Q21502404",
+          "temporal_policy": "compact_inventory_no_pre_change_signature"
+        }
+      ],
+      "report_violation_type_qids copied into signature_after": [
+        {
+          "action": "RELAXATION_RANGE_WIDENED",
+          "case_id": "reform_Q1510431_P10225_2403749973",
+          "changed_constraint_types": [],
+          "context": "local_graph",
+          "score_slice": "diagnostic_only",
+          "signature_after_len": 1,
+          "subtype": "COINCIDENTAL_SCHEMA_CHANGE",
+          "target": "Q21503250",
+          "temporal_policy": "compact_inventory_no_pre_change_signature"
+        },
+        {
+          "action": "RESTRICTION_RANGE_NARROWED",
+          "case_id": "reform_Q109769851_P11318_2217144931",
+          "changed_constraint_types": [],
+          "context": "local_graph",
+          "score_slice": "diagnostic_only",
+          "signature_after_len": 1,
+          "subtype": "COINCIDENTAL_SCHEMA_CHANGE",
+          "target": "Q21503250",
+          "temporal_policy": "compact_inventory_no_pre_change_signature"
+        },
+        {
+          "action": "RESTRICTION_RANGE_NARROWED",
+          "case_id": "reform_Q71167967_P410_2444658197",
+          "changed_constraint_types": [],
+          "context": "local_graph",
+          "score_slice": "main_score",
+          "signature_after_len": 1,
+          "subtype": "RELAXATION_SET_EXPANSION",
+          "target": "Q21510865",
+          "temporal_policy": "compact_inventory_no_pre_change_signature"
+        },
+        {
+          "action": "RELAXATION_RANGE_WIDENED",
+          "case_id": "reform_Q26611119_P7959_2439847902",
+          "changed_constraint_types": [],
+          "context": "local_graph",
+          "score_slice": "main_score",
+          "signature_after_len": 1,
+          "subtype": "RELAXATION_SET_EXPANSION",
+          "target": "Q21510865",
+          "temporal_policy": "compact_inventory_no_pre_change_signature"
+        },
+        {
+          "action": "RELAXATION_RANGE_WIDENED",
+          "case_id": "reform_Q19467087_P7937_2439061952",
+          "changed_constraint_types": [],
+          "context": "local_graph",
+          "score_slice": "diagnostic_only",
+          "signature_after_len": 1,
+          "subtype": "COINCIDENTAL_SCHEMA_CHANGE",
+          "target": "Q21503250",
+          "temporal_policy": "compact_inventory_no_pre_change_signature"
+        }
+      ],
+      "wrong constraint family": [
+        {
+          "action": "SCHEMA_UPDATE",
+          "case_id": "reform_Q96483507_P2529_2442137584",
+          "changed_constraint_types": [
+            "Q21503247"
+          ],
+          "context": "logic_only",
+          "score_slice": "main_score",
+          "signature_after_len": 0,
+          "subtype": "RELAXATION_SET_EXPANSION",
+          "target": "Q19474404",
+          "temporal_policy": "compact_inventory_no_pre_change_signature"
+        },
+        {
+          "action": "SCHEMA_UPDATE",
+          "case_id": "reform_Q1016312_P18_2402814023",
+          "changed_constraint_types": [
+            "Q52558054"
+          ],
+          "context": "logic_only",
+          "score_slice": "diagnostic_only",
+          "signature_after_len": 1,
+          "subtype": "COINCIDENTAL_SCHEMA_CHANGE",
+          "target": "Q21502404",
+          "temporal_policy": "compact_inventory_no_pre_change_signature"
+        },
+        {
+          "action": "RELAXATION_RANGE_WIDENED",
+          "case_id": "reform_Q23231924_P645_722137891",
+          "changed_constraint_types": [
+            "Q21502410"
+          ],
+          "context": "logic_only",
+          "score_slice": "main_score",
+          "signature_after_len": 1,
+          "subtype": "SCHEMA_UPDATE",
+          "target": "Q53869507",
+          "temporal_policy": "compact_inventory_no_pre_change_signature"
+        },
+        {
+          "action": "RELAXATION_RANGE_WIDENED",
+          "case_id": "reform_Q98848217_P9160_2441138672",
+          "changed_constraint_types": [
+            "Q108139345"
+          ],
+          "context": "logic_only",
+          "score_slice": "main_score",
+          "signature_after_len": 1,
+          "subtype": "RESTRICTION_SET_CONTRACTION",
+          "target": "Q53869507",
+          "temporal_policy": "compact_inventory_no_pre_change_signature"
+        },
+        {
+          "action": "SCHEMA_UPDATE",
+          "case_id": "reform_Q23222572_P645_690339121",
+          "changed_constraint_types": [
+            "Q21528958"
+          ],
+          "context": "logic_only",
+          "score_slice": "diagnostic_only",
+          "signature_after_len": 0,
+          "subtype": "COINCIDENTAL_SCHEMA_CHANGE",
+          "target": "Q53869507",
+          "temporal_policy": "compact_inventory_no_pre_change_signature"
+        }
+      ]
+    },
+    "track_diagnosis": {
+      "A-box predicted as T-box due to constraint-report framing": [
+        {
+          "case_id": "repair_Q423757_2425335643",
+          "class": "TypeA",
+          "context": "logic_only",
+          "predicted": "T_BOX",
+          "score_slice": "main_score",
+          "subtype": "FORMAT_NORMALIZATION",
+          "track": "A_BOX"
+        },
+        {
+          "case_id": "repair_Q97573807_2403110875",
+          "class": "TypeA",
+          "context": "logic_only",
+          "predicted": "T_BOX",
+          "score_slice": "main_score",
+          "subtype": "MULTIPLICITY_NORMALIZATION",
+          "track": "A_BOX"
+        },
+        {
+          "case_id": "repair_Q979055_2441520750",
+          "class": "TypeB",
+          "context": "logic_only",
+          "predicted": "T_BOX",
+          "score_slice": "main_score",
+          "subtype": "LOCAL_FOCUS_NON_TARGET_PROPERTY",
+          "track": "A_BOX"
+        },
+        {
+          "case_id": "repair_Q117185537_2442854831",
+          "class": "TypeB",
+          "context": "logic_only",
+          "predicted": "T_BOX",
+          "score_slice": "main_score",
+          "subtype": "LOCAL_MIXED",
+          "track": "A_BOX"
+        },
+        {
+          "case_id": "repair_Q94762277_2446321758",
+          "class": "TypeB",
+          "context": "logic_only",
+          "predicted": "T_BOX",
+          "score_slice": "main_score",
+          "subtype": "LOCAL_SELECTION_CONFIRMED",
+          "track": "A_BOX"
+        }
+      ],
+      "T-box predicted as A-box due to concrete violating value": [
+        {
+          "case_id": "reform_Q1510431_P10225_2403749973",
+          "class": "T_BOX",
+          "context": "logic_only",
+          "predicted": "A_BOX",
+          "score_slice": "diagnostic_only",
+          "subtype": "COINCIDENTAL_SCHEMA_CHANGE",
+          "track": "T_BOX"
+        },
+        {
+          "case_id": "reform_Q58311923_P6004_1800952303",
+          "class": "T_BOX",
+          "context": "logic_only",
+          "predicted": "A_BOX",
+          "score_slice": "main_score",
+          "subtype": "RESTRICTION_SET_CONTRACTION",
+          "track": "T_BOX"
+        },
+        {
+          "case_id": "reform_Q1056905_P166_2254793027",
+          "class": "T_BOX",
+          "context": "logic_only",
+          "predicted": "A_BOX",
+          "score_slice": "diagnostic_only",
+          "subtype": "COINCIDENTAL_SCHEMA_CHANGE",
+          "track": "T_BOX"
+        },
+        {
+          "case_id": "reform_Q71167967_P410_2444658197",
+          "class": "T_BOX",
+          "context": "local_graph",
+          "predicted": "A_BOX",
+          "score_slice": "main_score",
+          "subtype": "RELAXATION_SET_EXPANSION",
+          "track": "T_BOX"
+        },
+        {
+          "case_id": "reform_Q123851906_P535_2443240310",
+          "class": "T_BOX",
+          "context": "local_graph",
+          "predicted": "A_BOX",
+          "score_slice": "main_score",
+          "subtype": "RELAXATION_SET_EXPANSION",
+          "track": "T_BOX"
+        }
+      ],
+      "ambiguous overused": [
+        {
+          "case_id": "reform_Q20888952_P4216_2361580316",
+          "class": "T_BOX",
+          "context": "logic_only",
+          "predicted": "AMBIGUOUS",
+          "score_slice": "main_score",
+          "subtype": "RESTRICTION_SET_CONTRACTION",
+          "track": "T_BOX"
+        },
+        {
+          "case_id": "repair_Q131148728_2447350025",
+          "class": "TypeA",
+          "context": "logic_only",
+          "predicted": "AMBIGUOUS",
+          "score_slice": "main_score",
+          "subtype": "SELF_LINK_REJECTION",
+          "track": "A_BOX"
+        },
+        {
+          "case_id": "reform_Q439712_P1770_2433393062",
+          "class": "T_BOX",
+          "context": "logic_only",
+          "predicted": "AMBIGUOUS",
+          "score_slice": "main_score",
+          "subtype": "RESTRICTION_SET_CONTRACTION",
+          "track": "T_BOX"
+        },
+        {
+          "case_id": "reform_Q3403851_P347_2436835478",
+          "class": "T_BOX",
+          "context": "logic_only",
+          "predicted": "AMBIGUOUS",
+          "score_slice": "main_score",
+          "subtype": "SCHEMA_UPDATE",
+          "track": "T_BOX"
+        },
+        {
+          "case_id": "repair_Q124325068_2443083039",
+          "class": "TypeA",
+          "context": "logic_only",
+          "predicted": "AMBIGUOUS",
+          "score_slice": "main_score",
+          "subtype": "MULTIPLICITY_NORMALIZATION",
+          "track": "A_BOX"
+        }
+      ],
+      "ambiguous used appropriately": [
+        {
+          "case_id": "reform_Q107438498_P2092_2333296438",
+          "class": "T_BOX",
+          "context": "logic_only",
+          "predicted": "AMBIGUOUS",
+          "score_slice": "diagnostic_only",
+          "subtype": "COINCIDENTAL_SCHEMA_CHANGE",
+          "track": "T_BOX"
+        },
+        {
+          "case_id": "repair_Q278283_2086421334",
+          "class": "TypeC",
+          "context": "logic_only",
+          "predicted": "AMBIGUOUS",
+          "score_slice": "diagnostic_only",
+          "subtype": "UNKNOWN_BAD_TARGET_OR_CONTEXT",
+          "track": "A_BOX"
+        },
+        {
+          "case_id": "repair_Q670165_2166553005",
+          "class": "TypeA",
+          "context": "local_graph",
+          "predicted": "AMBIGUOUS",
+          "score_slice": "diagnostic_only",
+          "subtype": "DELETE_AMBIGUOUS",
+          "track": "A_BOX"
+        }
+      ]
+    }
+  },
+  "failure_modes": {
+    "a_box": {
+      "constraint/type QID used as repaired entity value": 28,
+      "correct deterministic normalization": 32,
+      "expected TypeC insufficient-evidence failure": 22,
+      "hallucinated value": 9,
+      "missing local evidence use": 11,
+      "over-delete": 39,
+      "under-repair": 35,
+      "wrong operation": 23,
+      "wrong value": 58
+    },
+    "t_box": {
+      "compact temporal policy makes exact signature impossible": 96,
+      "directional action chosen without visible evidence": 43,
+      "exact mismatch but plausible schema update": 53,
+      "invented signature_after": 61,
+      "report_violation_type_qids copied into signature_after": 6,
+      "wrong constraint family": 14
+    },
+    "track_diagnosis": {
+      "A-box predicted as T-box due to constraint-report framing": 42,
+      "T-box predicted as A-box due to concrete violating value": 8,
+      "ambiguous overused": 12,
+      "ambiguous used appropriately": 3,
+      "correct_track": 127
+    }
+  },
+  "run_dir": "reports/prompt_dev/evaluation_prompt_dev_v1_96_zero_shot",
+  "slices": {
+    "broad_type": {
+      "T_BOX": {
+        "n": 192,
+        "t_box::compact temporal policy makes exact signature impossible": 96,
+        "t_box::directional action chosen without visible evidence": 43,
+        "t_box::exact mismatch but plausible schema update": 53,
+        "t_box::invented signature_after": 61,
+        "t_box::report_violation_type_qids copied into signature_after": 6,
+        "t_box::wrong constraint family": 14,
+        "track::T-box predicted as A-box due to concrete violating value": 8,
+        "track::ambiguous overused": 4,
+        "track::ambiguous used appropriately": 1,
+        "track::correct_track": 83
+      },
+      "TypeA": {
+        "a_box::constraint/type QID used as repaired entity value": 15,
+        "a_box::correct deterministic normalization": 32,
+        "a_box::hallucinated value": 3,
+        "a_box::over-delete": 20,
+        "a_box::under-repair": 8,
+        "a_box::wrong operation": 11,
+        "a_box::wrong value": 16,
+        "n": 96,
+        "track::A-box predicted as T-box due to constraint-report framing": 21,
+        "track::ambiguous overused": 3,
+        "track::ambiguous used appropriately": 1,
+        "track::correct_track": 23
+      },
+      "TypeB": {
+        "a_box::constraint/type QID used as repaired entity value": 6,
+        "a_box::hallucinated value": 5,
+        "a_box::missing local evidence use": 11,
+        "a_box::over-delete": 11,
+        "a_box::under-repair": 13,
+        "a_box::wrong operation": 5,
+        "a_box::wrong value": 20,
+        "n": 52,
+        "track::A-box predicted as T-box due to constraint-report framing": 9,
+        "track::ambiguous overused": 5,
+        "track::correct_track": 12
+      },
+      "TypeC": {
+        "a_box::constraint/type QID used as repaired entity value": 7,
+        "a_box::expected TypeC insufficient-evidence failure": 22,
+        "a_box::hallucinated value": 1,
+        "a_box::over-delete": 8,
+        "a_box::under-repair": 14,
+        "a_box::wrong operation": 7,
+        "a_box::wrong value": 22,
+        "n": 44,
+        "track::A-box predicted as T-box due to constraint-report framing": 12,
+        "track::ambiguous used appropriately": 1,
+        "track::correct_track": 9
+      }
+    },
+    "class": {
+      "T_BOX": {
+        "n": 192,
+        "t_box::compact temporal policy makes exact signature impossible": 96,
+        "t_box::directional action chosen without visible evidence": 43,
+        "t_box::exact mismatch but plausible schema update": 53,
+        "t_box::invented signature_after": 61,
+        "t_box::report_violation_type_qids copied into signature_after": 6,
+        "t_box::wrong constraint family": 14,
+        "track::T-box predicted as A-box due to concrete violating value": 8,
+        "track::ambiguous overused": 4,
+        "track::ambiguous used appropriately": 1,
+        "track::correct_track": 83
+      },
+      "TypeA": {
+        "a_box::constraint/type QID used as repaired entity value": 15,
+        "a_box::correct deterministic normalization": 32,
+        "a_box::hallucinated value": 3,
+        "a_box::over-delete": 20,
+        "a_box::under-repair": 8,
+        "a_box::wrong operation": 11,
+        "a_box::wrong value": 16,
+        "n": 96,
+        "track::A-box predicted as T-box due to constraint-report framing": 21,
+        "track::ambiguous overused": 3,
+        "track::ambiguous used appropriately": 1,
+        "track::correct_track": 23
+      },
+      "TypeB": {
+        "a_box::constraint/type QID used as repaired entity value": 6,
+        "a_box::hallucinated value": 5,
+        "a_box::missing local evidence use": 11,
+        "a_box::over-delete": 11,
+        "a_box::under-repair": 13,
+        "a_box::wrong operation": 5,
+        "a_box::wrong value": 20,
+        "n": 52,
+        "track::A-box predicted as T-box due to constraint-report framing": 9,
+        "track::ambiguous overused": 5,
+        "track::correct_track": 12
+      },
+      "TypeC": {
+        "a_box::constraint/type QID used as repaired entity value": 7,
+        "a_box::expected TypeC insufficient-evidence failure": 22,
+        "a_box::hallucinated value": 1,
+        "a_box::over-delete": 8,
+        "a_box::under-repair": 14,
+        "a_box::wrong operation": 7,
+        "a_box::wrong value": 22,
+        "n": 44,
+        "track::A-box predicted as T-box due to constraint-report framing": 12,
+        "track::ambiguous used appropriately": 1,
+        "track::correct_track": 9
+      }
+    },
+    "context_bundle": {
+      "local_graph": {
+        "a_box::constraint/type QID used as repaired entity value": 12,
+        "a_box::correct deterministic normalization": 17,
+        "a_box::expected TypeC insufficient-evidence failure": 11,
+        "a_box::hallucinated value": 4,
+        "a_box::missing local evidence use": 11,
+        "a_box::over-delete": 23,
+        "a_box::under-repair": 15,
+        "a_box::wrong operation": 14,
+        "a_box::wrong value": 29,
+        "n": 192,
+        "t_box::compact temporal policy makes exact signature impossible": 48,
+        "t_box::directional action chosen without visible evidence": 23,
+        "t_box::exact mismatch but plausible schema update": 25,
+        "t_box::invented signature_after": 34,
+        "t_box::report_violation_type_qids copied into signature_after": 6,
+        "t_box::wrong constraint family": 7,
+        "track::A-box predicted as T-box due to constraint-report framing": 21,
+        "track::T-box predicted as A-box due to concrete violating value": 5,
+        "track::ambiguous overused": 6,
+        "track::ambiguous used appropriately": 1,
+        "track::correct_track": 63
+      },
+      "logic_only": {
+        "a_box::constraint/type QID used as repaired entity value": 16,
+        "a_box::correct deterministic normalization": 15,
+        "a_box::expected TypeC insufficient-evidence failure": 11,
+        "a_box::hallucinated value": 5,
+        "a_box::over-delete": 16,
+        "a_box::under-repair": 20,
+        "a_box::wrong operation": 9,
+        "a_box::wrong value": 29,
+        "n": 192,
+        "t_box::compact temporal policy makes exact signature impossible": 48,
+        "t_box::directional action chosen without visible evidence": 20,
+        "t_box::exact mismatch but plausible schema update": 28,
+        "t_box::invented signature_after": 27,
+        "t_box::wrong constraint family": 7,
+        "track::A-box predicted as T-box due to constraint-report framing": 21,
+        "track::T-box predicted as A-box due to concrete violating value": 3,
+        "track::ambiguous overused": 6,
+        "track::ambiguous used appropriately": 2,
+        "track::correct_track": 64
+      }
+    },
+    "score_slice": {
+      "diagnostic_only": {
+        "a_box::constraint/type QID used as repaired entity value": 7,
+        "a_box::correct deterministic normalization": 4,
+        "a_box::expected TypeC insufficient-evidence failure": 16,
+        "a_box::over-delete": 6,
+        "a_box::under-repair": 12,
+        "a_box::wrong operation": 9,
+        "a_box::wrong value": 18,
+        "n": 92,
+        "t_box::compact temporal policy makes exact signature impossible": 24,
+        "t_box::directional action chosen without visible evidence": 11,
+        "t_box::exact mismatch but plausible schema update": 13,
+        "t_box::invented signature_after": 15,
+        "t_box::report_violation_type_qids copied into signature_after": 4,
+        "t_box::wrong constraint family": 4,
+        "track::A-box predicted as T-box due to constraint-report framing": 12,
+        "track::T-box predicted as A-box due to concrete violating value": 2,
+        "track::ambiguous used appropriately": 3,
+        "track::correct_track": 29
+      },
+      "main_score": {
+        "a_box::constraint/type QID used as repaired entity value": 21,
+        "a_box::correct deterministic normalization": 28,
+        "a_box::expected TypeC insufficient-evidence failure": 6,
+        "a_box::hallucinated value": 9,
+        "a_box::missing local evidence use": 11,
+        "a_box::over-delete": 33,
+        "a_box::under-repair": 23,
+        "a_box::wrong operation": 14,
+        "a_box::wrong value": 40,
+        "n": 292,
+        "t_box::compact temporal policy makes exact signature impossible": 72,
+        "t_box::directional action chosen without visible evidence": 32,
+        "t_box::exact mismatch but plausible schema update": 40,
+        "t_box::invented signature_after": 46,
+        "t_box::report_violation_type_qids copied into signature_after": 2,
+        "t_box::wrong constraint family": 10,
+        "track::A-box predicted as T-box due to constraint-report framing": 30,
+        "track::T-box predicted as A-box due to concrete violating value": 6,
+        "track::ambiguous overused": 12,
+        "track::correct_track": 98
+      }
+    },
+    "selection_stratum": {
+      "DEV_TBOX_COINCIDENTAL_SCHEMA_CHANGE": {
+        "n": 48,
+        "t_box::compact temporal policy makes exact signature impossible": 24,
+        "t_box::directional action chosen without visible evidence": 11,
+        "t_box::exact mismatch but plausible schema update": 13,
+        "t_box::invented signature_after": 15,
+        "t_box::report_violation_type_qids copied into signature_after": 4,
+        "t_box::wrong constraint family": 4,
+        "track::T-box predicted as A-box due to concrete violating value": 2,
+        "track::ambiguous used appropriately": 1,
+        "track::correct_track": 21
+      },
+      "DEV_TBOX_RELAXATION_SET_EXPANSION": {
+        "n": 48,
+        "t_box::compact temporal policy makes exact signature impossible": 24,
+        "t_box::directional action chosen without visible evidence": 8,
+        "t_box::exact mismatch but plausible schema update": 16,
+        "t_box::invented signature_after": 12,
+        "t_box::report_violation_type_qids copied into signature_after": 2,
+        "t_box::wrong constraint family": 2,
+        "track::T-box predicted as A-box due to concrete violating value": 3,
+        "track::ambiguous overused": 1,
+        "track::correct_track": 20
+      },
+      "DEV_TBOX_RESTRICTION_SET_CONTRACTION": {
+        "n": 48,
+        "t_box::compact temporal policy makes exact signature impossible": 24,
+        "t_box::directional action chosen without visible evidence": 9,
+        "t_box::exact mismatch but plausible schema update": 15,
+        "t_box::invented signature_after": 15,
+        "t_box::wrong constraint family": 6,
+        "track::T-box predicted as A-box due to concrete violating value": 3,
+        "track::ambiguous overused": 2,
+        "track::correct_track": 19
+      },
+      "DEV_TBOX_SCHEMA_UPDATE": {
+        "n": 48,
+        "t_box::compact temporal policy makes exact signature impossible": 24,
+        "t_box::directional action chosen without visible evidence": 15,
+        "t_box::exact mismatch but plausible schema update": 9,
+        "t_box::invented signature_after": 19,
+        "t_box::wrong constraint family": 2,
+        "track::ambiguous overused": 1,
+        "track::correct_track": 23
+      },
+      "DEV_TYPEA_AMBIGUOUS_DELETE": {
+        "a_box::constraint/type QID used as repaired entity value": 4,
+        "a_box::correct deterministic normalization": 4,
+        "a_box::under-repair": 2,
+        "a_box::wrong operation": 2,
+        "a_box::wrong value": 2,
+        "n": 12,
+        "track::A-box predicted as T-box due to constraint-report framing": 3,
+        "track::ambiguous used appropriately": 1,
+        "track::correct_track": 2
+      },
+      "DEV_TYPEA_CLEAN_RULE_REJECTION": {
+        "a_box::constraint/type QID used as repaired entity value": 11,
+        "a_box::correct deterministic normalization": 28,
+        "a_box::hallucinated value": 3,
+        "a_box::over-delete": 20,
+        "a_box::under-repair": 6,
+        "a_box::wrong operation": 9,
+        "a_box::wrong value": 14,
+        "n": 84,
+        "track::A-box predicted as T-box due to constraint-report framing": 18,
+        "track::ambiguous overused": 3,
+        "track::correct_track": 21
+      },
+      "DEV_TYPEB_LOCAL": {
+        "a_box::constraint/type QID used as repaired entity value": 6,
+        "a_box::hallucinated value": 5,
+        "a_box::missing local evidence use": 11,
+        "a_box::over-delete": 11,
+        "a_box::under-repair": 13,
+        "a_box::wrong operation": 5,
+        "a_box::wrong value": 20,
+        "n": 52,
+        "track::A-box predicted as T-box due to constraint-report framing": 9,
+        "track::ambiguous overused": 5,
+        "track::correct_track": 12
+      },
+      "DEV_TYPEC_EXTERNAL_OR_UNKNOWN": {
+        "a_box::constraint/type QID used as repaired entity value": 7,
+        "a_box::expected TypeC insufficient-evidence failure": 22,
+        "a_box::hallucinated value": 1,
+        "a_box::over-delete": 8,
+        "a_box::under-repair": 14,
+        "a_box::wrong operation": 7,
+        "a_box::wrong value": 22,
+        "n": 44,
+        "track::A-box predicted as T-box due to constraint-report framing": 12,
+        "track::ambiguous used appropriately": 1,
+        "track::correct_track": 9
+      }
+    },
+    "subtype": {
+      "COINCIDENTAL_SCHEMA_CHANGE": {
+        "n": 48,
+        "t_box::compact temporal policy makes exact signature impossible": 24,
+        "t_box::directional action chosen without visible evidence": 11,
+        "t_box::exact mismatch but plausible schema update": 13,
+        "t_box::invented signature_after": 15,
+        "t_box::report_violation_type_qids copied into signature_after": 4,
+        "t_box::wrong constraint family": 4,
+        "track::T-box predicted as A-box due to concrete violating value": 2,
+        "track::ambiguous used appropriately": 1,
+        "track::correct_track": 21
+      },
+      "DELETE_AMBIGUOUS": {
+        "a_box::constraint/type QID used as repaired entity value": 4,
+        "a_box::correct deterministic normalization": 4,
+        "a_box::under-repair": 2,
+        "a_box::wrong operation": 2,
+        "a_box::wrong value": 2,
+        "n": 12,
+        "track::A-box predicted as T-box due to constraint-report framing": 3,
+        "track::ambiguous used appropriately": 1,
+        "track::correct_track": 2
+      },
+      "EXTERNAL_BY_ELIMINATION": {
+        "a_box::constraint/type QID used as repaired entity value": 4,
+        "a_box::expected TypeC insufficient-evidence failure": 6,
+        "a_box::hallucinated value": 1,
+        "a_box::over-delete": 2,
+        "a_box::under-repair": 4,
+        "a_box::wrong value": 6,
+        "n": 12,
+        "track::A-box predicted as T-box due to constraint-report framing": 3,
+        "track::correct_track": 3
+      },
+      "FORMAT_NORMALIZATION": {
+        "a_box::constraint/type QID used as repaired entity value": 2,
+        "a_box::correct deterministic normalization": 4,
+        "a_box::over-delete": 3,
+        "a_box::wrong operation": 2,
+        "a_box::wrong value": 2,
+        "n": 12,
+        "track::A-box predicted as T-box due to constraint-report framing": 4,
+        "track::correct_track": 2
+      },
+      "FORMAT_VALUE_PRUNING": {
+        "a_box::constraint/type QID used as repaired entity value": 1,
+        "a_box::correct deterministic normalization": 4,
+        "a_box::over-delete": 6,
+        "a_box::wrong operation": 2,
+        "a_box::wrong value": 2,
+        "n": 12,
+        "track::A-box predicted as T-box due to constraint-report framing": 1,
+        "track::correct_track": 5
+      },
+      "LOCAL_FOCUS_NON_TARGET_PROPERTY": {
+        "a_box::constraint/type QID used as repaired entity value": 3,
+        "a_box::hallucinated value": 1,
+        "a_box::missing local evidence use": 3,
+        "a_box::over-delete": 2,
+        "a_box::under-repair": 4,
+        "a_box::wrong operation": 2,
+        "a_box::wrong value": 6,
+        "n": 12,
+        "track::A-box predicted as T-box due to constraint-report framing": 1,
+        "track::ambiguous overused": 2,
+        "track::correct_track": 3
+      },
+      "LOCAL_MIXED": {
+        "a_box::constraint/type QID used as repaired entity value": 1,
+        "a_box::missing local evidence use": 3,
+        "a_box::over-delete": 4,
+        "a_box::under-repair": 2,
+        "a_box::wrong operation": 2,
+        "a_box::wrong value": 6,
+        "n": 12,
+        "track::A-box predicted as T-box due to constraint-report framing": 3,
+        "track::ambiguous overused": 2,
+        "track::correct_track": 1
+      },
+      "LOCAL_SELECTION_CONFIRMED": {
+        "a_box::constraint/type QID used as repaired entity value": 2,
+        "a_box::missing local evidence use": 1,
+        "a_box::over-delete": 5,
+        "a_box::wrong operation": 1,
+        "a_box::wrong value": 1,
+        "n": 12,
+        "track::A-box predicted as T-box due to constraint-report framing": 2,
+        "track::ambiguous overused": 1,
+        "track::correct_track": 3
+      },
+      "LOCAL_TEXT_CONFIRMED": {
+        "a_box::missing local evidence use": 1,
+        "a_box::under-repair": 1,
+        "a_box::wrong value": 1,
+        "n": 4,
+        "track::correct_track": 2
+      },
+      "LOCAL_TEXT_DERIVED": {
+        "a_box::hallucinated value": 4,
+        "a_box::missing local evidence use": 3,
+        "a_box::under-repair": 6,
+        "a_box::wrong value": 6,
+        "n": 12,
+        "track::A-box predicted as T-box due to constraint-report framing": 3,
+        "track::correct_track": 3
+      },
+      "MULTIPLICITY_NORMALIZATION": {
+        "a_box::constraint/type QID used as repaired entity value": 1,
+        "a_box::correct deterministic normalization": 3,
+        "a_box::over-delete": 2,
+        "a_box::under-repair": 1,
+        "a_box::wrong operation": 2,
+        "a_box::wrong value": 3,
+        "n": 12,
+        "track::A-box predicted as T-box due to constraint-report framing": 4,
+        "track::ambiguous overused": 1,
+        "track::correct_track": 1
+      },
+      "REJECTION_FORMAT_INVALID": {
+        "a_box::constraint/type QID used as repaired entity value": 2,
+        "a_box::correct deterministic normalization": 3,
+        "a_box::hallucinated value": 2,
+        "a_box::under-repair": 1,
+        "a_box::wrong operation": 3,
+        "a_box::wrong value": 3,
+        "n": 12,
+        "track::A-box predicted as T-box due to constraint-report framing": 3,
+        "track::correct_track": 3
+      },
+      "RELAXATION_SET_EXPANSION": {
+        "n": 48,
+        "t_box::compact temporal policy makes exact signature impossible": 24,
+        "t_box::directional action chosen without visible evidence": 8,
+        "t_box::exact mismatch but plausible schema update": 16,
+        "t_box::invented signature_after": 12,
+        "t_box::report_violation_type_qids copied into signature_after": 2,
+        "t_box::wrong constraint family": 2,
+        "track::T-box predicted as A-box due to concrete violating value": 3,
+        "track::ambiguous overused": 1,
+        "track::correct_track": 20
+      },
+      "RESTRICTION_SET_CONTRACTION": {
+        "n": 48,
+        "t_box::compact temporal policy makes exact signature impossible": 24,
+        "t_box::directional action chosen without visible evidence": 9,
+        "t_box::exact mismatch but plausible schema update": 15,
+        "t_box::invented signature_after": 15,
+        "t_box::wrong constraint family": 6,
+        "track::T-box predicted as A-box due to concrete violating value": 3,
+        "track::ambiguous overused": 2,
+        "track::correct_track": 19
+      },
+      "SCHEMA_UPDATE": {
+        "n": 48,
+        "t_box::compact temporal policy makes exact signature impossible": 24,
+        "t_box::directional action chosen without visible evidence": 15,
+        "t_box::exact mismatch but plausible schema update": 9,
+        "t_box::invented signature_after": 19,
+        "t_box::wrong constraint family": 2,
+        "track::ambiguous overused": 1,
+        "track::correct_track": 23
+      },
+      "SELF_LINK_REJECTION": {
+        "a_box::constraint/type QID used as repaired entity value": 2,
+        "a_box::correct deterministic normalization": 5,
+        "a_box::over-delete": 5,
+        "a_box::under-repair": 1,
+        "a_box::wrong value": 1,
+        "n": 12,
+        "track::A-box predicted as T-box due to constraint-report framing": 3,
+        "track::ambiguous overused": 2,
+        "track::correct_track": 1
+      },
+      "SET_MEMBERSHIP_REJECTION": {
+        "a_box::constraint/type QID used as repaired entity value": 3,
+        "a_box::correct deterministic normalization": 6,
+        "a_box::over-delete": 4,
+        "n": 12,
+        "track::A-box predicted as T-box due to constraint-report framing": 3,
+        "track::correct_track": 3
+      },
+      "TARGET_REQUIRED_CLAIM": {
+        "a_box::correct deterministic normalization": 3,
+        "a_box::hallucinated value": 1,
+        "a_box::under-repair": 3,
+        "a_box::wrong value": 3,
+        "n": 12,
+        "track::correct_track": 6
+      },
+      "UNKNOWN_BAD_TARGET_OR_CONTEXT": {
+        "a_box::constraint/type QID used as repaired entity value": 1,
+        "a_box::expected TypeC insufficient-evidence failure": 6,
+        "a_box::under-repair": 6,
+        "a_box::wrong operation": 2,
+        "a_box::wrong value": 6,
+        "n": 12,
+        "track::A-box predicted as T-box due to constraint-report framing": 2,
+        "track::ambiguous used appropriately": 1,
+        "track::correct_track": 3
+      },
+      "UNKNOWN_INCOMPLETE_LOCAL_CONTEXT": {
+        "a_box::expected TypeC insufficient-evidence failure": 2,
+        "a_box::under-repair": 2,
+        "a_box::wrong operation": 1,
+        "a_box::wrong value": 2,
+        "n": 4,
+        "track::correct_track": 2
+      },
+      "UNKNOWN_MULTIPLICITY_ARTIFACT": {
+        "a_box::constraint/type QID used as repaired entity value": 1,
+        "a_box::expected TypeC insufficient-evidence failure": 2,
+        "a_box::over-delete": 1,
+        "a_box::under-repair": 1,
+        "a_box::wrong operation": 1,
+        "a_box::wrong value": 2,
+        "n": 4,
+        "track::A-box predicted as T-box due to constraint-report framing": 2
+      },
+      "UNKNOWN_SELECTION_AMBIGUOUS": {
+        "a_box::constraint/type QID used as repaired entity value": 1,
+        "a_box::expected TypeC insufficient-evidence failure": 6,
+        "a_box::over-delete": 5,
+        "a_box::under-repair": 1,
+        "a_box::wrong operation": 3,
+        "a_box::wrong value": 6,
+        "n": 12,
+        "track::A-box predicted as T-box due to constraint-report framing": 5,
+        "track::correct_track": 1
+      }
+    },
+    "task": {
+      "repair_proposal": {
+        "a_box::constraint/type QID used as repaired entity value": 28,
+        "a_box::correct deterministic normalization": 32,
+        "a_box::expected TypeC insufficient-evidence failure": 22,
+        "a_box::hallucinated value": 9,
+        "a_box::missing local evidence use": 11,
+        "a_box::over-delete": 39,
+        "a_box::under-repair": 35,
+        "a_box::wrong operation": 23,
+        "a_box::wrong value": 58,
+        "n": 192,
+        "t_box::compact temporal policy makes exact signature impossible": 96,
+        "t_box::directional action chosen without visible evidence": 43,
+        "t_box::exact mismatch but plausible schema update": 53,
+        "t_box::invented signature_after": 61,
+        "t_box::report_violation_type_qids copied into signature_after": 6,
+        "t_box::wrong constraint family": 14
+      },
+      "track_diagnosis": {
+        "n": 192,
+        "track::A-box predicted as T-box due to constraint-report framing": 42,
+        "track::T-box predicted as A-box due to concrete violating value": 8,
+        "track::ambiguous overused": 12,
+        "track::ambiguous used appropriately": 3,
+        "track::correct_track": 127
+      }
+    },
+    "tbox_temporal_policy": {
+      "compact_inventory_no_pre_change_signature": {
+        "n": 96,
+        "t_box::compact temporal policy makes exact signature impossible": 96,
+        "t_box::directional action chosen without visible evidence": 43,
+        "t_box::exact mismatch but plausible schema update": 53,
+        "t_box::invented signature_after": 61,
+        "t_box::report_violation_type_qids copied into signature_after": 6,
+        "t_box::wrong constraint family": 14
+      }
+    },
+    "track": {
+      "A_BOX": {
+        "a_box::constraint/type QID used as repaired entity value": 28,
+        "a_box::correct deterministic normalization": 32,
+        "a_box::expected TypeC insufficient-evidence failure": 22,
+        "a_box::hallucinated value": 9,
+        "a_box::missing local evidence use": 11,
+        "a_box::over-delete": 39,
+        "a_box::under-repair": 35,
+        "a_box::wrong operation": 23,
+        "a_box::wrong value": 58,
+        "n": 192,
+        "track::A-box predicted as T-box due to constraint-report framing": 42,
+        "track::ambiguous overused": 8,
+        "track::ambiguous used appropriately": 2,
+        "track::correct_track": 44
+      },
+      "T_BOX": {
+        "n": 192,
+        "t_box::compact temporal policy makes exact signature impossible": 96,
+        "t_box::directional action chosen without visible evidence": 43,
+        "t_box::exact mismatch but plausible schema update": 53,
+        "t_box::invented signature_after": 61,
+        "t_box::report_violation_type_qids copied into signature_after": 6,
+        "t_box::wrong constraint family": 14,
+        "track::T-box predicted as A-box due to concrete violating value": 8,
+        "track::ambiguous overused": 4,
+        "track::ambiguous used appropriately": 1,
+        "track::correct_track": 83
+      }
+    }
+  }
+}

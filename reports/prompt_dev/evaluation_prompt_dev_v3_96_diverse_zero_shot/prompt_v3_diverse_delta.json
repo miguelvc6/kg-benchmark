@@ -1,0 +1,438 @@
+{
+  "acceptance": {
+    "no_prompt_leakage": true,
+    "normalization_no_regression": true,
+    "proposal_parse_error_rate_le_2pct": true,
+    "request_error_rate_le_1pct": true
+  },
+  "classification_term_context": [
+    "         \"description\": \"property by which a distinction or classification is made\",           \"label\": \"criterion used\"         },         \"P2303\": {",
+    "         \"description\": \"property by which a distinction or classification is made\",           \"label\": \"criterion used\"         },         \"P2303\": {"
+  ],
+  "comparison_references": {
+    "v1_96_readiness": "reports/readiness/phase_f_96_zero_shot_delta_review.json",
+    "v2_48_delta": "reports/prompt_dev/evaluation_prompt_dev_v2_48_zero_shot/prompt_v2_canary_delta.json"
+  },
+  "counts": {
+    "by_parse_status": {
+      "normalized": 380,
+      "parse_error": 2,
+      "request_error": 2
+    },
+    "evaluated_prompts": 384,
+    "matrix_rows": 4,
+    "rendered_prompts": 384
+  },
+  "model": "Qwen/Qwen3-4B",
+  "prompt_text_leaks": {},
+  "provider": "university",
+  "raw_response_count": 384,
+  "raw_response_think_tag_count": 382,
+  "raw_response_think_tag_rate": 0.9947916666666666,
+  "recommendation": [
+    "Do not move to Phase G main scoring: repair proposal quality remains weak even with the broader diverse v3 sample.",
+    "Keep the v3/v2 T-box signature discipline; it appears to have fixed the main invented-signature failure mode.",
+    "Keep the v3 A-box targeted-remove direction, but do not freeze it yet: constraint/type-QID misuse fell sharply and DELETE_ALL use is much lower, while exact value quality and TypeC behavior remain weak.",
+    "Track diagnosis is still below the v1_96 sanity level; do another Phase F prompt iteration before freezing.",
+    "Provider still emits <think> preambles despite prompt instructions; parser handles them, but this should be reported separately from prompt JSON compliance."
+  ],
+  "render_counts": {
+    "by_class": {
+      "T_BOX": 48,
+      "TypeA": 24,
+      "TypeB": 13,
+      "TypeC": 11
+    },
+    "by_class_subtype": {
+      "T_BOX:COINCIDENTAL_SCHEMA_CHANGE": 12,
+      "T_BOX:RELAXATION_SET_EXPANSION": 12,
+      "T_BOX:RESTRICTION_SET_CONTRACTION": 12,
+      "T_BOX:SCHEMA_UPDATE": 12,
+      "TypeA:DELETE_AMBIGUOUS": 3,
+      "TypeA:FORMAT_NORMALIZATION": 3,
+      "TypeA:FORMAT_VALUE_PRUNING": 3,
+      "TypeA:MULTIPLICITY_NORMALIZATION": 3,
+      "TypeA:REJECTION_FORMAT_INVALID": 3,
+      "TypeA:SELF_LINK_REJECTION": 3,
+      "TypeA:SET_MEMBERSHIP_REJECTION": 3,
+      "TypeA:TARGET_REQUIRED_CLAIM": 3,
+      "TypeB:LOCAL_FOCUS_NON_TARGET_PROPERTY": 3,
+      "TypeB:LOCAL_MIXED": 3,
+      "TypeB:LOCAL_SELECTION_CONFIRMED": 3,
+      "TypeB:LOCAL_TEXT_CONFIRMED": 1,
+      "TypeB:LOCAL_TEXT_DERIVED": 3,
+      "TypeC:EXTERNAL_BY_ELIMINATION": 3,
+      "TypeC:UNKNOWN_BAD_TARGET_OR_CONTEXT": 3,
+      "TypeC:UNKNOWN_INCOMPLETE_LOCAL_CONTEXT": 1,
+      "TypeC:UNKNOWN_MULTIPLICITY_ARTIFACT": 1,
+      "TypeC:UNKNOWN_SELECTION_AMBIGUOUS": 3
+    },
+    "by_context_bundle": {
+      "local_graph": 192,
+      "logic_only": 192
+    },
+    "by_example_policy": {
+      "zero_shot": 384
+    },
+    "by_representation": {
+      "hybrid_json_nl": 384
+    },
+    "by_selection_stratum": {
+      "DEV_TBOX_COINCIDENTAL_SCHEMA_CHANGE": 12,
+      "DEV_TBOX_RELAXATION_SET_EXPANSION": 12,
+      "DEV_TBOX_RESTRICTION_SET_CONTRACTION": 12,
+      "DEV_TBOX_SCHEMA_UPDATE": 12,
+      "DEV_TYPEA_AMBIGUOUS_DELETE": 3,
+      "DEV_TYPEA_CLEAN_RULE_REJECTION": 21,
+      "DEV_TYPEB_LOCAL": 13,
+      "DEV_TYPEC_EXTERNAL_OR_UNKNOWN": 11
+    },
+    "by_subtype": {
+      "COINCIDENTAL_SCHEMA_CHANGE": 12,
+      "DELETE_AMBIGUOUS": 3,
+      "EXTERNAL_BY_ELIMINATION": 3,
+      "FORMAT_NORMALIZATION": 3,
+      "FORMAT_VALUE_PRUNING": 3,
+      "LOCAL_FOCUS_NON_TARGET_PROPERTY": 3,
+      "LOCAL_MIXED": 3,
+      "LOCAL_SELECTION_CONFIRMED": 3,
+      "LOCAL_TEXT_CONFIRMED": 1,
+      "LOCAL_TEXT_DERIVED": 3,
+      "MULTIPLICITY_NORMALIZATION": 3,
+      "REJECTION_FORMAT_INVALID": 3,
+      "RELAXATION_SET_EXPANSION": 12,
+      "RESTRICTION_SET_CONTRACTION": 12,
+      "SCHEMA_UPDATE": 12,
+      "SELF_LINK_REJECTION": 3,
+      "SET_MEMBERSHIP_REJECTION": 3,
+      "TARGET_REQUIRED_CLAIM": 3,
+      "UNKNOWN_BAD_TARGET_OR_CONTEXT": 3,
+      "UNKNOWN_INCOMPLETE_LOCAL_CONTEXT": 1,
+      "UNKNOWN_MULTIPLICITY_ARTIFACT": 1,
+      "UNKNOWN_SELECTION_AMBIGUOUS": 3
+    },
+    "by_task": {
+      "a_box_repair": 96,
+      "t_box_repair": 96,
+      "track_diagnosis": 192
+    },
+    "by_track": {
+      "A_BOX": 48,
+      "T_BOX": 48
+    },
+    "eval_cases": 96,
+    "matrix_rows": 4,
+    "rendered_prompts": 384,
+    "skipped_prompts": 0,
+    "unique_properties": 81,
+    "unique_qids": 96
+  },
+  "repair_proposal": [
+    {
+      "a_box_by_subtype": {
+        "DELETE_AMBIGUOUS": {
+          "exact_value": 3,
+          "n": 3,
+          "rate": 1.0
+        },
+        "EXTERNAL_BY_ELIMINATION": {
+          "exact_value": 0,
+          "n": 3,
+          "rate": 0.0
+        },
+        "FORMAT_NORMALIZATION": {
+          "exact_value": 0,
+          "n": 3,
+          "rate": 0.0
+        },
+        "FORMAT_VALUE_PRUNING": {
+          "exact_value": 2,
+          "n": 3,
+          "rate": 0.6666666666666666
+        },
+        "LOCAL_FOCUS_NON_TARGET_PROPERTY": {
+          "exact_value": 0,
+          "n": 3,
+          "rate": 0.0
+        },
+        "LOCAL_MIXED": {
+          "exact_value": 0,
+          "n": 3,
+          "rate": 0.0
+        },
+        "LOCAL_SELECTION_CONFIRMED": {
+          "exact_value": 1,
+          "n": 3,
+          "rate": 0.3333333333333333
+        },
+        "LOCAL_TEXT_CONFIRMED": {
+          "exact_value": 0,
+          "n": 1,
+          "rate": 0.0
+        },
+        "LOCAL_TEXT_DERIVED": {
+          "exact_value": 0,
+          "n": 3,
+          "rate": 0.0
+        },
+        "MULTIPLICITY_NORMALIZATION": {
+          "exact_value": 0,
+          "n": 3,
+          "rate": 0.0
+        },
+        "REJECTION_FORMAT_INVALID": {
+          "exact_value": 3,
+          "n": 3,
+          "rate": 1.0
+        },
+        "SELF_LINK_REJECTION": {
+          "exact_value": 2,
+          "n": 3,
+          "rate": 0.6666666666666666
+        },
+        "SET_MEMBERSHIP_REJECTION": {
+          "exact_value": 3,
+          "n": 3,
+          "rate": 1.0
+        },
+        "TARGET_REQUIRED_CLAIM": {
+          "exact_value": 2,
+          "n": 3,
+          "rate": 0.6666666666666666
+        },
+        "UNKNOWN_BAD_TARGET_OR_CONTEXT": {
+          "exact_value": 0,
+          "n": 3,
+          "rate": 0.0
+        },
+        "UNKNOWN_INCOMPLETE_LOCAL_CONTEXT": {
+          "exact_value": 0,
+          "n": 1,
+          "rate": 0.0
+        },
+        "UNKNOWN_MULTIPLICITY_ARTIFACT": {
+          "exact_value": 0,
+          "n": 1,
+          "rate": 0.0
+        },
+        "UNKNOWN_SELECTION_AMBIGUOUS": {
+          "exact_value": 1,
+          "n": 3,
+          "rate": 0.3333333333333333
+        }
+      },
+      "a_box_constraint_type_value": 2,
+      "a_box_delete_all": 4,
+      "a_box_exact_action_match_rate": 0.7708333333333334,
+      "a_box_exact_value_match_rate": 0.3541666666666667,
+      "a_box_remove_expected_value": 5,
+      "a_box_total": 48,
+      "accepted_rate": 0.17708333333333334,
+      "auditability_complete_rate": 0.96875,
+      "context": "logic_only",
+      "counts": {
+        "by_context": {
+          "logic_only": 96
+        },
+        "by_historical_track": {
+          "A_BOX": 48,
+          "T_BOX": 48
+        },
+        "by_parse_status": {
+          "normalized": 93,
+          "parse_error": 2,
+          "request_error": 1
+        },
+        "by_task": {
+          "a_box_repair": 48,
+          "t_box_repair": 48
+        },
+        "normalized": 93,
+        "parse_error": 2,
+        "request_error": 1,
+        "skipped": 0
+      },
+      "functional_success_rate": 0.17708333333333334,
+      "matrix": "prompt_dev_002_hybrid_json_nl_zero_shot_logic_only_repair_proposal_oracle_no_abstain",
+      "proposal_parse_error_rate": 0.020833333333333332,
+      "request_error_count": 1,
+      "t_box_compact_temporal": 0,
+      "t_box_directional_without_visible_evidence": 0,
+      "t_box_invented_signature_after": 0,
+      "t_box_report_qid_copy": 0,
+      "t_box_semantic_family": 11,
+      "t_box_semantic_family_success_rate": 0.22916666666666666,
+      "t_box_target_constraint": 2,
+      "t_box_target_constraint_match_rate": 0.25,
+      "t_box_total": 48,
+      "total": 96,
+      "typec_concrete_failed_repair": 10
+    },
+    {
+      "a_box_by_subtype": {
+        "DELETE_AMBIGUOUS": {
+          "exact_value": 3,
+          "n": 3,
+          "rate": 1.0
+        },
+        "EXTERNAL_BY_ELIMINATION": {
+          "exact_value": 0,
+          "n": 3,
+          "rate": 0.0
+        },
+        "FORMAT_NORMALIZATION": {
+          "exact_value": 0,
+          "n": 3,
+          "rate": 0.0
+        },
+        "FORMAT_VALUE_PRUNING": {
+          "exact_value": 1,
+          "n": 3,
+          "rate": 0.3333333333333333
+        },
+        "LOCAL_FOCUS_NON_TARGET_PROPERTY": {
+          "exact_value": 0,
+          "n": 3,
+          "rate": 0.0
+        },
+        "LOCAL_MIXED": {
+          "exact_value": 0,
+          "n": 3,
+          "rate": 0.0
+        },
+        "LOCAL_SELECTION_CONFIRMED": {
+          "exact_value": 3,
+          "n": 3,
+          "rate": 1.0
+        },
+        "LOCAL_TEXT_CONFIRMED": {
+          "exact_value": 0,
+          "n": 1,
+          "rate": 0.0
+        },
+        "LOCAL_TEXT_DERIVED": {
+          "exact_value": 0,
+          "n": 3,
+          "rate": 0.0
+        },
+        "MULTIPLICITY_NORMALIZATION": {
+          "exact_value": 1,
+          "n": 3,
+          "rate": 0.3333333333333333
+        },
+        "REJECTION_FORMAT_INVALID": {
+          "exact_value": 3,
+          "n": 3,
+          "rate": 1.0
+        },
+        "SELF_LINK_REJECTION": {
+          "exact_value": 3,
+          "n": 3,
+          "rate": 1.0
+        },
+        "SET_MEMBERSHIP_REJECTION": {
+          "exact_value": 3,
+          "n": 3,
+          "rate": 1.0
+        },
+        "TARGET_REQUIRED_CLAIM": {
+          "exact_value": 2,
+          "n": 3,
+          "rate": 0.6666666666666666
+        },
+        "UNKNOWN_BAD_TARGET_OR_CONTEXT": {
+          "exact_value": 0,
+          "n": 3,
+          "rate": 0.0
+        },
+        "UNKNOWN_INCOMPLETE_LOCAL_CONTEXT": {
+          "exact_value": 0,
+          "n": 1,
+          "rate": 0.0
+        },
+        "UNKNOWN_MULTIPLICITY_ARTIFACT": {
+          "exact_value": 0,
+          "n": 1,
+          "rate": 0.0
+        },
+        "UNKNOWN_SELECTION_AMBIGUOUS": {
+          "exact_value": 1,
+          "n": 3,
+          "rate": 0.3333333333333333
+        }
+      },
+      "a_box_constraint_type_value": 0,
+      "a_box_delete_all": 6,
+      "a_box_exact_action_match_rate": 0.6875,
+      "a_box_exact_value_match_rate": 0.4166666666666667,
+      "a_box_remove_expected_value": 5,
+      "a_box_total": 48,
+      "accepted_rate": 0.20833333333333334,
+      "auditability_complete_rate": 0.9895833333333334,
+      "context": "local_graph",
+      "counts": {
+        "by_context": {
+          "local_graph": 96
+        },
+        "by_historical_track": {
+          "A_BOX": 48,
+          "T_BOX": 48
+        },
+        "by_parse_status": {
+          "normalized": 95,
+          "request_error": 1
+        },
+        "by_task": {
+          "a_box_repair": 48,
+          "t_box_repair": 48
+        },
+        "normalized": 95,
+        "parse_error": 0,
+        "request_error": 1,
+        "skipped": 0
+      },
+      "functional_success_rate": 0.20833333333333334,
+      "matrix": "prompt_dev_004_hybrid_json_nl_zero_shot_local_graph_repair_proposal_oracle_no_abstain",
+      "proposal_parse_error_rate": 0.0,
+      "request_error_count": 1,
+      "t_box_compact_temporal": 0,
+      "t_box_directional_without_visible_evidence": 0,
+      "t_box_invented_signature_after": 0,
+      "t_box_report_qid_copy": 4,
+      "t_box_semantic_family": 11,
+      "t_box_semantic_family_success_rate": 0.22916666666666666,
+      "t_box_target_constraint": 2,
+      "t_box_target_constraint_match_rate": 0.25,
+      "t_box_total": 48,
+      "total": 96,
+      "typec_concrete_failed_repair": 10
+    }
+  ],
+  "run": "reports/prompt_dev/evaluation_prompt_dev_v3_96_diverse_zero_shot",
+  "run_id": "prompt_dev_eval_20260607T202605",
+  "track_diagnosis": [
+    {
+      "a_box_predicted_t_box": 2,
+      "accuracy": 0.5625,
+      "ambiguous": 2,
+      "context": "logic_only",
+      "correct": 54,
+      "matrix": "prompt_dev_001_hybrid_json_nl_zero_shot_logic_only_track_diagnosis_diagnosis_no_abstain",
+      "present": 96,
+      "t_box_predicted_a_box": 38,
+      "total": 96
+    },
+    {
+      "a_box_predicted_t_box": 2,
+      "accuracy": 0.59375,
+      "ambiguous": 4,
+      "context": "local_graph",
+      "correct": 57,
+      "matrix": "prompt_dev_003_hybrid_json_nl_zero_shot_local_graph_track_diagnosis_diagnosis_no_abstain",
+      "present": 96,
+      "t_box_predicted_a_box": 33,
+      "total": 96
+    }
+  ],
+  "verdict": "CONTINUE PHASE F; DO NOT MOVE TO PHASE G MAIN SCORING"
+}

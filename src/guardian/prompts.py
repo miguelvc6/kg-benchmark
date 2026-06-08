@@ -54,8 +54,22 @@ Rules:
 - Copy the focus entity/property into target.qid and target.pid.
 - Use only the contract fields above. Do not wrap the answer in keys like "proposal_id", "repair_id",
   "summary", "actions", "patch", "current_state", or "proposal".
-- If the final property value should be empty, use REMOVE or DELETE_ALL.
-- If the final property value should be a single value, prefer SET.
+- Replacement values must come from visible old-value normalization, visible local evidence, retained values, or
+  explicit prompt evidence for the target value.
+- Do not use constraint-family QIDs, allowed-type QIDs, report type QIDs, or constraint class QIDs as replacement claim
+  values unless that QID is explicitly visible as target value evidence.
+- Do not invent a new entity value. If no replacement value is visible, remove only the specific visible bad value; do
+  not delete retained values.
+- Use SET when the final target property should contain exactly one visible value.
+- Use ADD only to add a visible missing value while preserving existing retained values.
+- Use REMOVE to remove a specific visible bad value while preserving all other retained values.
+- Use DELETE_ALL only when the prompt evidence shows every current target value should be removed and no retained value
+  remains.
+- If evidence is insufficient for a replacement value, a targeted REMOVE is safer than SET to a constraint/type QID or
+  DELETE_ALL.
+- Preserve retained values. Do not over-delete merely to satisfy a constraint.
+- For TypeC or unknown/insufficient-evidence cases, avoid hallucinated replacements; make the smallest visible repair
+  and report low confidence.
 - Output valid JSON only. No markdown. No code fences.
 
 Example:
@@ -133,6 +147,16 @@ Rules:
   an exact signature_after.
 - If the payload supports a narrower directional reform family, prefer it. Use SCHEMA_UPDATE when the payload shows
   a schema change but does not justify a narrower family confidently.
+- Action decision tree:
+  - RELAXATION_SET_EXPANSION: visible evidence shows the allowed set became larger.
+  - RESTRICTION_SET_CONTRACTION: visible evidence shows the allowed set became smaller.
+  - RELAXATION_RANGE_WIDENED: visible evidence shows numeric/date bounds became wider.
+  - RESTRICTION_RANGE_NARROWED: visible evidence shows numeric/date bounds became narrower.
+  - SCHEMA_UPDATE: the schema changed but exact direction or post-reform values are not visible.
+  - COINCIDENTAL_SCHEMA_CHANGE: a schema change is visible but the evidence does not support a causal repair for the
+    reported violation.
+- Do not invent a full signature_after. If the input uses compact_inventory_no_pre_change_signature, prefer
+  SCHEMA_UPDATE with low confidence and an empty signature_after unless a changed constraint value is explicitly shown.
 - Output valid JSON only. No markdown. No code fences.
 
 Template example 1 (placeholders, not literal ids):
@@ -216,6 +240,13 @@ Rules:
 - A_BOX means the fix should change the claim on the focus entity.
 - T_BOX means the fix should reform the property constraint or schema rule itself.
 - AMBIGUOUS means the visible evidence is insufficient to choose safely between claim repair and schema reform.
+- Diagnose the likely repair locus, not the vocabulary of the report.
+- A constraint report alone does not imply T_BOX. If the likely fix is to change, remove, or normalize the focus
+  entity's claim value, choose A_BOX.
+- Choose T_BOX when the visible evidence points to a property-level rule change, such as changed constraint families,
+  schema-change context, or a report that is better resolved by editing the constraint than by editing one entity.
+- Do not use AMBIGUOUS merely because the case is hard; use it only when the visible evidence supports neither repair
+  locus clearly.
 - Allowed-entity-types, property-scope, one-of, range, and similar constraint disputes are T_BOX when the intended
   fix is to edit the property constraint, even if the report mentions concrete violating items or types.
 - A case is not automatically A_BOX just because the violation report cites item QIDs.

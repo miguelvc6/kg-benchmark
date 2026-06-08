@@ -923,14 +923,14 @@ def evaluate_t_box_case(
     literal_action_match = False
     exact_action_match = False
     exact_signature_match = False
-    changed_constraint_type_hit = False
+    changed_constraint_type_hit: bool | None = None
     exact_reform_match = False
     semantic_reform_match = False
     semantic_family_match = False
-    target_constraint_match = False
+    target_constraint_match: bool | None = None
     semantic_success = False
     semantic_family_success = False
-    signature_after_jaccard = 0.0
+    signature_after_jaccard: float | None = None
     proposal_admits_current_values = None
     normalized_historical_signature: list[dict[str, Any]] = []
     changed_constraint_types: set[str] = set()
@@ -946,11 +946,23 @@ def evaluate_t_box_case(
             normalized_historical_signature,
             target_constraint_qid,
         ) = _historical_constraint_context(record)
-        changed_constraint_type_hit = proposal.target.constraint_type_qid in changed_constraint_types
-        executable = proposal.target.pid == target_pid and changed_constraint_type_hit
+        if changed_constraint_types:
+            changed_constraint_type_hit = proposal.target.constraint_type_qid in changed_constraint_types
+        target_constraint_known = isinstance(target_constraint_qid, str) and bool(target_constraint_qid)
+        target_constraint_match = (
+            _target_constraint_match(proposal.target.constraint_type_qid, target_constraint_qid)
+            if target_constraint_known
+            else None
+        )
+        target_constraint_ok = True if target_constraint_match is None else target_constraint_match
+        changed_constraint_ok = True if changed_constraint_type_hit is None else changed_constraint_type_hit
+        executable = bool(proposal.target.pid == target_pid and changed_constraint_ok and target_constraint_ok)
         literal_action_match = proposal.proposal.action == record.get("classification", {}).get("subtype")
         exact_action_match = literal_action_match
-        exact_signature_match = proposal.proposal.signature_after == normalized_historical_signature
+        historical_signature_known = bool(normalized_historical_signature)
+        exact_signature_match = bool(
+            historical_signature_known and proposal.proposal.signature_after == normalized_historical_signature
+        )
         exact_reform_match = exact_action_match and exact_signature_match
         historical_semantic_family = _historical_semantic_family(
             record,
@@ -965,27 +977,24 @@ def evaluate_t_box_case(
             proposal.proposal.signature_after,
             proposal.target.constraint_type_qid,
         )
-        target_constraint_match = _target_constraint_match(
-            proposal.target.constraint_type_qid,
-            target_constraint_qid,
-        )
         signature_direction_match = (
             proposal_signature_family is None
             or _semantic_family_compatible(proposal_signature_family, historical_semantic_family)
         )
         semantic_family_match = bool(
             executable
-            and target_constraint_match
+            and target_constraint_ok
             and _semantic_family_compatible(proposal_action_family, historical_semantic_family)
             and signature_direction_match
         )
         semantic_reform_match = semantic_family_match
         semantic_success = bool(semantic_family_match)
         semantic_family_success = semantic_success
-        signature_after_jaccard = _signature_after_jaccard(
-            proposal.proposal.signature_after,
-            normalized_historical_signature,
-        )
+        if historical_signature_known:
+            signature_after_jaccard = _signature_after_jaccard(
+                proposal.proposal.signature_after,
+                normalized_historical_signature,
+            )
         proposal_admits_current_values = _proposal_admits_current_values(
             proposal=proposal,
             current_values=_world_state_target_values(world_state_entry, target_pid),
@@ -1013,9 +1022,13 @@ def evaluate_t_box_case(
         ),
         "exact_action_match": 1.0 if exact_action_match else 0.0,
         "exact_signature_match": 1.0 if exact_signature_match else 0.0,
-        "changed_constraint_type_hit": 1.0 if changed_constraint_type_hit else 0.0,
+        "changed_constraint_type_hit": (
+            None if changed_constraint_type_hit is None else (1.0 if changed_constraint_type_hit else 0.0)
+        ),
         "signature_after_jaccard": signature_after_jaccard,
-        "t_box_target_constraint_match": 1.0 if target_constraint_match else 0.0,
+        "t_box_target_constraint_match": (
+            None if target_constraint_match is None else (1.0 if target_constraint_match else 0.0)
+        ),
         "proposal_admits_current_values": (
             None if proposal_admits_current_values is None else (1.0 if proposal_admits_current_values else 0.0)
         ),

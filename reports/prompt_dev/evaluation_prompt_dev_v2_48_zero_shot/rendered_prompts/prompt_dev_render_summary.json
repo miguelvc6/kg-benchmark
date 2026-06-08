@@ -1,0 +1,107 @@
+{
+  "counts": {
+    "by_class": {
+      "T_BOX": 24,
+      "TypeA": 14,
+      "TypeB": 5,
+      "TypeC": 5
+    },
+    "by_class_subtype": {
+      "T_BOX:COINCIDENTAL_SCHEMA_CHANGE": 6,
+      "T_BOX:RELAXATION_SET_EXPANSION": 6,
+      "T_BOX:RESTRICTION_SET_CONTRACTION": 6,
+      "T_BOX:SCHEMA_UPDATE": 6,
+      "TypeA:DELETE_AMBIGUOUS": 2,
+      "TypeA:FORMAT_NORMALIZATION": 2,
+      "TypeA:FORMAT_VALUE_PRUNING": 2,
+      "TypeA:MULTIPLICITY_NORMALIZATION": 2,
+      "TypeA:REJECTION_FORMAT_INVALID": 2,
+      "TypeA:SELF_LINK_REJECTION": 2,
+      "TypeA:SET_MEMBERSHIP_REJECTION": 1,
+      "TypeA:TARGET_REQUIRED_CLAIM": 1,
+      "TypeB:LOCAL_FOCUS_NON_TARGET_PROPERTY": 1,
+      "TypeB:LOCAL_MIXED": 1,
+      "TypeB:LOCAL_SELECTION_CONFIRMED": 1,
+      "TypeB:LOCAL_TEXT_CONFIRMED": 1,
+      "TypeB:LOCAL_TEXT_DERIVED": 1,
+      "TypeC:EXTERNAL_BY_ELIMINATION": 1,
+      "TypeC:UNKNOWN_BAD_TARGET_OR_CONTEXT": 1,
+      "TypeC:UNKNOWN_INCOMPLETE_LOCAL_CONTEXT": 1,
+      "TypeC:UNKNOWN_MULTIPLICITY_ARTIFACT": 1,
+      "TypeC:UNKNOWN_SELECTION_AMBIGUOUS": 1
+    },
+    "by_context_bundle": {
+      "local_graph": 96,
+      "logic_only": 96
+    },
+    "by_example_policy": {
+      "zero_shot": 192
+    },
+    "by_representation": {
+      "hybrid_json_nl": 192
+    },
+    "by_selection_stratum": {
+      "DEV_TBOX_COINCIDENTAL_SCHEMA_CHANGE": 6,
+      "DEV_TBOX_RELAXATION_SET_EXPANSION": 6,
+      "DEV_TBOX_RESTRICTION_SET_CONTRACTION": 6,
+      "DEV_TBOX_SCHEMA_UPDATE": 6,
+      "DEV_TYPEA_AMBIGUOUS_DELETE": 2,
+      "DEV_TYPEA_CLEAN_RULE_REJECTION": 12,
+      "DEV_TYPEB_LOCAL": 5,
+      "DEV_TYPEC_EXTERNAL_OR_UNKNOWN": 5
+    },
+    "by_subtype": {
+      "COINCIDENTAL_SCHEMA_CHANGE": 6,
+      "DELETE_AMBIGUOUS": 2,
+      "EXTERNAL_BY_ELIMINATION": 1,
+      "FORMAT_NORMALIZATION": 2,
+      "FORMAT_VALUE_PRUNING": 2,
+      "LOCAL_FOCUS_NON_TARGET_PROPERTY": 1,
+      "LOCAL_MIXED": 1,
+      "LOCAL_SELECTION_CONFIRMED": 1,
+      "LOCAL_TEXT_CONFIRMED": 1,
+      "LOCAL_TEXT_DERIVED": 1,
+      "MULTIPLICITY_NORMALIZATION": 2,
+      "REJECTION_FORMAT_INVALID": 2,
+      "RELAXATION_SET_EXPANSION": 6,
+      "RESTRICTION_SET_CONTRACTION": 6,
+      "SCHEMA_UPDATE": 6,
+      "SELF_LINK_REJECTION": 2,
+      "SET_MEMBERSHIP_REJECTION": 1,
+      "TARGET_REQUIRED_CLAIM": 1,
+      "UNKNOWN_BAD_TARGET_OR_CONTEXT": 1,
+      "UNKNOWN_INCOMPLETE_LOCAL_CONTEXT": 1,
+      "UNKNOWN_MULTIPLICITY_ARTIFACT": 1,
+      "UNKNOWN_SELECTION_AMBIGUOUS": 1
+    },
+    "by_task": {
+      "a_box_repair": 48,
+      "t_box_repair": 48,
+      "track_diagnosis": 96
+    },
+    "by_track": {
+      "A_BOX": 24,
+      "T_BOX": 24
+    },
+    "eval_cases": 48,
+    "matrix_rows": 4,
+    "rendered_prompts": 192,
+    "skipped_prompts": 0
+  },
+  "created_at_utc": "2026-06-07T15:22:19Z",
+  "inputs": {
+    "classified_benchmark": "data/04_classified_benchmark.jsonl",
+    "core_manifest": "reports/benchmark_selection/core_v1_seed_13.json",
+    "dev_manifest": "reports/benchmark_selection/dev_prompt_v1_seed_13.json",
+    "max_cases": 48,
+    "sample_strategy": "stratified",
+    "world_state": "data/03_world_state.json"
+  },
+  "manifest_type": "prompt_dev_rendered_prompt_summary",
+  "manifest_version": "prompt_dev_v2",
+  "note": "No LLM inference was run. These artifacts contain prompts only.",
+  "outputs": {
+    "prompts_jsonl": "reports/prompt_dev/evaluation_prompt_dev_v2_48_zero_shot/rendered_prompts/prompt_dev_rendered_prompts.jsonl",
+    "review_markdown": "reports/prompt_dev/evaluation_prompt_dev_v2_48_zero_shot/rendered_prompts/prompt_dev_prompt_review.md"
+  }
+}

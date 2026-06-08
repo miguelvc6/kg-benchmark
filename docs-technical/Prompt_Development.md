@@ -10,6 +10,28 @@ Prompt text and representation renderers live in:
 
 This script defines the Phase F prompt version, supported representations, task contracts, optional abstention contract, and prompt rendering function. Keep prompt wording changes there so templates are easy to review before any main-core run.
 
+Current prompt candidate: `prompt_dev_v3`.
+
+`prompt_dev_v2` was introduced after the 96-case zero-shot failure taxonomy found systematic prompt-level failures:
+
+- A-box proposals used constraint-family, allowed-type, or report-type QIDs as repaired claim values.
+- A-box proposals over-deleted values instead of preserving visible retained values.
+- T-box proposals invented `signature_after` values under compact temporal context.
+- T-box proposals chose directional actions when no pre-change signature or changed value evidence was visible.
+- Track diagnosis over-predicted T-box from constraint-report vocabulary alone.
+
+The v2 canary sharply reduced T-box invented-signature and unsupported-directional-action failures, but it regressed
+A-box over-deletion and track diagnosis. `prompt_dev_v3` keeps the v2 T-box discipline and revises the A-box and
+diagnosis wording:
+
+- A-box prompts now prefer targeted `REMOVE` over `DELETE_ALL` when only one visible value is bad.
+- A-box prompts explicitly preserve retained values and reserve `DELETE_ALL` for evidence that all current values should
+  be removed.
+- Track diagnosis still warns that a constraint report alone does not imply T-box, but also states that visible
+  property-level schema-change evidence should support T-box.
+
+This is a dev-only candidate prompt, not a frozen Phase G prompt.
+
 Supported representations:
 
 - `hybrid_json_nl`
@@ -64,7 +86,7 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-prompt-dev render \
   --core-manifest reports/benchmark_selection/core_v1_seed_13.json \
   --output-dir reports/prompt_dev/rendered_prompt_dev_v1 \
   --max-cases 24 \
-  --sample-strategy stratified \
+  --sample-strategy diverse_stratified \
   --representations hybrid_json_nl \
   --example-policies zero_shot \
   --context-bundles logic_only,local_graph \
@@ -82,8 +104,10 @@ The render command opens the Stage 4 artifact and world-state index, builds the 
 
 `--sample-strategy stratified` is the prompt-development default. It samples the dev manifest by rotating across
 historical track, classification class/subtype, and the manifest `selection_stratum` before applying `--max-cases`.
-Use `--sample-strategy manifest_order` only when reproducing the literal manifest order. Render summaries report case
-counts by track, class, subtype, class/subtype, and selection stratum.
+For broader canaries, use `--sample-strategy diverse_stratified`; it keeps the same stratum rotation while preferring
+previously unseen focus QIDs and properties inside each stratum. Use `--sample-strategy manifest_order` only when
+reproducing the literal manifest order. Render summaries report case counts by track, class, subtype, class/subtype,
+selection stratum, plus unique focus-QID and property counts.
 
 Prompt-visible case IDs are neutralized to values such as `case_000001`. The prompt asks the model to copy this neutral
 ID, and the evaluation path maps it back to the internal benchmark case ID before normalization and scoring. The raw
@@ -158,6 +182,11 @@ limit, and no endpoint request is made for those prompts.
 Top-level `prompt_dev_evaluation_summary.json` and `prompt_dev_evaluation_comparison.md` are written even when an
 individual matrix scoring step fails. Per-matrix result blocks include normalized, parse-error, request-error, and
 skipped counts, plus counters by historical track, prompt task, and context bundle.
+
+For `track_diagnosis`-only matrices, proposal files are intentionally absent. Interpret those rows by
+`track_diagnosis_accuracy`, `track_diagnosis_present_rate`, and request/parse status; generic proposal-quality columns
+such as functional success, auditability, and T-box target/signature proxy metrics are not the decision metric for those
+matrices.
 
 The command writes:
 

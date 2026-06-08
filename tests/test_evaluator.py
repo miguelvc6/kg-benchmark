@@ -768,6 +768,87 @@ class EvaluatorTests(unittest.TestCase):
             self.assertEqual(trace["metrics"]["semantic_family_success"], 0.0)
             self.assertEqual(summary["overall_metrics"]["semantic_success_rate"], 0.0)
 
+    def test_t_box_semantic_success_when_target_constraint_unknown(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            classified_path = root / "classified.jsonl"
+            world_state_path = root / "world_state.json"
+            t_box_path = root / "t_box.jsonl"
+
+            self._write_jsonl(
+                classified_path,
+                [
+                    {
+                        "id": "reform_case",
+                        "qid": "Q2",
+                        "property": "P31",
+                        "track": "T_BOX",
+                        "labels_en": {},
+                        "violation_context": {},
+                        "repair_target": {
+                            "constraint_delta": {
+                                "changed_constraint_types": [],
+                                "hash_before": "before",
+                                "hash_after": "after",
+                            }
+                        },
+                        "persistence_check": {},
+                        "popularity": {"score": 0.8},
+                        "classification": {"class": "T_BOX", "subtype": "RELAXATION_SET_EXPANSION"},
+                    }
+                ],
+            )
+            world_state_path.write_text(
+                json.dumps(
+                    {
+                        "reform_case": {
+                            "L1_ego_node": {"properties": {"P31": ["Q5"]}},
+                            "L4_constraints": {"constraints": []},
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            self._write_jsonl(
+                t_box_path,
+                [
+                    {
+                        "case_id": "reform_case",
+                        "target": {"pid": "P31", "constraint_type_qid": "Q21510859"},
+                        "proposal": {
+                            "action": "RELAXATION_SET_EXPANSION",
+                            "signature_after": [],
+                        },
+                        "rationale": "The exact target constraint family is not available, but the reform family matches.",
+                        "provenance": [{"kind": "KG", "node_id": "Q21510859"}],
+                        "uncertainty": {"confidence": 0.3},
+                    }
+                ],
+            )
+
+            traces, summary = evaluate_benchmark(
+                classified_path=classified_path,
+                world_state_path=world_state_path,
+                t_box_proposals_path=t_box_path,
+            )
+
+            trace = traces[0]
+            self.assertFalse(trace["accepted"])
+            self.assertEqual(trace["comparison"]["changed_constraint_type_hit"], None)
+            self.assertEqual(trace["comparison"]["target_constraint_match"], None)
+            self.assertEqual(trace["comparison"]["semantic_family_match"], True)
+            self.assertEqual(trace["metrics"]["semantic_success"], 1.0)
+            self.assertEqual(trace["metrics"]["semantic_family_success"], 1.0)
+            self.assertEqual(trace["metrics"]["exact_signature_match"], 0.0)
+            self.assertEqual(trace["metrics"]["changed_constraint_type_hit"], None)
+            self.assertEqual(trace["metrics"]["signature_after_jaccard"], None)
+            self.assertEqual(trace["metrics"]["t_box_target_constraint_match"], None)
+            self.assertEqual(summary["overall_metrics"]["semantic_success_rate"], 1.0)
+            self.assertEqual(summary["overall_metrics"]["exact_signature_match_rate"], 0.0)
+            self.assertEqual(summary["overall_metrics"]["changed_constraint_type_hit_rate"], None)
+            self.assertEqual(summary["overall_metrics"]["signature_after_jaccard_mean"], None)
+            self.assertEqual(summary["overall_metrics"]["t_box_target_constraint_match_rate"], None)
+
     def test_summary_tracks_t_box_proxy_metric_applicability(self) -> None:
         summary = summarize_trace_iterable(
             [
