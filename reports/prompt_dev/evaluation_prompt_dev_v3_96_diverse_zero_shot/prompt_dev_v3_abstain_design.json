@@ -1,0 +1,38 @@
+{
+  "branch_name": "prompt_dev_v3_abstain",
+  "configuration": {
+    "context_bundles": [
+      "logic_only",
+      "local_graph"
+    ],
+    "example_policies": [
+      "zero_shot"
+    ],
+    "include_abstention": true,
+    "repair_track_modes": [
+      "oracle"
+    ],
+    "representations": [
+      "hybrid_json_nl"
+    ],
+    "sample_strategy": "diverse_stratified",
+    "tasks": [
+      "track_diagnosis",
+      "repair_proposal"
+    ]
+  },
+  "manifest_type": "prompt_dev_abstention_branch_design",
+  "metrics_when_run": [
+    "TypeC justified abstention rate",
+    "TypeA false abstention rate",
+    "TypeB false abstention rate",
+    "repair success conditional on not abstaining",
+    "hallucinated TypeC repair rate",
+    "diagnostic/unknown abstention rate"
+  ],
+  "recommended_eval_dir": "reports/prompt_dev/evaluation_prompt_dev_v3_abstain_96_diverse_zero_shot",
+  "recommended_render_dir": "reports/prompt_dev/rendered_prompt_dev_v3_abstain",
+  "separation_policy": "Do not replace no-abstain prompt_dev_v3 artifacts. Render/evaluate into a distinct output directory.",
+  "source_prompt": "prompt_dev_v3",
+  "status": "designed_not_run"
+}

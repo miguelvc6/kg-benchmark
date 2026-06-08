@@ -1,0 +1,132 @@
+{
+  "by_track_context_status": {
+    "A_BOX::local_graph": {
+      "exact": 20,
+      "overdelete": 6,
+      "request_error": 1,
+      "wrong_operation": 2,
+      "wrong_value": 19
+    },
+    "A_BOX::logic_only": {
+      "exact": 17,
+      "overdelete": 4,
+      "request_error": 1,
+      "wrong_operation": 1,
+      "wrong_value": 25
+    },
+    "T_BOX::local_graph": {
+      "accepted_non_exact": 11,
+      "wrong_operation": 31,
+      "wrong_tbox_family": 6
+    },
+    "T_BOX::logic_only": {
+      "accepted_non_exact": 11,
+      "parse_error": 2,
+      "wrong_operation": 29,
+      "wrong_tbox_family": 6
+    }
+  },
+  "counts": {
+    "by_class": {
+      "T_BOX": 96,
+      "TypeA": 48,
+      "TypeB": 26,
+      "TypeC": 22
+    },
+    "by_context": {
+      "local_graph": 96,
+      "logic_only": 96
+    },
+    "by_expected_behavior": {
+      "abstain": 20,
+      "conservative_remove": 6,
+      "diagnostic_only": 46,
+      "exact_repair": 48,
+      "schema_update_low_confidence": 72
+    },
+    "by_gold_target_visible": {
+      "False": 124,
+      "True": 68
+    },
+    "by_proposal_status": {
+      "accepted_non_exact": 22,
+      "exact": 37,
+      "overdelete": 10,
+      "parse_error": 2,
+      "request_error": 2,
+      "wrong_operation": 63,
+      "wrong_tbox_family": 12,
+      "wrong_value": 44
+    },
+    "by_subtype": {
+      "COINCIDENTAL_SCHEMA_CHANGE": 24,
+      "DELETE_AMBIGUOUS": 6,
+      "EXTERNAL_BY_ELIMINATION": 6,
+      "FORMAT_NORMALIZATION": 6,
+      "FORMAT_VALUE_PRUNING": 6,
+      "LOCAL_FOCUS_NON_TARGET_PROPERTY": 6,
+      "LOCAL_MIXED": 6,
+      "LOCAL_SELECTION_CONFIRMED": 6,
+      "LOCAL_TEXT_CONFIRMED": 2,
+      "LOCAL_TEXT_DERIVED": 6,
+      "MULTIPLICITY_NORMALIZATION": 6,
+      "REJECTION_FORMAT_INVALID": 6,
+      "RELAXATION_SET_EXPANSION": 24,
+      "RESTRICTION_SET_CONTRACTION": 24,
+      "SCHEMA_UPDATE": 24,
+      "SELF_LINK_REJECTION": 6,
+      "SET_MEMBERSHIP_REJECTION": 6,
+      "TARGET_REQUIRED_CLAIM": 6,
+      "UNKNOWN_BAD_TARGET_OR_CONTEXT": 6,
+      "UNKNOWN_INCOMPLETE_LOCAL_CONTEXT": 2,
+      "UNKNOWN_MULTIPLICITY_ARTIFACT": 2,
+      "UNKNOWN_SELECTION_AMBIGUOUS": 6
+    },
+    "by_track": {
+      "A_BOX": 96,
+      "T_BOX": 96
+    },
+    "rows": 192
+  },
+  "manifest_type": "prompt_dev_answerability_audit_summary",
+  "rates_by_gold_target_visible": {
+    "false": {
+      "accepted_or_non_exact": 22,
+      "accepted_or_non_exact_rate": 0.1774193548387097,
+      "by_status": {
+        "accepted_non_exact": 22,
+        "overdelete": 3,
+        "parse_error": 2,
+        "request_error": 1,
+        "wrong_operation": 60,
+        "wrong_tbox_family": 12,
+        "wrong_value": 24
+      },
+      "by_track": {
+        "A_BOX": 28,
+        "T_BOX": 96
+      },
+      "exact": 0,
+      "exact_rate": 0.0,
+      "n": 124
+    },
+    "true": {
+      "accepted_or_non_exact": 37,
+      "accepted_or_non_exact_rate": 0.5441176470588235,
+      "by_status": {
+        "exact": 37,
+        "overdelete": 7,
+        "request_error": 1,
+        "wrong_operation": 3,
+        "wrong_value": 20
+      },
+      "by_track": {
+        "A_BOX": 68
+      },
+      "exact": 37,
+      "exact_rate": 0.5441176470588235,
+      "n": 68
+    }
+  },
+  "run_dir": "reports/prompt_dev/evaluation_prompt_dev_v3_96_diverse_zero_shot"
+}
