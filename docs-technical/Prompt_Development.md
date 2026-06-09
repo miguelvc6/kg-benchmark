@@ -171,6 +171,14 @@ UNIVERSITY_OPENAI_RETRY_MAX_SECONDS=20
 Retryable failures are HTTP `429`, `500`, `502`, `503`, `504`, read timeouts, connection timeouts, and temporary
 connection errors. HTTP `400` context-window failures are not retried; reduce prompt size instead.
 
+For local Ollama on the H100 VM, use [Ollama VM Runbook](./Ollama_VM_Runbook.md). The prompt-dev Ollama script is:
+
+```bash
+bash scripts/run_phase_f_v4_ollama_holdout.sh
+```
+
+It reads `.env.ollama.vm` when present and uses the same v4 spec-only prompt candidate by default.
+
 The evaluate command resumes by default when the output directory already contains matrix artifacts. Existing normalized
 rows are skipped. Existing `request_error` and `parse_error` rows are also left in place unless you explicitly retry
 them:

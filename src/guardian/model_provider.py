@@ -835,6 +835,13 @@ class OllamaChatProvider:
     timeout: int = 120
     keep_alive: str | int | None = None
     context_length: int | None = None
+    max_output_tokens: int | None = None
+    temperature: float | None = None
+    top_p: float | None = None
+    seed: int | None = None
+    max_retries: int = 2
+    retry_base_seconds: float = 2.0
+    retry_max_seconds: float = 20.0
     provider_name: str = "ollama"
 
     def __post_init__(self) -> None:
@@ -842,10 +849,57 @@ class OllamaChatProvider:
         self.api_key = _normalize_api_key("OLLAMA_API_KEY", self.api_key or os.getenv("OLLAMA_API_KEY"))
         self.model = self.model or os.getenv("OLLAMA_MODEL")
         self.base_url = (self.base_url or os.getenv("OLLAMA_BASE_URL") or "http://localhost:11434/api").rstrip("/")
+        self.timeout = _env_int("OLLAMA_TIMEOUT_SECONDS") or self.timeout
         self.keep_alive = _ollama_keep_alive_value(self.keep_alive or os.getenv("OLLAMA_KEEP_ALIVE"))
         self.context_length = self.context_length or _env_int("OLLAMA_CONTEXT_LENGTH")
+        self.max_output_tokens = self.max_output_tokens or _env_int("OLLAMA_MAX_OUTPUT_TOKENS")
+        self.temperature = self.temperature if self.temperature is not None else _env_float("OLLAMA_TEMPERATURE")
+        self.top_p = self.top_p if self.top_p is not None else _env_float("OLLAMA_TOP_P")
+        self.seed = self.seed or _env_int("OLLAMA_SEED")
+        env_max_retries = _env_retry_count("OLLAMA_MAX_RETRIES")
+        self.max_retries = env_max_retries if env_max_retries is not None else self.max_retries
+        self.retry_base_seconds = _env_float("OLLAMA_RETRY_BASE_SECONDS") or self.retry_base_seconds
+        self.retry_max_seconds = _env_float("OLLAMA_RETRY_MAX_SECONDS") or self.retry_max_seconds
         if not self.model:
             raise RuntimeError("OLLAMA_MODEL is required for the Ollama provider.")
+        if self.retry_base_seconds <= 0:
+            self.retry_base_seconds = 2.0
+        if self.retry_max_seconds <= 0:
+            self.retry_max_seconds = self.retry_base_seconds
+
+    def _retry_delay_seconds(self, retry_index: int) -> float:
+        exponential_delay = self.retry_base_seconds * (2 ** max(0, retry_index - 1))
+        capped_delay = min(exponential_delay, self.retry_max_seconds)
+        return min(self.retry_max_seconds, capped_delay + random.uniform(0, min(1.0, self.retry_base_seconds)))
+
+    def _post_chat(self, *, headers: dict[str, str], payload: dict[str, Any]) -> Response:
+        retryable_statuses = {429, 500, 502, 503, 504}
+        retryable_exceptions = (requests.Timeout, requests.ConnectionError)
+        last_error: Exception | None = None
+        for attempt in range(self.max_retries + 1):
+            try:
+                response = requests.post(
+                    f"{self.base_url}/chat",
+                    headers=headers,
+                    json=payload,
+                    timeout=self.timeout,
+                )
+            except retryable_exceptions as exc:
+                last_error = exc
+                if attempt >= self.max_retries:
+                    raise RuntimeError(
+                        f"Ollama chat request failed after {attempt + 1} attempt(s): {exc}"
+                    ) from exc
+            else:
+                if response.status_code not in retryable_statuses or attempt >= self.max_retries:
+                    return response
+                last_error = RuntimeError(f"retryable HTTP {response.status_code}")
+            time.sleep(self._retry_delay_seconds(attempt + 1))
+        if last_error is not None:
+            raise RuntimeError(
+                f"Ollama chat request failed after {self.max_retries + 1} attempt(s): {last_error}"
+            ) from last_error
+        raise RuntimeError("Ollama chat request failed before a response was returned.")
 
     def generate(
         self,
@@ -867,17 +921,23 @@ class OllamaChatProvider:
             payload["format"] = ollama_format
         if self.keep_alive is not None:
             payload["keep_alive"] = self.keep_alive
+        options: dict[str, Any] = {}
         if isinstance(self.context_length, int) and self.context_length > 0:
-            payload["options"] = {"num_ctx": self.context_length}
+            options["num_ctx"] = self.context_length
+        if isinstance(self.max_output_tokens, int) and self.max_output_tokens > 0:
+            options["num_predict"] = self.max_output_tokens
+        if self.temperature is not None:
+            options["temperature"] = self.temperature
+        if self.top_p is not None:
+            options["top_p"] = self.top_p
+        if isinstance(self.seed, int):
+            options["seed"] = self.seed
+        if options:
+            payload["options"] = options
         headers = {"Content-Type": "application/json"}
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
-        response = requests.post(
-            f"{self.base_url}/chat",
-            headers=headers,
-            json=payload,
-            timeout=self.timeout,
-        )
+        response = self._post_chat(headers=headers, payload=payload)
         try:
             response.raise_for_status()
         except HTTPError as exc:
@@ -887,7 +947,7 @@ class OllamaChatProvider:
                     "Check OLLAMA_API_KEY in your shell or .env. "
                     "The value must be the raw API key only, not `OLLAMA_API_KEY=...` or `Bearer ...`."
                 ) from exc
-            raise
+            raise RuntimeError(f"Ollama chat request failed ({response.status_code}).") from exc
         raw_response = response.json()
         message = raw_response.get("message", {})
         text = message.get("content") if isinstance(message, dict) else ""

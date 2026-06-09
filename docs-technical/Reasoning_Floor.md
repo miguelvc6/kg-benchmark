@@ -83,6 +83,14 @@ Supported runtime settings:
 - optional `OLLAMA_API_KEY` for direct `ollama.com/api` access
 - optional `OLLAMA_KEEP_ALIVE` to keep a model resident between requests
 - optional `OLLAMA_CONTEXT_LENGTH` to send `num_ctx` on each Ollama chat request
+- optional `OLLAMA_MAX_OUTPUT_TOKENS` to send `num_predict` on each Ollama chat request
+- optional `OLLAMA_TIMEOUT_SECONDS`
+- optional `OLLAMA_MAX_RETRIES`
+- optional `OLLAMA_RETRY_BASE_SECONDS`
+- optional `OLLAMA_RETRY_MAX_SECONDS`
+- optional `OLLAMA_TEMPERATURE`
+- optional `OLLAMA_TOP_P`
+- optional `OLLAMA_SEED`
 - optional `REASONING_FLOOR_PARALLEL_WORKERS` to override the runner's inferred worker count in `parallel` mode
 - `MODEL_ENDPOINT=azure`
 - `AZURE_OPENAI_ENDPOINT`
@@ -131,6 +139,10 @@ case-level requests if the endpoint allows it. Batch mode remains intended for t
 provider.
 
 `parallel` mode keeps the existing per-case request pattern but overlaps multiple cases with a bounded thread pool. This is the recommended throughput mode for Ollama because Ollama does not expose a provider batch API for text generation in this repository.
+
+For a shared H100 VM, use [Ollama VM Runbook](./Ollama_VM_Runbook.md). The default recommendation there is
+`gpt-oss:120b` with one runner worker and one Ollama server parallel slot until measured latency and GPU policy justify
+higher concurrency.
 
 When `--execution-mode parallel` is used and `--parallel-workers` is omitted:
 

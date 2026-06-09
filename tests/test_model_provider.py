@@ -400,6 +400,12 @@ class OllamaChatProviderTests(unittest.TestCase):
                 "OLLAMA_MODEL": "qwen3:8b",
                 "OLLAMA_KEEP_ALIVE": "30m",
                 "OLLAMA_CONTEXT_LENGTH": "4096",
+                "OLLAMA_TIMEOUT_SECONDS": "900",
+                "OLLAMA_MAX_OUTPUT_TOKENS": "1024",
+                "OLLAMA_TEMPERATURE": "0",
+                "OLLAMA_TOP_P": "0.95",
+                "OLLAMA_SEED": "13",
+                "OLLAMA_MAX_RETRIES": "0",
             },
             clear=True,
         ):
@@ -413,8 +419,39 @@ class OllamaChatProviderTests(unittest.TestCase):
                 )
 
         request_payload = post.call_args.kwargs["json"]
+        self.assertEqual(provider.timeout, 900)
+        self.assertEqual(provider.max_retries, 0)
         self.assertEqual(request_payload["keep_alive"], "30m")
-        self.assertEqual(request_payload["options"], {"num_ctx": 4096})
+        self.assertEqual(
+            request_payload["options"],
+            {"num_ctx": 4096, "num_predict": 1024, "temperature": 0.0, "top_p": 0.95, "seed": 13},
+        )
+
+    def test_retries_retryable_ollama_errors(self) -> None:
+        first_response = MagicMock()
+        first_response.status_code = 503
+        second_response = MagicMock()
+        second_response.status_code = 200
+        second_response.json.return_value = {
+            "model": "qwen3:8b",
+            "message": {"role": "assistant", "content": "{\"case_id\": \"c1\"}"},
+            "prompt_eval_count": 11,
+            "eval_count": 7,
+        }
+
+        with patch.dict(os.environ, {"OLLAMA_MODEL": "qwen3:8b", "OLLAMA_MAX_RETRIES": "1"}, clear=True):
+            with patch("guardian.model_provider.requests.post", side_effect=[first_response, second_response]) as post:
+                with patch("guardian.model_provider.time.sleep"):
+                    provider = OllamaChatProvider()
+                    _raw, parsed, _usage = provider.generate(
+                        prompt="{}",
+                        system_prompt="Return JSON only.",
+                        response_format={"type": "json_object"},
+                        metadata={"case_id": "c1"},
+                    )
+
+        self.assertEqual(parsed, {"case_id": "c1"})
+        self.assertEqual(post.call_count, 2)
 
 
 class OpenAIResponsesProviderTests(unittest.TestCase):

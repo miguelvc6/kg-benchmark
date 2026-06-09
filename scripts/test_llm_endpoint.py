@@ -114,11 +114,38 @@ def _test_ollama(prompt: str, timeout: float) -> str:
     if keep_alive is not None:
         payload["keep_alive"] = keep_alive
     context_length = _optional_env("OLLAMA_CONTEXT_LENGTH")
+    options: dict[str, Any] = {}
     if context_length is not None:
         try:
-            payload["options"] = {"num_ctx": int(context_length)}
+            options["num_ctx"] = int(context_length)
         except ValueError as exc:
             raise RuntimeError("OLLAMA_CONTEXT_LENGTH must be an integer.") from exc
+    max_output_tokens = _optional_env("OLLAMA_MAX_OUTPUT_TOKENS")
+    if max_output_tokens is not None:
+        try:
+            options["num_predict"] = int(max_output_tokens)
+        except ValueError as exc:
+            raise RuntimeError("OLLAMA_MAX_OUTPUT_TOKENS must be an integer.") from exc
+    temperature = _optional_env("OLLAMA_TEMPERATURE")
+    if temperature is not None:
+        try:
+            options["temperature"] = float(temperature)
+        except ValueError as exc:
+            raise RuntimeError("OLLAMA_TEMPERATURE must be a number.") from exc
+    top_p = _optional_env("OLLAMA_TOP_P")
+    if top_p is not None:
+        try:
+            options["top_p"] = float(top_p)
+        except ValueError as exc:
+            raise RuntimeError("OLLAMA_TOP_P must be a number.") from exc
+    seed = _optional_env("OLLAMA_SEED")
+    if seed is not None:
+        try:
+            options["seed"] = int(seed)
+        except ValueError as exc:
+            raise RuntimeError("OLLAMA_SEED must be an integer.") from exc
+    if options:
+        payload["options"] = options
 
     response = requests.post(f"{config.base_url}/chat", headers=headers, json=payload, timeout=timeout)
     response.raise_for_status()

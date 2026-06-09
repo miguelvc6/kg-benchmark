@@ -9,11 +9,19 @@ The script reads `.env` through the repository's existing environment loader.
 Local Ollama:
 
 ```dotenv
-OLLAMA_MODEL=llama3.2
+OLLAMA_MODEL=gpt-oss:120b
 OLLAMA_BASE_URL=http://localhost:11434/api
 OLLAMA_API_KEY=
-OLLAMA_KEEP_ALIVE=30m
-OLLAMA_CONTEXT_LENGTH=4096
+OLLAMA_KEEP_ALIVE=60m
+OLLAMA_CONTEXT_LENGTH=16384
+OLLAMA_MAX_OUTPUT_TOKENS=2048
+OLLAMA_TIMEOUT_SECONDS=900
+OLLAMA_MAX_RETRIES=2
+OLLAMA_RETRY_BASE_SECONDS=5
+OLLAMA_RETRY_MAX_SECONDS=60
+OLLAMA_TEMPERATURE=0
+OLLAMA_TOP_P=1
+OLLAMA_SEED=13
 ```
 
 Azure AI endpoint:
@@ -59,6 +67,14 @@ Use `--prompt` to override the default test prompt:
 
 ```bash
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-test-llm-endpoint university --prompt "Hello, who are you?"
+```
+
+For a Linux VM using the local Ollama configuration written by `scripts/vm_ollama_setup.sh`:
+
+```bash
+UV_PROJECT_ENVIRONMENT=.venv-vm uv run python scripts/test_llm_endpoint.py ollama \
+  --dotenv .env.ollama.vm \
+  --timeout 900
 ```
 
 The command prints the model answer on success and a concise error on failure. It does not run benchmark evaluation or write reasoning-floor artifacts.
