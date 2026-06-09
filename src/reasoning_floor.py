@@ -56,6 +56,15 @@ def main() -> int:
         default="oracle",
         help="Use the historical track directly or route proposal generation through track diagnosis.",
     )
+    parser.add_argument(
+        "--oracle-diagnosis-mode",
+        choices=("run", "skip"),
+        default=None,
+        help=(
+            "Whether to run track-diagnosis requests during oracle proposal scoring. "
+            "Defaults to skip for --proposal-track-mode=oracle and run for diagnosis_routed."
+        ),
+    )
     parser.add_argument("--max-cases", type=int, default=None)
     parser.add_argument("--case-ids", default=None, help="Comma-separated case ids to include.")
     parser.add_argument(
@@ -83,6 +92,7 @@ def main() -> int:
         model_endpoint=args.model_endpoint,
         execution_mode=args.execution_mode,
         proposal_track_mode=args.proposal_track_mode,
+        oracle_diagnosis_mode=args.oracle_diagnosis_mode,
         parallel_workers=args.parallel_workers,
         batch_completion_window=args.batch_completion_window,
         batch_poll_interval_seconds=args.batch_poll_interval_seconds,

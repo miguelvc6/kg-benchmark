@@ -397,6 +397,7 @@ class ReasoningFloorTests(unittest.TestCase):
             provider=StaticResponseProvider(resolver, model="stub-model"),
             ablation_bundles=["minimal_case"],
             selection_manifest_path=selection_manifest_path,
+            oracle_diagnosis_mode="run",
         )
         self.assertIn("paper_summary", summary)
         self.assertIn("run_info", summary)
@@ -421,6 +422,51 @@ class ReasoningFloorTests(unittest.TestCase):
         self.assertEqual(summary["run_info"]["evaluation"]["classified_record_strategy"], "memory_cache")
         self.assertIsNone(summary["run_info"]["evaluation"]["filtered_classified_path"])
         self.assertEqual(summary["parse_errors"]["proposal_parse_error_count"], 0)
+
+    def test_reasoning_floor_oracle_skip_omits_diagnosis_inference(self) -> None:
+        root, classified_path, world_state_path, selection_manifest_path, resolver = self._make_stub_fixture()
+        run_provider = CountingStaticResponseProvider(resolver, model="stub-model")
+        skip_provider = CountingStaticResponseProvider(resolver, model="stub-model")
+
+        run_summary = run_reasoning_floor(
+            classified_path=classified_path,
+            world_state_path=world_state_path,
+            output_dir=root / "outputs_run",
+            provider=run_provider,
+            ablation_bundles=["minimal_case"],
+            selection_manifest_path=selection_manifest_path,
+            oracle_diagnosis_mode="run",
+        )
+        skip_summary = run_reasoning_floor(
+            classified_path=classified_path,
+            world_state_path=world_state_path,
+            output_dir=root / "outputs_skip",
+            provider=skip_provider,
+            ablation_bundles=["minimal_case"],
+            selection_manifest_path=selection_manifest_path,
+        )
+
+        self.assertEqual(run_provider.generate_call_count, 2)
+        self.assertEqual(skip_provider.generate_call_count, 1)
+        self.assertEqual(run_summary["run_info"]["expected_request_count"], 2)
+        self.assertEqual(skip_summary["run_info"]["oracle_diagnosis_mode"], "skip")
+        self.assertEqual(skip_summary["run_info"]["expected_request_count"], 1)
+        self.assertEqual(skip_summary["run_info"]["skipped_diagnosis_count"], 1)
+        self.assertEqual(skip_summary["request_errors"]["track_diagnosis_request_error_count"], 0)
+        self.assertIsNone(skip_summary["overall_metrics"]["track_diagnosis_accuracy"])
+        self.assertEqual(skip_summary["overall_metrics"]["track_diagnosis_skipped_count"], 1)
+
+        run_dir = Path(skip_summary["run_info"]["output_dir"])
+        run_config = json.loads((run_dir / "run_config.json").read_text(encoding="utf-8"))
+        manifest_rows = self._read_jsonl(run_dir / "run_manifest.jsonl")
+        diagnosis_row = next(row for row in manifest_rows if row["task_type"] == "track_diagnosis")
+        proposal_row = next(row for row in manifest_rows if row["task_type"] == "proposal")
+        self.assertEqual(run_config["oracle_diagnosis_mode"], "skip")
+        self.assertEqual(run_config["expected_request_count"], 1)
+        self.assertEqual(run_config["skipped_diagnosis_count"], 1)
+        self.assertEqual(diagnosis_row["parse_status"], "skipped")
+        self.assertEqual(diagnosis_row["skip_reason"], "oracle_mode_track_diagnosis_skipped")
+        self.assertEqual(proposal_row["parse_status"], "normalized")
 
     def test_reasoning_floor_streams_filtered_classified_subset_for_large_eval(self) -> None:
         root, classified_path, world_state_path, _selection_manifest_path, resolver = self._make_stub_fixture()
@@ -456,6 +502,7 @@ class ReasoningFloorTests(unittest.TestCase):
             selection_manifest_path=selection_manifest_path,
             execution_mode="batch",
             batch_poll_interval_seconds=0.0,
+            oracle_diagnosis_mode="run",
         )
         run_dir = Path(summary["run_info"]["output_dir"])
         manifest_rows = [
@@ -501,6 +548,7 @@ class ReasoningFloorTests(unittest.TestCase):
             selection_manifest_path=selection_manifest_path,
             execution_mode="parallel",
             parallel_workers=2,
+            oracle_diagnosis_mode="run",
         )
 
         self.assertEqual(summary["counts"]["cases"], 1)
@@ -538,6 +586,7 @@ class ReasoningFloorTests(unittest.TestCase):
             selection_manifest_path=selection_manifest_path,
             execution_mode="batch",
             batch_poll_interval_seconds=0.0,
+            oracle_diagnosis_mode="run",
         )
         self.assertTrue(summary["run_info"]["batch_mode_used"])
         self.assertTrue(summary["usage"]["batch_pricing_applied"])
@@ -579,7 +628,7 @@ class ReasoningFloorTests(unittest.TestCase):
         self.assertTrue(proposal_row["recovery"]["succeeded"])
         self.assertEqual(summary["request_errors"]["proposal_request_error_count"], 0)
         self.assertEqual(summary["overall_metrics"]["proposal_request_error_count"], 0)
-        self.assertEqual(summary["usage"]["estimated_cost_usd"], 1.5)
+        self.assertEqual(summary["usage"]["estimated_cost_usd"], 1.0)
         self.assertTrue(summary["usage"]["batch_pricing_applied"])
         self.assertEqual(summary["usage"]["cost_estimation_mode"], "mixed")
         self.assertEqual(
@@ -600,6 +649,7 @@ class ReasoningFloorTests(unittest.TestCase):
                 output_dir=root / "outputs",
                 provider=failing_provider,
                 ablation_bundles=["minimal_case"],
+                oracle_diagnosis_mode="run",
             )
 
         run_dir = next((root / "outputs").iterdir())
@@ -613,6 +663,7 @@ class ReasoningFloorTests(unittest.TestCase):
             resume_run_dir=run_dir,
             provider=resumed_provider,
             ablation_bundles=["minimal_case"],
+            oracle_diagnosis_mode="run",
         )
 
         manifest_rows = self._read_jsonl(run_dir / "run_manifest.jsonl")

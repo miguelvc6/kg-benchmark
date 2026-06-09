@@ -162,6 +162,7 @@ def _build_run_config_payload(
     openai_reasoning_effort: str | None,
     execution_mode: str,
     proposal_track_mode: str,
+    oracle_diagnosis_mode: str,
     classified_path: str | Path,
     world_state_path: str | Path,
     selection_manifest_path: str | Path | None,
@@ -169,6 +170,8 @@ def _build_run_config_payload(
     max_cases: int | None,
     ablation_bundles: Iterable[str],
     selected_case_ids: Iterable[str],
+    expected_request_count: int,
+    skipped_diagnosis_count: int,
     generation_strategy: str,
     selected_generation_records_path: Path | None,
     started_at_utc: str,
@@ -182,6 +185,7 @@ def _build_run_config_payload(
         "openai_reasoning_effort": openai_reasoning_effort,
         "execution_mode": execution_mode,
         "proposal_track_mode": proposal_track_mode,
+        "oracle_diagnosis_mode": oracle_diagnosis_mode,
         "classified_benchmark": _resolved_path_str(classified_path),
         "world_state": _resolved_path_str(world_state_path),
         "selection_manifest": _resolved_path_str(selection_manifest_path),
@@ -190,6 +194,8 @@ def _build_run_config_payload(
         "ablation_bundles": [bundle for bundle in ablation_bundles if isinstance(bundle, str) and bundle],
         "selected_case_ids": normalized_case_ids,
         "selected_case_count": len(normalized_case_ids),
+        "expected_request_count": expected_request_count,
+        "skipped_diagnosis_count": skipped_diagnosis_count,
         "generation_strategy": generation_strategy,
         "selected_generation_records_path": (
             str(selected_generation_records_path.resolve())
@@ -213,6 +219,7 @@ def _validate_resume_run_config(
         "openai_reasoning_effort",
         "execution_mode",
         "proposal_track_mode",
+        "oracle_diagnosis_mode",
         "classified_benchmark",
         "world_state",
         "selection_manifest",
@@ -221,6 +228,8 @@ def _validate_resume_run_config(
         "ablation_bundles",
         "selected_case_ids",
     ):
+        if key == "oracle_diagnosis_mode" and existing_config.get(key) is None and expected_config.get(key) == "run":
+            continue
         if existing_config.get(key) != expected_config.get(key):
             mismatches.append(key)
     if mismatches:
@@ -427,6 +436,7 @@ class RequestExecutionResult:
 @dataclass(frozen=True)
 class CasePipelineOutcome:
     request_results: list[RequestExecutionResult]
+    skipped_diagnoses: list[dict[str, Any]]
     skipped_proposals: list[dict[str, Any]]
 
 
@@ -1248,6 +1258,7 @@ def _failure_taxonomy_from_traces(traces: Iterable[dict[str, Any]]) -> dict[str,
     invalid = 0
     non_executable = 0
     diagnosis_errors = 0
+    diagnosis_skipped = 0
     proposal_parse_errors = 0
     proposal_request_errors = 0
     diagnosis_request_errors = 0
@@ -1268,7 +1279,9 @@ def _failure_taxonomy_from_traces(traces: Iterable[dict[str, Any]]) -> dict[str,
         diagnosis = trace.get("track_diagnosis") or {}
         if diagnosis.get("parse_status") == "request_error":
             diagnosis_request_errors += 1
-        if not (trace.get("track_diagnosis") or {}).get("exact_track_match"):
+        if diagnosis.get("skipped") or diagnosis.get("parse_status") in {"skipped", "not_run"}:
+            diagnosis_skipped += 1
+        elif not diagnosis.get("exact_track_match"):
             diagnosis_errors += 1
     if total == 0:
         return {
@@ -1278,6 +1291,7 @@ def _failure_taxonomy_from_traces(traces: Iterable[dict[str, Any]]) -> dict[str,
             "proposal_request_error_rate": 0.0,
             "track_diagnosis_request_error_rate": 0.0,
             "track_diagnosis_error_rate": 0.0,
+            "track_diagnosis_skipped_rate": 0.0,
             "proposal_parse_errors_by_message": {},
         }
     return {
@@ -1287,6 +1301,7 @@ def _failure_taxonomy_from_traces(traces: Iterable[dict[str, Any]]) -> dict[str,
         "proposal_request_error_rate": proposal_request_errors / total,
         "track_diagnosis_request_error_rate": diagnosis_request_errors / total,
         "track_diagnosis_error_rate": diagnosis_errors / total,
+        "track_diagnosis_skipped_rate": diagnosis_skipped / total,
         "proposal_parse_errors_by_message": parser_errors,
     }
 
@@ -1382,6 +1397,54 @@ def _routed_track_from_diagnosis_payload(parsed_payload: Any, case_id: str, visi
 
 
 def _record_skipped_proposal_result(
+    *,
+    request_info: dict[str, Any],
+    usage: dict[str, Any],
+    raw_log_fh: Any,
+    manifest_fh: Any,
+    parse_status: str,
+    skip_reason: str,
+) -> dict[str, Any]:
+    manifest_record = {
+        "run_id": request_info.get("run_id"),
+        "case_id": request_info.get("case_id"),
+        "visible_case_id": request_info.get("visible_case_id"),
+        "ablation_bundle": request_info.get("ablation_bundle"),
+        "prompt_name": request_info.get("prompt_name"),
+        "track": request_info.get("track"),
+        "historical_track": request_info.get("historical_track"),
+        "proposal_track_used": request_info.get("proposal_track_used"),
+        "routing_source": request_info.get("routing_source"),
+        "context_audit": request_info.get("context_audit") or {},
+        "task_type": request_info.get("task_type"),
+        "provider": usage.get("provider"),
+        "model": usage.get("model"),
+        "usage": _usage_block(usage, None),
+        "timestamp_utc": _utc_now(),
+        "parse_status": parse_status,
+        "skip_reason": skip_reason,
+    }
+    raw_record = {
+        "run_id": request_info.get("run_id"),
+        "case_id": request_info.get("case_id"),
+        "visible_case_id": request_info.get("visible_case_id"),
+        "ablation_bundle": request_info.get("ablation_bundle"),
+        "prompt_name": request_info.get("prompt_name"),
+        "track": request_info.get("track"),
+        "historical_track": request_info.get("historical_track"),
+        "proposal_track_used": request_info.get("proposal_track_used"),
+        "routing_source": request_info.get("routing_source"),
+        "task_type": request_info.get("task_type"),
+        "raw_response": None,
+        "parsed_payload": None,
+        "skip_reason": skip_reason,
+    }
+    _append_jsonl_record(raw_log_fh, raw_record)
+    _append_jsonl_record(manifest_fh, manifest_record)
+    return manifest_record
+
+
+def _record_skipped_diagnosis_result(
     *,
     request_info: dict[str, Any],
     usage: dict[str, Any],
@@ -1558,6 +1621,7 @@ def run_reasoning_floor(
     batch_completion_window: str = "24h",
     batch_poll_interval_seconds: float = 60.0,
     proposal_track_mode: str = "oracle",
+    oracle_diagnosis_mode: str | None = None,
 ) -> dict[str, Any]:
     run_started_utc = _utc_now()
     run_started_at = time.perf_counter()
@@ -1577,6 +1641,16 @@ def run_reasoning_floor(
     normalized_proposal_track_mode = (proposal_track_mode or "oracle").strip().lower()
     if normalized_proposal_track_mode not in {"oracle", "diagnosis_routed"}:
         raise ValueError(f"Unsupported proposal_track_mode: {proposal_track_mode!r}")
+    normalized_oracle_diagnosis_mode = (oracle_diagnosis_mode or "").strip().lower()
+    if not normalized_oracle_diagnosis_mode:
+        normalized_oracle_diagnosis_mode = "skip" if normalized_proposal_track_mode == "oracle" else "run"
+    if normalized_oracle_diagnosis_mode not in {"run", "skip"}:
+        raise ValueError(f"Unsupported oracle_diagnosis_mode: {oracle_diagnosis_mode!r}")
+    if normalized_proposal_track_mode != "oracle" and normalized_oracle_diagnosis_mode == "skip":
+        raise ValueError("--oracle-diagnosis-mode=skip is only valid with proposal_track_mode=oracle.")
+    should_run_track_diagnosis = (
+        normalized_proposal_track_mode == "diagnosis_routed" or normalized_oracle_diagnosis_mode == "run"
+    )
     if normalized_execution_mode == "batch" and not isinstance(provider, BatchModelProvider):
         raise RuntimeError(
             f"Execution mode 'batch' is not supported by provider {provider.__class__.__name__}."
@@ -1595,6 +1669,15 @@ def run_reasoning_floor(
         out_dir = Path(resume_run_dir).resolve()
         out_dir.mkdir(parents=True, exist_ok=True)
         existing_run_config = _load_optional_json(out_dir / RUN_CONFIG_FILENAME)
+        if oracle_diagnosis_mode is None and isinstance(existing_run_config, dict):
+            existing_oracle_mode = existing_run_config.get("oracle_diagnosis_mode")
+            if existing_oracle_mode in {"run", "skip"}:
+                normalized_oracle_diagnosis_mode = str(existing_oracle_mode)
+            elif normalized_proposal_track_mode == "oracle":
+                normalized_oracle_diagnosis_mode = "run"
+            should_run_track_diagnosis = (
+                normalized_proposal_track_mode == "diagnosis_routed" or normalized_oracle_diagnosis_mode == "run"
+            )
         run_id = (
             existing_run_config.get("run_id")
             if isinstance(existing_run_config, dict) and isinstance(existing_run_config.get("run_id"), str)
@@ -1617,7 +1700,8 @@ def run_reasoning_floor(
             else "Preparing run "
         )
         + f"{run_id} with provider={selected_provider}, model={selected_model}, "
-        + f"mode={normalized_execution_mode}, proposal_track_mode={normalized_proposal_track_mode}."
+        + f"mode={normalized_execution_mode}, proposal_track_mode={normalized_proposal_track_mode}, "
+        + f"oracle_diagnosis_mode={normalized_oracle_diagnosis_mode}."
         + (f" Resume directory: {out_dir}." if resume_requested else ""),
     )
 
@@ -1662,6 +1746,16 @@ def run_reasoning_floor(
     bundle_list = [bundle for bundle in ablation_bundles if bundle in ABLATION_BUNDLES]
     if not bundle_list:
         raise ValueError("At least one supported ablation bundle is required.")
+    total_instances = len(selected_case_ids) * len(bundle_list)
+    planned_diagnosis_request_count = total_instances if should_run_track_diagnosis else 0
+    planned_proposal_request_count = total_instances
+    expected_request_count = planned_diagnosis_request_count + planned_proposal_request_count
+    skipped_diagnosis_count = 0 if should_run_track_diagnosis else total_instances
+    total_work_units = (
+        expected_request_count + skipped_diagnosis_count
+        if normalized_execution_mode == "batch"
+        else total_instances
+    )
     expected_run_config = _build_run_config_payload(
         run_id=run_id,
         out_dir=out_dir,
@@ -1670,6 +1764,7 @@ def run_reasoning_floor(
         openai_reasoning_effort=openai_reasoning_effort,
         execution_mode=normalized_execution_mode,
         proposal_track_mode=normalized_proposal_track_mode,
+        oracle_diagnosis_mode=normalized_oracle_diagnosis_mode,
         classified_path=classified_path,
         world_state_path=world_state_path,
         selection_manifest_path=selection_manifest_path,
@@ -1677,6 +1772,8 @@ def run_reasoning_floor(
         max_cases=max_cases,
         ablation_bundles=bundle_list,
         selected_case_ids=selected_case_ids,
+        expected_request_count=expected_request_count,
+        skipped_diagnosis_count=skipped_diagnosis_count,
         generation_strategy=generation_selection.strategy,
         selected_generation_records_path=generation_selection.records_path,
         started_at_utc=run_started_utc,
@@ -1702,8 +1799,6 @@ def run_reasoning_floor(
         if resume_requested and normalized_proposal_track_mode == "diagnosis_routed"
         else {}
     )
-    total_instances = len(selected_case_ids) * len(bundle_list)
-    total_requests = total_instances * 2 if normalized_execution_mode == "batch" else total_instances
     existing_completed_work_units = (
         len(existing_manifest_rows)
         if normalized_execution_mode == "batch"
@@ -1726,18 +1821,18 @@ def run_reasoning_floor(
             effective_parallel_workers = parallel_workers
             parallel_worker_source = "argument"
         effective_parallel_workers = min(effective_parallel_workers, total_instances) if total_instances else 1
-    refresh_every = max(1, min(1000, (total_requests + 9) // 10)) if total_requests else 1
+    refresh_every = max(1, min(1000, (total_work_units + 9) // 10)) if total_work_units else 1
 
     world_state_store = WorldStateStore(Path(world_state_path), __import__("logging").getLogger("reasoning_floor"))
     _emit_runtime_status(None, f"Opening world-state index at {world_state_path}.")
     world_state_store.open()
     progress = tqdm(
-        total=total_requests,
+        total=total_work_units,
         desc="reasoning-floor",
-        unit="request" if normalized_execution_mode == "batch" else "case",
+        unit="manifest-row" if normalized_execution_mode == "batch" else "case",
         disable=_disable_generation_progress(
             execution_mode=normalized_execution_mode,
-            total_requests=total_requests,
+            total_requests=total_work_units,
         ),
     )
     pending_progress = 0
@@ -1751,7 +1846,7 @@ def run_reasoning_floor(
         False,
     )
     if completed_work_units:
-        progress.update(min(completed_work_units, total_requests))
+        progress.update(min(completed_work_units, total_work_units))
         progress.set_postfix(
             {
                 "current_cost": _format_cost(current_estimated_cost_usd if has_cost_data else None),
@@ -1846,12 +1941,32 @@ def run_reasoning_floor(
                 context_audit=context_audit,
             )
 
+        def build_skipped_diagnosis_request(
+            record: dict[str, Any],
+            bundle: str,
+            *,
+            context_audit: Optional[dict[str, Any]] = None,
+        ) -> dict[str, Any]:
+            return _request_metadata(
+                run_id=run_id,
+                case_id=record["id"],
+                visible_case_id=visible_case_id_by_raw.get(record["id"], prompt_visible_case_id(record["id"])),
+                bundle=bundle,
+                prompt_name="skipped_track_diagnosis_oracle",
+                historical_track=record.get("track"),
+                task_type="track_diagnosis",
+                model=selected_model,
+                proposal_track_used=None,
+                routing_source="oracle_historical_track",
+                context_audit=context_audit,
+            )
+
         def mark_completed(units: int = 1) -> None:
             nonlocal completed_work_units
             nonlocal pending_progress
             completed_work_units += units
             pending_progress += units
-            if pending_progress >= refresh_every or completed_work_units == total_requests:
+            if pending_progress >= refresh_every or completed_work_units == total_work_units:
                 flush_progress()
 
         def flush_progress() -> None:
@@ -1860,7 +1975,7 @@ def run_reasoning_floor(
                 return
             estimated_total_cost = None
             if has_cost_data and completed_work_units > 0:
-                estimated_total_cost = (current_estimated_cost_usd / completed_work_units) * total_requests
+                estimated_total_cost = (current_estimated_cost_usd / completed_work_units) * total_work_units
             progress.update(pending_progress)
             progress.set_postfix(
                 {
@@ -1942,6 +2057,34 @@ def run_reasoning_floor(
                 existing_manifest_lookup[(bundle_key, case_id, "proposal")] = manifest_record
             return manifest_record
 
+        def record_skipped_diagnosis(
+            *,
+            request_info: dict[str, Any],
+            parse_status: str,
+            skip_reason: str,
+            raw_log_fh: Any,
+            manifest_fh: Any,
+        ) -> dict[str, Any]:
+            usage = _apply_cost_estimation_policy(
+                _empty_usage_payload(selected_provider, selected_model, request_info),
+                provider_name=selected_provider,
+                execution_mode=normalized_execution_mode,
+            )
+            manifest_record = _record_skipped_diagnosis_result(
+                request_info=request_info,
+                usage=usage,
+                raw_log_fh=raw_log_fh,
+                manifest_fh=manifest_fh,
+                parse_status=parse_status,
+                skip_reason=skip_reason,
+            )
+            usage_manifest.append(manifest_record)
+            bundle_key = request_info.get("ablation_bundle")
+            case_id = request_info.get("case_id")
+            if isinstance(bundle_key, str) and isinstance(case_id, str):
+                existing_manifest_lookup[(bundle_key, case_id, "track_diagnosis")] = manifest_record
+            return manifest_record
+
         def routing_info_for_existing_case(
             *,
             bundle: str,
@@ -1969,35 +2112,49 @@ def run_reasoning_floor(
             existing_proposal_manifest: dict[str, Any] | None = None,
         ) -> CasePipelineOutcome:
             request_results: list[RequestExecutionResult] = []
+            skipped_diagnoses: list[dict[str, Any]] = []
             skipped_proposals: list[dict[str, Any]] = []
             routing_info: dict[str, Any] | None = None
 
             if existing_diagnosis_manifest is None:
-                diagnosis_bundle, diagnosis_metadata = build_diagnosis_request(record, bundle, world_state_entry)
-                diagnosis_result = _execute_case_requests(
-                    provider,
-                    [(diagnosis_bundle, diagnosis_metadata)],
-                    provider_name=selected_provider,
-                    execution_mode=normalized_execution_mode,
-                )[0]
-                request_results.append(diagnosis_result)
-                routing_info = {
-                    "proposal_track_used": _routed_track_from_diagnosis_payload(
-                        diagnosis_result.parsed_payload,
-                        record["id"],
-                        diagnosis_metadata.get("visible_case_id")
-                        if isinstance(diagnosis_metadata.get("visible_case_id"), str)
-                        else None,
-                    ),
-                    "routing_source": "diagnosis_prediction",
-                    "context_audit": diagnosis_metadata.get("context_audit") or {},
-                }
+                if should_run_track_diagnosis:
+                    diagnosis_bundle, diagnosis_metadata = build_diagnosis_request(record, bundle, world_state_entry)
+                    diagnosis_result = _execute_case_requests(
+                        provider,
+                        [(diagnosis_bundle, diagnosis_metadata)],
+                        provider_name=selected_provider,
+                        execution_mode=normalized_execution_mode,
+                    )[0]
+                    request_results.append(diagnosis_result)
+                    routing_info = {
+                        "proposal_track_used": _routed_track_from_diagnosis_payload(
+                            diagnosis_result.parsed_payload,
+                            record["id"],
+                            diagnosis_metadata.get("visible_case_id")
+                            if isinstance(diagnosis_metadata.get("visible_case_id"), str)
+                            else None,
+                        ),
+                        "routing_source": "diagnosis_prediction",
+                        "context_audit": diagnosis_metadata.get("context_audit") or {},
+                    }
+                else:
+                    skipped_diagnoses.append(
+                        {
+                            "request_info": build_skipped_diagnosis_request(record, bundle),
+                            "parse_status": "skipped",
+                            "skip_reason": "oracle_mode_track_diagnosis_skipped",
+                        }
+                    )
             else:
                 routing_info = routing_info_for_existing_case(bundle=bundle, case_id=record["id"])
 
             if normalized_proposal_track_mode == "oracle":
                 if existing_proposal_manifest is not None:
-                    return CasePipelineOutcome(request_results=request_results, skipped_proposals=skipped_proposals)
+                    return CasePipelineOutcome(
+                        request_results=request_results,
+                        skipped_diagnoses=skipped_diagnoses,
+                        skipped_proposals=skipped_proposals,
+                    )
                 proposal_bundle, proposal_metadata = build_proposal_request(
                     record,
                     bundle,
@@ -2013,10 +2170,18 @@ def run_reasoning_floor(
                         execution_mode=normalized_execution_mode,
                     )
                 )
-                return CasePipelineOutcome(request_results=request_results, skipped_proposals=skipped_proposals)
+                return CasePipelineOutcome(
+                    request_results=request_results,
+                    skipped_diagnoses=skipped_diagnoses,
+                    skipped_proposals=skipped_proposals,
+                )
 
             if existing_proposal_manifest is not None:
-                return CasePipelineOutcome(request_results=request_results, skipped_proposals=skipped_proposals)
+                return CasePipelineOutcome(
+                    request_results=request_results,
+                    skipped_diagnoses=skipped_diagnoses,
+                    skipped_proposals=skipped_proposals,
+                )
 
             if routing_info is None:
                 raise RuntimeError(
@@ -2039,7 +2204,11 @@ def run_reasoning_floor(
                         "skip_reason": "Diagnosis predicted AMBIGUOUS track.",
                     }
                 )
-                return CasePipelineOutcome(request_results=request_results, skipped_proposals=skipped_proposals)
+                return CasePipelineOutcome(
+                    request_results=request_results,
+                    skipped_diagnoses=skipped_diagnoses,
+                    skipped_proposals=skipped_proposals,
+                )
             if routed_track not in {"A_BOX", "T_BOX"}:
                 skipped_request_info = build_skipped_proposal_request(
                     record,
@@ -2055,7 +2224,11 @@ def run_reasoning_floor(
                         "skip_reason": "Diagnosis output could not be routed to A_BOX or T_BOX.",
                     }
                 )
-                return CasePipelineOutcome(request_results=request_results, skipped_proposals=skipped_proposals)
+                return CasePipelineOutcome(
+                    request_results=request_results,
+                    skipped_diagnoses=skipped_diagnoses,
+                    skipped_proposals=skipped_proposals,
+                )
 
             proposal_bundle, proposal_metadata = build_proposal_request(
                 record,
@@ -2072,7 +2245,11 @@ def run_reasoning_floor(
                     execution_mode=normalized_execution_mode,
                 )
             )
-            return CasePipelineOutcome(request_results=request_results, skipped_proposals=skipped_proposals)
+            return CasePipelineOutcome(
+                request_results=request_results,
+                skipped_diagnoses=skipped_diagnoses,
+                skipped_proposals=skipped_proposals,
+            )
 
         def move_batch_artifact(path: Path | None, prefix: str) -> Path | None:
             if path is None or not path.exists() or not prefix:
@@ -2402,7 +2579,9 @@ def run_reasoning_floor(
             ("Starting resumed run " if resume_requested else "Starting run ")
             + f"{run_id} with provider={selected_provider}, model={selected_model}, "
             + f"mode={normalized_execution_mode}, proposal_track_mode={normalized_proposal_track_mode}, "
-            f"cases={len(selected_case_ids)}, bundles={len(bundle_list)}, requests={total_requests}.",
+            f"oracle_diagnosis_mode={normalized_oracle_diagnosis_mode}, "
+            f"cases={len(selected_case_ids)}, bundles={len(bundle_list)}, "
+            f"inference_requests={expected_request_count}, skipped_diagnosis={skipped_diagnosis_count}.",
         )
         _emit_runtime_status(progress, f"Writing outputs to {out_dir}.")
         _emit_runtime_status(
@@ -2415,7 +2594,7 @@ def run_reasoning_floor(
                 progress,
                 "Loaded existing generation state from "
                 f"{manifest_path}: {len(existing_manifest_rows)} request row(s), "
-                f"{completed_work_units}/{total_requests} completed work unit(s).",
+                f"{completed_work_units}/{total_work_units} completed work unit(s).",
             )
         usage_manifest: list[dict[str, Any]] = list(existing_manifest_rows)
 
@@ -2477,6 +2656,14 @@ def run_reasoning_floor(
                                 existing_diagnosis_manifest=existing_diagnosis_manifest,
                                 existing_proposal_manifest=existing_proposal_manifest,
                             )
+                            for skipped in outcome.skipped_diagnoses:
+                                record_skipped_diagnosis(
+                                    request_info=skipped["request_info"],
+                                    parse_status=skipped["parse_status"],
+                                    skip_reason=skipped["skip_reason"],
+                                    raw_log_fh=raw_log_fh,
+                                    manifest_fh=manifest_fh,
+                                )
                             for request_result in outcome.request_results:
                                 record_generation_result(
                                     request_info=request_result.request_info,
@@ -2503,6 +2690,14 @@ def run_reasoning_floor(
 
                         def record_future_result(future: Future[CasePipelineOutcome]) -> None:
                             outcome = future.result()
+                            for skipped in outcome.skipped_diagnoses:
+                                record_skipped_diagnosis(
+                                    request_info=skipped["request_info"],
+                                    parse_status=skipped["parse_status"],
+                                    skip_reason=skipped["skip_reason"],
+                                    raw_log_fh=raw_log_fh,
+                                    manifest_fh=manifest_fh,
+                                )
                             for request_result in outcome.request_results:
                                 record_generation_result(
                                     request_info=request_result.request_info,
@@ -2589,25 +2784,35 @@ def run_reasoning_floor(
                                     )
                                     is None
                                 ):
-                                    diagnosis_bundle, diagnosis_metadata = build_diagnosis_request(
-                                        record,
-                                        bundle,
-                                        world_state_entry,
-                                    )
-                                    diagnosis_custom_id = f"rf_{request_counter:09d}"
-                                    request_counter += 1
-                                    provider.write_batch_request(
-                                        batch_input_fh,
-                                        custom_id=diagnosis_custom_id,
-                                        prompt=diagnosis_bundle.prompt,
-                                        system_prompt=diagnosis_bundle.system_prompt,
-                                        response_format=diagnosis_bundle.response_format,
-                                        metadata=diagnosis_metadata,
-                                    )
-                                    _append_jsonl_record(
-                                        request_manifest_fh,
-                                        {"custom_id": diagnosis_custom_id, "metadata": diagnosis_metadata},
-                                    )
+                                    if should_run_track_diagnosis:
+                                        diagnosis_bundle, diagnosis_metadata = build_diagnosis_request(
+                                            record,
+                                            bundle,
+                                            world_state_entry,
+                                        )
+                                        diagnosis_custom_id = f"rf_{request_counter:09d}"
+                                        request_counter += 1
+                                        provider.write_batch_request(
+                                            batch_input_fh,
+                                            custom_id=diagnosis_custom_id,
+                                            prompt=diagnosis_bundle.prompt,
+                                            system_prompt=diagnosis_bundle.system_prompt,
+                                            response_format=diagnosis_bundle.response_format,
+                                            metadata=diagnosis_metadata,
+                                        )
+                                        _append_jsonl_record(
+                                            request_manifest_fh,
+                                            {"custom_id": diagnosis_custom_id, "metadata": diagnosis_metadata},
+                                        )
+                                    else:
+                                        record_skipped_diagnosis(
+                                            request_info=build_skipped_diagnosis_request(record, bundle),
+                                            parse_status="skipped",
+                                            skip_reason="oracle_mode_track_diagnosis_skipped",
+                                            raw_log_fh=raw_log_fh,
+                                            manifest_fh=manifest_fh,
+                                        )
+                                        mark_completed()
 
                                 if (
                                     _manifest_row_for_task(
@@ -3120,6 +3325,11 @@ def run_reasoning_floor(
                 "memory_cache_case_threshold": GENERATION_IN_MEMORY_CASE_THRESHOLD,
             },
             "proposal_track_mode": normalized_proposal_track_mode,
+            "oracle_diagnosis_mode": normalized_oracle_diagnosis_mode,
+            "expected_request_count": expected_request_count,
+            "planned_diagnosis_request_count": planned_diagnosis_request_count,
+            "planned_proposal_request_count": planned_proposal_request_count,
+            "skipped_diagnosis_count": skipped_diagnosis_count,
             "resume": {
                 "enabled": resume_requested,
                 "resumed_from": str(out_dir) if resume_requested else None,

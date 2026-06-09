@@ -1081,9 +1081,11 @@ def evaluate_track_diagnosis(
     manifest_record: dict[str, Any],
 ) -> dict[str, Any]:
     diagnosis_missing = diagnosis is None
+    parse_status = manifest_record.get("parse_status") or ("missing" if diagnosis_missing else "normalized")
+    skipped = parse_status in {"skipped", "not_run"} or bool(manifest_record.get("skip_reason"))
     historical_track = record.get("track")
     predicted_track = diagnosis.predicted_track if diagnosis is not None else None
-    exact_track_match = bool(predicted_track == historical_track)
+    exact_track_match = bool(not skipped and predicted_track == historical_track)
     ambiguous_prediction = bool(predicted_track == "AMBIGUOUS")
     confidence = diagnosis.confidence if diagnosis is not None else None
     rationale = diagnosis.rationale if diagnosis is not None else None
@@ -1091,7 +1093,9 @@ def evaluate_track_diagnosis(
     return {
         "valid": diagnosis is not None,
         "present": not diagnosis_missing,
-        "parse_status": manifest_record.get("parse_status") or ("missing" if diagnosis_missing else "normalized"),
+        "parse_status": parse_status,
+        "skipped": skipped,
+        "skip_reason": manifest_record.get("skip_reason"),
         "historical_track": historical_track,
         "predicted_track": predicted_track,
         "exact_track_match": exact_track_match,
@@ -1127,6 +1131,7 @@ def summarize_trace_iterable(
             self.diagnosis_count = 0
             self.diagnosis_exact = 0
             self.diagnosis_present = 0
+            self.diagnosis_skipped = 0
 
         def add(self, trace: dict[str, Any]) -> None:
             self.count += 1
@@ -1170,13 +1175,16 @@ def summarize_trace_iterable(
                 self.token_total_count += 1
             diagnosis = trace.get("track_diagnosis")
             if isinstance(diagnosis, dict):
-                self.diagnosis_count += 1
-                if diagnosis.get("exact_track_match"):
-                    self.diagnosis_exact += 1
-                if diagnosis.get("present"):
-                    self.diagnosis_present += 1
-                if diagnosis.get("parse_status") == "request_error":
-                    self.metric_sums["track_diagnosis_request_error_count"] += 1.0
+                if diagnosis.get("skipped") or diagnosis.get("parse_status") in {"skipped", "not_run"}:
+                    self.diagnosis_skipped += 1
+                else:
+                    self.diagnosis_count += 1
+                    if diagnosis.get("exact_track_match"):
+                        self.diagnosis_exact += 1
+                    if diagnosis.get("present"):
+                        self.diagnosis_present += 1
+                    if diagnosis.get("parse_status") == "request_error":
+                        self.metric_sums["track_diagnosis_request_error_count"] += 1.0
 
         def as_dict(self) -> dict[str, Any]:
             if self.count == 0:
@@ -1248,6 +1256,8 @@ def summarize_trace_iterable(
                     self.diagnosis_exact / self.diagnosis_count if self.diagnosis_count else None
                 ),
                 "track_diagnosis_present_rate": self.diagnosis_present / self.count if self.count else None,
+                "track_diagnosis_skipped_count": self.diagnosis_skipped,
+                "track_diagnosis_skipped_rate": self.diagnosis_skipped / self.count if self.count else None,
             }
 
     groups = {
@@ -1303,14 +1313,16 @@ def summarize_trace_iterable(
             counts["proposal_request_error"] += 1
         diagnosis = trace.get("track_diagnosis")
         if isinstance(diagnosis, dict):
-            if diagnosis.get("present"):
+            if diagnosis.get("skipped") or diagnosis.get("parse_status") in {"skipped", "not_run"}:
+                counts["track_diagnosis_skipped"] += 1
+            elif diagnosis.get("present"):
                 counts["track_diagnosis_present"] += 1
-            if diagnosis.get("exact_track_match"):
-                counts["track_diagnosis_exact_match"] += 1
-            if diagnosis.get("ambiguous_prediction"):
-                counts["track_diagnosis_ambiguous"] += 1
-            if diagnosis.get("parse_status") == "request_error":
-                counts["track_diagnosis_request_error"] += 1
+                if diagnosis.get("exact_track_match"):
+                    counts["track_diagnosis_exact_match"] += 1
+                if diagnosis.get("ambiguous_prediction"):
+                    counts["track_diagnosis_ambiguous"] += 1
+                if diagnosis.get("parse_status") == "request_error":
+                    counts["track_diagnosis_request_error"] += 1
         overall.add(trace)
         groups["by_class"][trace.get("classification_class")].add(trace)
         groups["by_subtype"][trace.get("classification_subtype")].add(trace)
@@ -1338,6 +1350,10 @@ def summarize_trace_iterable(
             "track_diagnosis_request_error_count": counts.get("track_diagnosis_request_error", 0),
             "track_diagnosis_request_error_rate": (
                 counts.get("track_diagnosis_request_error", 0) / counts["cases"] if counts.get("cases", 0) else 0.0
+            ),
+            "track_diagnosis_skipped_count": counts.get("track_diagnosis_skipped", 0),
+            "track_diagnosis_skipped_rate": (
+                counts.get("track_diagnosis_skipped", 0) / counts["cases"] if counts.get("cases", 0) else 0.0
             ),
         },
         "by_class": {str(key): value.as_dict() for key, value in groups["by_class"].items()},

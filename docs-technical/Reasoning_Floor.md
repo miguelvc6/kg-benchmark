@@ -6,9 +6,9 @@ The zero-shot baseline runner is [reasoning_floor.py](/mnt/c/Code/kg-benchmark/s
 
 This runner implements the pre-Guardian reasoning floor described in the conceptual docs.
 
-It executes one track-diagnosis call per case per ablation bundle and then generates a proposal either from the historical track or from the diagnosed track, depending on `--proposal-track-mode`.
+It generates one proposal per case per ablation bundle. In `diagnosis_routed` mode it first runs track diagnosis and routes the proposal through the diagnosed track. In oracle mode it uses the historical benchmark track directly and, by default, skips the separate diagnosis request to avoid unnecessary inference.
 
-It also executes a separate track-diagnosis call that asks the model to classify each case as `A_BOX`, `T_BOX`, or
+When diagnosis is enabled, the track-diagnosis call asks the model to classify each case as `A_BOX`, `T_BOX`, or
 `AMBIGUOUS`.
 
 The runner also accepts `--selection-manifest` so paper runs can target a deterministic benchmark subset without creating a second Stage 4 JSONL artifact.
@@ -21,7 +21,7 @@ Terminology:
 - `core selected`: all `selected_case_ids` in `core_v1_seed_13.json`, including diagnostic/challenge cases.
 - `main score`: `main_score_case_ids`, used for headline paper scores.
 - `diagnostic/challenge`: `diagnostic_case_ids`, reported separately.
-- `oracle`: proposal generation uses the historical benchmark track.
+- `oracle`: proposal generation uses the historical benchmark track. Track diagnosis is skipped by default unless `--oracle-diagnosis-mode run` is set.
 - `diagnosis_routed`: proposal generation uses the predicted track; `AMBIGUOUS` skips proposal generation.
 
 ## Ablation Bundles
@@ -124,6 +124,7 @@ Execution CLI settings:
 - `--execution-mode sync|parallel|batch`
 - `--model-endpoint ollama|azure|university|openai`
 - `--proposal-track-mode oracle|diagnosis_routed`
+- `--oracle-diagnosis-mode run|skip`; defaults to `skip` for oracle mode and `run` for diagnosis-routed mode
 - `--parallel-workers` for `parallel` mode
 - `--batch-completion-window` (defaults to `24h`)
 - `--batch-poll-interval-seconds` (defaults to `60`)
@@ -241,11 +242,13 @@ After generation completes, the runner shows a second `tqdm` bar for bundle eval
 
 In synchronous mode, the runner appends raw responses, manifest rows, normalized proposals, and evaluation traces incrementally over one stable ordered selected subset. In parallel mode, it keeps the same outputs but executes multiple cases concurrently with bounded in-flight work.
 
-When `--resume-run-dir` is used, the runner opens the existing JSONL artifacts in append mode, loads prior completion state from `run_manifest.jsonl`, and only submits the missing request(s). This works for sync, parallel, and batch execution. In `diagnosis_routed` mode, proposal resumption is driven from the existing normalized diagnosis artifacts, so the runner can skip already-finished diagnosis calls and submit only the missing proposals or synthetic skips.
+When `--resume-run-dir` is used, the runner opens the existing JSONL artifacts in append mode, loads prior completion state from `run_manifest.jsonl`, and only submits the missing request(s). This works for sync, parallel, and batch execution. Existing pre-skip oracle runs resume with diagnosis enabled for compatibility. In `diagnosis_routed` mode, proposal resumption is driven from the existing normalized diagnosis artifacts, so the runner can skip already-finished diagnosis calls and submit only the missing proposals or synthetic skips.
+
+Skipped oracle diagnosis rows are still written to `run_manifest.jsonl` with `parse_status="skipped"` and `skip_reason="oracle_mode_track_diagnosis_skipped"`. Evaluation summaries report these as skipped diagnosis, not as request or parse errors.
 
 In batch mode:
 
-- `--proposal-track-mode oracle` keeps the original one-stage batch flow
+- `--proposal-track-mode oracle` keeps the one-stage batch flow for proposal requests and writes synthetic skipped diagnosis rows unless `--oracle-diagnosis-mode run` is set
 - `--proposal-track-mode diagnosis_routed` uses a two-stage batch flow
 
 The two-stage flow writes:
