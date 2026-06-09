@@ -769,13 +769,11 @@ def _t_box_pre_reform_constraints_payload(
             if key not in {"constraints", "constraint_count", "property_revision_id"}
         }
         pruned_payload["constraints"] = before_constraints
-        pruned_payload["temporal_policy"] = "pre_change_signature_before"
         audit["constraint_count_after"] = len(before_constraints)
         audit["temporal_policy"] = "pre_change_signature_before"
         return pruned_payload, audit
 
     compact_payload = {
-        "temporal_policy": "compact_inventory_no_pre_change_signature",
         "constraint_family_inventory": _constraint_family_inventory(valid_constraints),
         "violation_context": _sanitized_violation_context(record),
     }

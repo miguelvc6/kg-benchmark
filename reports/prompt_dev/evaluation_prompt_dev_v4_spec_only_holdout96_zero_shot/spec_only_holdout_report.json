@@ -1,0 +1,123 @@
+{
+  "manifest_type": "prompt_dev_v4_spec_only_holdout_report",
+  "manifest_version": "prompt_dev_v4_spec_only",
+  "verdict": "BLOCKED",
+  "blocked_reason": "The university endpoint synchronous repair-proposal calls were too slow and unstable to complete the 384-prompt holdout run in this session.",
+  "inputs": {
+    "run_dir": "reports/prompt_dev/evaluation_prompt_dev_v4_spec_only_holdout96_zero_shot",
+    "dev_manifest": "reports/benchmark_selection/dev_prompt_holdout_spec_v4_96_seed_17.json",
+    "core_manifest": "reports/benchmark_selection/core_v1_seed_13.json",
+    "classified_benchmark": "data/04_classified_benchmark.jsonl",
+    "world_state": "data/03_world_state.json"
+  },
+  "rendered_holdout": {
+    "eval_cases": 96,
+    "rendered_prompts": 384,
+    "tracks": {
+      "A_BOX": 48,
+      "T_BOX": 48
+    },
+    "classes": {
+      "TypeA": 24,
+      "TypeB": 12,
+      "TypeC": 12,
+      "T_BOX": 48
+    },
+    "unique_qids": 96,
+    "unique_properties": 74,
+    "v3_case_overlap": 0
+  },
+  "gates": {
+    "render_gate": "pass",
+    "leakage_gate": "pass",
+    "spec_only_wording_gate": "pass",
+    "test_gate": "pass",
+    "completion_gate": "fail",
+    "request_stability_gate": "fail",
+    "parse_gate_partial": "pass"
+  },
+  "leakage_scan": {
+    "raw_repair_case_ids": 0,
+    "raw_reform_case_ids": 0,
+    "TypeA": 0,
+    "TypeB": 0,
+    "TypeC": 0,
+    "targeted_REMOVE": 0,
+    "Action_decision_tree": 0,
+    "sitelinks_count": 0,
+    "compact_inventory_no_pre_change_signature": 0,
+    "pre_change_signature_before": 0,
+    "property_level_schema_change_evidence": 0
+  },
+  "partial_inference": {
+    "requested_prompts": 384,
+    "completed_prompt_rows": 31,
+    "completion_rate": 0.08072916666666667,
+    "normalized_rows": 27,
+    "parse_error_rows": 0,
+    "request_error_rows": 4,
+    "observed_request_error_rate": 0.12903225806451613,
+    "proposal_rows_completed": 15,
+    "proposal_request_error_rows": 4,
+    "observed_proposal_request_error_rate": 0.26666666666666666,
+    "track_diagnosis_rows_completed": 16,
+    "track_diagnosis_request_error_rows": 0,
+    "repair_call_elapsed_seconds": {
+      "logic_only_avg": 383.7,
+      "logic_only_max": 633.0,
+      "local_graph_avg": 387.1,
+      "local_graph_max": 632.9
+    }
+  },
+  "partial_matrix_metrics": {
+    "prompt_dev_001_hybrid_json_nl_zero_shot_logic_only_track_diagnosis_diagnosis_no_abstain": {
+      "count": 8,
+      "track_diagnosis_accuracy": 0.5,
+      "proposal_parse_error_rate": 0.0,
+      "proposal_request_error_rate": 0.0
+    },
+    "prompt_dev_002_hybrid_json_nl_zero_shot_logic_only_repair_proposal_oracle_no_abstain": {
+      "count": 8,
+      "accepted_rate": 0.125,
+      "a_box_exact_action_match_rate": 0.8,
+      "a_box_exact_value_match_rate": 0.2,
+      "proposal_parse_error_rate": 0.0,
+      "proposal_request_error_rate": 0.125,
+      "t_box_target_constraint_match_rate": 0.0
+    },
+    "prompt_dev_003_hybrid_json_nl_zero_shot_local_graph_track_diagnosis_diagnosis_no_abstain": {
+      "count": 8,
+      "track_diagnosis_accuracy": 0.625,
+      "proposal_parse_error_rate": 0.0,
+      "proposal_request_error_rate": 0.0
+    },
+    "prompt_dev_004_hybrid_json_nl_zero_shot_local_graph_repair_proposal_oracle_no_abstain": {
+      "count": 7,
+      "accepted_rate": 0.0,
+      "a_box_exact_action_match_rate": 0.4,
+      "a_box_exact_value_match_rate": 0.0,
+      "proposal_parse_error_rate": 0.0,
+      "proposal_request_error_rate": 0.42857142857142855,
+      "t_box_target_constraint_match_rate": 0.0
+    }
+  },
+  "answerability_aware_rates": {
+    "status": "not_computed_for_v4",
+    "reason": "The v4 holdout inference run completed only 31 of 384 prompt rows. Proposal quality and answerability-aware success rates are not interpretable from this partial sample."
+  },
+  "v3_scaffolded_holdout_comparison": {
+    "status": "not_run",
+    "reason": "The optional v3 scaffolded ablation was not run because the main v4 endpoint execution was blocked."
+  },
+  "commands_run": [
+    "UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python src/prompt_dev.py evaluate --classified-benchmark data/04_classified_benchmark.jsonl --world-state data/03_world_state.json --dev-manifest reports/benchmark_selection/dev_prompt_holdout_spec_v4_96_seed_17.json --core-manifest reports/benchmark_selection/core_v1_seed_13.json --output-dir reports/prompt_dev/evaluation_prompt_dev_v4_spec_only_holdout96_zero_shot --model-endpoint university --max-cases 96 --sample-strategy manifest_order --representations hybrid_json_nl --example-policies zero_shot --context-bundles logic_only,local_graph --tasks track_diagnosis,repair_proposal --repair-track-modes oracle --no-progress",
+    "UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python src/prompt_dev.py render --classified-benchmark data/04_classified_benchmark.jsonl --world-state data/03_world_state.json --dev-manifest reports/benchmark_selection/dev_prompt_holdout_spec_v4_96_seed_17.json --core-manifest reports/benchmark_selection/core_v1_seed_13.json --output-dir reports/prompt_dev/evaluation_prompt_dev_v4_spec_only_holdout96_zero_shot/rendered_prompts --max-cases 96 --sample-strategy manifest_order --representations hybrid_json_nl --example-policies zero_shot --context-bundles logic_only,local_graph --tasks track_diagnosis,repair_proposal --repair-track-modes oracle",
+    "UV_PROJECT_ENVIRONMENT=.venv-wsl uv run --extra dev python -m pytest tests/test_prompt_dev.py tests/test_model_provider.py tests/test_reasoning_floor.py tests/test_track_parser.py tests/test_tbox_parser.py tests/test_patch_parser.py"
+  ],
+  "tests": {
+    "status": "pass",
+    "passed": 106,
+    "failed": 0
+  },
+  "recommendation": "Do not move to Phase G. Resolve endpoint throughput/request stability or add a controlled non-dev-strategy execution mode before rerunning the v4 holdout."
+}
