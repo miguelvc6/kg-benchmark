@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import logging
 from collections import Counter
 from pathlib import Path
 
@@ -23,6 +24,15 @@ from lib.prompt_dev import (
     write_prompt_dev_matrix,
 )
 from scripts.prompt_dev_templates import REPRESENTATIONS
+
+
+def _configure_logging(level_name: str) -> None:
+    level = getattr(logging, level_name.upper(), logging.INFO)
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
 
 
 def _csv_tuple(value: str | None, default: tuple[str, ...]) -> tuple[str, ...]:
@@ -98,6 +108,12 @@ def _add_axis_args(parser: argparse.ArgumentParser, *, render_defaults: bool = F
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Prepare and evaluate Phase F prompt-development artifacts.")
+    parser.add_argument(
+        "--log-level",
+        default="INFO",
+        choices=("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"),
+        help="Terminal logging level. Logs include timestamps and long-running setup phases.",
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     matrix_parser = subparsers.add_parser("matrix", help="Write the Phase F prompt-development run matrix.")
@@ -209,7 +225,11 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+    _configure_logging(args.log_level)
+    log = logging.getLogger("prompt_dev.cli")
+    log.info("command=%s", args.command)
     if args.command == "matrix":
+        log.info("writing prompt-dev matrix output=%s", args.output)
         matrix = write_prompt_dev_matrix(
             args.output,
             PromptDevMatrixOptions(
@@ -226,6 +246,14 @@ def main() -> int:
         return 0
 
     if args.command == "render":
+        log.info(
+            "render start classified=%s world_state=%s dev_manifest=%s output_dir=%s max_cases=%s",
+            args.classified_benchmark,
+            args.world_state,
+            args.dev_manifest,
+            args.output_dir,
+            args.max_cases,
+        )
         summary = render_prompt_dev_prompts(
             PromptDevRenderOptions(
                 classified_benchmark=Path(args.classified_benchmark),
@@ -250,9 +278,20 @@ def main() -> int:
         print(f"[done] rendered={summary['counts']['rendered_prompts']}")
         print(f"[done] prompts={summary['outputs']['prompts_jsonl']}")
         print(f"[done] review={summary['outputs']['review_markdown']}")
+        log.info("render done rendered=%s output_dir=%s", summary["counts"]["rendered_prompts"], args.output_dir)
         return 0
 
     if args.command == "evaluate":
+        log.info(
+            "evaluate start endpoint=%s model=%s classified=%s world_state=%s dev_manifest=%s output_dir=%s max_cases=%s",
+            args.model_endpoint or "env",
+            args.model or "env",
+            args.classified_benchmark,
+            args.world_state,
+            args.dev_manifest,
+            args.output_dir,
+            args.max_cases,
+        )
         progress_bar, progress_callback = _make_evaluate_progress_bar(disabled=args.no_progress)
         with progress_bar:
             summary = evaluate_prompt_dev_prompts(
@@ -285,9 +324,11 @@ def main() -> int:
         print(f"[done] evaluated_prompts={summary['counts']['evaluated_prompts']}")
         print(f"[done] summary={args.output_dir}/prompt_dev_evaluation_summary.json")
         print(f"[done] comparison={summary['outputs']['comparison_markdown']}")
+        log.info("evaluate done evaluated_prompts=%s output_dir=%s", summary["counts"]["evaluated_prompts"], args.output_dir)
         return 0
 
     if args.command == "freeze":
+        log.info("freeze start output=%s", args.output)
         config = freeze_prompt_dev_config(
             output=args.output,
             representation=args.representation,
@@ -299,6 +340,7 @@ def main() -> int:
         )
         print(f"[done] wrote {args.output}")
         print(f"[done] prompt_version={config['manifest_version']}")
+        log.info("freeze done output=%s prompt_version=%s", args.output, config["manifest_version"])
         return 0
 
     raise AssertionError(f"Unhandled command: {args.command}")

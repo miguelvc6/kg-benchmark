@@ -746,6 +746,14 @@ def _validate_core_example_guard(options: PromptDevRenderOptions | PromptDevEval
 
 
 def render_prompt_dev_prompts(options: PromptDevRenderOptions) -> dict[str, Any]:
+    log = logging.getLogger("prompt_dev")
+    log.info(
+        "render: loading manifest records classified=%s manifest=%s max_cases=%s sample_strategy=%s",
+        options.classified_benchmark,
+        options.dev_manifest,
+        options.max_cases,
+        options.sample_strategy,
+    )
     _validate_core_example_guard(options)
     manifest = load_selection_manifest(options.dev_manifest)
     eval_records = _load_manifest_records(
@@ -755,7 +763,10 @@ def render_prompt_dev_prompts(options: PromptDevRenderOptions) -> dict[str, Any]
         sample_strategy=options.sample_strategy,
         seed=options.seed,
     )
+    log.info("render: selected eval records=%s", len(eval_records))
+    log.info("render: loading candidate records for examples and visible ids")
     candidate_records = _load_all_manifest_records(options.classified_benchmark, options.dev_manifest)
+    log.info("render: loaded candidate records=%s", len(candidate_records))
     visible_case_ids = _visible_case_id_map(candidate_records)
     blocked_core = _blocked_core_sets(options.core_manifest)
     matrix = build_prompt_dev_matrix(
@@ -768,6 +779,7 @@ def render_prompt_dev_prompts(options: PromptDevRenderOptions) -> dict[str, Any]
             include_abstention=options.include_abstention,
         )
     )
+    log.info("render: matrix rows=%s", matrix["counts"]["rows"])
     output_dir = options.output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
     prompts_path = output_dir / "prompt_dev_rendered_prompts.jsonl"
@@ -777,8 +789,9 @@ def render_prompt_dev_prompts(options: PromptDevRenderOptions) -> dict[str, Any]
     rendered_count = 0
     skipped_count = 0
     prompt_records: list[dict[str, Any]] = []
-    log = logging.getLogger("prompt_dev")
+    log.info("render: opening world-state store path=%s", options.world_state)
     with WorldStateStore(options.world_state, log) as world_store:
+        log.info("render: world-state store ready entries=%s", len(world_store))
         for record in eval_records:
             raw_case_id = record["id"]
             visible_case_id = visible_case_ids.get(raw_case_id, f"case_{_stable_hash(raw_case_id)[:12]}")
@@ -863,6 +876,7 @@ def render_prompt_dev_prompts(options: PromptDevRenderOptions) -> dict[str, Any]
                 prompt_records.append(prompt_record)
                 rendered_count += 1
 
+    log.info("render: writing prompt artifacts prompts=%s", rendered_count)
     with prompts_path.open("w", encoding="utf-8") as handle:
         for prompt_record in prompt_records:
             handle.write(json.dumps(prompt_record, ensure_ascii=False) + "\n")
@@ -898,6 +912,7 @@ def render_prompt_dev_prompts(options: PromptDevRenderOptions) -> dict[str, Any]
     }
     summary_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     review_path.write_text(_prompt_review_markdown(prompt_records, summary), encoding="utf-8")
+    log.info("render: done rendered=%s skipped=%s output_dir=%s", rendered_count, skipped_count, output_dir)
     return summary
 
 
@@ -1249,9 +1264,11 @@ def evaluate_prompt_dev_prompts(
     *,
     provider: ModelProvider | None = None,
 ) -> dict[str, Any]:
+    log = logging.getLogger("prompt_dev")
     output_dir = options.output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
     render_dir = output_dir / "rendered_prompts"
+    log.info("evaluate: rendering prompts into %s", render_dir)
     render_summary = render_prompt_dev_prompts(
         PromptDevRenderOptions(
             classified_benchmark=options.classified_benchmark,
@@ -1273,11 +1290,15 @@ def evaluate_prompt_dev_prompts(
             allow_core_example_risk=options.allow_core_example_risk,
         )
     )
+    log.info("evaluate: render complete rendered_prompts=%s", render_summary["counts"]["rendered_prompts"])
+    log.info("evaluate: loading rendered prompt records from %s", render_dir / "prompt_dev_rendered_prompts.jsonl")
     prompt_records = [
         record
         for record in iter_jsonl(render_dir / "prompt_dev_rendered_prompts.jsonl")
         if isinstance(record, dict)
     ]
+    log.info("evaluate: loaded prompt records=%s", len(prompt_records))
+    log.info("evaluate: loading eval records")
     eval_records = _load_manifest_records(
         options.classified_benchmark,
         options.dev_manifest,
@@ -1285,8 +1306,15 @@ def evaluate_prompt_dev_prompts(
         sample_strategy=options.sample_strategy,
         seed=options.seed,
     )
+    log.info("evaluate: loaded eval records=%s", len(eval_records))
     records_by_id = {record["id"]: record for record in eval_records if isinstance(record.get("id"), str)}
+    log.info("evaluate: creating model provider endpoint=%s model=%s", options.model_endpoint or "env", options.model_name or "env")
     provider = provider or create_model_provider(options.model_name, model_endpoint=options.model_endpoint)
+    log.info(
+        "evaluate: provider ready provider=%s model=%s",
+        getattr(provider, "provider_name", provider.__class__.__name__),
+        getattr(provider, "model", options.model_name or "unknown-model"),
+    )
     run_id = f"prompt_dev_eval_{datetime.now(UTC).strftime('%Y%m%dT%H%M%S')}"
     matrices: dict[str, dict[str, Any]] = {}
     prompt_counts = Counter()
@@ -1300,9 +1328,9 @@ def evaluate_prompt_dev_prompts(
             "model": getattr(provider, "model", options.model_name or "unknown-model"),
         },
     )
-
-    log = logging.getLogger("prompt_dev")
+    log.info("evaluate: opening world-state store path=%s", options.world_state)
     with WorldStateStore(options.world_state, log) as world_store:
+        log.info("evaluate: world-state store ready entries=%s; starting model requests", len(world_store))
         for prompt_record in prompt_records:
             matrix_id = prompt_record["matrix_id"]
             matrix_dir = output_dir / "matrices" / matrix_id
@@ -1406,9 +1434,11 @@ def evaluate_prompt_dev_prompts(
             )
 
     results: list[dict[str, Any]] = []
+    log.info("evaluate: model request loop complete status_counts=%s", dict(prompt_counts))
     for matrix_id, matrix_info in sorted(matrices.items()):
         matrix_dir = Path(matrix_info["output_dir"])
         unique_case_ids = sorted(set(matrix_info["case_ids"]))
+        log.info("evaluate: scoring matrix=%s cases=%s", matrix_id, len(unique_case_ids))
         if matrix_info["task"] == "repair_proposal":
             _write_missing_diagnosis_manifest_rows(
                 matrix_dir=matrix_dir,
@@ -1477,6 +1507,7 @@ def evaluate_prompt_dev_prompts(
         if evaluation_error is not None:
             result["evaluation_error"] = evaluation_error
         results.append(result)
+        log.info("evaluate: scored matrix=%s error=%s", matrix_id, evaluation_error or "none")
 
     summary = {
         "manifest_type": "prompt_dev_evaluation_summary",
@@ -1512,6 +1543,7 @@ def evaluate_prompt_dev_prompts(
         _evaluation_comparison_markdown(summary),
         encoding="utf-8",
     )
+    log.info("evaluate: wrote summary=%s comparison=%s", summary_path, output_dir / "prompt_dev_evaluation_comparison.md")
     return summary
 
 

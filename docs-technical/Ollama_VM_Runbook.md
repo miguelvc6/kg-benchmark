@@ -49,9 +49,10 @@ scp -r -o KexAlgorithms=curve25519-sha256 \
 Copy Phase F/G data and manifests:
 
 ```bash
-scp -o KexAlgorithms=curve25519-sha256 \
+scp -p -o KexAlgorithms=curve25519-sha256 \
   -i ~/.ssh/gpu-wu-h100_ed25519 \
   -P 32629 \
+  data/03_world_state.json \
   data/04_classified_benchmark.jsonl \
   mvazquez@137.208.33.107:~/kg-benchmark/data/
 ```
@@ -77,31 +78,9 @@ scp -o KexAlgorithms=curve25519-sha256 \
 Do not copy the local `.env` by default. It may contain Azure or university endpoint secrets that are not needed for the
 local Ollama path.
 
-## World-State Subset
-
-Phase F/G needs world-state data for prompt context and evaluator checks. The full `data/03_world_state.json` is not
-required if you only run the selected Phase F/G manifests. Create a compact subset locally:
-
-```bash
-UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python scripts/extract_world_state_subset.py \
-  --world-state data/03_world_state.json \
-  --manifest reports/benchmark_selection/dev_prompt_holdout_spec_v4_96_seed_17.json \
-  --manifest reports/benchmark_selection/core_v1_seed_13.json \
-  --output data/03_world_state_phase_f_g_subset.json
-```
-
-Then copy only the subset:
-
-```bash
-scp -o KexAlgorithms=curve25519-sha256 \
-  -i ~/.ssh/gpu-wu-h100_ed25519 \
-  -P 32629 \
-  data/03_world_state_phase_f_g_subset.json \
-  mvazquez@137.208.33.107:~/kg-benchmark/data/
-```
-
-The Phase F/G Ollama scripts default to `data/03_world_state_phase_f_g_subset.json`. Override `WORLD_STATE=...` only if
-you intentionally copied the full world-state artifact.
+The Phase F/G Ollama scripts default to the full `data/03_world_state.json` artifact. On first use the repository builds
+a SQLite lookup next to that file at `data/03_world_state.json.sqlite`; this can take a while but only needs to happen
+when the source file signature changes.
 
 ## VM Setup
 

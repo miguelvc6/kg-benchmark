@@ -11,11 +11,11 @@ fi
 UV_ENV="${UV_PROJECT_ENVIRONMENT:-.venv-vm}"
 OUTPUT_DIR="${OUTPUT_DIR:-reports/reasoning_floor/ollama_v4_spec_only_oracle}"
 PARALLEL_WORKERS="${PARALLEL_WORKERS:-${REASONING_FLOOR_PARALLEL_WORKERS:-1}}"
-WORLD_STATE_PATH="${WORLD_STATE:-data/03_world_state_phase_f_g_subset.json}"
+WORLD_STATE_PATH="${WORLD_STATE:-data/03_world_state.json}"
 
 if [[ ! -f "${WORLD_STATE_PATH}" ]]; then
   echo "World-state file not found: ${WORLD_STATE_PATH}" >&2
-  echo "Copy data/03_world_state.json or create a subset with scripts/extract_world_state_subset.py." >&2
+  echo "Copy the full data/03_world_state.json dataset to the VM, or override WORLD_STATE=..." >&2
   exit 1
 fi
 
