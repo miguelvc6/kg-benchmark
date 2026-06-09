@@ -1,0 +1,30 @@
+{
+  "counts": {
+    "by_context": {
+      "local_graph": 384,
+      "logic_only": 384
+    },
+    "by_task": {
+      "a_box_answerability": 96,
+      "a_box_operation_selection": 96,
+      "a_box_value_extraction": 96,
+      "t_box_action_selection": 96,
+      "t_box_constraint_family_selection": 96,
+      "t_box_signature_visibility": 96,
+      "track_locus_contrast": 192
+    },
+    "by_track": {
+      "A_BOX": 384,
+      "T_BOX": 384
+    },
+    "rendered_prompts": 768
+  },
+  "manifest_type": "prompt_dev_diagnostic_tasks_render_summary",
+  "manifest_version": "diagnostic_tasks_v1",
+  "note": "Rendered only. No model inference was run.",
+  "outputs": {
+    "prompts_jsonl": "reports/prompt_dev/diagnostic_tasks_v1_v4_ollama_holdout_rendered/diagnostic_tasks_rendered_prompts.jsonl",
+    "review_markdown": "reports/prompt_dev/diagnostic_tasks_v1_v4_ollama_holdout_rendered/diagnostic_tasks_prompt_review.md"
+  },
+  "source_run": "reports/prompt_dev/evaluation_prompt_dev_v4_spec_only_holdout96_ollama_zero_shot"
+}

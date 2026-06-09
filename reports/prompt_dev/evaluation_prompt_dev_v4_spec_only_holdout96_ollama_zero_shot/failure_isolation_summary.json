@@ -1,0 +1,160 @@
+{
+  "answers": {
+    "Are T-box failures mostly wrong family, wrong action, or impossible exact signature?": "They are mostly impossible exact-signature cases under compact temporal context, with remaining failures split as {'wrong_operation': 65, 'wrong_tbox_family': 13, 'parse_error': 3, 'accepted_non_exact': 15}. Target-family/action errors still exist but signature construction is intentionally not visible.",
+    "Are TypeA clean/rule cases failing despite answerable evidence?": "Yes. Answerable TypeA rows still fail exact repair in 15 of 48 repair-prompt rows.",
+    "Are TypeB local_graph cases failing despite visible local evidence?": "Yes. Local-graph TypeB answerable rows still fail exact repair in 2 of 5 rows.",
+    "Are TypeC cases being forced into hallucinated concrete repair?": "Yes. TypeC rows are rarely answerable and concrete failed repairs dominate: 23 of 24 TypeC repair-prompt rows.",
+    "Are evaluator metrics too strict for plausible non-exact T-box schema updates?": "Yes for exact historical agreement: compact-policy T-box prompts cannot infer exact signature_after. Family/action metrics are more scientifically meaningful for these rows."
+  },
+  "exact_accepted_by_gold_target_visible": {
+    "false": {
+      "accepted_or_non_exact_rate": 0.14960629921259844,
+      "exact_rate": 0.031496062992125984,
+      "n": 127
+    },
+    "true": {
+      "accepted_or_non_exact_rate": 0.5846153846153846,
+      "exact_rate": 0.5846153846153846,
+      "n": 65
+    }
+  },
+  "hallucinated_repairs_not_visible_gold_targets": {
+    "count": 3,
+    "examples": [
+      "repair_Q72476453_2424569289",
+      "repair_Q27270667_2424882729",
+      "repair_Q100538531_1295695148"
+    ]
+  },
+  "manifest_type": "prompt_dev_failure_isolation_summary",
+  "run_dir": "reports/prompt_dev/evaluation_prompt_dev_v4_spec_only_holdout96_ollama_zero_shot",
+  "t_box_failure_shape": {
+    "accepted_non_exact": 15,
+    "parse_error": 3,
+    "wrong_operation": 65,
+    "wrong_tbox_family": 13
+  },
+  "track_diagnosis_confusion_by_class": {
+    "A_BOX::TypeA": {
+      "AMBIGUOUS": 8,
+      "A_BOX": 40
+    },
+    "A_BOX::TypeB": {
+      "A_BOX": 24
+    },
+    "A_BOX::TypeC": {
+      "AMBIGUOUS": 1,
+      "A_BOX": 22,
+      "T_BOX": 1
+    },
+    "T_BOX::T_BOX": {
+      "AMBIGUOUS": 9,
+      "A_BOX": 78,
+      "T_BOX": 9
+    }
+  },
+  "track_diagnosis_confusion_by_subtype": {
+    "A_BOX::DELETE_AMBIGUOUS": {
+      "AMBIGUOUS": 1,
+      "A_BOX": 7
+    },
+    "A_BOX::EXTERNAL_BY_ELIMINATION": {
+      "AMBIGUOUS": 1,
+      "A_BOX": 6,
+      "T_BOX": 1
+    },
+    "A_BOX::FORMAT_NORMALIZATION": {
+      "AMBIGUOUS": 1,
+      "A_BOX": 7
+    },
+    "A_BOX::FORMAT_VALUE_PRUNING": {
+      "AMBIGUOUS": 4,
+      "A_BOX": 4
+    },
+    "A_BOX::LOCAL_FOCUS_NON_TARGET_PROPERTY": {
+      "A_BOX": 8
+    },
+    "A_BOX::LOCAL_SELECTION_CONFIRMED": {
+      "A_BOX": 8
+    },
+    "A_BOX::LOCAL_TEXT_DERIVED": {
+      "A_BOX": 8
+    },
+    "A_BOX::SELF_LINK_REJECTION": {
+      "A_BOX": 8
+    },
+    "A_BOX::SET_MEMBERSHIP_REJECTION": {
+      "AMBIGUOUS": 2,
+      "A_BOX": 6
+    },
+    "A_BOX::TARGET_REQUIRED_CLAIM": {
+      "A_BOX": 8
+    },
+    "A_BOX::UNKNOWN_BAD_TARGET_OR_CONTEXT": {
+      "A_BOX": 8
+    },
+    "A_BOX::UNKNOWN_SELECTION_AMBIGUOUS": {
+      "A_BOX": 8
+    },
+    "T_BOX::COINCIDENTAL_SCHEMA_CHANGE": {
+      "AMBIGUOUS": 1,
+      "A_BOX": 21,
+      "T_BOX": 2
+    },
+    "T_BOX::RELAXATION_SET_EXPANSION": {
+      "AMBIGUOUS": 4,
+      "A_BOX": 17,
+      "T_BOX": 3
+    },
+    "T_BOX::RESTRICTION_SET_CONTRACTION": {
+      "AMBIGUOUS": 2,
+      "A_BOX": 21,
+      "T_BOX": 1
+    },
+    "T_BOX::SCHEMA_UPDATE": {
+      "AMBIGUOUS": 2,
+      "A_BOX": 19,
+      "T_BOX": 3
+    }
+  },
+  "typea_answerable_failures": {
+    "count": 15,
+    "examples": [
+      "repair_Q20563062_2442324454",
+      "repair_Q2677285_2425228606",
+      "repair_Q2677285_2425228606",
+      "repair_Q135514524_2404099048",
+      "repair_Q72514377_2425438988",
+      "repair_Q72514377_2425438988",
+      "repair_Q77281_2297186429",
+      "repair_Q544767_2425344764",
+      "repair_Q544767_2425344764",
+      "repair_Q1872168_2297168391"
+    ]
+  },
+  "typeb_local_graph_answerable_failures": {
+    "count": 2,
+    "examples": [
+      "repair_Q1068701_2435145587",
+      "repair_Q110278679_2446687920"
+    ]
+  },
+  "typec_concrete_failed_repairs": {
+    "count": 23,
+    "denominator": 24,
+    "examples": [
+      "repair_Q3092348_1290289215",
+      "repair_Q3092348_1290289215",
+      "repair_Q72476453_2424569289",
+      "repair_Q72476453_2424569289",
+      "repair_Q213513_2309952651",
+      "repair_Q213513_2309952651",
+      "repair_Q113344064_2431863793",
+      "repair_Q113344064_2431863793",
+      "repair_Q40470175_2441937278",
+      "repair_Q40470175_2441937278"
+    ],
+    "rate": 0.9583333333333334
+  },
+  "verdict": "IMPLEMENT_TARGETED_V4"
+}

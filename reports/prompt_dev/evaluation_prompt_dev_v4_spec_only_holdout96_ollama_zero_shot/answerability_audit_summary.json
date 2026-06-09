@@ -1,0 +1,128 @@
+{
+  "by_track_context_status": {
+    "A_BOX::local_graph": {
+      "exact": 22,
+      "overdelete": 8,
+      "parse_error": 2,
+      "wrong_operation": 1,
+      "wrong_value": 15
+    },
+    "A_BOX::logic_only": {
+      "exact": 20,
+      "hallucinated_replacement": 3,
+      "overdelete": 7,
+      "parse_error": 1,
+      "wrong_operation": 2,
+      "wrong_value": 15
+    },
+    "T_BOX::local_graph": {
+      "accepted_non_exact": 8,
+      "wrong_operation": 33,
+      "wrong_tbox_family": 7
+    },
+    "T_BOX::logic_only": {
+      "accepted_non_exact": 7,
+      "parse_error": 3,
+      "wrong_operation": 32,
+      "wrong_tbox_family": 6
+    }
+  },
+  "counts": {
+    "by_class": {
+      "T_BOX": 96,
+      "TypeA": 48,
+      "TypeB": 24,
+      "TypeC": 24
+    },
+    "by_context": {
+      "local_graph": 96,
+      "logic_only": 96
+    },
+    "by_expected_behavior": {
+      "abstain": 23,
+      "conservative_remove": 2,
+      "diagnostic_only": 48,
+      "exact_repair": 47,
+      "schema_update_low_confidence": 72
+    },
+    "by_gold_target_visible": {
+      "False": 127,
+      "True": 65
+    },
+    "by_proposal_status": {
+      "accepted_non_exact": 15,
+      "exact": 42,
+      "hallucinated_replacement": 3,
+      "overdelete": 15,
+      "parse_error": 6,
+      "wrong_operation": 68,
+      "wrong_tbox_family": 13,
+      "wrong_value": 30
+    },
+    "by_subtype": {
+      "COINCIDENTAL_SCHEMA_CHANGE": 24,
+      "DELETE_AMBIGUOUS": 8,
+      "EXTERNAL_BY_ELIMINATION": 8,
+      "FORMAT_NORMALIZATION": 8,
+      "FORMAT_VALUE_PRUNING": 8,
+      "LOCAL_FOCUS_NON_TARGET_PROPERTY": 8,
+      "LOCAL_SELECTION_CONFIRMED": 8,
+      "LOCAL_TEXT_DERIVED": 8,
+      "RELAXATION_SET_EXPANSION": 24,
+      "RESTRICTION_SET_CONTRACTION": 24,
+      "SCHEMA_UPDATE": 24,
+      "SELF_LINK_REJECTION": 8,
+      "SET_MEMBERSHIP_REJECTION": 8,
+      "TARGET_REQUIRED_CLAIM": 8,
+      "UNKNOWN_BAD_TARGET_OR_CONTEXT": 8,
+      "UNKNOWN_SELECTION_AMBIGUOUS": 8
+    },
+    "by_track": {
+      "A_BOX": 96,
+      "T_BOX": 96
+    },
+    "rows": 192
+  },
+  "manifest_type": "prompt_dev_answerability_audit_summary",
+  "rates_by_gold_target_visible": {
+    "false": {
+      "accepted_or_non_exact": 19,
+      "accepted_or_non_exact_rate": 0.14960629921259844,
+      "by_status": {
+        "accepted_non_exact": 15,
+        "exact": 4,
+        "hallucinated_replacement": 3,
+        "overdelete": 3,
+        "parse_error": 4,
+        "wrong_operation": 65,
+        "wrong_tbox_family": 13,
+        "wrong_value": 20
+      },
+      "by_track": {
+        "A_BOX": 31,
+        "T_BOX": 96
+      },
+      "exact": 4,
+      "exact_rate": 0.031496062992125984,
+      "n": 127
+    },
+    "true": {
+      "accepted_or_non_exact": 38,
+      "accepted_or_non_exact_rate": 0.5846153846153846,
+      "by_status": {
+        "exact": 38,
+        "overdelete": 12,
+        "parse_error": 2,
+        "wrong_operation": 3,
+        "wrong_value": 10
+      },
+      "by_track": {
+        "A_BOX": 65
+      },
+      "exact": 38,
+      "exact_rate": 0.5846153846153846,
+      "n": 65
+    }
+  },
+  "run_dir": "reports/prompt_dev/evaluation_prompt_dev_v4_spec_only_holdout96_ollama_zero_shot"
+}
