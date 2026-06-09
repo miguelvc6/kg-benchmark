@@ -13,6 +13,10 @@ MAX_CASES="${MAX_CASES:-96}"
 OUTPUT_DIR="${OUTPUT_DIR:-reports/prompt_dev/evaluation_prompt_dev_v4_spec_only_holdout96_ollama_zero_shot}"
 UV_ENV="${UV_PROJECT_ENVIRONMENT:-.venv-vm}"
 WORLD_STATE_PATH="${WORLD_STATE:-data/03_world_state.json}"
+EXTRA_ARGS=()
+if [[ "${INCLUDE_ABSTENTION:-0}" == "1" ]]; then
+  EXTRA_ARGS+=(--include-abstention)
+fi
 
 if [[ ! -f "${WORLD_STATE_PATH}" ]]; then
   echo "World-state file not found: ${WORLD_STATE_PATH}" >&2
@@ -34,4 +38,5 @@ UV_PROJECT_ENVIRONMENT="${UV_ENV}" uv run python src/prompt_dev.py evaluate \
   --context-bundles "${CONTEXT_BUNDLES:-logic_only,local_graph}" \
   --tasks "${TASKS:-track_diagnosis,repair_proposal}" \
   --repair-track-modes "${REPAIR_TRACK_MODES:-oracle}" \
-  --retry-failures
+  --retry-failures \
+  "${EXTRA_ARGS[@]}"
