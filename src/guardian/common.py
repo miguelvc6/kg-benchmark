@@ -232,8 +232,10 @@ def normalize_uncertainty_payload(payload: Any) -> dict[str, Any] | None:
     if notes is None:
         notes = payload.get("rationale")
     if notes is not None:
-        if not isinstance(notes, str) or not notes.strip():
+        if not isinstance(notes, str):
             raise PatchValidationError("SCHEMA_VIOLATION", "uncertainty.notes must be a non-empty string when present.")
-        normalized["notes"] = notes.strip()
+        stripped_notes = notes.strip()
+        if stripped_notes:
+            normalized["notes"] = stripped_notes
     return normalized
 
