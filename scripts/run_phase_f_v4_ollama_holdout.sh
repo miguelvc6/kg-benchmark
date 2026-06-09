@@ -12,6 +12,13 @@ export PROMPT_DEV_VERSION="${PROMPT_DEV_VERSION:-prompt_dev_v4_spec_only}"
 MAX_CASES="${MAX_CASES:-96}"
 OUTPUT_DIR="${OUTPUT_DIR:-reports/prompt_dev/evaluation_prompt_dev_v4_spec_only_holdout96_ollama_zero_shot}"
 UV_ENV="${UV_PROJECT_ENVIRONMENT:-.venv-vm}"
+WORLD_STATE_PATH="${WORLD_STATE:-data/03_world_state_phase_f_g_subset.json}"
+
+if [[ ! -f "${WORLD_STATE_PATH}" ]]; then
+  echo "World-state file not found: ${WORLD_STATE_PATH}" >&2
+  echo "Copy data/03_world_state.json or create a subset with scripts/extract_world_state_subset.py." >&2
+  exit 1
+fi
 
 UV_PROJECT_ENVIRONMENT="${UV_ENV}" uv run python scripts/test_llm_endpoint.py ollama \
   --dotenv "${DOTENV_PATH:-.env.ollama.vm}" \
@@ -19,7 +26,7 @@ UV_PROJECT_ENVIRONMENT="${UV_ENV}" uv run python scripts/test_llm_endpoint.py ol
 
 UV_PROJECT_ENVIRONMENT="${UV_ENV}" uv run python src/prompt_dev.py evaluate \
   --classified-benchmark "${CLASSIFIED_BENCHMARK:-data/04_classified_benchmark.jsonl}" \
-  --world-state "${WORLD_STATE:-data/03_world_state.json}" \
+  --world-state "${WORLD_STATE_PATH}" \
   --dev-manifest "${DEV_MANIFEST:-reports/benchmark_selection/dev_prompt_holdout_spec_v4_96_seed_17.json}" \
   --core-manifest "${CORE_MANIFEST:-reports/benchmark_selection/core_v1_seed_13.json}" \
   --output-dir "${OUTPUT_DIR}" \

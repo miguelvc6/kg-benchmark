@@ -52,7 +52,6 @@ Copy Phase F/G data and manifests:
 scp -o KexAlgorithms=curve25519-sha256 \
   -i ~/.ssh/gpu-wu-h100_ed25519 \
   -P 32629 \
-  data/03_world_state.json \
   data/04_classified_benchmark.jsonl \
   mvazquez@137.208.33.107:~/kg-benchmark/data/
 ```
@@ -78,6 +77,32 @@ scp -o KexAlgorithms=curve25519-sha256 \
 Do not copy the local `.env` by default. It may contain Azure or university endpoint secrets that are not needed for the
 local Ollama path.
 
+## World-State Subset
+
+Phase F/G needs world-state data for prompt context and evaluator checks. The full `data/03_world_state.json` is not
+required if you only run the selected Phase F/G manifests. Create a compact subset locally:
+
+```bash
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python scripts/extract_world_state_subset.py \
+  --world-state data/03_world_state.json \
+  --manifest reports/benchmark_selection/dev_prompt_holdout_spec_v4_96_seed_17.json \
+  --manifest reports/benchmark_selection/core_v1_seed_13.json \
+  --output data/03_world_state_phase_f_g_subset.json
+```
+
+Then copy only the subset:
+
+```bash
+scp -o KexAlgorithms=curve25519-sha256 \
+  -i ~/.ssh/gpu-wu-h100_ed25519 \
+  -P 32629 \
+  data/03_world_state_phase_f_g_subset.json \
+  mvazquez@137.208.33.107:~/kg-benchmark/data/
+```
+
+The Phase F/G Ollama scripts default to `data/03_world_state_phase_f_g_subset.json`. Override `WORLD_STATE=...` only if
+you intentionally copied the full world-state artifact.
+
 ## VM Setup
 
 On the VM:
@@ -94,7 +119,25 @@ If Ollama is not installed and you want the script to install it:
 ALLOW_OLLAMA_INSTALL=1 MODEL=gpt-oss:120b bash scripts/vm_ollama_setup.sh
 ```
 
-The setup script starts `ollama serve` if needed, pulls the model, and writes `.env.ollama.vm`.
+The default install mode is user-local and does not require root. It downloads the official Linux package and extracts it
+under `~/.local`, then runs `~/.local/bin/ollama`. Current Ollama Linux packages are usually `.tar.zst`, so the VM needs
+`zstd` for this user-local extraction path. The script falls back to older `.tgz` or direct-binary URLs if available.
+
+Use the system installer only if you have root/sudo permissions:
+
+```bash
+OLLAMA_INSTALL_MODE=system ALLOW_OLLAMA_INSTALL=1 MODEL=gpt-oss:120b bash scripts/vm_ollama_setup.sh
+```
+
+The setup script writes `.env.ollama.vm`, starts `ollama serve` if needed, and pulls the model. If Ollama is not
+installed and `ALLOW_OLLAMA_INSTALL=1` is not set, the script exits after writing `.env.ollama.vm`.
+
+If the user-local install fails because the VM lacks `zstd`, blocks downloading, executing user-local binaries, binding
+`127.0.0.1:11434`, or accessing the H100 from the process, contact IT. The useful request is:
+
+> Please install or make available Ollama for this VM/user, install `zstd` if user-local extraction is expected, allow
+> running `ollama serve` on localhost, and confirm the process has access to the shared NVIDIA H100 through the installed
+> NVIDIA driver/container runtime.
 
 Smoke test:
 

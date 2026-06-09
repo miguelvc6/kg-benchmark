@@ -11,11 +11,18 @@ fi
 UV_ENV="${UV_PROJECT_ENVIRONMENT:-.venv-vm}"
 OUTPUT_DIR="${OUTPUT_DIR:-reports/reasoning_floor/ollama_v4_spec_only_oracle}"
 PARALLEL_WORKERS="${PARALLEL_WORKERS:-${REASONING_FLOOR_PARALLEL_WORKERS:-1}}"
+WORLD_STATE_PATH="${WORLD_STATE:-data/03_world_state_phase_f_g_subset.json}"
+
+if [[ ! -f "${WORLD_STATE_PATH}" ]]; then
+  echo "World-state file not found: ${WORLD_STATE_PATH}" >&2
+  echo "Copy data/03_world_state.json or create a subset with scripts/extract_world_state_subset.py." >&2
+  exit 1
+fi
 
 args=(
   src/reasoning_floor.py
   --classified-benchmark "${CLASSIFIED_BENCHMARK:-data/04_classified_benchmark.jsonl}"
-  --world-state "${WORLD_STATE:-data/03_world_state.json}"
+  --world-state "${WORLD_STATE_PATH}"
   --selection-manifest "${SELECTION_MANIFEST:-reports/benchmark_selection/core_v1_seed_13.json}"
   --output-dir "${OUTPUT_DIR}"
   --model-endpoint ollama
