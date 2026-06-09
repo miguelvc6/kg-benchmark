@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass
 from typing import Any
 
-PROMPT_DEV_VERSION = "prompt_dev_v3"
+PROMPT_DEV_VERSION = os.environ.get("PROMPT_DEV_VERSION", "prompt_dev_v4_spec_only")
+PROMPT_DEV_SCAFFOLDED_VERSION = "prompt_dev_v3_scaffolded"
 
 REPRESENTATIONS = (
     "hybrid_json_nl",
@@ -158,7 +160,101 @@ def _format_input_section(payload: dict[str, Any], representation: str) -> str:
     return f"{labels[representation]}:\n{render_payload(payload, representation)}"
 
 
-TRACK_DIAGNOSIS_CONTRACT = """Return exactly one JSON object:
+V4_TRACK_DIAGNOSIS_CONTRACT = """Return exactly one JSON object:
+{
+  "case_id": "<copy input id exactly; this is the neutral prompt-visible id>",
+  "predicted_track": "A_BOX" | "T_BOX" | "AMBIGUOUS",
+  "confidence": "low" | "medium" | "high" | "0.0-1.0 as a string",
+  "rationale": "<short evidence-based explanation>"
+}
+Definitions:
+- A_BOX means the repair edits a claim on the focus entity.
+- T_BOX means the repair edits a property constraint or schema rule.
+- AMBIGUOUS means the visible evidence is insufficient to determine whether the repair locus is the focus entity claim
+  or the property/schema rule.
+Evidence boundary:
+- Use only visible prompt evidence.
+- Do not infer hidden benchmark classes, subtypes, or historical labels.
+"""
+
+V4_A_BOX_REPAIR_CONTRACT = """Return exactly one JSON object:
+{
+  "case_id": "<copy input id exactly; this is the neutral prompt-visible id>",
+  "target": {"qid": "Q...", "pid": "P..."},
+  "ops": [
+    {
+      "op": "SET" | "ADD" | "REMOVE" | "DELETE_ALL",
+      "pid": "P...",
+      "value": "Q..." | "<literal>" | 123,
+      "rank": "normal" | "preferred" | "deprecated"
+    }
+  ],
+  "rationale": "<short evidence-based explanation>",
+  "provenance": [{"kind": "KG" | "OTHER", "node_id": "Q...", "snippet": "<visible evidence>"}],
+  "uncertainty": {"confidence": 0.0, "notes": "<short uncertainty note>"}
+}
+Field definitions:
+- target.qid is the focus entity identifier from the input.
+- target.pid is the target property identifier from the input.
+- ops is the ordered set of claim edits to the target property on the focus entity.
+- SET replaces the target property's value set with the supplied value.
+- ADD adds the supplied value to the target property.
+- REMOVE removes the supplied value from the target property.
+- DELETE_ALL removes all values for the target property.
+- provenance cites visible prompt evidence used for the proposal.
+- uncertainty records confidence and important visible-evidence limits.
+Evidence boundary:
+- Use only visible prompt evidence.
+- Replacement claim values must be ordinary claim values, not constraint-family identifiers, unless the prompt visibly
+  presents that identifier as the claim value itself.
+- Constraint-family QIDs, report-type QIDs, allowed-type QIDs, and ordinary entity/type QIDs have different roles; keep
+  those roles distinct.
+- Do not use hidden benchmark classes, subtypes, or historical labels.
+"""
+
+V4_T_BOX_REPAIR_CONTRACT = """Return exactly one JSON object:
+{
+  "case_id": "<copy input id exactly; this is the neutral prompt-visible id>",
+  "target": {"pid": "P...", "constraint_type_qid": "Q..."},
+  "proposal": {
+    "action": "RELAXATION_RANGE_WIDENED"
+      | "RESTRICTION_RANGE_NARROWED"
+      | "RELAXATION_SET_EXPANSION"
+      | "RESTRICTION_SET_CONTRACTION"
+      | "SCHEMA_UPDATE"
+      | "COINCIDENTAL_SCHEMA_CHANGE",
+    "signature_after": [
+      {
+        "constraint_qid": "Q...",
+        "snaktype": "VALUE" | "SOMEVALUE" | "NOVALUE",
+        "rank": "normal" | "preferred" | "deprecated",
+        "qualifiers": [{"property_id": "P...", "values": ["Q..." | "literal"]}]
+      }
+    ]
+  },
+  "rationale": "<short evidence-based explanation>",
+  "provenance": [{"kind": "KG" | "OTHER", "node_id": "Q...", "snippet": "<visible evidence>"}],
+  "uncertainty": {"confidence": 0.0, "notes": "<short uncertainty note>"}
+}
+Field definitions:
+- target.pid is the focus property identifier from the input.
+- target.constraint_type_qid is the constraint-family identifier being edited.
+- proposal.action must be one of the listed enum values.
+- proposal.signature_after is the proposed post-repair constraint signature when visible evidence supports specifying
+  one.
+- signature_after[*].constraint_qid is a constraint-family QID, not an ordinary item/type value.
+- signature_after[*].qualifiers[*].values are qualifier values inside the constraint signature.
+- provenance cites visible prompt evidence used for the proposal.
+- uncertainty records confidence and important visible-evidence limits.
+Evidence boundary:
+- Use only visible prompt evidence.
+- Keep constraint-family QIDs separate from ordinary entity/type QIDs and qualifier values.
+- Do not copy report_violation_type_qids into target.constraint_type_qid or signature_after unless the prompt visibly
+  presents the same QID in that schema role.
+- Do not use hidden benchmark classes, subtypes, or historical labels.
+"""
+
+V3_TRACK_DIAGNOSIS_CONTRACT = """Return exactly one JSON object:
 {
   "case_id": "<copy input id exactly; this is the neutral prompt-visible id>",
   "predicted_track": "A_BOX" | "T_BOX" | "AMBIGUOUS",
@@ -176,7 +272,7 @@ Decision rule:
   locus clearly.
 """
 
-A_BOX_REPAIR_CONTRACT = """Return exactly one JSON object:
+V3_A_BOX_REPAIR_CONTRACT = """Return exactly one JSON object:
 {
   "case_id": "<copy input id exactly; this is the neutral prompt-visible id>",
   "target": {"qid": "Q...", "pid": "P..."},
@@ -213,7 +309,7 @@ Operation rubric:
   and report low confidence.
 """
 
-T_BOX_REPAIR_CONTRACT = """Return exactly one JSON object:
+V3_T_BOX_REPAIR_CONTRACT = """Return exactly one JSON object:
 {
   "case_id": "<copy input id exactly; this is the neutral prompt-visible id>",
   "target": {"pid": "P...", "constraint_type_qid": "Q..."},
@@ -240,22 +336,6 @@ T_BOX_REPAIR_CONTRACT = """Return exactly one JSON object:
 Do not put report_violation_type_qids into signature_after unless those QIDs are visible semantic changed constraint
 values in the supplied constraint context. If exact post-reform schema values are not visible, choose action
 SCHEMA_UPDATE with low confidence rather than inventing an exact signature.
-
-Action decision tree:
-- RELAXATION_SET_EXPANSION: visible evidence shows the allowed set became larger.
-- RESTRICTION_SET_CONTRACTION: visible evidence shows the allowed set became smaller.
-- RELAXATION_RANGE_WIDENED: visible evidence shows numeric/date bounds became wider.
-- RESTRICTION_RANGE_NARROWED: visible evidence shows numeric/date bounds became narrower.
-- SCHEMA_UPDATE: the schema changed but exact direction or post-reform values are not visible.
-- COINCIDENTAL_SCHEMA_CHANGE: a schema change is visible but the evidence does not support a causal repair for the
-  reported violation.
-
-Signature discipline:
-- Do not invent a full signature_after.
-- Do not copy violating item/type QIDs or report_violation_type_qids into signature_after unless they are visible
-  changed constraint values.
-- If the prompt exposes compact_inventory_no_pre_change_signature, exact post-reform values are not visible; prefer
-  SCHEMA_UPDATE with low confidence and an empty signature_after unless a changed constraint value is explicitly shown.
 """
 
 ABSTENTION_CONTRACT = """If the visible evidence is insufficient, return exactly:
@@ -285,45 +365,72 @@ def render_prompt_dev_prompt(
         raise ValueError(f"Unsupported Phase F representation: {representation}")
 
     examples = examples or []
-    prompt_name = f"{PROMPT_DEV_VERSION}_{task}_{representation}"
+    version = PROMPT_DEV_VERSION
+    if version == "prompt_dev_v3":
+        version = PROMPT_DEV_SCAFFOLDED_VERSION
+    if version not in {"prompt_dev_v4_spec_only", PROMPT_DEV_SCAFFOLDED_VERSION}:
+        raise ValueError(f"Unsupported prompt development version: {version}")
+    prompt_name = f"{version}_{task}_{representation}"
     system_prompt = (
         "You are evaluating knowledge-graph repair capability under a controlled benchmark prompt. "
         "Use only the evidence in the prompt. Return valid JSON only; no markdown and no code fences. "
         "Do not include <think> tags, chain-of-thought, markdown, or text before/after JSON."
     )
     if task == "track_diagnosis":
-        task_instruction = (
-            "Decide whether the visible historical repair case should be treated as A_BOX, T_BOX, or AMBIGUOUS. "
-            "A_BOX edits the focus entity claim. T_BOX edits the property constraint or schema rule. "
-            "AMBIGUOUS means the visible evidence does not support choosing safely. "
-            "A constraint report alone does not imply T_BOX, but property-level schema-change evidence does. "
-            "Decide based on likely repair locus."
-        )
-        contract = TRACK_DIAGNOSIS_CONTRACT
+        if version == PROMPT_DEV_SCAFFOLDED_VERSION:
+            task_instruction = (
+                "Decide whether the visible historical repair case should be treated as A_BOX, T_BOX, or AMBIGUOUS. "
+                "A_BOX edits the focus entity claim. T_BOX edits the property constraint or schema rule. "
+                "AMBIGUOUS means the visible evidence does not support choosing safely. "
+                "A constraint report alone does not imply T_BOX, but property-level schema-change evidence does. "
+                "Decide based on likely repair locus."
+            )
+            contract = V3_TRACK_DIAGNOSIS_CONTRACT
+        else:
+            task_instruction = (
+                "Classify the repair locus using only visible evidence. A_BOX edits a focus-entity claim. "
+                "T_BOX edits a property constraint or schema rule. AMBIGUOUS means the visible evidence is not enough "
+                "to choose between those repair loci."
+            )
+            contract = V4_TRACK_DIAGNOSIS_CONTRACT
     elif task == "a_box_repair":
-        task_instruction = (
-            "Propose an executable A-box repair transaction for the focus entity and target property. "
-            "Choose values only from visible target-value evidence. Preserve useful values when the evidence supports "
-            "them; use targeted REMOVE instead of DELETE_ALL when only one visible value is bad."
-        )
-        contract = A_BOX_REPAIR_CONTRACT
+        if version == PROMPT_DEV_SCAFFOLDED_VERSION:
+            task_instruction = (
+                "Propose an executable A-box repair transaction for the focus entity and target property. "
+                "Choose values only from visible target-value evidence. Preserve useful values when the evidence "
+                "supports them; use targeted REMOVE instead of DELETE_ALL when only one visible value is bad."
+            )
+            contract = V3_A_BOX_REPAIR_CONTRACT
+        else:
+            task_instruction = (
+                "Propose an executable A-box repair transaction for the focus entity and target property. "
+                "Use only visible evidence and the output contract."
+            )
+            contract = V4_A_BOX_REPAIR_CONTRACT
     else:
-        task_instruction = (
-            "Propose an executable T-box schema reform for the focus property. "
-            "Use constraint-family QIDs from the supplied context as constraint_type_qid values. "
-            "Do not copy ordinary entity/type QIDs into constraint-family fields. "
-            "Do not treat report_violation_type_qids as the repaired constraint signature unless the same QIDs are "
-            "visible changed constraint values. Prefer SCHEMA_UPDATE with low confidence when exact direction or "
-            "post-reform values are not visible."
-        )
-        contract = T_BOX_REPAIR_CONTRACT
+        if version == PROMPT_DEV_SCAFFOLDED_VERSION:
+            task_instruction = (
+                "Propose an executable T-box schema reform for the focus property. "
+                "Use constraint-family QIDs from the supplied context as constraint_type_qid values. "
+                "Do not copy ordinary entity/type QIDs into constraint-family fields. "
+                "Do not treat report_violation_type_qids as the repaired constraint signature unless the same QIDs are "
+                "visible changed constraint values. Prefer SCHEMA_UPDATE with low confidence when exact direction or "
+                "post-reform values are not visible."
+            )
+            contract = V3_T_BOX_REPAIR_CONTRACT
+        else:
+            task_instruction = (
+                "Propose an executable T-box schema reform for the focus property. Use only visible evidence and keep "
+                "constraint-family identifiers distinct from ordinary entity/type values."
+            )
+            contract = V4_T_BOX_REPAIR_CONTRACT
 
     if include_abstention and task != "track_diagnosis":
         contract = f"{contract}\nOptional abstention contract:\n{ABSTENTION_CONTRACT}"
 
     user_prompt = "\n\n".join(
         [
-            f"Prompt version: {PROMPT_DEV_VERSION}",
+            f"Prompt version: {version}",
             f"Representation: {representation}",
             f"Task: {task}",
             task_instruction,

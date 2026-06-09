@@ -276,12 +276,18 @@ historical reform subtype when the proposed schema-change family is otherwise co
 
 For new reasoning-floor runs, T-box normalization is also strict about constraint-family IDs. The runner passes a case-local allowlist into the T-box parser, so malformed outputs such as entity/type QIDs used in `constraint_type_qid` become proposal `parse_error` rows and are omitted from normalized T-box proposal JSONL artifacts.
 
-The shared zero-shot prompt templates now follow the Phase F `prompt_dev_v3` failure-taxonomy discipline: A-box prompts
-forbid using constraint/type/report QIDs as replacement claim values unless they are explicit target-value evidence,
-preserve retained values, and prefer targeted removal over deleting all values when only one visible value is bad. T-box
-prompts include an action decision tree and instruct the model not to invent `signature_after` under compact temporal
-context. Track-diagnosis prompts warn that constraint-report vocabulary alone does not imply T-box, while visible
-property-level schema-change evidence should support T-box.
+The shared zero-shot prompt templates now follow the Phase F `prompt_dev_v4_spec_only` discipline. They define task
+contracts, field semantics, neutral case IDs, visible-evidence boundaries, and the distinction between constraint-family
+QIDs and ordinary entity/type QIDs. They deliberately do not include dev-set failure-mode recipes, hidden class/subtype
+names, targeted operation heuristics, answerability-audit rules, or scaffolded v3 strategy language.
+
+The T-box temporal policy is enforced in the payload builder rather than as prompt strategy language. Phase G prompts
+show pre-reform constraints when a `signature_before` exists; otherwise they show a compact constraint-family inventory
+and visible violation context. Internal audit metadata records which policy was used, but model-visible prompt payloads
+do not expose policy labels such as `compact_inventory_no_pre_change_signature`.
+
+`prompt_dev_v3_scaffolded` remains a Phase F diagnostic ablation only. It must not be used as the Phase G main prompt
+solely because it scores higher on dev or holdout.
 
 Grouped and overall summaries now expose metric applicability counts so T-box-only metrics can be interpreted with their true denominator.
 

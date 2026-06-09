@@ -1055,24 +1055,28 @@ class ReasoningFloorTests(unittest.TestCase):
         self.assertNotIn("Q_CONSTRAINT_", template.user_prompt_template)
         self.assertNotIn("Q_ITEM_", template.user_prompt_template)
         self.assertNotIn("reform_case", template.user_prompt_template)
-        self.assertIn("constraint-family QIDs from the supplied constraint context", template.user_prompt_template)
-        self.assertIn("Do not copy violating entity or type QIDs into constraint_type_qid", template.user_prompt_template)
-        self.assertIn("Action decision tree", template.user_prompt_template)
-        self.assertIn("compact_inventory_no_pre_change_signature", template.user_prompt_template)
-        self.assertIn("Do not invent a full signature_after", template.user_prompt_template)
+        self.assertIn("constraint-family QIDs", template.user_prompt_template)
+        self.assertIn("ordinary entity/type QIDs", template.user_prompt_template)
+        self.assertIn("target.constraint_type_qid is the constraint-family identifier", template.user_prompt_template)
+        self.assertNotIn("Action decision tree", template.user_prompt_template)
+        self.assertNotIn("compact_inventory_no_pre_change_signature", template.user_prompt_template)
+        self.assertNotIn("Do not invent a full signature_after", template.user_prompt_template)
 
-    def test_a_box_prompt_template_includes_value_source_and_operation_rubric(self) -> None:
+    def test_a_box_prompt_template_is_spec_only(self) -> None:
         template = get_prompt_template("reasoning_floor_a_box_zero_shot")
-        self.assertIn("Replacement values must come from visible old-value normalization", template.user_prompt_template)
-        self.assertIn("Do not use constraint-family QIDs", template.user_prompt_template)
-        self.assertIn("Preserve retained values", template.user_prompt_template)
+        self.assertIn("SET replaces the target property's value set", template.user_prompt_template)
+        self.assertIn("Use only visible prompt evidence", template.user_prompt_template)
+        self.assertIn("Constraint-family QIDs, report-type QIDs", template.user_prompt_template)
+        self.assertNotIn("targeted REMOVE", template.user_prompt_template)
+        self.assertNotIn("TypeC", template.user_prompt_template)
 
-    def test_track_diagnosis_prompt_template_includes_schema_vs_claim_guidance(self) -> None:
+    def test_track_diagnosis_prompt_template_is_spec_only(self) -> None:
         template = get_prompt_template("reasoning_floor_track_diagnosis_zero_shot")
-        self.assertIn("A constraint report alone does not imply T_BOX", template.user_prompt_template)
-        self.assertIn("Allowed-entity-types, property-scope, one-of, range", template.user_prompt_template)
-        self.assertIn("If a property currently allows only certain entity types", template.user_prompt_template)
-        self.assertIn("predict AMBIGUOUS", template.user_prompt_template)
+        self.assertIn("A_BOX means the fix should change the claim", template.user_prompt_template)
+        self.assertIn("T_BOX means the fix should reform", template.user_prompt_template)
+        self.assertIn("Do not infer hidden benchmark classes", template.user_prompt_template)
+        self.assertNotIn("A constraint report alone does not imply T_BOX", template.user_prompt_template)
+        self.assertNotIn("Contrastive examples", template.user_prompt_template)
 
     def test_cli_defaults_skip_minimal_case(self) -> None:
         module_path = Path(__file__).resolve().parents[1] / "src" / "reasoning_floor.py"

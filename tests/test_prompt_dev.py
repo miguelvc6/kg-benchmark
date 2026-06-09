@@ -612,7 +612,7 @@ class PromptDevTests(unittest.TestCase):
             self.assertGreater(summary["counts"]["unique_qids"], 4)
             self.assertGreater(summary["counts"]["unique_properties"], 4)
 
-    def test_prompt_dev_v3_templates_include_failure_taxonomy_rules(self) -> None:
+    def test_prompt_dev_v4_templates_are_spec_only(self) -> None:
         a_box = render_prompt_dev_prompt(
             task="a_box_repair",
             representation="hybrid_json_nl",
@@ -629,15 +629,17 @@ class PromptDevTests(unittest.TestCase):
             case_payload={"id": "case_000001"},
         )
 
-        self.assertIn("Prompt version: prompt_dev_v3", a_box.user_prompt)
-        self.assertIn("Replacement values must come from visible old-value normalization", a_box.user_prompt)
-        self.assertIn("Preserve retained values", a_box.user_prompt)
-        self.assertIn("targeted REMOVE", a_box.user_prompt)
-        self.assertIn("Action decision tree", t_box.user_prompt)
-        self.assertIn("compact_inventory_no_pre_change_signature", t_box.user_prompt)
-        self.assertIn("Do not invent a full signature_after", t_box.user_prompt)
-        self.assertIn("A constraint report alone does not imply T_BOX", diagnosis.user_prompt)
-        self.assertIn("property-level schema-change evidence", diagnosis.user_prompt)
+        combined = "\n".join([a_box.user_prompt, t_box.user_prompt, diagnosis.user_prompt])
+        self.assertIn("Prompt version: prompt_dev_v4_spec_only", a_box.user_prompt)
+        self.assertIn("SET replaces the target property's value set", a_box.user_prompt)
+        self.assertIn("Constraint-family QIDs, report-type QIDs", a_box.user_prompt)
+        self.assertIn("target.constraint_type_qid is the constraint-family identifier", t_box.user_prompt)
+        self.assertIn("A_BOX means the repair edits a claim", diagnosis.user_prompt)
+        self.assertNotIn("TypeC", combined)
+        self.assertNotIn("targeted REMOVE", combined)
+        self.assertNotIn("Action decision tree", combined)
+        self.assertNotIn("compact_inventory_no_pre_change_signature", combined)
+        self.assertNotIn("property-level schema-change evidence", combined)
 
 
 if __name__ == "__main__":

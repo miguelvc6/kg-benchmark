@@ -10,7 +10,12 @@ Prompt text and representation renderers live in:
 
 This script defines the Phase F prompt version, supported representations, task contracts, optional abstention contract, and prompt rendering function. Keep prompt wording changes there so templates are easy to review before any main-core run.
 
-Current prompt candidate: `prompt_dev_v3`.
+Current main prompt candidate: `prompt_dev_v4_spec_only`.
+
+Prompt validity is governed by `reports/prompt_dev/prompt_validity_charter.md`. The main prompt may define tasks,
+fields, operation semantics, the visible-evidence boundary, JSON contracts, and neutral placeholder examples. It must
+not encode hidden benchmark classes/subtypes, answerability-audit rules, dev-set repair recipes, or prompt wording
+optimized to known dev failures.
 
 `prompt_dev_v2` was introduced after the 96-case zero-shot failure taxonomy found systematic prompt-level failures:
 
@@ -21,8 +26,8 @@ Current prompt candidate: `prompt_dev_v3`.
 - Track diagnosis over-predicted T-box from constraint-report vocabulary alone.
 
 The v2 canary sharply reduced T-box invented-signature and unsupported-directional-action failures, but it regressed
-A-box over-deletion and track diagnosis. `prompt_dev_v3` keeps the v2 T-box discipline and revises the A-box and
-diagnosis wording:
+A-box over-deletion and track diagnosis. `prompt_dev_v3_scaffolded` keeps the v2 T-box discipline and revises the A-box
+and diagnosis wording:
 
 - A-box prompts now prefer targeted `REMOVE` over `DELETE_ALL` when only one visible value is bad.
 - A-box prompts explicitly preserve retained values and reserve `DELETE_ALL` for evidence that all current values should
@@ -30,7 +35,20 @@ diagnosis wording:
 - Track diagnosis still warns that a constraint report alone does not imply T-box, but also states that visible
   property-level schema-change evidence should support T-box.
 
-This is a dev-only candidate prompt, not a frozen Phase G prompt.
+`prompt_dev_v3_scaffolded` is retained as a diagnostic ablation only. It is not the main Phase G reasoning-floor prompt
+candidate, even if it scores higher than a clean specification prompt.
+
+`prompt_dev_v4_spec_only` removes scaffolded failure-mode strategies and keeps only the task specification, output
+schemas, field definitions, QID role separation, and visible-evidence boundary. It is the fair main candidate for a
+Phase G dry run if it is operationally stable on a disjoint dev holdout.
+
+T-box context still follows the pre-reform temporal policy: prompts expose `signature_before` constraints when they are
+available, otherwise they expose only a compact constraint-family inventory plus visible violation context. The
+implementation records the chosen temporal policy in internal audit metadata only; model-visible prompt payloads do not
+include policy labels such as `compact_inventory_no_pre_change_signature`.
+
+To explicitly render or evaluate the scaffolded ablation, set `PROMPT_DEV_VERSION=prompt_dev_v3_scaffolded` in the
+environment for that command. The default is `prompt_dev_v4_spec_only`.
 
 Supported representations:
 

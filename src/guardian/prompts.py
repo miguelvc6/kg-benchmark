@@ -54,22 +54,21 @@ Rules:
 - Copy the focus entity/property into target.qid and target.pid.
 - Use only the contract fields above. Do not wrap the answer in keys like "proposal_id", "repair_id",
   "summary", "actions", "patch", "current_state", or "proposal".
-- Replacement values must come from visible old-value normalization, visible local evidence, retained values, or
-  explicit prompt evidence for the target value.
-- Do not use constraint-family QIDs, allowed-type QIDs, report type QIDs, or constraint class QIDs as replacement claim
-  values unless that QID is explicitly visible as target value evidence.
-- Do not invent a new entity value. If no replacement value is visible, remove only the specific visible bad value; do
-  not delete retained values.
-- Use SET when the final target property should contain exactly one visible value.
-- Use ADD only to add a visible missing value while preserving existing retained values.
-- Use REMOVE to remove a specific visible bad value while preserving all other retained values.
-- Use DELETE_ALL only when the prompt evidence shows every current target value should be removed and no retained value
-  remains.
-- If evidence is insufficient for a replacement value, a targeted REMOVE is safer than SET to a constraint/type QID or
-  DELETE_ALL.
-- Preserve retained values. Do not over-delete merely to satisfy a constraint.
-- For TypeC or unknown/insufficient-evidence cases, avoid hallucinated replacements; make the smallest visible repair
-  and report low confidence.
+- target.qid is the focus entity identifier from the input.
+- target.pid is the target property identifier from the input.
+- ops is the ordered set of claim edits to the target property on the focus entity.
+- SET replaces the target property's value set with the supplied value.
+- ADD adds the supplied value to the target property.
+- REMOVE removes the supplied value from the target property.
+- DELETE_ALL removes all values for the target property.
+- provenance cites visible prompt evidence used for the proposal.
+- uncertainty records confidence and important visible-evidence limits.
+- Use only visible prompt evidence.
+- Replacement claim values must be ordinary claim values, not constraint-family identifiers, unless the prompt visibly
+  presents that identifier as the claim value itself.
+- Constraint-family QIDs, report-type QIDs, allowed-type QIDs, and ordinary entity/type QIDs have different roles; keep
+  those roles distinct.
+- Do not use hidden benchmark classes, subtypes, or historical labels.
 - Output valid JSON only. No markdown. No code fences.
 
 Example:
@@ -131,32 +130,26 @@ Also include: "rationale", "provenance", and "uncertainty".
 Rules:
 - Copy "case_id" exactly from the input case.
 - Copy the focus property into target.pid.
-- Use constraint-family QIDs from the supplied constraint context.
 - target.constraint_type_qid and every proposal.signature_after[*].constraint_qid must be constraint-family QIDs
   from the supplied constraint context, not ordinary entity/type/item QIDs.
-- Use the historically relevant constraint family in target.constraint_type_qid.
 - Keep the target constraint family separate from qualifier values. Qualifier values are the item/type/range/pattern
   values inside the constraint, not the constraint family itself.
 - Use only the contract fields above. Do not wrap the answer in keys like "proposal_id", "summary", "changes",
   "recommended_changes", or "proposed_changes".
 - proposal.action must be one of the listed enum values.
-- Do not copy violating entity or type QIDs into constraint_type_qid or signature_after.
-- Do not copy report_violation_type_qids into constraint_type_qid or signature_after unless that same QID is
-  explicitly present as a semantic changed constraint value in the supplied context.
-- If exact post-change schema values are not visible, choose SCHEMA_UPDATE with low confidence rather than inventing
-  an exact signature_after.
-- If the payload supports a narrower directional reform family, prefer it. Use SCHEMA_UPDATE when the payload shows
-  a schema change but does not justify a narrower family confidently.
-- Action decision tree:
-  - RELAXATION_SET_EXPANSION: visible evidence shows the allowed set became larger.
-  - RESTRICTION_SET_CONTRACTION: visible evidence shows the allowed set became smaller.
-  - RELAXATION_RANGE_WIDENED: visible evidence shows numeric/date bounds became wider.
-  - RESTRICTION_RANGE_NARROWED: visible evidence shows numeric/date bounds became narrower.
-  - SCHEMA_UPDATE: the schema changed but exact direction or post-reform values are not visible.
-  - COINCIDENTAL_SCHEMA_CHANGE: a schema change is visible but the evidence does not support a causal repair for the
-    reported violation.
-- Do not invent a full signature_after. If the input uses compact_inventory_no_pre_change_signature, prefer
-  SCHEMA_UPDATE with low confidence and an empty signature_after unless a changed constraint value is explicitly shown.
+- target.pid is the focus property identifier from the input.
+- target.constraint_type_qid is the constraint-family identifier being edited.
+- proposal.signature_after is the proposed post-repair constraint signature when visible evidence supports specifying
+  one.
+- signature_after[*].constraint_qid is a constraint-family QID, not an ordinary item/type value.
+- signature_after[*].qualifiers[*].values are qualifier values inside the constraint signature.
+- provenance cites visible prompt evidence used for the proposal.
+- uncertainty records confidence and important visible-evidence limits.
+- Use only visible prompt evidence.
+- Keep constraint-family QIDs separate from ordinary entity/type QIDs and qualifier values.
+- Do not copy report_violation_type_qids into target.constraint_type_qid or signature_after unless the prompt visibly
+  presents the same QID in that schema role.
+- Do not use hidden benchmark classes, subtypes, or historical labels.
 - Output valid JSON only. No markdown. No code fences.
 
 Template example 1 (placeholders, not literal ids):
@@ -240,26 +233,10 @@ Rules:
 - A_BOX means the fix should change the claim on the focus entity.
 - T_BOX means the fix should reform the property constraint or schema rule itself.
 - AMBIGUOUS means the visible evidence is insufficient to choose safely between claim repair and schema reform.
-- Diagnose the likely repair locus, not the vocabulary of the report.
-- A constraint report alone does not imply T_BOX. If the likely fix is to change, remove, or normalize the focus
-  entity's claim value, choose A_BOX.
-- Choose T_BOX when the visible evidence points to a property-level rule change, such as changed constraint families,
-  schema-change context, or a report that is better resolved by editing the constraint than by editing one entity.
-- Do not use AMBIGUOUS merely because the case is hard; use it only when the visible evidence supports neither repair
-  locus clearly.
-- Allowed-entity-types, property-scope, one-of, range, and similar constraint disputes are T_BOX when the intended
-  fix is to edit the property constraint, even if the report mentions concrete violating items or types.
-- A case is not automatically A_BOX just because the violation report cites item QIDs.
+- Use only visible prompt evidence.
+- Do not infer hidden benchmark classes, subtypes, or historical labels.
 - If you include confidence, prefer a string such as "high" or "0.90".
 - Output valid JSON only. No markdown. No code fences.
-
-Contrastive examples:
-- If a property currently allows only certain entity types and the fix is to change that allowed-types constraint,
-  predict T_BOX.
-- If a focus entity has the wrong P31/P279/value and the fix is to replace or delete that claim on the entity,
-  predict A_BOX.
-- If the report suggests both a bad claim and a possibly bad constraint but the payload does not support choosing one,
-  predict AMBIGUOUS.
 
 Input case:
 {payload_json}
