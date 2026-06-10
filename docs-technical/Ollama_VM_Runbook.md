@@ -88,7 +88,7 @@ On the VM:
 
 ```bash
 cd ~/kg-benchmark
-uv sync --extra dev
+UV_PROJECT_ENVIRONMENT=.venv-vm uv sync --extra dev
 MODEL=gpt-oss:120b bash scripts/vm_ollama_setup.sh
 ```
 
@@ -152,12 +152,16 @@ MAX_CASES=16 OUTPUT_DIR=reports/reasoning_floor/ollama_v4_spec_only_oracle_dry_r
   bash scripts/run_phase_g_ollama_oracle.sh
 ```
 
-If the dry run is stable, run the full core oracle run by omitting `MAX_CASES`:
+The wrapper refuses to run the full selected core set unless full-core execution is explicitly approved. If the dry run
+is stable and full Phase G oracle scoring has been approved, run:
 
 ```bash
-OUTPUT_DIR=reports/reasoning_floor/ollama_v4_spec_only_oracle_core \
+ALLOW_FULL_CORE_RUN=1 OUTPUT_DIR=reports/reasoning_floor/ollama_v4_spec_only_oracle_core \
   bash scripts/run_phase_g_ollama_oracle.sh
 ```
+
+Do not omit `MAX_CASES` for exploratory dry runs. A bare wrapper invocation is intentionally blocked unless
+`ALLOW_FULL_CORE_RUN=1` is set.
 
 Use `PROPOSAL_TRACK_MODE=diagnosis_routed` only as an ablation after oracle mode is stable.
 

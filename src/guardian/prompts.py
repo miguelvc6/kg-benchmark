@@ -45,13 +45,14 @@ PROMPT_TEMPLATES: dict[str, PromptTemplate] = {
 
 Also include: "rationale", "provenance", and "uncertainty".
 "provenance" must be an array of objects such as:
-[{"kind":"KG","node_id":"Q5","snippet":"historical target"}]
+[{"kind":"KG","node_id":"<visible node id>","snippet":"<visible evidence>"}]
 "uncertainty" must be an object such as:
-{"confidence": 0.15, "notes": "Low confidence because only local evidence is visible."}
+{"confidence": 0.0, "notes": "<short uncertainty note>"}
 
 Rules:
 - Copy "case_id" exactly from the input case.
 - Copy the focus entity/property into target.qid and target.pid.
+- A_BOX means this proposal edits claim values on the focus entity, not the property constraint/schema rule.
 - Use only the contract fields above. Do not wrap the answer in keys like "proposal_id", "repair_id",
   "summary", "actions", "patch", "current_state", or "proposal".
 - target.qid is the focus entity identifier from the input.
@@ -70,18 +71,6 @@ Rules:
   those roles distinct.
 - Do not use hidden benchmark classes, subtypes, or historical labels.
 - Output valid JSON only. No markdown. No code fences.
-
-Example:
-{
-  "case_id": "case_000001",
-  "target": {"qid": "Q1", "pid": "P31"},
-  "ops": [
-    {"op": "SET", "pid": "P31", "value": "Q5"}
-  ],
-  "rationale": "Replace the invalid type with the historical repaired value.",
-  "provenance": [{"kind": "KG", "node_id": "Q5", "snippet": "visible target evidence"}],
-  "uncertainty": {"confidence": 0.15, "notes": "The local constraint context is sparse."}
-}
 
 Input case:
 {payload_json}
@@ -125,11 +114,12 @@ Also include: "rationale", "provenance", and "uncertainty".
 "provenance" must be an array of objects such as:
 [{"kind":"KG","node_id":"<constraint family qid from input>","snippet":"current constraint family"}]
 "uncertainty" must be an object such as:
-{"confidence": 0.20, "notes": "The exact historical signature may have alternative equivalent forms."}
+{"confidence": 0.0, "notes": "<short uncertainty note>"}
 
 Rules:
 - Copy "case_id" exactly from the input case.
 - Copy the focus property into target.pid.
+- T_BOX means this proposal edits a property constraint or schema rule, not the violating claim on the focus entity.
 - target.constraint_type_qid and every proposal.signature_after[*].constraint_qid must be constraint-family QIDs
   from the supplied constraint context, not ordinary entity/type/item QIDs.
 - Keep the target constraint family separate from qualifier values. Qualifier values are the item/type/range/pattern
@@ -151,60 +141,6 @@ Rules:
   presents the same QID in that schema role.
 - Do not use hidden benchmark classes, subtypes, or historical labels.
 - Output valid JSON only. No markdown. No code fences.
-
-Template example 1 (placeholders, not literal ids):
-{
-  "case_id": "case_000001",
-  "target": {"pid": "P_TARGET", "constraint_type_qid": "<constraint family qid from input>"},
-  "proposal": {
-    "action": "RELAXATION_SET_EXPANSION",
-    "signature_after": [
-      {
-        "constraint_qid": "<same constraint family qid>",
-        "snaktype": "VALUE",
-        "rank": "normal",
-        "qualifiers": [
-          {
-            "property_id": "P2305",
-            "values": ["<item qid a>", "<item qid b>"]
-          }
-        ]
-      }
-    ]
-  },
-  "rationale": "Expand the allowed set by editing the constraint family, not by changing the violating claim directly.",
-  "provenance": [
-    {"kind": "KG", "node_id": "<constraint family qid from input>", "snippet": "visible constraint family"}
-  ],
-  "uncertainty": {"confidence": 0.20, "notes": "The exact historical signature may have equivalent reorderings."}
-}
-
-Template example 2 (placeholders, not literal ids):
-{
-  "case_id": "case_000001",
-  "target": {"pid": "P_TARGET", "constraint_type_qid": "<constraint family qid from input>"},
-  "proposal": {
-    "action": "RESTRICTION_SET_CONTRACTION",
-    "signature_after": [
-      {
-        "constraint_qid": "<same constraint family qid>",
-        "snaktype": "VALUE",
-        "rank": "normal",
-        "qualifiers": [
-          {
-            "property_id": "P2305",
-            "values": ["<allowed type qid>"]
-          }
-        ]
-      }
-    ]
-  },
-  "rationale": "Narrow the allowed types encoded by the constraint itself.",
-  "provenance": [
-    {"kind": "KG", "node_id": "<constraint family qid from input>", "snippet": "constraint family in context"}
-  ],
-  "uncertainty": {"confidence": 0.35, "notes": "Another schema-level reform family may also be plausible."}
-}
 
 Input case:
 {payload_json}

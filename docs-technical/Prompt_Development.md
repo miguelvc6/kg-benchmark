@@ -17,6 +17,10 @@ fields, operation semantics, the visible-evidence boundary, JSON contracts, and 
 not encode hidden benchmark classes/subtypes, answerability-audit rules, dev-set repair recipes, or prompt wording
 optimized to known dev failures.
 
+The abstention branch is experimental and not validated for Phase G main scoring. The current repair-proposal parsers
+and evaluator treat many abstention-shaped outputs as proposal parse errors, so first-class abstention
+normalization/evaluation support is required before the branch can be used as a paper-facing condition.
+
 `prompt_dev_v2` was introduced after the 96-case zero-shot failure taxonomy found systematic prompt-level failures:
 
 - A-box proposals used constraint-family, allowed-type, or report-type QIDs as repaired claim values.

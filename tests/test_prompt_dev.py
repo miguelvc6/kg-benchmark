@@ -12,6 +12,7 @@ from lib.prompt_dev import (
     PromptDevEvaluateOptions,
     PromptDevMatrixOptions,
     PromptDevRenderOptions,
+    _evaluation_comparison_markdown,
     build_prompt_dev_matrix,
     evaluate_prompt_dev_prompts,
     render_prompt_dev_prompts,
@@ -104,6 +105,59 @@ class PromptDevTests(unittest.TestCase):
         self.assertEqual(matrix["counts"]["rows"], 6)
         self.assertTrue(all(row["run_scope"] == "dev_only" for row in matrix["rows"]))
         self.assertIn("parse_validity", matrix["rows"][0]["metrics"])
+
+    def test_comparison_markdown_marks_track_only_proposal_metrics_not_applicable(self) -> None:
+        markdown = _evaluation_comparison_markdown(
+            {
+                "run_id": "run",
+                "provider": "static",
+                "model": "static",
+                "counts": {"evaluated_prompts": 2},
+                "results": [
+                    {
+                        "matrix_id": "track_matrix",
+                        "task": "track_diagnosis",
+                        "representation": "hybrid_json_nl",
+                        "example_policy": "zero_shot",
+                        "context_bundle": "logic_only",
+                        "track_mode": None,
+                        "parse_errors": {"proposal_parse_error_count": 0},
+                        "request_errors": {
+                            "proposal_request_error_count": 0,
+                            "track_diagnosis_request_error_count": 0,
+                        },
+                        "overall_metrics": {
+                            "functional_success_rate": 0.0,
+                            "track_diagnosis_accuracy": 0.5,
+                            "auditability_complete_rate": 0.0,
+                        },
+                    },
+                    {
+                        "matrix_id": "repair_matrix",
+                        "task": "repair_proposal",
+                        "representation": "hybrid_json_nl",
+                        "example_policy": "zero_shot",
+                        "context_bundle": "logic_only",
+                        "track_mode": "oracle",
+                        "parse_errors": {"proposal_parse_error_count": 1},
+                        "request_errors": {
+                            "proposal_request_error_count": 0,
+                            "track_diagnosis_request_error_count": 0,
+                        },
+                        "overall_metrics": {
+                            "functional_success_rate": 0.25,
+                            "track_diagnosis_accuracy": 0.0,
+                            "auditability_complete_rate": 0.75,
+                        },
+                    },
+                ],
+            }
+        )
+
+        track_line = next(line for line in markdown.splitlines() if "`track_matrix`" in line)
+        repair_line = next(line for line in markdown.splitlines() if "`repair_matrix`" in line)
+        self.assertIn("| n/a | 0.500 | n/a |", track_line)
+        self.assertIn("| 0.250 | n/a | 0.750 |", repair_line)
 
     def test_few_shot_selection_excludes_same_case_qid_property_and_core(self) -> None:
         eval_record = _abox_record("eval", "Q1", "P1")

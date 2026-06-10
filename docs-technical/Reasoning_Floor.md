@@ -242,6 +242,10 @@ After generation completes, the runner shows a second `tqdm` bar for bundle eval
 
 In synchronous mode, the runner appends raw responses, manifest rows, normalized proposals, and evaluation traces incrementally over one stable ordered selected subset. In parallel mode, it keeps the same outputs but executes multiple cases concurrently with bounded in-flight work.
 
+The Ollama convenience wrapper [run_phase_g_ollama_oracle.sh](/mnt/c/Code/kg-benchmark/scripts/run_phase_g_ollama_oracle.sh)
+is dry-run safe: it requires `MAX_CASES` unless a full selected-core run has been explicitly approved with
+`ALLOW_FULL_CORE_RUN=1`.
+
 When `--resume-run-dir` is used, the runner opens the existing JSONL artifacts in append mode, loads prior completion state from `run_manifest.jsonl`, and only submits the missing request(s). This works for sync, parallel, and batch execution. Existing pre-skip oracle runs resume with diagnosis enabled for compatibility. In `diagnosis_routed` mode, proposal resumption is driven from the existing normalized diagnosis artifacts, so the runner can skip already-finished diagnosis calls and submit only the missing proposals or synthetic skips.
 
 Skipped oracle diagnosis rows are still written to `run_manifest.jsonl` with `parse_status="skipped"` and `skip_reason="oracle_mode_track_diagnosis_skipped"`. Evaluation summaries report these as skipped diagnosis, not as request or parse errors.

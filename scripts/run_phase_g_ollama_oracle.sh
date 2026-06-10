@@ -12,6 +12,20 @@ UV_ENV="${UV_PROJECT_ENVIRONMENT:-.venv-vm}"
 OUTPUT_DIR="${OUTPUT_DIR:-reports/reasoning_floor/ollama_v4_spec_only_oracle}"
 PARALLEL_WORKERS="${PARALLEL_WORKERS:-${REASONING_FLOOR_PARALLEL_WORKERS:-1}}"
 WORLD_STATE_PATH="${WORLD_STATE:-data/03_world_state.json}"
+PROPOSAL_TRACK_MODE="${PROPOSAL_TRACK_MODE:-oracle}"
+
+if [[ -z "${MAX_CASES:-}" && "${ALLOW_FULL_CORE_RUN:-0}" != "1" ]]; then
+  cat >&2 <<'EOF'
+Refusing to run the full selected core set without explicit confirmation.
+
+For a dry run, set MAX_CASES, for example:
+  MAX_CASES=16 OUTPUT_DIR=reports/reasoning_floor/ollama_v4_spec_only_oracle_dry_run_16 bash scripts/run_phase_g_ollama_oracle.sh
+
+For an approved full core run, set:
+  ALLOW_FULL_CORE_RUN=1
+EOF
+  exit 2
+fi
 
 if [[ ! -f "${WORLD_STATE_PATH}" ]]; then
   echo "World-state file not found: ${WORLD_STATE_PATH}" >&2
@@ -28,9 +42,13 @@ args=(
   --model-endpoint ollama
   --execution-mode parallel
   --parallel-workers "${PARALLEL_WORKERS}"
-  --proposal-track-mode "${PROPOSAL_TRACK_MODE:-oracle}"
+  --proposal-track-mode "${PROPOSAL_TRACK_MODE}"
   --ablation-bundles "${ABLATION_BUNDLES:-logic_only,local_graph}"
 )
+
+if [[ "${PROPOSAL_TRACK_MODE}" == "oracle" ]]; then
+  args+=(--oracle-diagnosis-mode skip)
+fi
 
 if [[ -n "${MAX_CASES:-}" ]]; then
   args+=(--max-cases "${MAX_CASES}")

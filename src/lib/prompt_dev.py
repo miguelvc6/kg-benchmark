@@ -1571,23 +1571,29 @@ def _evaluation_comparison_markdown(summary: dict[str, Any]) -> str:
     ]
     for result in summary["results"]:
         metrics = result.get("overall_metrics") if isinstance(result.get("overall_metrics"), dict) else {}
+        task = result.get("task")
         parse_errors = (result.get("parse_errors") or {}).get("proposal_parse_error_count", 0)
         request_errors = (result.get("request_errors") or {}).get("proposal_request_error_count", 0)
         request_errors += (result.get("request_errors") or {}).get("track_diagnosis_request_error_count", 0)
+        functional_text = "n/a" if task == "track_diagnosis" else _metric_text(metrics, "functional_success_rate")
+        track_accuracy_text = (
+            _metric_text(metrics, "track_diagnosis_accuracy") if task == "track_diagnosis" else "n/a"
+        )
+        audit_text = "n/a" if task == "track_diagnosis" else _metric_text(metrics, "auditability_complete_rate")
         lines.append(
             " | ".join(
                 [
                     f"| `{result['matrix_id']}`",
-                    f"`{result['task']}`",
+                    f"`{task}`",
                     f"`{result['representation']}`",
                     f"`{result['example_policy']}`",
                     f"`{result['context_bundle']}`",
                     f"`{result.get('track_mode') or ''}`",
                     str(parse_errors),
                     str(request_errors),
-                    _metric_text(metrics, "functional_success_rate"),
-                    _metric_text(metrics, "track_diagnosis_accuracy"),
-                    _metric_text(metrics, "auditability_complete_rate") + " |",
+                    functional_text,
+                    track_accuracy_text,
+                    audit_text + " |",
                 ]
             )
         )

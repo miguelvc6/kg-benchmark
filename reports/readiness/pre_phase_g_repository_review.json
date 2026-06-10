@@ -1,0 +1,117 @@
+{
+  "generated_at_utc": "2026-06-10T06:41:45Z",
+  "commit_sha": "ffd5665123897681b3d15ff8948b1834b826493e",
+  "overall_verdict": "READY_FOR_PHASE_G_DRY_RUN",
+  "verdict_rationale": "Script blockers and prompt-policy high warnings were fixed, tests pass, and the Phase G wrapper is dry-run safe. Full Phase G main oracle is still not approved because no 16/64 Phase G dry-run artifacts exist locally for validation.",
+  "separate_verdicts": {
+    "phase_f_main_prompt": "READY_FOR_PHASE_G_DRY_RUN",
+    "phase_f_abstention_branch": "BLOCKED_EXPERIMENTAL_ONLY",
+    "phase_g_oracle_dry_run": "READY_WITH_WARNINGS",
+    "phase_g_diagnosis_routed": "NOT_READY_AS_MAIN_ABLATION_ONLY",
+    "phase_g_main_full_evaluation": "NOT_READY_UNTIL_DRY_RUN_ARTIFACTS_VALIDATED"
+  },
+  "reasoning_floor_artifacts_present_locally": false,
+  "findings": [
+    {
+      "severity": "HIGH",
+      "scope": "Phase G readiness",
+      "title": "Phase G dry-run artifacts are still absent locally",
+      "evidence": "reports/reasoning_floor contains no local run artifacts to validate.",
+      "impact": "Full Phase G main oracle remains unapproved until 16/64 dry-run artifacts exist and are reviewed.",
+      "status": "open"
+    },
+    {
+      "severity": "HIGH",
+      "scope": "Phase F parse gate",
+      "title": "v4 no-abstain proposal parse rate remains warning-level in existing artifacts",
+      "evidence": "spec_only_holdout_report parse_gate: 6/192 proposal prompts = 3.125%; 6/384 all prompts = 1.5625%; request errors 0.",
+      "impact": "Acceptable for bounded dry-run monitoring; not a claim of high-performance or perfect parse stability.",
+      "status": "open"
+    },
+    {
+      "severity": "BLOCKER_CLOSED",
+      "scope": "Shell scripts",
+      "title": "Phase F wrapper CRLF syntax blocker fixed",
+      "evidence": "Line endings normalized; bash -n scripts/run_phase_f_v4_ollama_holdout.sh passes.",
+      "impact": "Phase F wrapper is runnable again.",
+      "status": "closed"
+    },
+    {
+      "severity": "HIGH_CLOSED",
+      "scope": "Phase G wrapper safety",
+      "title": "Phase G wrapper now refuses accidental full-core runs",
+      "evidence": "No MAX_CASES exits status 2 unless ALLOW_FULL_CORE_RUN=1; bash -n passes.",
+      "impact": "Dry-run safety restored for wrapper invocation.",
+      "status": "closed"
+    },
+    {
+      "severity": "HIGH_CLOSED",
+      "scope": "Phase G prompt policy",
+      "title": "Reasoning-floor prompts aligned to v4 spec-only policy",
+      "evidence": "Concrete A-box example and T-box scaffolded template examples removed from src/guardian/prompts.py; tests assert absence of scaffold wording and anchor IDs.",
+      "impact": "Phase G prompt contract now matches the clean v4 policy more closely.",
+      "status": "closed"
+    },
+    {
+      "severity": "BLOCKER",
+      "scope": "Abstention branch",
+      "title": "Abstention branch remains experimental and not Phase-G-main ready",
+      "evidence": "Existing abstention artifacts have 48/96 and 50/96 repair proposal parse errors; docs now state first-class parser/evaluator support is required.",
+      "impact": "Do not use abstention in Phase G main.",
+      "status": "open"
+    },
+    {
+      "severity": "HIGH_CLOSED",
+      "scope": "Duplicate runbook",
+      "title": "Stale scripts/Ollama_VM_Runbook.md reconciled",
+      "evidence": "scripts/Ollama_VM_Runbook.md is now a thin pointer to docs-technical/Ollama_VM_Runbook.md.",
+      "impact": "Avoids conflicting VM setup instructions.",
+      "status": "closed"
+    },
+    {
+      "severity": "MEDIUM_CLOSED",
+      "scope": "Reporting",
+      "title": "Track-diagnosis comparison rows now mark proposal metrics n/a",
+      "evidence": "prompt-dev comparison renderer emits n/a for Functional/Audit on track_diagnosis rows and n/a for Track acc on repair rows; existing v4 comparison markdown regenerated.",
+      "impact": "Reduces misleading zero-valued proposal metrics for track-only matrices.",
+      "status": "closed"
+    },
+    {
+      "severity": "INFO",
+      "scope": "Line endings",
+      "title": "Repository line-ending guard added",
+      "evidence": ".gitattributes pins *.sh, scripts/*.md, and docs-technical/*.md to LF.",
+      "impact": "Reduces CRLF regression risk.",
+      "status": "closed"
+    },
+    {
+      "severity": "INFO",
+      "scope": "Tests",
+      "title": "Required non-inference tests pass",
+      "evidence": "110 passed in 13.40s.",
+      "impact": "Current patched code paths pass the requested gate.",
+      "status": "closed"
+    }
+  ],
+  "commands_run": [
+    "perl -pi -e 's/\\r$//' scripts/run_phase_f_v4_ollama_holdout.sh scripts/run_phase_g_ollama_oracle.sh scripts/Ollama_VM_Runbook.md",
+    "bash -n scripts/run_phase_f_v4_ollama_holdout.sh",
+    "bash -n scripts/run_phase_g_ollama_oracle.sh",
+    "env -i PATH=... HOME=... bash scripts/run_phase_g_ollama_oracle.sh (verified status 2 full-core guard)",
+    "UV_PROJECT_ENVIRONMENT=.venv-wsl uv run --extra dev python -m pytest tests/test_prompt_dev.py tests/test_model_provider.py tests/test_reasoning_floor.py tests/test_track_parser.py tests/test_tbox_parser.py tests/test_patch_parser.py",
+    "regenerated prompt_dev_evaluation_comparison.md from existing summaries for v4 no-abstain and abstention artifacts"
+  ],
+  "test_result": "110 passed in 13.40s",
+  "next_commands": [
+    "MAX_CASES=16 OUTPUT_DIR=reports/reasoning_floor/ollama_v4_spec_only_oracle_dry_run_16 bash scripts/run_phase_g_ollama_oracle.sh",
+    "If 16-case dry run validates cleanly: MAX_CASES=64 OUTPUT_DIR=reports/reasoning_floor/ollama_v4_spec_only_oracle_g1_64 bash scripts/run_phase_g_ollama_oracle.sh",
+    "Only after dry-run validation: ALLOW_FULL_CORE_RUN=1 OUTPUT_DIR=reports/reasoning_floor/ollama_v4_spec_only_oracle_core bash scripts/run_phase_g_ollama_oracle.sh"
+  ],
+  "do_not_do": [
+    "Do not run full core without ALLOW_FULL_CORE_RUN=1 and explicit approval.",
+    "Do not tune prompts against dev failures or core outputs.",
+    "Do not promote v3 scaffolded as the main prompt.",
+    "Do not use abstention branch for Phase G main until parser/evaluator support is implemented and validated.",
+    "Do not use diagnosis_routed as main scoring."
+  ]
+}

@@ -1,0 +1,225 @@
+{
+  "generated_at_utc": "2026-06-10T06:41:45Z",
+  "commit_sha": "ffd5665123897681b3d15ff8948b1834b826493e",
+  "overall_verdict": "READY_FOR_PHASE_G_DRY_RUN",
+  "phase_f_main_prompt": "prompt_dev_v4_spec_only",
+  "phase_f_abstention_branch": "BLOCKED_EXPERIMENTAL_ONLY",
+  "phase_g_main_full_evaluation": "NOT_READY_DRY_RUN_ARTIFACTS_MISSING",
+  "gates": {
+    "completion_gate": {
+      "evaluated_prompts": 384,
+      "expected_prompts": 384,
+      "status": "pass"
+    },
+    "leakage_gate": {
+      "leakage_hits": {
+        "action_decision_tree_strategy": 0,
+        "compact_temporal_policy_label": 0,
+        "hidden_TypeA": 0,
+        "hidden_TypeB": 0,
+        "hidden_TypeC": 0,
+        "prechange_temporal_policy_label": 0,
+        "property_level_schema_change_strategy": 0,
+        "raw_reform_case_ids": 0,
+        "raw_repair_case_ids": 0,
+        "sitelinks_count": 0,
+        "targeted_REMOVE_strategy": 0
+      },
+      "status": "pass"
+    },
+    "parse_gate": {
+      "parse_error_rate_all_prompts": 0.015625,
+      "parse_errors": 6,
+      "proposal_parse_error_rate": 0.03125,
+      "proposal_parse_errors": 6,
+      "status": "warning"
+    },
+    "request_gate": {
+      "proposal_request_error_rate": 0.0,
+      "proposal_request_errors": 0,
+      "request_error_rate": 0.0,
+      "request_errors": 0,
+      "status": "pass"
+    },
+    "spec_only_gate": {
+      "checked_terms": {
+        "action_decision_tree_strategy": 0,
+        "compact_temporal_policy_label": 0,
+        "hidden_TypeA": 0,
+        "hidden_TypeB": 0,
+        "hidden_TypeC": 0,
+        "prechange_temporal_policy_label": 0,
+        "property_level_schema_change_strategy": 0,
+        "raw_reform_case_ids": 0,
+        "raw_repair_case_ids": 0,
+        "sitelinks_count": 0,
+        "targeted_REMOVE_strategy": 0
+      },
+      "status": "pass"
+    }
+  },
+  "render_counts": {
+    "by_class": {
+      "T_BOX": 48,
+      "TypeA": 24,
+      "TypeB": 12,
+      "TypeC": 12
+    },
+    "by_class_subtype": {
+      "T_BOX:COINCIDENTAL_SCHEMA_CHANGE": 12,
+      "T_BOX:RELAXATION_SET_EXPANSION": 12,
+      "T_BOX:RESTRICTION_SET_CONTRACTION": 12,
+      "T_BOX:SCHEMA_UPDATE": 12,
+      "TypeA:DELETE_AMBIGUOUS": 4,
+      "TypeA:FORMAT_NORMALIZATION": 4,
+      "TypeA:FORMAT_VALUE_PRUNING": 4,
+      "TypeA:SELF_LINK_REJECTION": 4,
+      "TypeA:SET_MEMBERSHIP_REJECTION": 4,
+      "TypeA:TARGET_REQUIRED_CLAIM": 4,
+      "TypeB:LOCAL_FOCUS_NON_TARGET_PROPERTY": 4,
+      "TypeB:LOCAL_SELECTION_CONFIRMED": 4,
+      "TypeB:LOCAL_TEXT_DERIVED": 4,
+      "TypeC:EXTERNAL_BY_ELIMINATION": 4,
+      "TypeC:UNKNOWN_BAD_TARGET_OR_CONTEXT": 4,
+      "TypeC:UNKNOWN_SELECTION_AMBIGUOUS": 4
+    },
+    "by_context_bundle": {
+      "local_graph": 192,
+      "logic_only": 192
+    },
+    "by_example_policy": {
+      "zero_shot": 384
+    },
+    "by_representation": {
+      "hybrid_json_nl": 384
+    },
+    "by_selection_stratum": {
+      "DEV_TBOX_COINCIDENTAL_SCHEMA_CHANGE": 12,
+      "DEV_TBOX_RELAXATION_SET_EXPANSION": 12,
+      "DEV_TBOX_RESTRICTION_SET_CONTRACTION": 12,
+      "DEV_TBOX_SCHEMA_UPDATE": 12,
+      "DEV_TYPEA_AMBIGUOUS_DELETE": 4,
+      "DEV_TYPEA_CLEAN_RULE_REJECTION": 20,
+      "DEV_TYPEB_LOCAL": 12,
+      "DEV_TYPEC_EXTERNAL_OR_UNKNOWN": 12
+    },
+    "by_subtype": {
+      "COINCIDENTAL_SCHEMA_CHANGE": 12,
+      "DELETE_AMBIGUOUS": 4,
+      "EXTERNAL_BY_ELIMINATION": 4,
+      "FORMAT_NORMALIZATION": 4,
+      "FORMAT_VALUE_PRUNING": 4,
+      "LOCAL_FOCUS_NON_TARGET_PROPERTY": 4,
+      "LOCAL_SELECTION_CONFIRMED": 4,
+      "LOCAL_TEXT_DERIVED": 4,
+      "RELAXATION_SET_EXPANSION": 12,
+      "RESTRICTION_SET_CONTRACTION": 12,
+      "SCHEMA_UPDATE": 12,
+      "SELF_LINK_REJECTION": 4,
+      "SET_MEMBERSHIP_REJECTION": 4,
+      "TARGET_REQUIRED_CLAIM": 4,
+      "UNKNOWN_BAD_TARGET_OR_CONTEXT": 4,
+      "UNKNOWN_SELECTION_AMBIGUOUS": 4
+    },
+    "by_task": {
+      "a_box_repair": 96,
+      "t_box_repair": 96,
+      "track_diagnosis": 192
+    },
+    "by_track": {
+      "A_BOX": 48,
+      "T_BOX": 48
+    },
+    "eval_cases": 96,
+    "matrix_rows": 4,
+    "rendered_prompts": 384,
+    "skipped_prompts": 0,
+    "unique_properties": 74,
+    "unique_qids": 96
+  },
+  "fixes_completed": [
+    {
+      "severity": "BLOCKER_CLOSED",
+      "scope": "Shell scripts",
+      "title": "Phase F wrapper CRLF syntax blocker fixed",
+      "evidence": "Line endings normalized; bash -n scripts/run_phase_f_v4_ollama_holdout.sh passes.",
+      "impact": "Phase F wrapper is runnable again.",
+      "status": "closed"
+    },
+    {
+      "severity": "HIGH_CLOSED",
+      "scope": "Phase G wrapper safety",
+      "title": "Phase G wrapper now refuses accidental full-core runs",
+      "evidence": "No MAX_CASES exits status 2 unless ALLOW_FULL_CORE_RUN=1; bash -n passes.",
+      "impact": "Dry-run safety restored for wrapper invocation.",
+      "status": "closed"
+    },
+    {
+      "severity": "HIGH_CLOSED",
+      "scope": "Phase G prompt policy",
+      "title": "Reasoning-floor prompts aligned to v4 spec-only policy",
+      "evidence": "Concrete A-box example and T-box scaffolded template examples removed from src/guardian/prompts.py; tests assert absence of scaffold wording and anchor IDs.",
+      "impact": "Phase G prompt contract now matches the clean v4 policy more closely.",
+      "status": "closed"
+    },
+    {
+      "severity": "HIGH_CLOSED",
+      "scope": "Duplicate runbook",
+      "title": "Stale scripts/Ollama_VM_Runbook.md reconciled",
+      "evidence": "scripts/Ollama_VM_Runbook.md is now a thin pointer to docs-technical/Ollama_VM_Runbook.md.",
+      "impact": "Avoids conflicting VM setup instructions.",
+      "status": "closed"
+    },
+    {
+      "severity": "MEDIUM_CLOSED",
+      "scope": "Reporting",
+      "title": "Track-diagnosis comparison rows now mark proposal metrics n/a",
+      "evidence": "prompt-dev comparison renderer emits n/a for Functional/Audit on track_diagnosis rows and n/a for Track acc on repair rows; existing v4 comparison markdown regenerated.",
+      "impact": "Reduces misleading zero-valued proposal metrics for track-only matrices.",
+      "status": "closed"
+    },
+    {
+      "severity": "INFO",
+      "scope": "Line endings",
+      "title": "Repository line-ending guard added",
+      "evidence": ".gitattributes pins *.sh, scripts/*.md, and docs-technical/*.md to LF.",
+      "impact": "Reduces CRLF regression risk.",
+      "status": "closed"
+    },
+    {
+      "severity": "INFO",
+      "scope": "Tests",
+      "title": "Required non-inference tests pass",
+      "evidence": "110 passed in 13.40s.",
+      "impact": "Current patched code paths pass the requested gate.",
+      "status": "closed"
+    }
+  ],
+  "remaining_warnings": [
+    {
+      "severity": "HIGH",
+      "scope": "Phase G readiness",
+      "title": "Phase G dry-run artifacts are still absent locally",
+      "evidence": "reports/reasoning_floor contains no local run artifacts to validate.",
+      "impact": "Full Phase G main oracle remains unapproved until 16/64 dry-run artifacts exist and are reviewed.",
+      "status": "open"
+    },
+    {
+      "severity": "HIGH",
+      "scope": "Phase F parse gate",
+      "title": "v4 no-abstain proposal parse rate remains warning-level in existing artifacts",
+      "evidence": "spec_only_holdout_report parse_gate: 6/192 proposal prompts = 3.125%; 6/384 all prompts = 1.5625%; request errors 0.",
+      "impact": "Acceptable for bounded dry-run monitoring; not a claim of high-performance or perfect parse stability.",
+      "status": "open"
+    },
+    {
+      "severity": "BLOCKER",
+      "scope": "Abstention branch",
+      "title": "Abstention branch remains experimental and not Phase-G-main ready",
+      "evidence": "Existing abstention artifacts have 48/96 and 50/96 repair proposal parse errors; docs now state first-class parser/evaluator support is required.",
+      "impact": "Do not use abstention in Phase G main.",
+      "status": "open"
+    }
+  ],
+  "tests": "110 passed in 13.40s"
+}

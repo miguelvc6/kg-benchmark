@@ -335,7 +335,9 @@ uv run python src/reasoning_floor.py \
   --output-dir reports/reasoning_floor \
   --model llama3.2:latest \
   --execution-mode parallel \
-  --parallel-workers 2
+  --parallel-workers 2 \
+  --proposal-track-mode oracle \
+  --oracle-diagnosis-mode skip
 ```
 
 This now runs the paper-default ablation bundles:
@@ -353,7 +355,7 @@ It also performs:
 
 - A-box proposal generation
 - T-box proposal generation
-- A-box vs T-box track diagnosis
+- A-box vs T-box track diagnosis only when diagnosis is explicitly enabled or when running `diagnosis_routed`
 - evaluation of all generated outputs
 
 ## 9. Verify the Paper Outputs
