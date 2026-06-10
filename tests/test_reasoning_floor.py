@@ -559,6 +559,30 @@ class ReasoningFloorTests(unittest.TestCase):
         self.assertEqual(summary["usage"]["prompt_tokens"], 0)
         self.assertEqual(summary["usage"]["completion_tokens"], 0)
 
+    def test_reasoning_floor_parallel_provider_errors_are_manifest_request_errors(self) -> None:
+        root, classified_path, world_state_path, selection_manifest_path, resolver = self._make_stub_fixture()
+        summary = run_reasoning_floor(
+            classified_path=classified_path,
+            world_state_path=world_state_path,
+            output_dir=root / "outputs",
+            provider=FailingAfterNGenerateCallsProvider(resolver, fail_after=0, model="stub-model"),
+            ablation_bundles=["minimal_case"],
+            selection_manifest_path=selection_manifest_path,
+            execution_mode="parallel",
+            parallel_workers=2,
+        )
+
+        run_dir = Path(summary["run_info"]["output_dir"])
+        manifest_rows = self._read_jsonl(run_dir / "run_manifest.jsonl")
+        proposal_row = next(row for row in manifest_rows if row.get("task_type") == "proposal")
+        diagnosis_row = next(row for row in manifest_rows if row.get("task_type") == "track_diagnosis")
+
+        self.assertEqual(diagnosis_row["parse_status"], "skipped")
+        self.assertEqual(proposal_row["parse_status"], "request_error")
+        self.assertIn("intentional test failure", proposal_row["provider_error"])
+        self.assertEqual(summary["request_errors"]["proposal_request_error_count"], 1)
+        self.assertEqual(summary["parse_errors"]["proposal_parse_error_count"], 0)
+
     def test_reasoning_floor_defaults_to_batch_for_openai_provider(self) -> None:
         root, classified_path, world_state_path, selection_manifest_path, resolver = self._make_stub_fixture()
         summary = run_reasoning_floor(
@@ -638,42 +662,43 @@ class ReasoningFloorTests(unittest.TestCase):
         self.assertEqual(summary["usage"]["per_call_cost_estimation_multipliers"], [0.5, 1.0])
         self.assertIsNone(summary["usage"]["cost_estimation_multiplier"])
 
-    def test_reasoning_floor_resume_sync_run_only_executes_missing_cases(self) -> None:
+    def test_reasoning_floor_sync_provider_errors_are_manifest_request_errors(self) -> None:
         root, classified_path, world_state_path, _selection_manifest_path, resolver = self._make_stub_fixture()
         failing_provider = FailingAfterNGenerateCallsProvider(resolver, fail_after=2, model="stub-model")
-
-        with self.assertRaisesRegex(RuntimeError, "intentional test failure"):
-            run_reasoning_floor(
-                classified_path=classified_path,
-                world_state_path=world_state_path,
-                output_dir=root / "outputs",
-                provider=failing_provider,
-                ablation_bundles=["minimal_case"],
-                oracle_diagnosis_mode="run",
-            )
-
-        run_dir = next((root / "outputs").iterdir())
-        initial_manifest_rows = self._read_jsonl(run_dir / "run_manifest.jsonl")
-        resumed_provider = CountingStaticResponseProvider(resolver, model="stub-model")
 
         summary = run_reasoning_floor(
             classified_path=classified_path,
             world_state_path=world_state_path,
-            output_dir=root / "ignored",
-            resume_run_dir=run_dir,
-            provider=resumed_provider,
+            output_dir=root / "outputs",
+            provider=failing_provider,
             ablation_bundles=["minimal_case"],
             oracle_diagnosis_mode="run",
         )
 
+        run_dir = next((root / "outputs").iterdir())
         manifest_rows = self._read_jsonl(run_dir / "run_manifest.jsonl")
-        self.assertEqual(len(initial_manifest_rows), 2)
         self.assertEqual(len(manifest_rows), 4)
-        self.assertEqual(resumed_provider.generate_call_count, 2)
         self.assertEqual(summary["counts"]["cases"], 2)
-        self.assertTrue(summary["run_info"]["resume"]["enabled"])
-        self.assertEqual(summary["run_info"]["resume"]["existing_manifest_rows"], 2)
-        self.assertEqual(summary["run_info"]["output_dir"], str(run_dir))
+        self.assertEqual(summary["request_errors"]["proposal_request_error_count"], 1)
+        self.assertEqual(
+            sum(
+                1
+                for row in manifest_rows
+                if row.get("task_type") == "track_diagnosis" and row.get("parse_status") == "request_error"
+            ),
+            1,
+        )
+        self.assertEqual(
+            sum(1 for row in manifest_rows if row.get("parse_status") == "request_error"),
+            2,
+        )
+        self.assertTrue(
+            all(
+                "intentional test failure" in row.get("provider_error", "")
+                for row in manifest_rows
+                if row.get("parse_status") == "request_error"
+            )
+        )
 
     def test_reasoning_floor_records_openai_reasoning_effort_in_run_config(self) -> None:
         root, classified_path, world_state_path, _selection_manifest_path, resolver = self._make_stub_fixture()

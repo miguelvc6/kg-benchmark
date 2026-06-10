@@ -431,6 +431,7 @@ class RequestExecutionResult:
     parsed_payload: Any
     usage: dict[str, Any]
     elapsed_seconds: float
+    error_message: str | None = None
 
 
 @dataclass(frozen=True)
@@ -516,18 +517,32 @@ def _execute_case_requests(
     results: list[RequestExecutionResult] = []
     for prompt_bundle, request_info in requests_to_run:
         started_at = time.perf_counter()
-        raw_response, parsed_payload, usage = provider.generate(
-            prompt_bundle.prompt,
-            prompt_bundle.system_prompt,
-            prompt_bundle.response_format,
-            request_info,
-        )
-        usage = _apply_cost_estimation_policy(
-            usage,
-            provider_name=provider_name,
-            execution_mode=execution_mode,
-        )
-        elapsed_seconds = time.perf_counter() - started_at
+        try:
+            raw_response, parsed_payload, usage = provider.generate(
+                prompt_bundle.prompt,
+                prompt_bundle.system_prompt,
+                prompt_bundle.response_format,
+                request_info,
+            )
+            usage = _apply_cost_estimation_policy(
+                usage,
+                provider_name=provider_name,
+                execution_mode=execution_mode,
+            )
+            error_message = None
+            elapsed_seconds = time.perf_counter() - started_at
+        except Exception as exc:
+            raw_response = None
+            parsed_payload = None
+            fallback_model = getattr(provider, "model", None) or request_info.get("model") or "unknown"
+            usage = _apply_cost_estimation_policy(
+                _empty_usage_payload(provider_name, str(fallback_model), request_info),
+                provider_name=provider_name,
+                execution_mode=execution_mode,
+            )
+            error_text = str(exc).strip() or exc.__class__.__name__
+            error_message = f"{exc.__class__.__name__}: {error_text}"
+            elapsed_seconds = time.perf_counter() - started_at
         results.append(
             RequestExecutionResult(
                 request_info=request_info,
@@ -535,6 +550,7 @@ def _execute_case_requests(
                 parsed_payload=parsed_payload,
                 usage=usage,
                 elapsed_seconds=elapsed_seconds,
+                error_message=error_message,
             )
         )
     return results
@@ -2674,6 +2690,7 @@ def run_reasoning_floor(
                                     raw_log_fh=raw_log_fh,
                                     manifest_fh=manifest_fh,
                                     elapsed_seconds=request_result.elapsed_seconds,
+                                    error_message=request_result.error_message,
                                 )
                             for skipped in outcome.skipped_proposals:
                                 record_skipped_proposal(
@@ -2708,6 +2725,7 @@ def run_reasoning_floor(
                                     raw_log_fh=raw_log_fh,
                                     manifest_fh=manifest_fh,
                                     elapsed_seconds=request_result.elapsed_seconds,
+                                    error_message=request_result.error_message,
                                 )
                             for skipped in outcome.skipped_proposals:
                                 record_skipped_proposal(

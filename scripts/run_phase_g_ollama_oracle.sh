@@ -54,6 +54,10 @@ if [[ -n "${MAX_CASES:-}" ]]; then
   args+=(--max-cases "${MAX_CASES}")
 fi
 
+if [[ -n "${TRACKS:-}" ]]; then
+  args+=(--tracks "${TRACKS}")
+fi
+
 if [[ -n "${RESUME_RUN_DIR:-}" ]]; then
   args+=(--resume-run-dir "${RESUME_RUN_DIR}")
 fi

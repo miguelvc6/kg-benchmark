@@ -152,6 +152,14 @@ MAX_CASES=16 OUTPUT_DIR=reports/reasoning_floor/ollama_v4_spec_only_oracle_dry_r
   bash scripts/run_phase_g_ollama_oracle.sh
 ```
 
+The core manifest is T-box-first, so small `MAX_CASES` runs without a track filter may not exercise A-box proposal
+generation. Run a separate A-box smoke test before treating the oracle path as fully checked:
+
+```bash
+MAX_CASES=16 TRACKS=A_BOX OUTPUT_DIR=reports/reasoning_floor/ollama_v4_spec_only_oracle_abox_dry_run \
+  bash scripts/run_phase_g_ollama_oracle.sh
+```
+
 The wrapper refuses to run the full selected core set unless full-core execution is explicitly approved. If the dry run
 is stable and full Phase G oracle scoring has been approved, run:
 
@@ -176,3 +184,17 @@ RESUME_RUN_DIR=reports/reasoning_floor/ollama_v4_spec_only_oracle_core/<RUN_ID> 
   OUTPUT_DIR=reports/reasoning_floor/ollama_v4_spec_only_oracle_core \
   bash scripts/run_phase_g_ollama_oracle.sh
 ```
+
+If you run `src/reasoning_floor.py` directly instead of the wrapper, source `.env.ollama.vm` first so the Ollama timeout,
+retry, context, and model settings are exported:
+
+```bash
+set -a
+source .env.ollama.vm
+set +a
+```
+
+A timeout message that says `read timeout=120` means the direct command did not pick up `OLLAMA_TIMEOUT_SECONDS=900` from
+`.env.ollama.vm`. Prefer the wrapper for VM runs, or export `OLLAMA_TIMEOUT_SECONDS=900` explicitly before direct
+commands. Reasoning-floor records exhausted provider failures as `request_error` rows so a single timed-out request does
+not abort the whole run.
