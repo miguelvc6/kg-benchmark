@@ -129,6 +129,22 @@ def _extract_json_payload(raw_text: str) -> Any:
     return max(candidates, key=_json_candidate_size)
 
 
+def _redact_ollama_thinking_payload(raw_response: Any) -> Any:
+    if not isinstance(raw_response, dict):
+        return raw_response
+    redacted = dict(raw_response)
+    if "thinking" in redacted:
+        redacted["thinking"] = "[redacted]"
+        redacted["thinking_redacted"] = True
+    message = redacted.get("message")
+    if isinstance(message, dict) and "thinking" in message:
+        redacted_message = dict(message)
+        redacted_message["thinking"] = "[redacted]"
+        redacted_message["thinking_redacted"] = True
+        redacted["message"] = redacted_message
+    return redacted
+
+
 def _default_response_format(response_format: dict[str, Any]) -> str | None:
     if response_format.get("type") == "json_object":
         return "json"
@@ -948,13 +964,14 @@ class OllamaChatProvider:
                     "The value must be the raw API key only, not `OLLAMA_API_KEY=...` or `Bearer ...`."
                 ) from exc
             raise RuntimeError(f"Ollama chat request failed ({response.status_code}).") from exc
-        raw_response = response.json()
-        message = raw_response.get("message", {})
+        provider_raw_response = response.json()
+        message = provider_raw_response.get("message", {})
         text = message.get("content") if isinstance(message, dict) else ""
         text = text or ""
         parsed_payload = _extract_json_payload(text)
-        prompt_tokens = raw_response.get("prompt_eval_count")
-        completion_tokens = raw_response.get("eval_count")
+        raw_response = _redact_ollama_thinking_payload(provider_raw_response)
+        prompt_tokens = provider_raw_response.get("prompt_eval_count")
+        completion_tokens = provider_raw_response.get("eval_count")
         total_tokens = None
         if isinstance(prompt_tokens, int) and isinstance(completion_tokens, int):
             total_tokens = prompt_tokens + completion_tokens

@@ -144,6 +144,9 @@ provider.
 In synchronous and parallel modes, an exhausted provider exception is recorded as a manifest `request_error` row with the
 provider error message. The run continues to the next request instead of aborting the whole experiment.
 
+For Ollama models that return a separate thinking trace field, the provider redacts that field from saved raw response
+artifacts. The final answer content is still parsed normally.
+
 For a shared H100 VM, use [Ollama VM Runbook](./Ollama_VM_Runbook.md). The default recommendation there is
 `gpt-oss:120b` with one runner worker and one Ollama server parallel slot until measured latency and GPU policy justify
 higher concurrency.

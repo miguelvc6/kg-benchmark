@@ -385,6 +385,35 @@ class OllamaChatProviderTests(unittest.TestCase):
         self.assertEqual(raw["model"], "llama3.2")
         self.assertEqual(post.call_args.kwargs["json"]["format"], "json")
 
+    def test_redacts_ollama_thinking_from_raw_response(self) -> None:
+        response = MagicMock()
+        response.json.return_value = {
+            "model": "gpt-oss:120b",
+            "message": {
+                "role": "assistant",
+                "content": "{\"case_id\": \"c1\"}",
+                "thinking": "private reasoning trace",
+            },
+            "thinking": "top-level private reasoning trace",
+            "prompt_eval_count": 11,
+            "eval_count": 7,
+        }
+
+        with patch("guardian.model_provider.requests.post", return_value=response):
+            provider = OllamaChatProvider(model="gpt-oss:120b")
+            raw, parsed, _usage = provider.generate(
+                prompt="{}",
+                system_prompt="Return JSON only.",
+                response_format={"type": "json_object"},
+                metadata={"case_id": "c1"},
+            )
+
+        self.assertEqual(parsed, {"case_id": "c1"})
+        self.assertEqual(raw["thinking"], "[redacted]")
+        self.assertTrue(raw["thinking_redacted"])
+        self.assertEqual(raw["message"]["thinking"], "[redacted]")
+        self.assertTrue(raw["message"]["thinking_redacted"])
+
     def test_applies_ollama_keep_alive_and_context_length(self) -> None:
         response = MagicMock()
         response.json.return_value = {
