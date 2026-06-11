@@ -33,6 +33,29 @@ if [[ ! -f "${WORLD_STATE_PATH}" ]]; then
   exit 1
 fi
 
+OLLAMA_API_BASE="${OLLAMA_BASE_URL:-http://localhost:11434/api}"
+OLLAMA_API_BASE="${OLLAMA_API_BASE%/}"
+OLLAMA_SERVER_BASE="${OLLAMA_API_BASE%/api}"
+OLLAMA_HEALTH_URL="${OLLAMA_SERVER_BASE}/api/tags"
+
+if ! command -v curl >/dev/null 2>&1; then
+  echo "curl is required for the Ollama preflight check." >&2
+  exit 3
+fi
+
+if ! curl -fsS --max-time 5 "${OLLAMA_HEALTH_URL}" >/dev/null 2>&1; then
+  cat >&2 <<EOF
+Ollama is not reachable at ${OLLAMA_HEALTH_URL}.
+
+Start or repair the local Ollama server before running Phase G:
+  bash scripts/vm_ollama_setup.sh
+
+Then verify:
+  UV_PROJECT_ENVIRONMENT=${UV_ENV} uv run python scripts/test_llm_endpoint.py ollama --dotenv .env.ollama.vm --timeout 900
+EOF
+  exit 3
+fi
+
 args=(
   src/reasoning_floor.py
   --classified-benchmark "${CLASSIFIED_BENCHMARK:-data/04_classified_benchmark.jsonl}"

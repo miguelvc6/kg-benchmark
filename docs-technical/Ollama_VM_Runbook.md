@@ -171,6 +171,9 @@ ALLOW_FULL_CORE_RUN=1 OUTPUT_DIR=reports/reasoning_floor/ollama_v4_spec_only_ora
 Do not omit `MAX_CASES` for exploratory dry runs. A bare wrapper invocation is intentionally blocked unless
 `ALLOW_FULL_CORE_RUN=1` is set.
 
+The Phase G wrapper performs an Ollama preflight check against `OLLAMA_BASE_URL` before launching the benchmark. If
+`ollama serve` is not listening, the wrapper exits before writing a run with all requests marked as connection failures.
+
 Use `PROPOSAL_TRACK_MODE=diagnosis_routed` only as an ablation after oracle mode is stable.
 
 ## Resume
