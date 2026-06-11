@@ -3296,6 +3296,7 @@ def run_reasoning_floor(
         )
         failure_taxonomy = _failure_taxonomy_from_traces(_iter_bundle_traces(out_dir, bundle_list))
         run_elapsed_seconds = time.perf_counter() - run_started_at
+        run_finished_utc = _utc_now()
         run_usage = _aggregate_run_usage(usage_manifest)
         cost_estimation_modes = sorted(
             {
@@ -3323,6 +3324,7 @@ def run_reasoning_floor(
             "openai_reasoning_effort": openai_reasoning_effort,
             "output_dir": str(out_dir),
             "started_at_utc": run_started_utc,
+            "finished_at_utc": run_finished_utc,
             "elapsed_seconds": round(run_elapsed_seconds, 6),
             "generation_elapsed_seconds": run_usage["generation_elapsed_seconds"],
             "execution_mode": normalized_execution_mode,

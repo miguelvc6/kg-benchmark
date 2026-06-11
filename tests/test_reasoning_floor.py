@@ -406,6 +406,7 @@ class ReasoningFloorTests(unittest.TestCase):
         self.assertEqual(summary["counts"]["track_diagnosis_exact_match"], 1)
         self.assertEqual(summary["run_info"]["model"], "stub-model")
         self.assertEqual(summary["run_info"]["execution_mode"], "sync")
+        self.assertIsInstance(summary["run_info"]["finished_at_utc"], str)
         self.assertEqual(summary["usage"]["prompt_tokens"], 0)
         self.assertEqual(summary["usage"]["completion_tokens"], 0)
         self.assertIn("stub_model", summary["run_info"]["output_dir"])
