@@ -7,6 +7,7 @@ from typing import Any
 
 PROMPT_DEV_VERSION = os.environ.get("PROMPT_DEV_VERSION", "prompt_dev_v4_spec_only")
 PROMPT_DEV_SCAFFOLDED_VERSION = "prompt_dev_v3_scaffolded"
+PROMPT_DEV_DIAGNOSIS_VERSION = "prompt_dev_diag_v1_locus_spec"
 
 REPRESENTATIONS = (
     "hybrid_json_nl",
@@ -175,6 +176,28 @@ Definitions:
 Evidence boundary:
 - Use only visible prompt evidence.
 - Do not infer hidden benchmark classes, subtypes, or historical labels.
+"""
+
+DIAGNOSIS_LOCUS_SPEC_CONTRACT = """Return exactly one JSON object:
+{
+  "case_id": "<copy input id exactly; this is the neutral prompt-visible id>",
+  "predicted_track": "A_BOX" | "T_BOX" | "AMBIGUOUS",
+  "confidence": "low" | "medium" | "high" | "0.0-1.0 as a string",
+  "rationale": "<short evidence-based explanation>"
+}
+Definitions:
+- A_BOX means the most likely repair locus is the focus entity's claim for the target property.
+- T_BOX means the most likely repair locus is the target property's constraint or schema rule.
+- AMBIGUOUS means the visible evidence is insufficient to choose between those repair loci.
+Repair-locus semantics:
+- Decide where the repair should be applied, not which vocabulary appears in the violation report.
+- A constraint report can be resolved by an A_BOX claim edit or a T_BOX schema edit; choose the locus supported by the
+  visible evidence.
+- Choose AMBIGUOUS only when the visible evidence leaves both repair loci plausible or neither repair locus supported.
+Evidence boundary:
+- Use only visible prompt evidence.
+- Do not infer hidden benchmark classes, subtypes, or historical labels.
+- Do not use case-id prefixes, raw benchmark identifiers, or provenance outside the prompt.
 """
 
 V4_A_BOX_REPAIR_CONTRACT = """Return exactly one JSON object:
@@ -368,16 +391,28 @@ def render_prompt_dev_prompt(
     version = PROMPT_DEV_VERSION
     if version == "prompt_dev_v3":
         version = PROMPT_DEV_SCAFFOLDED_VERSION
-    if version not in {"prompt_dev_v4_spec_only", PROMPT_DEV_SCAFFOLDED_VERSION}:
+    if version not in {"prompt_dev_v4_spec_only", PROMPT_DEV_SCAFFOLDED_VERSION, PROMPT_DEV_DIAGNOSIS_VERSION}:
         raise ValueError(f"Unsupported prompt development version: {version}")
-    prompt_name = f"{version}_{task}_{representation}"
+    repair_version = (
+        "prompt_dev_v4_spec_only"
+        if version == PROMPT_DEV_DIAGNOSIS_VERSION and task != "track_diagnosis"
+        else version
+    )
+    prompt_name = f"{repair_version}_{task}_{representation}"
     system_prompt = (
         "You are evaluating knowledge-graph repair capability under a controlled benchmark prompt. "
         "Use only the evidence in the prompt. Return valid JSON only; no markdown and no code fences. "
         "Do not include <think> tags, chain-of-thought, markdown, or text before/after JSON."
     )
     if task == "track_diagnosis":
-        if version == PROMPT_DEV_SCAFFOLDED_VERSION:
+        if version == PROMPT_DEV_DIAGNOSIS_VERSION:
+            task_instruction = (
+                "Diagnose the repair locus using only visible evidence. A_BOX means the repair belongs on the focus "
+                "entity claim. T_BOX means the repair belongs on the property constraint or schema rule. AMBIGUOUS "
+                "means the visible evidence does not support a safe routing choice."
+            )
+            contract = DIAGNOSIS_LOCUS_SPEC_CONTRACT
+        elif version == PROMPT_DEV_SCAFFOLDED_VERSION:
             task_instruction = (
                 "Decide whether the visible historical repair case should be treated as A_BOX, T_BOX, or AMBIGUOUS. "
                 "A_BOX edits the focus entity claim. T_BOX edits the property constraint or schema rule. "
@@ -430,7 +465,7 @@ def render_prompt_dev_prompt(
 
     user_prompt = "\n\n".join(
         [
-            f"Prompt version: {version}",
+            f"Prompt version: {repair_version}",
             f"Representation: {representation}",
             f"Task: {task}",
             task_instruction,

@@ -166,11 +166,16 @@ Input case:
 Rules:
 - Copy "case_id" exactly from the input case.
 - predicted_track must be exactly one of A_BOX, T_BOX, or AMBIGUOUS.
-- A_BOX means the fix should change the claim on the focus entity.
-- T_BOX means the fix should reform the property constraint or schema rule itself.
-- AMBIGUOUS means the visible evidence is insufficient to choose safely between claim repair and schema reform.
+- A_BOX means the most likely repair locus is the focus entity's claim for the target property.
+- T_BOX means the most likely repair locus is the target property's constraint or schema rule.
+- AMBIGUOUS means the visible evidence is insufficient to choose between those repair loci.
+- Decide where the repair should be applied, not which vocabulary appears in the violation report.
+- A constraint report can be resolved by an A_BOX claim edit or a T_BOX schema edit; choose the locus supported by the
+  visible evidence.
+- Choose AMBIGUOUS only when the visible evidence leaves both repair loci plausible or neither repair locus supported.
 - Use only visible prompt evidence.
 - Do not infer hidden benchmark classes, subtypes, or historical labels.
+- Do not use case-id prefixes, raw benchmark identifiers, or provenance outside the prompt.
 - If you include confidence, prefer a string such as "high" or "0.90".
 - Output valid JSON only. No markdown. No code fences.
 

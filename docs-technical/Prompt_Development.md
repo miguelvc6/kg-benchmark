@@ -54,6 +54,32 @@ include policy labels such as `compact_inventory_no_pre_change_signature`.
 To explicitly render or evaluate the scaffolded ablation, set `PROMPT_DEV_VERSION=prompt_dev_v3_scaffolded` in the
 environment for that command. The default is `prompt_dev_v4_spec_only`.
 
+`prompt_dev_diag_v1_locus_spec` is a separate dev-only diagnosis prompt candidate for testing whether track diagnosis
+is strong enough to route repair prompts. It keeps the same spec-only policy as v4 and defines only `A_BOX`, `T_BOX`,
+`AMBIGUOUS`, the visible-evidence boundary, and repair-locus decision semantics. It does not change the frozen v4
+oracle A-box or T-box repair prompts. Use it only for diagnosis matrices and diagnosis-routed dev canaries:
+
+```bash
+PROMPT_DEV_VERSION=prompt_dev_diag_v1_locus_spec \
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python src/prompt_dev.py evaluate \
+  --classified-benchmark data/04_classified_benchmark.jsonl \
+  --world-state data/03_world_state.json \
+  --dev-manifest reports/benchmark_selection/dev_prompt_holdout_spec_v4_96_seed_17.json \
+  --core-manifest reports/benchmark_selection/core_v1_seed_13.json \
+  --output-dir reports/prompt_dev/evaluation_prompt_dev_diag_v1_locus_spec_holdout96_zero_shot \
+  --model-endpoint ollama \
+  --max-cases 96 \
+  --sample-strategy manifest_order \
+  --representations hybrid_json_nl \
+  --example-policies zero_shot \
+  --context-bundles logic_only,local_graph \
+  --tasks track_diagnosis
+```
+
+The current v4 spec-only diagnosis prompt did not pass the routing gate on the v4 holdout; it was near chance and
+should not be used for main repair routing. Oracle repair remains the validated Phase G main condition. Diagnosis-routed
+is a dev-gated ablation only.
+
 Supported representations:
 
 - `hybrid_json_nl`
@@ -212,6 +238,22 @@ limit, and no endpoint request is made for those prompts.
 Top-level `prompt_dev_evaluation_summary.json` and `prompt_dev_evaluation_comparison.md` are written even when an
 individual matrix scoring step fails. Per-matrix result blocks include normalized, parse-error, request-error, and
 skipped counts, plus counters by historical track, prompt task, and context bundle.
+
+Track-diagnosis evaluations also write:
+
+- `track_diagnosis_report.json`
+- `track_diagnosis_report.md`
+
+These reports include confusion by historical track, confusion by class, subtype, selection stratum, main-score flag,
+and diagnostic-only flag, plus A-box recall, T-box recall, balanced accuracy, macro-F1, `AMBIGUOUS` rate, and routed
+risk. A diagnosis prompt is eligible for a diagnosis-routed dev canary only if request error rate is `<= 1%`, parse
+error rate is `<= 4%`, balanced accuracy is `>= 0.70`, both A-box and T-box recall are `>= 0.65`, and `AMBIGUOUS` is
+not overused by default (`<= 15%`).
+
+For `--repair-track-modes diagnosis_routed`, prompt-dev now performs the same two-stage routing as the reasoning-floor
+runner: it runs track diagnosis first, renders the repair prompt for the predicted `A_BOX` or `T_BOX` route, and writes
+synthetic skipped proposal rows for `AMBIGUOUS` or unroutable diagnosis outputs. Skipped routed proposals are not
+counted as request errors or parse errors.
 
 For `track_diagnosis`-only matrices, proposal files are intentionally absent. Interpret those rows by
 `track_diagnosis_accuracy`, `track_diagnosis_present_rate`, and request/parse status; generic proposal-quality columns

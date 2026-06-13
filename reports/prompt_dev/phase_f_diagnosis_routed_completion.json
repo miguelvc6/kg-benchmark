@@ -1,0 +1,92 @@
+{
+  "artifact_sync": {
+    "code_synced_to_vm": true,
+    "local_report_synced_to_vm": true,
+    "note": "The authoritative Ollama inference artifact is on the VM. VM-to-local bulk file transfer hung during this session; key metrics were queried directly over SSH and recorded here.",
+    "vm_output_dir": "reports/prompt_dev/evaluation_prompt_dev_diag_v1_locus_spec_holdout96_ollama_zero_shot"
+  },
+  "created_at_local": "2026-06-13",
+  "diagnosis_only_run": {
+    "model": "gpt-oss:120b",
+    "provider": "ollama",
+    "prompt_version": "prompt_dev_diag_v1_locus_spec",
+    "total_prompts": 192,
+    "total_normalized": 192
+  },
+  "gates": {
+    "ambiguous_rate_max": 0.15,
+    "a_box_recall_min": 0.65,
+    "balanced_accuracy_min": 0.7,
+    "parse_error_rate_max": 0.04,
+    "request_error_rate_max": 0.01,
+    "t_box_recall_min": 0.65
+  },
+  "matrices": [
+    {
+      "ambiguous_rate": 0.1354,
+      "a_box_recall": 0.8958,
+      "balanced_accuracy": 0.4792,
+      "confusion_by_historical_track": {
+        "A_BOX": {
+          "A_BOX": 43,
+          "AMBIGUOUS": 3,
+          "T_BOX": 2
+        },
+        "T_BOX": {
+          "A_BOX": 35,
+          "AMBIGUOUS": 10,
+          "T_BOX": 3
+        }
+      },
+      "context_bundle": "logic_only",
+      "eligible_for_routed_canary": false,
+      "failed_gates": [
+        "balanced_accuracy",
+        "t_box_recall"
+      ],
+      "macro_f1": 0.3979,
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_zero_shot_logic_only_track_diagnosis_diagnosis_no_abstain",
+      "normalized": 96,
+      "parse_error_rate": 0.0,
+      "request_error_rate": 0.0,
+      "t_box_recall": 0.0625,
+      "wrong_route_rate": 0.3854
+    },
+    {
+      "ambiguous_rate": 0.1979,
+      "a_box_recall": 0.8333,
+      "balanced_accuracy": 0.4375,
+      "confusion_by_historical_track": {
+        "A_BOX": {
+          "A_BOX": 40,
+          "AMBIGUOUS": 4,
+          "T_BOX": 4
+        },
+        "T_BOX": {
+          "A_BOX": 31,
+          "AMBIGUOUS": 15,
+          "T_BOX": 2
+        }
+      },
+      "context_bundle": "local_graph",
+      "eligible_for_routed_canary": false,
+      "failed_gates": [
+        "balanced_accuracy",
+        "t_box_recall",
+        "ambiguous_rate"
+      ],
+      "macro_f1": 0.3732,
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_zero_shot_local_graph_track_diagnosis_diagnosis_no_abstain",
+      "normalized": 96,
+      "parse_error_rate": 0.0,
+      "request_error_rate": 0.0,
+      "t_box_recall": 0.0417,
+      "wrong_route_rate": 0.3646
+    }
+  ],
+  "routed_canary": {
+    "run": false,
+    "skip_reason": "diagnosis_only_gate_failed"
+  },
+  "verdict": "PHASE_F_DIAGNOSIS_BRANCH_COMPLETE_ROUTED_BLOCKED"
+}

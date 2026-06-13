@@ -1156,10 +1156,13 @@ class ReasoningFloorTests(unittest.TestCase):
 
     def test_track_diagnosis_prompt_template_is_spec_only(self) -> None:
         template = get_prompt_template("reasoning_floor_track_diagnosis_zero_shot")
-        self.assertIn("A_BOX means the fix should change the claim", template.user_prompt_template)
-        self.assertIn("T_BOX means the fix should reform", template.user_prompt_template)
+        self.assertIn("A_BOX means the most likely repair locus", template.user_prompt_template)
+        self.assertIn("T_BOX means the most likely repair locus", template.user_prompt_template)
+        self.assertIn("Decide where the repair should be applied", template.user_prompt_template)
         self.assertIn("Do not infer hidden benchmark classes", template.user_prompt_template)
-        self.assertNotIn("A constraint report alone does not imply T_BOX", template.user_prompt_template)
+        self.assertNotIn("TypeA", template.user_prompt_template)
+        self.assertNotIn("TypeB", template.user_prompt_template)
+        self.assertNotIn("TypeC", template.user_prompt_template)
         self.assertNotIn("Contrastive examples", template.user_prompt_template)
 
     def test_cli_defaults_skip_minimal_case(self) -> None:

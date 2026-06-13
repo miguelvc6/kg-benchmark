@@ -8,6 +8,10 @@ This runner implements the pre-Guardian reasoning floor described in the concept
 
 It generates one proposal per case per ablation bundle. In `diagnosis_routed` mode it first runs track diagnosis and routes the proposal through the diagnosed track. In oracle mode it uses the historical benchmark track directly and, by default, skips the separate diagnosis request to avoid unnecessary inference.
 
+Phase G main scoring should use oracle proposal routing first. `diagnosis_routed` is currently an ablation path only and
+requires a passing Phase F diagnosis validation before any core ablation run. The current v4 spec-only diagnosis prompt
+failed that gate on the dev holdout, so it should not be used as the main routing policy.
+
 When diagnosis is enabled, the track-diagnosis call asks the model to classify each case as `A_BOX`, `T_BOX`, or
 `AMBIGUOUS`.
 
@@ -22,7 +26,9 @@ Terminology:
 - `main score`: `main_score_case_ids`, used for headline paper scores.
 - `diagnostic/challenge`: `diagnostic_case_ids`, reported separately.
 - `oracle`: proposal generation uses the historical benchmark track. Track diagnosis is skipped by default unless `--oracle-diagnosis-mode run` is set.
-- `diagnosis_routed`: proposal generation uses the predicted track; `AMBIGUOUS` skips proposal generation.
+- `diagnosis_routed`: proposal generation uses the predicted track; `AMBIGUOUS` skips proposal generation. This is
+  dev-gated and should remain an ablation until diagnosis balanced accuracy, A-box/T-box recall, ambiguity, request, and
+  parse-error gates pass on dev-only artifacts.
 
 ## Ablation Bundles
 
@@ -184,7 +190,10 @@ The T-box prompt now uses placeholder-only contrastive examples rather than a si
 
 Those placeholders no longer mimic Wikidata `Q...` ids, so copied template tokens are less likely to be misread as valid-but-wrong constraint-family guesses.
 
-The track-diagnosis prompt now includes explicit contrastive guidance for schema-vs-claim confusion cases such as allowed-entity-types and property-scope disputes.
+The track-diagnosis prompt now uses a spec-only repair-locus contract shared with Phase F diagnosis validation. It
+defines `A_BOX`, `T_BOX`, and `AMBIGUOUS`, the visible-evidence boundary, and the rule that routing is based on likely
+repair locus rather than report vocabulary. It does not include hidden class/subtype labels or dev-derived repair
+recipes.
 
 As a safety net, the normalization layer also accepts several legacy rich-JSON shapes that appeared in earlier reasoning-floor runs. This compatibility path recovers common aliases such as `proposal_id` or `repair_id`, nested property fields, numeric track-diagnosis confidence values, proposal-level confidence aliases that can be rewritten into `uncertainty`, and common proposal wrappers when they can be mapped back to the public schemas.
 

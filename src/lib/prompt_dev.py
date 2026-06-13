@@ -44,6 +44,14 @@ T_BOX_ACTIONS = {
     "SCHEMA_UPDATE",
     "COINCIDENTAL_SCHEMA_CHANGE",
 }
+DIAGNOSIS_ACCEPTANCE_GATES = {
+    "request_error_rate_max": 0.01,
+    "parse_error_rate_max": 0.04,
+    "balanced_accuracy_min": 0.70,
+    "a_box_recall_min": 0.65,
+    "t_box_recall_min": 0.65,
+    "ambiguous_rate_max": 0.15,
+}
 
 
 @dataclass(frozen=True)
@@ -720,6 +728,8 @@ def _gold_t_box_output(record: dict[str, Any]) -> dict[str, Any] | None:
 def _task_for_record(matrix_task: str, record: dict[str, Any], track_mode: str | None) -> str | None:
     if matrix_task == "track_diagnosis":
         return "track_diagnosis"
+    if matrix_task == "repair_proposal" and track_mode == "diagnosis_routed":
+        return "track_diagnosis"
     proposal_track = record.get("track") if track_mode in {None, "oracle", "diagnosis_routed"} else None
     if proposal_track == "A_BOX":
         return "a_box_repair"
@@ -857,6 +867,7 @@ def render_prompt_dev_prompts(options: PromptDevRenderOptions) -> dict[str, Any]
                     "case_id": raw_case_id,
                     "visible_case_id": visible_case_id,
                     "task": task,
+                    "matrix_task": row["task"],
                     "historical_track": record.get("track"),
                     "representation": row["representation"],
                     "example_policy": row["example_policy"],
@@ -1041,9 +1052,10 @@ def _payload_with_case_id(payload: Any, case_id: str, visible_case_id: str | Non
     if not isinstance(payload, dict):
         return payload
     normalized = dict(payload)
-    if visible_case_id and normalized.get("case_id") == visible_case_id:
-        normalized["case_id"] = case_id
-    if not isinstance(normalized.get("case_id"), str) or not normalized.get("case_id", "").strip():
+    # Prompt-dev requests are one case at a time and use neutral model-visible IDs.
+    # Attribute the parsed payload to the request case before parser/evaluator joins,
+    # even if the model copied a shortened or otherwise slightly malformed neutral ID.
+    if isinstance(case_id, str) and case_id.strip():
         normalized["case_id"] = case_id
     return normalized
 
@@ -1056,8 +1068,11 @@ def _prompt_record_metadata(
     record: dict[str, Any],
     world_state_entry: dict[str, Any] | None,
 ) -> dict[str, Any]:
-    proposal_track = prompt_record.get("historical_track") if prompt_record.get("task") != "track_diagnosis" else None
+    proposal_track = prompt_record.get("proposal_track_used")
+    if not isinstance(proposal_track, str) or not proposal_track:
+        proposal_track = prompt_record.get("historical_track") if prompt_record.get("task") != "track_diagnosis" else None
     task_type = "track_diagnosis" if prompt_record.get("task") == "track_diagnosis" else "proposal"
+    prompt_dev_task = prompt_record.get("matrix_task") or prompt_record["task"]
     metadata = {
         "run_id": run_id,
         "matrix_id": prompt_record["matrix_id"],
@@ -1073,9 +1088,13 @@ def _prompt_record_metadata(
         "track": prompt_record.get("historical_track"),
         "historical_track": prompt_record.get("historical_track"),
         "proposal_track_used": proposal_track,
-        "routing_source": "prompt_dev",
+        "routing_source": prompt_record.get("routing_source") or (
+            "diagnosis_prediction"
+            if prompt_record.get("track_mode") == "diagnosis_routed" and task_type == "proposal"
+            else "prompt_dev"
+        ),
         "task_type": task_type,
-        "prompt_dev_task": prompt_record["task"],
+        "prompt_dev_task": prompt_dev_task,
         "provider": getattr(provider, "provider_name", provider.__class__.__name__),
         "model": getattr(provider, "model", "unknown-model"),
         "context_audit": prompt_record.get("context_audit") or {},
@@ -1177,6 +1196,169 @@ def _record_prompt_dev_result(
     return manifest_record
 
 
+def _diagnosis_track_from_payload(parsed_payload: Any, case_id: str, visible_case_id: str | None = None) -> str:
+    try:
+        normalized = normalize_diagnosis(_payload_with_case_id(parsed_payload, case_id, visible_case_id))
+    except Exception:
+        return "UNROUTABLE"
+    if normalized.predicted_track in {"A_BOX", "T_BOX", "AMBIGUOUS"}:
+        return normalized.predicted_track
+    return "UNROUTABLE"
+
+
+def _diagnosis_track_from_file(matrix_dir: Path, case_id: str) -> str:
+    path = matrix_dir / "track_diagnoses.jsonl"
+    if not path.exists():
+        return "UNROUTABLE"
+    for row in iter_jsonl(path):
+        if not isinstance(row, dict) or row.get("case_id") != case_id:
+            continue
+        predicted = row.get("predicted_track")
+        if predicted in {"A_BOX", "T_BOX", "AMBIGUOUS"}:
+            return predicted
+    return "UNROUTABLE"
+
+
+def _record_skipped_routed_proposal_result(
+    *,
+    matrix_dir: Path,
+    prompt_record: dict[str, Any],
+    metadata: dict[str, Any],
+    usage: dict[str, Any],
+    parse_status: str,
+    skip_reason: str,
+) -> dict[str, Any]:
+    manifest_record = {
+        **{key: metadata.get(key) for key in (
+            "run_id",
+            "matrix_id",
+            "case_id",
+            "visible_case_id",
+            "ablation_bundle",
+            "context_bundle",
+            "representation",
+            "example_policy",
+            "track_mode",
+            "include_abstention",
+            "prompt_name",
+            "track",
+            "historical_track",
+            "proposal_track_used",
+            "routing_source",
+            "task_type",
+            "prompt_dev_task",
+        )},
+        "provider": usage.get("provider"),
+        "model": usage.get("model"),
+        "usage": _usage_block(usage, None),
+        "context_audit": metadata.get("context_audit") or {},
+        "timestamp_utc": _utc_now(),
+        "parse_status": parse_status,
+        "skip_reason": skip_reason,
+    }
+    raw_record = {
+        **{key: manifest_record.get(key) for key in (
+            "run_id",
+            "matrix_id",
+            "case_id",
+            "visible_case_id",
+            "ablation_bundle",
+            "prompt_name",
+            "track",
+            "historical_track",
+            "proposal_track_used",
+            "routing_source",
+            "task_type",
+            "prompt_dev_task",
+        )},
+        "raw_response": None,
+        "parsed_payload": None,
+        "skip_reason": skip_reason,
+    }
+    _append_jsonl(matrix_dir / "raw_model_responses.jsonl", raw_record)
+    _append_jsonl(matrix_dir / "run_manifest.jsonl", manifest_record)
+    return manifest_record
+
+
+def _render_routed_proposal_prompt_record(
+    *,
+    diagnosis_prompt_record: dict[str, Any],
+    proposal_track: str,
+    record: dict[str, Any],
+    world_state_entry: dict[str, Any] | None,
+    world_store: WorldStateStore,
+    candidate_records: list[dict[str, Any]],
+    visible_case_ids: dict[str, str],
+    blocked_core: dict[str, set[str]],
+    options: PromptDevEvaluateOptions,
+) -> dict[str, Any]:
+    task = "a_box_repair" if proposal_track == "A_BOX" else "t_box_repair"
+    raw_case_id = record["id"]
+    visible_case_id = diagnosis_prompt_record.get("visible_case_id") or visible_case_ids.get(
+        raw_case_id,
+        f"case_{_stable_hash(raw_case_id)[:12]}",
+    )
+    case_payload, context_audit = _bundle_payload_and_audit(record, world_state_entry, diagnosis_prompt_record["context_bundle"])
+    case_payload = _model_visible_payload(case_payload, raw_case_id=raw_case_id, visible_case_id=visible_case_id)
+    examples = select_examples(
+        eval_record=record,
+        candidate_records=candidate_records,
+        policy=diagnosis_prompt_record["example_policy"],
+        task=task,
+        seed=options.seed,
+        example_count=options.example_count,
+        blocked_core=blocked_core,
+        allow_same_property=options.allow_same_property_examples,
+    )
+    for example in examples:
+        candidate = next((item for item in candidate_records if item.get("id") == example["case_id"]), None)
+        if candidate is None:
+            continue
+        candidate_raw_case_id = candidate["id"]
+        candidate_visible_case_id = visible_case_ids.get(
+            candidate_raw_case_id,
+            f"case_{_stable_hash(candidate_raw_case_id)[:12]}",
+        )
+        candidate_world = world_store.get(candidate["id"])
+        example_payload, _ = _bundle_payload_and_audit(candidate, candidate_world, diagnosis_prompt_record["context_bundle"])
+        example["input_payload"] = _model_visible_payload(
+            example_payload,
+            raw_case_id=candidate_raw_case_id,
+            visible_case_id=candidate_visible_case_id,
+        )
+        visible_output = _model_visible_output(
+            example.get("output_payload") if isinstance(example.get("output_payload"), dict) else None,
+            raw_case_id=candidate_raw_case_id,
+            visible_case_id=candidate_visible_case_id,
+        )
+        if visible_output is not None:
+            example["output_payload"] = visible_output
+        example["visible_case_id"] = candidate_visible_case_id
+    rendered = render_prompt_dev_prompt(
+        task=task,
+        representation=diagnosis_prompt_record["representation"],
+        case_payload=case_payload,
+        examples=examples,
+        include_abstention=diagnosis_prompt_record["include_abstention"],
+    )
+    return {
+        **diagnosis_prompt_record,
+        "task": task,
+        "matrix_task": "repair_proposal",
+        "proposal_track_used": proposal_track,
+        "routing_source": "diagnosis_prediction",
+        "prompt_name": rendered.prompt_name,
+        "system_prompt": rendered.system_prompt,
+        "user_prompt": rendered.user_prompt,
+        "response_format": rendered.response_format,
+        "context_audit": context_audit,
+        "examples": [
+            {key: value for key, value in example.items() if key != "input_payload"}
+            for example in examples
+        ],
+    }
+
+
 def _write_missing_diagnosis_manifest_rows(
     *,
     matrix_dir: Path,
@@ -1259,6 +1441,54 @@ def _notify_progress(callback: Callable[[dict[str, Any]], None] | None, event: d
         callback(event)
 
 
+def _ensure_matrix_info(
+    matrices: dict[str, dict[str, Any]],
+    prompt_record: dict[str, Any],
+    matrix_dir: Path,
+) -> dict[str, Any]:
+    matrix_task = prompt_record.get("matrix_task") or (
+        "track_diagnosis" if prompt_record["task"] == "track_diagnosis" else "repair_proposal"
+    )
+    return matrices.setdefault(
+        prompt_record["matrix_id"],
+        {
+            "matrix_id": prompt_record["matrix_id"],
+            "output_dir": str(matrix_dir),
+            "representation": prompt_record["representation"],
+            "example_policy": prompt_record["example_policy"],
+            "context_bundle": prompt_record["context_bundle"],
+            "task": matrix_task,
+            "track_mode": prompt_record.get("track_mode"),
+            "include_abstention": prompt_record["include_abstention"],
+            "case_ids": [],
+            "counts": Counter(),
+            "status_counts": Counter(),
+            "by_historical_track": Counter(),
+            "by_task": Counter(),
+            "by_context": Counter(),
+        },
+    )
+
+
+def _accumulate_prompt_result(
+    *,
+    matrices: dict[str, dict[str, Any]],
+    prompt_counts: Counter,
+    prompt_record: dict[str, Any],
+    manifest_record: dict[str, Any],
+    matrix_dir: Path,
+) -> None:
+    parse_status = str(manifest_record.get("parse_status") or "unknown")
+    prompt_counts[parse_status] += 1
+    matrix_info = _ensure_matrix_info(matrices, prompt_record, matrix_dir)
+    matrix_info["case_ids"].append(prompt_record["case_id"])
+    matrix_info["counts"][parse_status] += 1
+    matrix_info["status_counts"][_status_bucket(parse_status)] += 1
+    matrix_info["by_historical_track"][prompt_record.get("historical_track") or "unknown"] += 1
+    matrix_info["by_task"][prompt_record["task"]] += 1
+    matrix_info["by_context"][prompt_record["context_bundle"]] += 1
+
+
 def evaluate_prompt_dev_prompts(
     options: PromptDevEvaluateOptions,
     *,
@@ -1308,6 +1538,10 @@ def evaluate_prompt_dev_prompts(
     )
     log.info("evaluate: loaded eval records=%s", len(eval_records))
     records_by_id = {record["id"]: record for record in eval_records if isinstance(record.get("id"), str)}
+    log.info("evaluate: loading candidate records for routed prompts and examples")
+    candidate_records = _load_all_manifest_records(options.classified_benchmark, options.dev_manifest)
+    visible_case_ids = _visible_case_id_map(candidate_records)
+    blocked_core = _blocked_core_sets(options.core_manifest)
     log.info("evaluate: creating model provider endpoint=%s model=%s", options.model_endpoint or "env", options.model_name or "env")
     provider = provider or create_model_provider(options.model_name, model_endpoint=options.model_endpoint)
     log.info(
@@ -1396,32 +1630,13 @@ def evaluate_prompt_dev_prompts(
                         elapsed_seconds=elapsed_seconds,
                         error_message=error_message,
                     )
-            prompt_counts[manifest_record["parse_status"]] += 1
-            matrices.setdefault(
-                matrix_id,
-                {
-                    "matrix_id": matrix_id,
-                    "output_dir": str(matrix_dir),
-                    "representation": prompt_record["representation"],
-                    "example_policy": prompt_record["example_policy"],
-                    "context_bundle": prompt_record["context_bundle"],
-                    "task": "track_diagnosis" if prompt_record["task"] == "track_diagnosis" else "repair_proposal",
-                    "track_mode": prompt_record.get("track_mode"),
-                    "include_abstention": prompt_record["include_abstention"],
-                    "case_ids": [],
-                    "counts": Counter(),
-                    "status_counts": Counter(),
-                    "by_historical_track": Counter(),
-                    "by_task": Counter(),
-                    "by_context": Counter(),
-                },
+            _accumulate_prompt_result(
+                matrices=matrices,
+                prompt_counts=prompt_counts,
+                prompt_record=prompt_record,
+                manifest_record=manifest_record,
+                matrix_dir=matrix_dir,
             )
-            matrices[matrix_id]["case_ids"].append(prompt_record["case_id"])
-            matrices[matrix_id]["counts"][manifest_record["parse_status"]] += 1
-            matrices[matrix_id]["status_counts"][_status_bucket(manifest_record["parse_status"])] += 1
-            matrices[matrix_id]["by_historical_track"][prompt_record.get("historical_track") or "unknown"] += 1
-            matrices[matrix_id]["by_task"][prompt_record["task"]] += 1
-            matrices[matrix_id]["by_context"][prompt_record["context_bundle"]] += 1
             _notify_progress(
                 options.progress_callback,
                 {
@@ -1432,6 +1647,166 @@ def evaluate_prompt_dev_prompts(
                     "parse_status": manifest_record["parse_status"],
                 },
             )
+            if (
+                prompt_record.get("matrix_task") == "repair_proposal"
+                and prompt_record.get("track_mode") == "diagnosis_routed"
+                and prompt_record.get("task") == "track_diagnosis"
+            ):
+                diagnosis_was_normalized = manifest_record.get("parse_status") == "normalized" or (
+                    should_skip and skip_status == "skipped_existing_normalized"
+                )
+                if should_skip and skip_status == "skipped_existing_normalized":
+                    routed_track = _diagnosis_track_from_file(matrix_dir, prompt_record["case_id"])
+                else:
+                    routed_track = _diagnosis_track_from_payload(
+                        parsed_payload if not should_skip else None,
+                        prompt_record["case_id"],
+                        prompt_record.get("visible_case_id")
+                        if isinstance(prompt_record.get("visible_case_id"), str)
+                        else None,
+                    )
+                if not diagnosis_was_normalized:
+                    routed_track = "UNROUTABLE"
+                if routed_track in {"A_BOX", "T_BOX"}:
+                    proposal_prompt_record = _render_routed_proposal_prompt_record(
+                        diagnosis_prompt_record=prompt_record,
+                        proposal_track=routed_track,
+                        record=record,
+                        world_state_entry=world_state_entry,
+                        world_store=world_store,
+                        candidate_records=candidate_records,
+                        visible_case_ids=visible_case_ids,
+                        blocked_core=blocked_core,
+                        options=options,
+                    )
+                    proposal_metadata = _prompt_record_metadata(
+                        run_id=run_id,
+                        prompt_record=proposal_prompt_record,
+                        provider=provider,
+                        record=record,
+                        world_state_entry=world_state_entry,
+                    )
+                    proposal_key = (proposal_prompt_record["case_id"], "proposal")
+                    proposal_existing_row = existing_rows.get(proposal_key)
+                    proposal_should_skip, proposal_skip_status = _should_skip_existing_prompt_result(
+                        proposal_existing_row,
+                        retry_failures=options.retry_failures,
+                    )
+                    proposal_started = time.perf_counter()
+                    if proposal_should_skip:
+                        proposal_manifest_record = dict(proposal_existing_row or {})
+                        proposal_manifest_record["parse_status"] = proposal_skip_status
+                    else:
+                        proposal_prompt_char_count = _prompt_char_count(proposal_prompt_record)
+                        if options.max_prompt_chars is not None and proposal_prompt_char_count > options.max_prompt_chars:
+                            proposal_manifest_record = _record_prompt_dev_result(
+                                matrix_dir=matrix_dir,
+                                prompt_record=proposal_prompt_record,
+                                metadata=proposal_metadata,
+                                raw_response=None,
+                                parsed_payload=None,
+                                usage=_empty_usage(provider, proposal_metadata),
+                                elapsed_seconds=None,
+                                error_message=(
+                                    f"prompt length {proposal_prompt_char_count} exceeds --max-prompt-chars "
+                                    f"{options.max_prompt_chars}"
+                                ),
+                            )
+                        else:
+                            try:
+                                proposal_raw, proposal_parsed, proposal_usage = provider.generate(
+                                    proposal_prompt_record["user_prompt"],
+                                    proposal_prompt_record["system_prompt"],
+                                    proposal_prompt_record["response_format"],
+                                    proposal_metadata,
+                                )
+                                proposal_elapsed = time.perf_counter() - proposal_started
+                                proposal_error = None
+                            except Exception as exc:
+                                proposal_raw = None
+                                proposal_parsed = None
+                                proposal_usage = _empty_usage(provider, proposal_metadata)
+                                proposal_elapsed = time.perf_counter() - proposal_started
+                                proposal_error = str(exc)
+                            proposal_manifest_record = _record_prompt_dev_result(
+                                matrix_dir=matrix_dir,
+                                prompt_record=proposal_prompt_record,
+                                metadata=proposal_metadata,
+                                raw_response=proposal_raw,
+                                parsed_payload=proposal_parsed,
+                                usage=proposal_usage,
+                                elapsed_seconds=proposal_elapsed,
+                                error_message=proposal_error,
+                            )
+                    _accumulate_prompt_result(
+                        matrices=matrices,
+                        prompt_counts=prompt_counts,
+                        prompt_record=proposal_prompt_record,
+                        manifest_record=proposal_manifest_record,
+                        matrix_dir=matrix_dir,
+                    )
+                    _notify_progress(
+                        options.progress_callback,
+                        {
+                            "event": "advance",
+                            "matrix_id": matrix_id,
+                            "case_id": proposal_prompt_record["case_id"],
+                            "task": proposal_prompt_record["task"],
+                            "parse_status": proposal_manifest_record["parse_status"],
+                        },
+                    )
+                else:
+                    skip_reason = (
+                        "diagnosis_routed_ambiguous_track"
+                        if routed_track == "AMBIGUOUS"
+                        else "diagnosis_routed_unroutable_track"
+                    )
+                    skipped_prompt_record = {
+                        **prompt_record,
+                        "task": "repair_proposal",
+                        "matrix_task": "repair_proposal",
+                        "proposal_track_used": routed_track,
+                        "routing_source": "diagnosis_prediction",
+                    }
+                    skipped_metadata = _prompt_record_metadata(
+                        run_id=run_id,
+                        prompt_record=skipped_prompt_record,
+                        provider=provider,
+                        record=record,
+                        world_state_entry=world_state_entry,
+                    )
+                    skipped_metadata["proposal_track_used"] = routed_track
+                    skipped_metadata["task_type"] = "proposal"
+                    skipped_metadata["prompt_dev_task"] = "repair_proposal"
+                    skipped_manifest_record = _record_skipped_routed_proposal_result(
+                        matrix_dir=matrix_dir,
+                        prompt_record=skipped_prompt_record,
+                        metadata=skipped_metadata,
+                        usage=_empty_usage(provider, skipped_metadata),
+                        parse_status=(
+                            "skipped_ambiguous_track"
+                            if routed_track == "AMBIGUOUS"
+                            else "skipped_unroutable_track"
+                        ),
+                        skip_reason=skip_reason,
+                    )
+                    _accumulate_prompt_result(
+                        matrices=matrices,
+                        prompt_counts=prompt_counts,
+                        prompt_record=skipped_prompt_record,
+                        manifest_record=skipped_manifest_record,
+                        matrix_dir=matrix_dir,
+                    )
+                    _notify_progress(
+                        options.progress_callback,
+                        {
+                            "event": "advance",
+                            "matrix_id": matrix_id,
+                            "case_id": skipped_prompt_record["case_id"],
+                            "task": skipped_prompt_record["task"],
+                            "parse_status": skipped_manifest_record["parse_status"],
+                        },
+                    )
 
     results: list[dict[str, Any]] = []
     log.info("evaluate: model request loop complete status_counts=%s", dict(prompt_counts))
@@ -1439,7 +1814,7 @@ def evaluate_prompt_dev_prompts(
         matrix_dir = Path(matrix_info["output_dir"])
         unique_case_ids = sorted(set(matrix_info["case_ids"]))
         log.info("evaluate: scoring matrix=%s cases=%s", matrix_id, len(unique_case_ids))
-        if matrix_info["task"] == "repair_proposal":
+        if matrix_info["task"] == "repair_proposal" and matrix_info.get("track_mode") != "diagnosis_routed":
             _write_missing_diagnosis_manifest_rows(
                 matrix_dir=matrix_dir,
                 matrix_id=matrix_id,
@@ -1531,12 +1906,25 @@ def evaluate_prompt_dev_prompts(
         },
         "counts": {
             "rendered_prompts": render_summary["counts"]["rendered_prompts"],
-            "evaluated_prompts": len(prompt_records),
+            "evaluated_prompts": sum(prompt_counts.values()),
             "matrix_rows": len(results),
             "by_parse_status": dict(prompt_counts),
         },
         "results": results,
     }
+    diagnosis_report = _write_track_diagnosis_report(
+        output_dir=output_dir,
+        results=results,
+        eval_records=eval_records,
+        manifest=load_selection_manifest(options.dev_manifest),
+    )
+    if diagnosis_report:
+        summary["outputs"]["track_diagnosis_report_json"] = str(output_dir / "track_diagnosis_report.json")
+        summary["outputs"]["track_diagnosis_report_markdown"] = str(output_dir / "track_diagnosis_report.md")
+        summary["track_diagnosis_report"] = {
+            "matrix_count": len(diagnosis_report.get("matrices", [])),
+            "gates": diagnosis_report.get("gates"),
+        }
     summary_path = output_dir / "prompt_dev_evaluation_summary.json"
     write_json(summary_path, summary)
     (output_dir / "prompt_dev_evaluation_comparison.md").write_text(
@@ -1545,6 +1933,317 @@ def evaluate_prompt_dev_prompts(
     )
     log.info("evaluate: wrote summary=%s comparison=%s", summary_path, output_dir / "prompt_dev_evaluation_comparison.md")
     return summary
+
+
+def _safe_divide(numerator: int | float, denominator: int | float) -> float | None:
+    if denominator == 0:
+        return None
+    return float(numerator) / float(denominator)
+
+
+def _annotation_bool(annotation: dict[str, Any], key: str) -> bool:
+    value = annotation.get(key)
+    return value is True or (isinstance(value, str) and value.strip().lower() in {"true", "1", "yes"})
+
+
+def _record_slice_metadata(record: dict[str, Any], manifest: dict[str, Any]) -> dict[str, Any]:
+    case_id = str(record.get("id") or "")
+    annotation = _manifest_annotation(manifest, case_id)
+    cls, subtype = _classification_parts(record)
+    return {
+        "class": annotation.get("class") if isinstance(annotation.get("class"), str) else cls,
+        "subtype": annotation.get("subtype") if isinstance(annotation.get("subtype"), str) else subtype,
+        "selection_stratum": _selection_stratum(manifest, case_id),
+        "main_score": _annotation_bool(annotation, "main_score")
+        or _annotation_bool(annotation, "main_score_case")
+        or _annotation_bool(annotation, "is_main_score"),
+        "diagnostic_only": _annotation_bool(annotation, "diagnostic_only")
+        or _annotation_bool(annotation, "diagnostic_case"),
+    }
+
+
+def _read_diagnosis_predictions(matrix_dir: Path) -> dict[str, str]:
+    predictions: dict[str, str] = {}
+    path = matrix_dir / "track_diagnoses.jsonl"
+    if not path.exists():
+        return predictions
+    for row in iter_jsonl(path):
+        if not isinstance(row, dict):
+            continue
+        case_id = row.get("case_id")
+        predicted = row.get("predicted_track")
+        if isinstance(case_id, str) and predicted in {"A_BOX", "T_BOX", "AMBIGUOUS"}:
+            predictions[case_id] = predicted
+    return predictions
+
+
+def _diagnosis_metrics_for_matrix(
+    *,
+    result: dict[str, Any],
+    eval_records_by_id: dict[str, dict[str, Any]],
+    manifest: dict[str, Any],
+) -> dict[str, Any] | None:
+    matrix_dir = Path(result["output_dir"])
+    manifest_path = matrix_dir / "run_manifest.jsonl"
+    if not manifest_path.exists():
+        return None
+    manifest_rows = [
+        row for row in iter_jsonl(manifest_path)
+        if isinstance(row, dict) and row.get("task_type") == "track_diagnosis"
+        and row.get("skip_reason") != "not_run_for_repair_proposal_prompt_matrix"
+    ]
+    if not manifest_rows:
+        return None
+    predictions = _read_diagnosis_predictions(matrix_dir)
+    confusion: dict[str, Counter] = {"A_BOX": Counter(), "T_BOX": Counter()}
+    slice_counters: dict[str, dict[str, Counter]] = {
+        "class": {},
+        "subtype": {},
+        "selection_stratum": {},
+        "main_score": {},
+        "diagnostic_only": {},
+    }
+    parse_error_count = 0
+    request_error_count = 0
+    skipped_count = 0
+    ambiguous_count = 0
+    wrong_route_count = 0
+    normalized_count = 0
+    total = 0
+    for row in manifest_rows:
+        case_id = row.get("case_id")
+        if not isinstance(case_id, str):
+            continue
+        record = eval_records_by_id.get(case_id)
+        if not isinstance(record, dict):
+            continue
+        historical = record.get("track")
+        if historical not in {"A_BOX", "T_BOX"}:
+            continue
+        total += 1
+        status = row.get("parse_status")
+        if status == "normalized":
+            normalized_count += 1
+            predicted = predictions.get(case_id, "UNPARSED")
+        elif status == "parse_error":
+            parse_error_count += 1
+            predicted = "PARSE_ERROR"
+        elif status == "request_error":
+            request_error_count += 1
+            predicted = "REQUEST_ERROR"
+        elif isinstance(status, str) and status.startswith("skipped"):
+            skipped_count += 1
+            predicted = "SKIPPED"
+        else:
+            predicted = "UNPARSED"
+        confusion[historical][predicted] += 1
+        if predicted == "AMBIGUOUS":
+            ambiguous_count += 1
+        if predicted in {"A_BOX", "T_BOX"} and predicted != historical:
+            wrong_route_count += 1
+        slice_meta = _record_slice_metadata(record, manifest)
+        for slice_name, value in slice_meta.items():
+            key = str(value)
+            slice_counters[slice_name].setdefault(key, Counter())[f"{historical}->{predicted}"] += 1
+            slice_counters[slice_name][key]["total"] += 1
+
+    a_total = sum(confusion["A_BOX"].values())
+    t_total = sum(confusion["T_BOX"].values())
+    a_recall = _safe_divide(confusion["A_BOX"].get("A_BOX", 0), a_total)
+    t_recall = _safe_divide(confusion["T_BOX"].get("T_BOX", 0), t_total)
+    recalls = [value for value in (a_recall, t_recall) if value is not None]
+    balanced_accuracy = sum(recalls) / len(recalls) if recalls else None
+    f1_scores: dict[str, float | None] = {}
+    for label in ("A_BOX", "T_BOX"):
+        tp = confusion[label].get(label, 0)
+        fp = sum(confusion[other].get(label, 0) for other in ("A_BOX", "T_BOX") if other != label)
+        fn = sum(count for predicted, count in confusion[label].items() if predicted != label)
+        precision = _safe_divide(tp, tp + fp)
+        recall = _safe_divide(tp, tp + fn)
+        f1_scores[label] = (
+            None
+            if precision is None or recall is None or precision + recall == 0
+            else 2 * precision * recall / (precision + recall)
+        )
+    macro_f1_values = [value for value in f1_scores.values() if value is not None]
+    macro_f1 = sum(macro_f1_values) / len(macro_f1_values) if macro_f1_values else None
+    request_error_rate = _safe_divide(request_error_count, total) or 0.0
+    parse_error_rate = _safe_divide(parse_error_count, total) or 0.0
+    ambiguous_rate = _safe_divide(ambiguous_count, total) or 0.0
+    wrong_route_rate = _safe_divide(wrong_route_count, total) or 0.0
+    gates = {
+        "request_error_rate": {
+            "value": request_error_rate,
+            "threshold": DIAGNOSIS_ACCEPTANCE_GATES["request_error_rate_max"],
+            "passed": request_error_rate <= DIAGNOSIS_ACCEPTANCE_GATES["request_error_rate_max"],
+        },
+        "parse_error_rate": {
+            "value": parse_error_rate,
+            "threshold": DIAGNOSIS_ACCEPTANCE_GATES["parse_error_rate_max"],
+            "passed": parse_error_rate <= DIAGNOSIS_ACCEPTANCE_GATES["parse_error_rate_max"],
+        },
+        "balanced_accuracy": {
+            "value": balanced_accuracy,
+            "threshold": DIAGNOSIS_ACCEPTANCE_GATES["balanced_accuracy_min"],
+            "passed": balanced_accuracy is not None
+            and balanced_accuracy >= DIAGNOSIS_ACCEPTANCE_GATES["balanced_accuracy_min"],
+        },
+        "a_box_recall": {
+            "value": a_recall,
+            "threshold": DIAGNOSIS_ACCEPTANCE_GATES["a_box_recall_min"],
+            "passed": a_recall is not None and a_recall >= DIAGNOSIS_ACCEPTANCE_GATES["a_box_recall_min"],
+        },
+        "t_box_recall": {
+            "value": t_recall,
+            "threshold": DIAGNOSIS_ACCEPTANCE_GATES["t_box_recall_min"],
+            "passed": t_recall is not None and t_recall >= DIAGNOSIS_ACCEPTANCE_GATES["t_box_recall_min"],
+        },
+        "ambiguous_rate": {
+            "value": ambiguous_rate,
+            "threshold": DIAGNOSIS_ACCEPTANCE_GATES["ambiguous_rate_max"],
+            "passed": ambiguous_rate <= DIAGNOSIS_ACCEPTANCE_GATES["ambiguous_rate_max"],
+        },
+    }
+    return {
+        "matrix_id": result["matrix_id"],
+        "task": result.get("task"),
+        "context_bundle": result.get("context_bundle"),
+        "representation": result.get("representation"),
+        "example_policy": result.get("example_policy"),
+        "track_mode": result.get("track_mode"),
+        "counts": {
+            "total": total,
+            "normalized": normalized_count,
+            "parse_error": parse_error_count,
+            "request_error": request_error_count,
+            "skipped": skipped_count,
+            "ambiguous": ambiguous_count,
+        },
+        "confusion_by_historical_track": {
+            track: dict(counter) for track, counter in confusion.items()
+        },
+        "confusion_by_slice": {
+            slice_name: {key: dict(counter) for key, counter in sorted(counters.items())}
+            for slice_name, counters in slice_counters.items()
+        },
+        "metrics": {
+            "a_box_recall": a_recall,
+            "t_box_recall": t_recall,
+            "balanced_accuracy": balanced_accuracy,
+            "macro_f1": macro_f1,
+            "a_box_f1": f1_scores["A_BOX"],
+            "t_box_f1": f1_scores["T_BOX"],
+            "ambiguous_rate": ambiguous_rate,
+            "wrong_route_rate": wrong_route_rate,
+            "request_error_rate": request_error_rate,
+            "parse_error_rate": parse_error_rate,
+        },
+        "routed_risk": {
+            "wrong_repair_prompt_count": wrong_route_count,
+            "wrong_repair_prompt_rate": wrong_route_rate,
+            "ambiguous_skipped_count": ambiguous_count,
+            "ambiguous_skipped_rate": ambiguous_rate,
+        },
+        "gates": gates,
+        "eligible_for_routed_canary": all(item["passed"] for item in gates.values()),
+    }
+
+
+def _write_track_diagnosis_report(
+    *,
+    output_dir: Path,
+    results: list[dict[str, Any]],
+    eval_records: list[dict[str, Any]],
+    manifest: dict[str, Any],
+) -> dict[str, Any] | None:
+    eval_records_by_id = {record["id"]: record for record in eval_records if isinstance(record.get("id"), str)}
+    matrices = [
+        matrix_report
+        for result in results
+        if (matrix_report := _diagnosis_metrics_for_matrix(
+            result=result,
+            eval_records_by_id=eval_records_by_id,
+            manifest=manifest,
+        ))
+        is not None
+    ]
+    if not matrices:
+        return None
+    report = {
+        "manifest_type": "prompt_dev_track_diagnosis_report",
+        "manifest_version": PROMPT_DEV_VERSION,
+        "created_at_utc": _utc_now(),
+        "gates": DIAGNOSIS_ACCEPTANCE_GATES,
+        "matrices": matrices,
+        "eligible_matrices": [matrix["matrix_id"] for matrix in matrices if matrix["eligible_for_routed_canary"]],
+    }
+    write_json(output_dir / "track_diagnosis_report.json", report)
+    (output_dir / "track_diagnosis_report.md").write_text(_track_diagnosis_report_markdown(report), encoding="utf-8")
+    return report
+
+
+def _format_rate(value: Any) -> str:
+    if isinstance(value, (int, float)):
+        return f"{value:.3f}"
+    return "n/a"
+
+
+def _track_diagnosis_report_markdown(report: dict[str, Any]) -> str:
+    lines = [
+        "# Track Diagnosis Report",
+        "",
+        "This report is dev-only and gates whether diagnosis-routed repair canaries are interpretable.",
+        "",
+        "Acceptance gates:",
+        (
+            f"- Request error rate <= {DIAGNOSIS_ACCEPTANCE_GATES['request_error_rate_max']:.2%}; "
+            f"parse error rate <= {DIAGNOSIS_ACCEPTANCE_GATES['parse_error_rate_max']:.2%}; "
+            f"balanced accuracy >= {DIAGNOSIS_ACCEPTANCE_GATES['balanced_accuracy_min']:.2f}; "
+            f"A_BOX/T_BOX recall >= {DIAGNOSIS_ACCEPTANCE_GATES['a_box_recall_min']:.2f}/"
+            f"{DIAGNOSIS_ACCEPTANCE_GATES['t_box_recall_min']:.2f}; "
+            f"AMBIGUOUS rate <= {DIAGNOSIS_ACCEPTANCE_GATES['ambiguous_rate_max']:.2%}."
+        ),
+        "",
+        (
+            "| Matrix | Context | Track mode | Total | A recall | T recall | Balanced acc | Macro-F1 | "
+            "Ambiguous | Wrong-route | Parse err | Request err | Gate |"
+        ),
+        "| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |",
+    ]
+    for matrix in report["matrices"]:
+        metrics = matrix["metrics"]
+        lines.append(
+            " | ".join(
+                [
+                    f"| `{matrix['matrix_id']}`",
+                    f"`{matrix.get('context_bundle')}`",
+                    f"`{matrix.get('track_mode') or ''}`",
+                    str(matrix["counts"]["total"]),
+                    _format_rate(metrics.get("a_box_recall")),
+                    _format_rate(metrics.get("t_box_recall")),
+                    _format_rate(metrics.get("balanced_accuracy")),
+                    _format_rate(metrics.get("macro_f1")),
+                    _format_rate(metrics.get("ambiguous_rate")),
+                    _format_rate(metrics.get("wrong_route_rate")),
+                    _format_rate(metrics.get("parse_error_rate")),
+                    _format_rate(metrics.get("request_error_rate")),
+                    ("PASS" if matrix["eligible_for_routed_canary"] else "FAIL") + " |",
+                ]
+            )
+        )
+    lines.extend(["", "## Confusion Matrices", ""])
+    for matrix in report["matrices"]:
+        lines.extend(
+            [
+                f"### `{matrix['matrix_id']}`",
+                "",
+                "```json",
+                json.dumps(matrix["confusion_by_historical_track"], indent=2, sort_keys=True),
+                "```",
+                "",
+            ]
+        )
+    return "\n".join(lines)
 
 
 def _metric_text(metrics: dict[str, Any], key: str) -> str:

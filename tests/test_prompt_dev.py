@@ -18,6 +18,7 @@ from lib.prompt_dev import (
     render_prompt_dev_prompts,
     select_examples,
 )
+import scripts.prompt_dev_templates as prompt_templates
 from scripts.prompt_dev_templates import render_prompt_dev_prompt
 
 
@@ -158,6 +159,39 @@ class PromptDevTests(unittest.TestCase):
         repair_line = next(line for line in markdown.splitlines() if "`repair_matrix`" in line)
         self.assertIn("| n/a | 0.500 | n/a |", track_line)
         self.assertIn("| 0.250 | n/a | 0.750 |", repair_line)
+
+    def test_comparison_markdown_does_not_count_skipped_routed_proposals_as_errors(self) -> None:
+        markdown = _evaluation_comparison_markdown(
+            {
+                "run_id": "run",
+                "provider": "static",
+                "model": "static",
+                "counts": {"evaluated_prompts": 2},
+                "results": [
+                    {
+                        "matrix_id": "routed_matrix",
+                        "task": "repair_proposal",
+                        "representation": "hybrid_json_nl",
+                        "example_policy": "zero_shot",
+                        "context_bundle": "logic_only",
+                        "track_mode": "diagnosis_routed",
+                        "counts": {"skipped": 1, "by_parse_status": {"skipped_ambiguous_track": 1}},
+                        "parse_errors": {"proposal_parse_error_count": 0},
+                        "request_errors": {
+                            "proposal_request_error_count": 0,
+                            "track_diagnosis_request_error_count": 0,
+                        },
+                        "overall_metrics": {
+                            "functional_success_rate": 0.0,
+                            "auditability_complete_rate": 0.0,
+                        },
+                    }
+                ],
+            }
+        )
+
+        routed_line = next(line for line in markdown.splitlines() if "`routed_matrix`" in line)
+        self.assertIn("| `diagnosis_routed` | 0 | 0 |", routed_line)
 
     def test_few_shot_selection_excludes_same_case_qid_property_and_core(self) -> None:
         eval_record = _abox_record("eval", "Q1", "P1")
@@ -694,6 +728,122 @@ class PromptDevTests(unittest.TestCase):
         self.assertNotIn("Action decision tree", combined)
         self.assertNotIn("compact_inventory_no_pre_change_signature", combined)
         self.assertNotIn("property-level schema-change evidence", combined)
+
+    def test_prompt_dev_diagnosis_locus_spec_prompt_has_no_hidden_labels_or_raw_ids(self) -> None:
+        with patch.object(prompt_templates, "PROMPT_DEV_VERSION", "prompt_dev_diag_v1_locus_spec"):
+            prompt = prompt_templates.render_prompt_dev_prompt(
+                task="track_diagnosis",
+                representation="hybrid_json_nl",
+                case_payload={"id": "case_000001", "violation_context": {"value": "Q1"}},
+            )
+
+        self.assertIn("Prompt version: prompt_dev_diag_v1_locus_spec", prompt.user_prompt)
+        self.assertIn("repair locus", prompt.user_prompt)
+        self.assertNotIn("TypeA", prompt.user_prompt)
+        self.assertNotIn("TypeB", prompt.user_prompt)
+        self.assertNotIn("TypeC", prompt.user_prompt)
+        self.assertNotIn("repair_", prompt.user_prompt)
+        self.assertNotIn("reform_", prompt.user_prompt)
+
+    def test_track_diagnosis_report_computes_confusion_and_gates(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            records = [_abox_record("abox", "Q1", "P1"), _tbox_record("tbox", "Q2", "P2")]
+            classified = root / "classified.jsonl"
+            classified.write_text("\n".join(json.dumps(record) for record in records) + "\n", encoding="utf-8")
+            manifest = root / "dev.json"
+            manifest.write_text(json.dumps(_manifest(["abox", "tbox"], records)), encoding="utf-8")
+            world_state = root / "world.json"
+            world_state.write_text("{}", encoding="utf-8")
+
+            def resolver(metadata: dict) -> dict:
+                return {
+                    "case_id": metadata["visible_case_id"],
+                    "predicted_track": "A_BOX",
+                    "confidence": "high",
+                }
+
+            summary = evaluate_prompt_dev_prompts(
+                PromptDevEvaluateOptions(
+                    classified_benchmark=classified,
+                    world_state=world_state,
+                    dev_manifest=manifest,
+                    output_dir=root / "eval",
+                    max_cases=2,
+                    representations=("hybrid_json_nl",),
+                    example_policies=("zero_shot",),
+                    context_bundles=("minimal_case",),
+                    tasks=("track_diagnosis",),
+                ),
+                provider=StaticResponseProvider(resolver, provider_name="static", model="static"),
+            )
+
+            report_path = root / "eval" / "track_diagnosis_report.json"
+            self.assertTrue(report_path.exists())
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+            matrix = report["matrices"][0]
+            self.assertEqual(matrix["confusion_by_historical_track"]["A_BOX"]["A_BOX"], 1)
+            self.assertEqual(matrix["confusion_by_historical_track"]["T_BOX"]["A_BOX"], 1)
+            self.assertEqual(matrix["metrics"]["a_box_recall"], 1.0)
+            self.assertEqual(matrix["metrics"]["t_box_recall"], 0.0)
+            self.assertEqual(matrix["metrics"]["balanced_accuracy"], 0.5)
+            self.assertIn("track_diagnosis_report_json", summary["outputs"])
+            self.assertTrue((root / "eval" / "track_diagnosis_report.md").exists())
+
+    def test_diagnosis_routed_prompt_dev_skips_ambiguous_proposals(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            records = [_abox_record("abox", "Q1", "P1"), _tbox_record("tbox", "Q2", "P2")]
+            classified = root / "classified.jsonl"
+            classified.write_text("\n".join(json.dumps(record) for record in records) + "\n", encoding="utf-8")
+            manifest = root / "dev.json"
+            manifest.write_text(json.dumps(_manifest(["abox", "tbox"], records)), encoding="utf-8")
+            world_state = root / "world.json"
+            world_state.write_text("{}", encoding="utf-8")
+            proposal_calls = Counter()
+
+            def resolver(metadata: dict) -> dict:
+                if metadata["task_type"] == "track_diagnosis":
+                    predicted = "AMBIGUOUS" if metadata["case_id"] == "tbox" else "A_BOX"
+                    return {"case_id": metadata["visible_case_id"], "predicted_track": predicted, "confidence": "high"}
+                proposal_calls[metadata["case_id"]] += 1
+                return {
+                    "case_id": metadata["visible_case_id"],
+                    "target": {"qid": "Q1", "pid": "P1"},
+                    "ops": [{"op": "SET", "pid": "P1", "value": "Q5", "rank": "normal"}],
+                }
+
+            summary = evaluate_prompt_dev_prompts(
+                PromptDevEvaluateOptions(
+                    classified_benchmark=classified,
+                    world_state=world_state,
+                    dev_manifest=manifest,
+                    output_dir=root / "eval",
+                    max_cases=2,
+                    representations=("hybrid_json_nl",),
+                    example_policies=("zero_shot",),
+                    context_bundles=("minimal_case",),
+                    tasks=("repair_proposal",),
+                    repair_track_modes=("diagnosis_routed",),
+                ),
+                provider=StaticResponseProvider(resolver, provider_name="static", model="static"),
+            )
+
+            self.assertEqual(proposal_calls, {"abox": 1})
+            result = summary["results"][0]
+            self.assertEqual(result["task"], "repair_proposal")
+            self.assertEqual(result["track_mode"], "diagnosis_routed")
+            self.assertEqual(result["counts"]["skipped"], 1)
+            matrix_dir = Path(result["output_dir"])
+            manifest_rows = [
+                json.loads(line)
+                for line in (matrix_dir / "run_manifest.jsonl").read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+            skipped = next(row for row in manifest_rows if row["case_id"] == "tbox" and row["task_type"] == "proposal")
+            self.assertEqual(skipped["parse_status"], "skipped_ambiguous_track")
+            self.assertEqual(skipped["skip_reason"], "diagnosis_routed_ambiguous_track")
+            self.assertEqual(result["parse_errors"].get("proposal_parse_error_count", 0), 0)
 
 
 if __name__ == "__main__":
