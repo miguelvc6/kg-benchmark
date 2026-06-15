@@ -1,0 +1,74 @@
+{
+  "checks": {
+    "classification_repair_target_persistence_popularity_model_visible": "stripped_in_existing payloads and recursively stripped in new diagnosis-neutral branch",
+    "local_context_l4_shape_conditioned_on_gold_track": "yes_in_legacy_local_graph_diagnosis_path",
+    "presence_constraint_family_inventory_conditioned_on_gold_track": "yes_in_legacy_logic_only_local_graph_diagnosis_path",
+    "presence_normal_constraints_conditioned_on_gold_track": "yes_legacy_path_switches_tbox_to_pre_reform_or_compact_policy",
+    "presence_signature_before_constraints_conditioned_on_gold_track": "yes_in_legacy_logic_only_local_graph_diagnosis_path",
+    "raw_repair_reform_ids_model_visible": "not_found_in_prompt_policy; covered by neutral ID tests",
+    "target_property_post_repair_leakage_new_branch": "suppressed_by_dropping_target_property_l1_properties_and_l3_edges_for_all_cases",
+    "temporal_policy_labels_model_visible": "not_as_labels_but_structure_was_model_visible"
+  },
+  "created_at_utc": "2026-06-15T09:23:12Z",
+  "findings": [
+    {
+      "description": "The previous track-diagnosis render path reused _bundle_payload_and_audit. For logic_only/local_graph this calls _pruned_constraints_payload, which calls _t_box_pre_reform_constraints_payload. That helper branches on record[\"track\"] and exposes pre-reform signature_before constraints or compact T-box inventory only for T_BOX records. This creates model-visible structure conditioned on gold track.",
+      "evidence": [
+        "src/guardian/reasoning.py:778",
+        "src/guardian/reasoning.py:816",
+        "src/guardian/reasoning.py:1225"
+      ],
+      "id": "DIAG_CONTEXT_TRACK_CONDITIONED_CONSTRAINTS",
+      "impact": "The v1 diagnosis gate failure is not cleanly interpretable because diagnosis context shape may have been confounded by the hidden label.",
+      "severity": "BLOCKER",
+      "status": "patched"
+    },
+    {
+      "description": "New diagnosis-only bundles render sanitized case payloads, strip forbidden fields recursively, preserve neutral visible case IDs, avoid repair_target.constraint_delta, and suppress target-property L1/L3 local-graph leakage for all cases.",
+      "evidence": [
+        "src/guardian/reasoning.py:43",
+        "src/guardian/reasoning.py:997",
+        "src/guardian/reasoning.py:1163",
+        "src/lib/prompt_dev.py:327"
+      ],
+      "id": "DIAG_CONTEXT_NO_RAW_IDS_OR_HIDDEN_FIELDS_IN_NEW_BRANCH",
+      "severity": "INFO",
+      "status": "patched"
+    },
+    {
+      "description": "The existing A-box/T-box oracle repair prompt context path still uses the original ablation bundles and temporal policy; diagnosis-neutral bundles are only selected for track_diagnosis rows when explicitly requested.",
+      "evidence": [
+        "tests/test_reasoning_floor.py",
+        "tests/test_prompt_dev.py"
+      ],
+      "id": "ORACLE_REPAIR_CONTEXT_UNCHANGED",
+      "severity": "INFO",
+      "status": "verified_by_tests"
+    }
+  ],
+  "implemented_mitigation": {
+    "cli_option": "--diagnosis-context-bundles",
+    "does_not_change_oracle_repair_prompts": true,
+    "new_bundles": [
+      "diagnosis_minimal",
+      "diagnosis_logic_neutral",
+      "diagnosis_local_neutral"
+    ],
+    "use": "track_diagnosis matrices only"
+  },
+  "manifest_type": "diagnosis_context_leakage_audit",
+  "scope": {
+    "audited_files": [
+      "src/guardian/reasoning.py",
+      "src/lib/prompt_dev.py",
+      "scripts/prompt_dev_templates.py",
+      "src/guardian/prompts.py"
+    ],
+    "failed_run": "reports/prompt_dev/evaluation_prompt_dev_diag_v1_locus_spec_holdout96_ollama_zero_shot"
+  },
+  "static_render_attempt": {
+    "reason": "Local render spent over 90 seconds scanning the classified benchmark before producing artifacts. Code-path evidence and focused tests were used instead.",
+    "status": "cancelled_after_no_progress"
+  },
+  "verdict": "BLOCKER_FOUND_AND_PATCHED"
+}

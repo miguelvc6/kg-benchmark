@@ -14,7 +14,13 @@ from classifier import WorldStateStore
 from guardian.evaluator import evaluate_benchmark, write_json
 from guardian.model_provider import ModelProvider, create_model_provider
 from guardian.patch_parser import normalize_proposal as normalize_a_box_proposal
-from guardian.reasoning import ABLATION_BUNDLES, _bundle_payload_and_audit, _t_box_constraint_type_qids
+from guardian.reasoning import (
+    ABLATION_BUNDLES,
+    DIAGNOSIS_ABLATION_BUNDLES,
+    _bundle_payload_and_audit,
+    _diagnosis_bundle_payload_and_audit,
+    _t_box_constraint_type_qids,
+)
 from guardian.tbox_parser import normalize_proposal as normalize_t_box_proposal
 from guardian.track_parser import normalize_diagnosis
 from lib.benchmark_selection import derive_case_metadata, group_key_for_record, load_selection_manifest
@@ -34,6 +40,7 @@ EXAMPLE_POLICIES = (
 )
 REPAIR_TRACK_MODES = ("oracle", "diagnosis_routed")
 DEFAULT_CONTEXT_BUNDLES = ("logic_only", "local_graph")
+DEFAULT_DIAGNOSIS_CONTEXT_BUNDLES: tuple[str, ...] = ()
 DEFAULT_RENDER_TASKS = ("track_diagnosis", "repair_proposal")
 SAMPLE_STRATEGIES = ("manifest_order", "stratified", "diverse_stratified")
 T_BOX_ACTIONS = {
@@ -59,6 +66,7 @@ class PromptDevMatrixOptions:
     representations: tuple[str, ...] = REPRESENTATIONS
     example_policies: tuple[str, ...] = EXAMPLE_POLICIES
     context_bundles: tuple[str, ...] = DEFAULT_CONTEXT_BUNDLES
+    diagnosis_context_bundles: tuple[str, ...] = DEFAULT_DIAGNOSIS_CONTEXT_BUNDLES
     tasks: tuple[str, ...] = DEFAULT_RENDER_TASKS
     repair_track_modes: tuple[str, ...] = REPAIR_TRACK_MODES
     include_abstention: bool = False
@@ -75,6 +83,7 @@ class PromptDevRenderOptions:
     representations: tuple[str, ...] = ("hybrid_json_nl",)
     example_policies: tuple[str, ...] = ("zero_shot",)
     context_bundles: tuple[str, ...] = DEFAULT_CONTEXT_BUNDLES
+    diagnosis_context_bundles: tuple[str, ...] = DEFAULT_DIAGNOSIS_CONTEXT_BUNDLES
     tasks: tuple[str, ...] = DEFAULT_RENDER_TASKS
     repair_track_modes: tuple[str, ...] = ("oracle",)
     include_abstention: bool = False
@@ -98,6 +107,7 @@ class PromptDevEvaluateOptions:
     representations: tuple[str, ...] = ("hybrid_json_nl",)
     example_policies: tuple[str, ...] = ("zero_shot",)
     context_bundles: tuple[str, ...] = DEFAULT_CONTEXT_BUNDLES
+    diagnosis_context_bundles: tuple[str, ...] = DEFAULT_DIAGNOSIS_CONTEXT_BUNDLES
     tasks: tuple[str, ...] = DEFAULT_RENDER_TASKS
     repair_track_modes: tuple[str, ...] = ("oracle",)
     include_abstention: bool = False
@@ -252,11 +262,17 @@ def build_prompt_dev_matrix(options: PromptDevMatrixOptions | None = None) -> di
         for example_policy in options.example_policies:
             if example_policy not in EXAMPLE_POLICIES:
                 raise ValueError(f"Unsupported example policy: {example_policy}")
-            for context_bundle in options.context_bundles:
-                if context_bundle not in ABLATION_BUNDLES:
+            context_axis = tuple(dict.fromkeys((*options.context_bundles, *options.diagnosis_context_bundles)))
+            for context_bundle in context_axis:
+                if context_bundle not in ABLATION_BUNDLES and context_bundle not in DIAGNOSIS_ABLATION_BUNDLES:
                     raise ValueError(f"Unsupported context bundle: {context_bundle}")
                 for task in options.tasks:
                     if task == "track_diagnosis":
+                        if options.diagnosis_context_bundles:
+                            if context_bundle not in options.diagnosis_context_bundles:
+                                continue
+                        elif context_bundle not in options.context_bundles:
+                            continue
                         rows.append(
                             _matrix_row(
                                 representation=representation,
@@ -268,6 +284,10 @@ def build_prompt_dev_matrix(options: PromptDevMatrixOptions | None = None) -> di
                             )
                         )
                     elif task == "repair_proposal":
+                        if context_bundle not in options.context_bundles:
+                            continue
+                        if context_bundle not in ABLATION_BUNDLES:
+                            raise ValueError(f"Repair proposal context bundle must be one of {ABLATION_BUNDLES}: {context_bundle}")
                         for track_mode in options.repair_track_modes:
                             rows.append(
                                 _matrix_row(
@@ -301,6 +321,12 @@ def build_prompt_dev_matrix(options: PromptDevMatrixOptions | None = None) -> di
         ],
         "rows": rows,
     }
+
+
+def _prompt_payload_builder_for_task(task: str, context_bundle: str) -> Callable[..., tuple[dict[str, Any], dict[str, Any]]]:
+    if task == "track_diagnosis" and context_bundle in DIAGNOSIS_ABLATION_BUNDLES:
+        return _diagnosis_bundle_payload_and_audit
+    return _bundle_payload_and_audit
 
 
 def _matrix_row(
@@ -784,6 +810,7 @@ def render_prompt_dev_prompts(options: PromptDevRenderOptions) -> dict[str, Any]
             representations=options.representations,
             example_policies=options.example_policies,
             context_bundles=options.context_bundles,
+            diagnosis_context_bundles=options.diagnosis_context_bundles,
             tasks=options.tasks,
             repair_track_modes=options.repair_track_modes,
             include_abstention=options.include_abstention,
@@ -811,7 +838,8 @@ def render_prompt_dev_prompts(options: PromptDevRenderOptions) -> dict[str, Any]
                 if task is None:
                     skipped_count += 1
                     continue
-                case_payload, context_audit = _bundle_payload_and_audit(
+                payload_builder = _prompt_payload_builder_for_task(task, row["context_bundle"])
+                case_payload, context_audit = payload_builder(
                     record,
                     world_state_entry,
                     row["context_bundle"],
@@ -841,7 +869,7 @@ def render_prompt_dev_prompts(options: PromptDevRenderOptions) -> dict[str, Any]
                         f"case_{_stable_hash(candidate_raw_case_id)[:12]}",
                     )
                     candidate_world = world_store.get(candidate["id"])
-                    example_payload, _ = _bundle_payload_and_audit(candidate, candidate_world, row["context_bundle"])
+                    example_payload, _ = payload_builder(candidate, candidate_world, row["context_bundle"])
                     example["input_payload"] = _model_visible_payload(
                         example_payload,
                         raw_case_id=candidate_raw_case_id,
@@ -1510,6 +1538,7 @@ def evaluate_prompt_dev_prompts(
             representations=options.representations,
             example_policies=options.example_policies,
             context_bundles=options.context_bundles,
+            diagnosis_context_bundles=options.diagnosis_context_bundles,
             tasks=options.tasks,
             repair_track_modes=options.repair_track_modes,
             include_abstention=options.include_abstention,

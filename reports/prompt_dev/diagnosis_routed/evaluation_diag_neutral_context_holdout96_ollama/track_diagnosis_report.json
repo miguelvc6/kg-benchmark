@@ -1,0 +1,808 @@
+{
+  "manifest_type": "prompt_dev_track_diagnosis_report",
+  "manifest_version": "prompt_dev_diag_v1_locus_spec",
+  "created_at_utc": "2026-06-15T10:07:23Z",
+  "gates": {
+    "request_error_rate_max": 0.01,
+    "parse_error_rate_max": 0.04,
+    "balanced_accuracy_min": 0.7,
+    "a_box_recall_min": 0.65,
+    "t_box_recall_min": 0.65,
+    "ambiguous_rate_max": 0.15
+  },
+  "matrices": [
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_zero_shot_diagnosis_minimal_track_diagnosis_diagnosis_no_abstain",
+      "task": "track_diagnosis",
+      "context_bundle": "diagnosis_minimal",
+      "representation": "hybrid_json_nl",
+      "example_policy": "zero_shot",
+      "track_mode": null,
+      "counts": {
+        "total": 96,
+        "normalized": 96,
+        "parse_error": 0,
+        "request_error": 0,
+        "skipped": 0,
+        "ambiguous": 14
+      },
+      "confusion_by_historical_track": {
+        "A_BOX": {
+          "AMBIGUOUS": 4,
+          "A_BOX": 43,
+          "T_BOX": 1
+        },
+        "T_BOX": {
+          "AMBIGUOUS": 10,
+          "A_BOX": 35,
+          "T_BOX": 3
+        }
+      },
+      "confusion_by_slice": {
+        "class": {
+          "T_BOX": {
+            "T_BOX->AMBIGUOUS": 10,
+            "total": 48,
+            "T_BOX->A_BOX": 35,
+            "T_BOX->T_BOX": 3
+          },
+          "TypeA": {
+            "A_BOX->AMBIGUOUS": 3,
+            "total": 24,
+            "A_BOX->A_BOX": 21
+          },
+          "TypeB": {
+            "A_BOX->A_BOX": 11,
+            "total": 12,
+            "A_BOX->T_BOX": 1
+          },
+          "TypeC": {
+            "A_BOX->A_BOX": 11,
+            "total": 12,
+            "A_BOX->AMBIGUOUS": 1
+          }
+        },
+        "subtype": {
+          "COINCIDENTAL_SCHEMA_CHANGE": {
+            "T_BOX->A_BOX": 11,
+            "total": 12,
+            "T_BOX->T_BOX": 1
+          },
+          "DELETE_AMBIGUOUS": {
+            "A_BOX->AMBIGUOUS": 1,
+            "total": 4,
+            "A_BOX->A_BOX": 3
+          },
+          "EXTERNAL_BY_ELIMINATION": {
+            "A_BOX->A_BOX": 4,
+            "total": 4
+          },
+          "FORMAT_NORMALIZATION": {
+            "A_BOX->A_BOX": 4,
+            "total": 4
+          },
+          "FORMAT_VALUE_PRUNING": {
+            "A_BOX->A_BOX": 4,
+            "total": 4
+          },
+          "LOCAL_FOCUS_NON_TARGET_PROPERTY": {
+            "A_BOX->A_BOX": 3,
+            "total": 4,
+            "A_BOX->T_BOX": 1
+          },
+          "LOCAL_SELECTION_CONFIRMED": {
+            "A_BOX->A_BOX": 4,
+            "total": 4
+          },
+          "LOCAL_TEXT_DERIVED": {
+            "A_BOX->A_BOX": 4,
+            "total": 4
+          },
+          "RELAXATION_SET_EXPANSION": {
+            "T_BOX->AMBIGUOUS": 5,
+            "total": 12,
+            "T_BOX->A_BOX": 7
+          },
+          "RESTRICTION_SET_CONTRACTION": {
+            "T_BOX->A_BOX": 7,
+            "total": 12,
+            "T_BOX->T_BOX": 1,
+            "T_BOX->AMBIGUOUS": 4
+          },
+          "SCHEMA_UPDATE": {
+            "T_BOX->A_BOX": 10,
+            "total": 12,
+            "T_BOX->AMBIGUOUS": 1,
+            "T_BOX->T_BOX": 1
+          },
+          "SELF_LINK_REJECTION": {
+            "A_BOX->A_BOX": 4,
+            "total": 4
+          },
+          "SET_MEMBERSHIP_REJECTION": {
+            "A_BOX->AMBIGUOUS": 2,
+            "total": 4,
+            "A_BOX->A_BOX": 2
+          },
+          "TARGET_REQUIRED_CLAIM": {
+            "A_BOX->A_BOX": 4,
+            "total": 4
+          },
+          "UNKNOWN_BAD_TARGET_OR_CONTEXT": {
+            "A_BOX->A_BOX": 4,
+            "total": 4
+          },
+          "UNKNOWN_SELECTION_AMBIGUOUS": {
+            "A_BOX->A_BOX": 3,
+            "total": 4,
+            "A_BOX->AMBIGUOUS": 1
+          }
+        },
+        "selection_stratum": {
+          "DEV_TBOX_COINCIDENTAL_SCHEMA_CHANGE": {
+            "T_BOX->A_BOX": 11,
+            "total": 12,
+            "T_BOX->T_BOX": 1
+          },
+          "DEV_TBOX_RELAXATION_SET_EXPANSION": {
+            "T_BOX->AMBIGUOUS": 5,
+            "total": 12,
+            "T_BOX->A_BOX": 7
+          },
+          "DEV_TBOX_RESTRICTION_SET_CONTRACTION": {
+            "T_BOX->A_BOX": 7,
+            "total": 12,
+            "T_BOX->T_BOX": 1,
+            "T_BOX->AMBIGUOUS": 4
+          },
+          "DEV_TBOX_SCHEMA_UPDATE": {
+            "T_BOX->A_BOX": 10,
+            "total": 12,
+            "T_BOX->AMBIGUOUS": 1,
+            "T_BOX->T_BOX": 1
+          },
+          "DEV_TYPEA_AMBIGUOUS_DELETE": {
+            "A_BOX->AMBIGUOUS": 1,
+            "total": 4,
+            "A_BOX->A_BOX": 3
+          },
+          "DEV_TYPEA_CLEAN_RULE_REJECTION": {
+            "A_BOX->A_BOX": 18,
+            "total": 20,
+            "A_BOX->AMBIGUOUS": 2
+          },
+          "DEV_TYPEB_LOCAL": {
+            "A_BOX->A_BOX": 11,
+            "total": 12,
+            "A_BOX->T_BOX": 1
+          },
+          "DEV_TYPEC_EXTERNAL_OR_UNKNOWN": {
+            "A_BOX->A_BOX": 11,
+            "total": 12,
+            "A_BOX->AMBIGUOUS": 1
+          }
+        },
+        "main_score": {
+          "False": {
+            "A_BOX->AMBIGUOUS": 2,
+            "total": 24,
+            "T_BOX->A_BOX": 11,
+            "A_BOX->A_BOX": 10,
+            "T_BOX->T_BOX": 1
+          },
+          "True": {
+            "T_BOX->AMBIGUOUS": 10,
+            "total": 72,
+            "A_BOX->A_BOX": 33,
+            "T_BOX->A_BOX": 24,
+            "A_BOX->AMBIGUOUS": 2,
+            "T_BOX->T_BOX": 2,
+            "A_BOX->T_BOX": 1
+          }
+        },
+        "diagnostic_only": {
+          "False": {
+            "T_BOX->AMBIGUOUS": 10,
+            "total": 72,
+            "A_BOX->A_BOX": 33,
+            "T_BOX->A_BOX": 24,
+            "A_BOX->AMBIGUOUS": 2,
+            "T_BOX->T_BOX": 2,
+            "A_BOX->T_BOX": 1
+          },
+          "True": {
+            "A_BOX->AMBIGUOUS": 2,
+            "total": 24,
+            "T_BOX->A_BOX": 11,
+            "A_BOX->A_BOX": 10,
+            "T_BOX->T_BOX": 1
+          }
+        }
+      },
+      "metrics": {
+        "a_box_recall": 0.8958333333333334,
+        "t_box_recall": 0.0625,
+        "balanced_accuracy": 0.4791666666666667,
+        "macro_f1": 0.39896214896214904,
+        "a_box_f1": 0.6825396825396827,
+        "t_box_f1": 0.11538461538461539,
+        "ambiguous_rate": 0.14583333333333334,
+        "wrong_route_rate": 0.375,
+        "request_error_rate": 0.0,
+        "parse_error_rate": 0.0
+      },
+      "routed_risk": {
+        "wrong_repair_prompt_count": 36,
+        "wrong_repair_prompt_rate": 0.375,
+        "ambiguous_skipped_count": 14,
+        "ambiguous_skipped_rate": 0.14583333333333334
+      },
+      "gates": {
+        "request_error_rate": {
+          "value": 0.0,
+          "threshold": 0.01,
+          "passed": true
+        },
+        "parse_error_rate": {
+          "value": 0.0,
+          "threshold": 0.04,
+          "passed": true
+        },
+        "balanced_accuracy": {
+          "value": 0.4791666666666667,
+          "threshold": 0.7,
+          "passed": false
+        },
+        "a_box_recall": {
+          "value": 0.8958333333333334,
+          "threshold": 0.65,
+          "passed": true
+        },
+        "t_box_recall": {
+          "value": 0.0625,
+          "threshold": 0.65,
+          "passed": false
+        },
+        "ambiguous_rate": {
+          "value": 0.14583333333333334,
+          "threshold": 0.15,
+          "passed": true
+        }
+      },
+      "eligible_for_routed_canary": false
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_zero_shot_diagnosis_logic_neutral_track_diagnosis_diagnosis_no_abstain",
+      "task": "track_diagnosis",
+      "context_bundle": "diagnosis_logic_neutral",
+      "representation": "hybrid_json_nl",
+      "example_policy": "zero_shot",
+      "track_mode": null,
+      "counts": {
+        "total": 96,
+        "normalized": 95,
+        "parse_error": 1,
+        "request_error": 0,
+        "skipped": 0,
+        "ambiguous": 11
+      },
+      "confusion_by_historical_track": {
+        "A_BOX": {
+          "A_BOX": 40,
+          "T_BOX": 6,
+          "AMBIGUOUS": 2
+        },
+        "T_BOX": {
+          "PARSE_ERROR": 1,
+          "A_BOX": 32,
+          "T_BOX": 6,
+          "AMBIGUOUS": 9
+        }
+      },
+      "confusion_by_slice": {
+        "class": {
+          "T_BOX": {
+            "T_BOX->PARSE_ERROR": 1,
+            "total": 48,
+            "T_BOX->A_BOX": 32,
+            "T_BOX->T_BOX": 6,
+            "T_BOX->AMBIGUOUS": 9
+          },
+          "TypeA": {
+            "A_BOX->A_BOX": 18,
+            "total": 24,
+            "A_BOX->T_BOX": 4,
+            "A_BOX->AMBIGUOUS": 2
+          },
+          "TypeB": {
+            "A_BOX->A_BOX": 12,
+            "total": 12
+          },
+          "TypeC": {
+            "A_BOX->A_BOX": 10,
+            "total": 12,
+            "A_BOX->T_BOX": 2
+          }
+        },
+        "subtype": {
+          "COINCIDENTAL_SCHEMA_CHANGE": {
+            "T_BOX->A_BOX": 10,
+            "total": 12,
+            "T_BOX->AMBIGUOUS": 2
+          },
+          "DELETE_AMBIGUOUS": {
+            "A_BOX->A_BOX": 3,
+            "total": 4,
+            "A_BOX->AMBIGUOUS": 1
+          },
+          "EXTERNAL_BY_ELIMINATION": {
+            "A_BOX->A_BOX": 2,
+            "total": 4,
+            "A_BOX->T_BOX": 2
+          },
+          "FORMAT_NORMALIZATION": {
+            "A_BOX->T_BOX": 2,
+            "total": 4,
+            "A_BOX->A_BOX": 2
+          },
+          "FORMAT_VALUE_PRUNING": {
+            "A_BOX->A_BOX": 4,
+            "total": 4
+          },
+          "LOCAL_FOCUS_NON_TARGET_PROPERTY": {
+            "A_BOX->A_BOX": 4,
+            "total": 4
+          },
+          "LOCAL_SELECTION_CONFIRMED": {
+            "A_BOX->A_BOX": 4,
+            "total": 4
+          },
+          "LOCAL_TEXT_DERIVED": {
+            "A_BOX->A_BOX": 4,
+            "total": 4
+          },
+          "RELAXATION_SET_EXPANSION": {
+            "T_BOX->PARSE_ERROR": 1,
+            "total": 12,
+            "T_BOX->A_BOX": 4,
+            "T_BOX->AMBIGUOUS": 4,
+            "T_BOX->T_BOX": 3
+          },
+          "RESTRICTION_SET_CONTRACTION": {
+            "T_BOX->A_BOX": 10,
+            "total": 12,
+            "T_BOX->AMBIGUOUS": 2
+          },
+          "SCHEMA_UPDATE": {
+            "T_BOX->A_BOX": 8,
+            "total": 12,
+            "T_BOX->T_BOX": 3,
+            "T_BOX->AMBIGUOUS": 1
+          },
+          "SELF_LINK_REJECTION": {
+            "A_BOX->A_BOX": 2,
+            "total": 4,
+            "A_BOX->T_BOX": 2
+          },
+          "SET_MEMBERSHIP_REJECTION": {
+            "A_BOX->A_BOX": 4,
+            "total": 4
+          },
+          "TARGET_REQUIRED_CLAIM": {
+            "A_BOX->A_BOX": 3,
+            "total": 4,
+            "A_BOX->AMBIGUOUS": 1
+          },
+          "UNKNOWN_BAD_TARGET_OR_CONTEXT": {
+            "A_BOX->A_BOX": 4,
+            "total": 4
+          },
+          "UNKNOWN_SELECTION_AMBIGUOUS": {
+            "A_BOX->A_BOX": 4,
+            "total": 4
+          }
+        },
+        "selection_stratum": {
+          "DEV_TBOX_COINCIDENTAL_SCHEMA_CHANGE": {
+            "T_BOX->A_BOX": 10,
+            "total": 12,
+            "T_BOX->AMBIGUOUS": 2
+          },
+          "DEV_TBOX_RELAXATION_SET_EXPANSION": {
+            "T_BOX->PARSE_ERROR": 1,
+            "total": 12,
+            "T_BOX->A_BOX": 4,
+            "T_BOX->AMBIGUOUS": 4,
+            "T_BOX->T_BOX": 3
+          },
+          "DEV_TBOX_RESTRICTION_SET_CONTRACTION": {
+            "T_BOX->A_BOX": 10,
+            "total": 12,
+            "T_BOX->AMBIGUOUS": 2
+          },
+          "DEV_TBOX_SCHEMA_UPDATE": {
+            "T_BOX->A_BOX": 8,
+            "total": 12,
+            "T_BOX->T_BOX": 3,
+            "T_BOX->AMBIGUOUS": 1
+          },
+          "DEV_TYPEA_AMBIGUOUS_DELETE": {
+            "A_BOX->A_BOX": 3,
+            "total": 4,
+            "A_BOX->AMBIGUOUS": 1
+          },
+          "DEV_TYPEA_CLEAN_RULE_REJECTION": {
+            "A_BOX->T_BOX": 4,
+            "total": 20,
+            "A_BOX->A_BOX": 15,
+            "A_BOX->AMBIGUOUS": 1
+          },
+          "DEV_TYPEB_LOCAL": {
+            "A_BOX->A_BOX": 12,
+            "total": 12
+          },
+          "DEV_TYPEC_EXTERNAL_OR_UNKNOWN": {
+            "A_BOX->A_BOX": 10,
+            "total": 12,
+            "A_BOX->T_BOX": 2
+          }
+        },
+        "main_score": {
+          "False": {
+            "A_BOX->A_BOX": 11,
+            "total": 24,
+            "T_BOX->A_BOX": 10,
+            "A_BOX->AMBIGUOUS": 1,
+            "T_BOX->AMBIGUOUS": 2
+          },
+          "True": {
+            "T_BOX->PARSE_ERROR": 1,
+            "total": 72,
+            "A_BOX->T_BOX": 6,
+            "A_BOX->A_BOX": 29,
+            "T_BOX->A_BOX": 22,
+            "T_BOX->T_BOX": 6,
+            "T_BOX->AMBIGUOUS": 7,
+            "A_BOX->AMBIGUOUS": 1
+          }
+        },
+        "diagnostic_only": {
+          "False": {
+            "T_BOX->PARSE_ERROR": 1,
+            "total": 72,
+            "A_BOX->T_BOX": 6,
+            "A_BOX->A_BOX": 29,
+            "T_BOX->A_BOX": 22,
+            "T_BOX->T_BOX": 6,
+            "T_BOX->AMBIGUOUS": 7,
+            "A_BOX->AMBIGUOUS": 1
+          },
+          "True": {
+            "A_BOX->A_BOX": 11,
+            "total": 24,
+            "T_BOX->A_BOX": 10,
+            "A_BOX->AMBIGUOUS": 1,
+            "T_BOX->AMBIGUOUS": 2
+          }
+        }
+      },
+      "metrics": {
+        "a_box_recall": 0.8333333333333334,
+        "t_box_recall": 0.125,
+        "balanced_accuracy": 0.4791666666666667,
+        "macro_f1": 0.43333333333333335,
+        "a_box_f1": 0.6666666666666667,
+        "t_box_f1": 0.2,
+        "ambiguous_rate": 0.11458333333333333,
+        "wrong_route_rate": 0.3958333333333333,
+        "request_error_rate": 0.0,
+        "parse_error_rate": 0.010416666666666666
+      },
+      "routed_risk": {
+        "wrong_repair_prompt_count": 38,
+        "wrong_repair_prompt_rate": 0.3958333333333333,
+        "ambiguous_skipped_count": 11,
+        "ambiguous_skipped_rate": 0.11458333333333333
+      },
+      "gates": {
+        "request_error_rate": {
+          "value": 0.0,
+          "threshold": 0.01,
+          "passed": true
+        },
+        "parse_error_rate": {
+          "value": 0.010416666666666666,
+          "threshold": 0.04,
+          "passed": true
+        },
+        "balanced_accuracy": {
+          "value": 0.4791666666666667,
+          "threshold": 0.7,
+          "passed": false
+        },
+        "a_box_recall": {
+          "value": 0.8333333333333334,
+          "threshold": 0.65,
+          "passed": true
+        },
+        "t_box_recall": {
+          "value": 0.125,
+          "threshold": 0.65,
+          "passed": false
+        },
+        "ambiguous_rate": {
+          "value": 0.11458333333333333,
+          "threshold": 0.15,
+          "passed": true
+        }
+      },
+      "eligible_for_routed_canary": false
+    },
+    {
+      "matrix_id": "prompt_dev_003_hybrid_json_nl_zero_shot_diagnosis_local_neutral_track_diagnosis_diagnosis_no_abstain",
+      "task": "track_diagnosis",
+      "context_bundle": "diagnosis_local_neutral",
+      "representation": "hybrid_json_nl",
+      "example_policy": "zero_shot",
+      "track_mode": null,
+      "counts": {
+        "total": 96,
+        "normalized": 95,
+        "parse_error": 1,
+        "request_error": 0,
+        "skipped": 0,
+        "ambiguous": 10
+      },
+      "confusion_by_historical_track": {
+        "A_BOX": {
+          "T_BOX": 5,
+          "A_BOX": 43
+        },
+        "T_BOX": {
+          "PARSE_ERROR": 1,
+          "A_BOX": 33,
+          "T_BOX": 4,
+          "AMBIGUOUS": 10
+        }
+      },
+      "confusion_by_slice": {
+        "class": {
+          "T_BOX": {
+            "T_BOX->PARSE_ERROR": 1,
+            "total": 48,
+            "T_BOX->A_BOX": 33,
+            "T_BOX->T_BOX": 4,
+            "T_BOX->AMBIGUOUS": 10
+          },
+          "TypeA": {
+            "A_BOX->T_BOX": 4,
+            "total": 24,
+            "A_BOX->A_BOX": 20
+          },
+          "TypeB": {
+            "A_BOX->A_BOX": 12,
+            "total": 12
+          },
+          "TypeC": {
+            "A_BOX->A_BOX": 11,
+            "total": 12,
+            "A_BOX->T_BOX": 1
+          }
+        },
+        "subtype": {
+          "COINCIDENTAL_SCHEMA_CHANGE": {
+            "T_BOX->A_BOX": 8,
+            "total": 12,
+            "T_BOX->T_BOX": 1,
+            "T_BOX->AMBIGUOUS": 3
+          },
+          "DELETE_AMBIGUOUS": {
+            "A_BOX->T_BOX": 1,
+            "total": 4,
+            "A_BOX->A_BOX": 3
+          },
+          "EXTERNAL_BY_ELIMINATION": {
+            "A_BOX->A_BOX": 3,
+            "total": 4,
+            "A_BOX->T_BOX": 1
+          },
+          "FORMAT_NORMALIZATION": {
+            "A_BOX->T_BOX": 2,
+            "total": 4,
+            "A_BOX->A_BOX": 2
+          },
+          "FORMAT_VALUE_PRUNING": {
+            "A_BOX->A_BOX": 3,
+            "total": 4,
+            "A_BOX->T_BOX": 1
+          },
+          "LOCAL_FOCUS_NON_TARGET_PROPERTY": {
+            "A_BOX->A_BOX": 4,
+            "total": 4
+          },
+          "LOCAL_SELECTION_CONFIRMED": {
+            "A_BOX->A_BOX": 4,
+            "total": 4
+          },
+          "LOCAL_TEXT_DERIVED": {
+            "A_BOX->A_BOX": 4,
+            "total": 4
+          },
+          "RELAXATION_SET_EXPANSION": {
+            "T_BOX->PARSE_ERROR": 1,
+            "total": 12,
+            "T_BOX->A_BOX": 7,
+            "T_BOX->T_BOX": 1,
+            "T_BOX->AMBIGUOUS": 3
+          },
+          "RESTRICTION_SET_CONTRACTION": {
+            "T_BOX->A_BOX": 9,
+            "total": 12,
+            "T_BOX->AMBIGUOUS": 3
+          },
+          "SCHEMA_UPDATE": {
+            "T_BOX->A_BOX": 9,
+            "total": 12,
+            "T_BOX->T_BOX": 2,
+            "T_BOX->AMBIGUOUS": 1
+          },
+          "SELF_LINK_REJECTION": {
+            "A_BOX->A_BOX": 4,
+            "total": 4
+          },
+          "SET_MEMBERSHIP_REJECTION": {
+            "A_BOX->A_BOX": 4,
+            "total": 4
+          },
+          "TARGET_REQUIRED_CLAIM": {
+            "A_BOX->A_BOX": 4,
+            "total": 4
+          },
+          "UNKNOWN_BAD_TARGET_OR_CONTEXT": {
+            "A_BOX->A_BOX": 4,
+            "total": 4
+          },
+          "UNKNOWN_SELECTION_AMBIGUOUS": {
+            "A_BOX->A_BOX": 4,
+            "total": 4
+          }
+        },
+        "selection_stratum": {
+          "DEV_TBOX_COINCIDENTAL_SCHEMA_CHANGE": {
+            "T_BOX->A_BOX": 8,
+            "total": 12,
+            "T_BOX->T_BOX": 1,
+            "T_BOX->AMBIGUOUS": 3
+          },
+          "DEV_TBOX_RELAXATION_SET_EXPANSION": {
+            "T_BOX->PARSE_ERROR": 1,
+            "total": 12,
+            "T_BOX->A_BOX": 7,
+            "T_BOX->T_BOX": 1,
+            "T_BOX->AMBIGUOUS": 3
+          },
+          "DEV_TBOX_RESTRICTION_SET_CONTRACTION": {
+            "T_BOX->A_BOX": 9,
+            "total": 12,
+            "T_BOX->AMBIGUOUS": 3
+          },
+          "DEV_TBOX_SCHEMA_UPDATE": {
+            "T_BOX->A_BOX": 9,
+            "total": 12,
+            "T_BOX->T_BOX": 2,
+            "T_BOX->AMBIGUOUS": 1
+          },
+          "DEV_TYPEA_AMBIGUOUS_DELETE": {
+            "A_BOX->T_BOX": 1,
+            "total": 4,
+            "A_BOX->A_BOX": 3
+          },
+          "DEV_TYPEA_CLEAN_RULE_REJECTION": {
+            "A_BOX->T_BOX": 3,
+            "total": 20,
+            "A_BOX->A_BOX": 17
+          },
+          "DEV_TYPEB_LOCAL": {
+            "A_BOX->A_BOX": 12,
+            "total": 12
+          },
+          "DEV_TYPEC_EXTERNAL_OR_UNKNOWN": {
+            "A_BOX->A_BOX": 11,
+            "total": 12,
+            "A_BOX->T_BOX": 1
+          }
+        },
+        "main_score": {
+          "False": {
+            "A_BOX->T_BOX": 1,
+            "total": 24,
+            "T_BOX->A_BOX": 8,
+            "A_BOX->A_BOX": 11,
+            "T_BOX->T_BOX": 1,
+            "T_BOX->AMBIGUOUS": 3
+          },
+          "True": {
+            "T_BOX->PARSE_ERROR": 1,
+            "total": 72,
+            "A_BOX->T_BOX": 4,
+            "A_BOX->A_BOX": 32,
+            "T_BOX->A_BOX": 25,
+            "T_BOX->T_BOX": 3,
+            "T_BOX->AMBIGUOUS": 7
+          }
+        },
+        "diagnostic_only": {
+          "False": {
+            "T_BOX->PARSE_ERROR": 1,
+            "total": 72,
+            "A_BOX->T_BOX": 4,
+            "A_BOX->A_BOX": 32,
+            "T_BOX->A_BOX": 25,
+            "T_BOX->T_BOX": 3,
+            "T_BOX->AMBIGUOUS": 7
+          },
+          "True": {
+            "A_BOX->T_BOX": 1,
+            "total": 24,
+            "T_BOX->A_BOX": 8,
+            "A_BOX->A_BOX": 11,
+            "T_BOX->T_BOX": 1,
+            "T_BOX->AMBIGUOUS": 3
+          }
+        }
+      },
+      "metrics": {
+        "a_box_recall": 0.8958333333333334,
+        "t_box_recall": 0.08333333333333333,
+        "balanced_accuracy": 0.48958333333333337,
+        "macro_f1": 0.4169496321448783,
+        "a_box_f1": 0.6935483870967741,
+        "t_box_f1": 0.14035087719298245,
+        "ambiguous_rate": 0.10416666666666667,
+        "wrong_route_rate": 0.3958333333333333,
+        "request_error_rate": 0.0,
+        "parse_error_rate": 0.010416666666666666
+      },
+      "routed_risk": {
+        "wrong_repair_prompt_count": 38,
+        "wrong_repair_prompt_rate": 0.3958333333333333,
+        "ambiguous_skipped_count": 10,
+        "ambiguous_skipped_rate": 0.10416666666666667
+      },
+      "gates": {
+        "request_error_rate": {
+          "value": 0.0,
+          "threshold": 0.01,
+          "passed": true
+        },
+        "parse_error_rate": {
+          "value": 0.010416666666666666,
+          "threshold": 0.04,
+          "passed": true
+        },
+        "balanced_accuracy": {
+          "value": 0.48958333333333337,
+          "threshold": 0.7,
+          "passed": false
+        },
+        "a_box_recall": {
+          "value": 0.8958333333333334,
+          "threshold": 0.65,
+          "passed": true
+        },
+        "t_box_recall": {
+          "value": 0.08333333333333333,
+          "threshold": 0.65,
+          "passed": false
+        },
+        "ambiguous_rate": {
+          "value": 0.10416666666666667,
+          "threshold": 0.15,
+          "passed": true
+        }
+      },
+      "eligible_for_routed_canary": false
+    }
+  ],
+  "eligible_matrices": []
+}

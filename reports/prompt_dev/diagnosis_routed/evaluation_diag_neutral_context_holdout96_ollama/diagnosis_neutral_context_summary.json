@@ -1,0 +1,209 @@
+{
+  "best_matrix": {
+    "a_box_recall": 0.8958333333333334,
+    "ambiguous_rate": 0.10416666666666667,
+    "balanced_accuracy": 0.48958333333333337,
+    "context_bundle": "diagnosis_local_neutral",
+    "parse_error_rate": 0.010416666666666666,
+    "request_error_rate": 0.0,
+    "t_box_recall": 0.08333333333333333,
+    "wrong_route_rate": 0.3958333333333333
+  },
+  "context_bundles": [
+    "diagnosis_minimal",
+    "diagnosis_logic_neutral",
+    "diagnosis_local_neutral"
+  ],
+  "created_at_utc": "2026-06-15T10:08:53Z",
+  "decision": {
+    "continue_diagnosis_development": false,
+    "reason": "Neutral context removed the structural confound but did not materially improve T-box recall or balanced accuracy.",
+    "run_phase_g_diagnosis_routed": false,
+    "run_routed_dev_canary": false
+  },
+  "holdout_manifest": "reports/benchmark_selection/dev_prompt_holdout_spec_v4_96_seed_17.json",
+  "manifest_type": "diagnosis_neutral_context_summary",
+  "matrices": [
+    {
+      "confusion_by_historical_track": {
+        "A_BOX": {
+          "AMBIGUOUS": 4,
+          "A_BOX": 43,
+          "T_BOX": 1
+        },
+        "T_BOX": {
+          "AMBIGUOUS": 10,
+          "A_BOX": 35,
+          "T_BOX": 3
+        }
+      },
+      "context_bundle": "diagnosis_minimal",
+      "counts": {
+        "ambiguous": 14,
+        "normalized": 96,
+        "parse_error": 0,
+        "request_error": 0,
+        "skipped": 0,
+        "total": 96
+      },
+      "eligible_for_routed_canary": false,
+      "failed_gates": [
+        "balanced_accuracy",
+        "t_box_recall"
+      ],
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_zero_shot_diagnosis_minimal_track_diagnosis_diagnosis_no_abstain",
+      "metrics": {
+        "a_box_f1": 0.6825396825396827,
+        "a_box_recall": 0.8958333333333334,
+        "ambiguous_rate": 0.14583333333333334,
+        "balanced_accuracy": 0.4791666666666667,
+        "macro_f1": 0.39896214896214904,
+        "parse_error_rate": 0.0,
+        "request_error_rate": 0.0,
+        "t_box_f1": 0.11538461538461539,
+        "t_box_recall": 0.0625,
+        "wrong_route_rate": 0.375
+      },
+      "routed_risk": {
+        "ambiguous_skipped_count": 14,
+        "ambiguous_skipped_rate": 0.14583333333333334,
+        "wrong_repair_prompt_count": 36,
+        "wrong_repair_prompt_rate": 0.375
+      }
+    },
+    {
+      "confusion_by_historical_track": {
+        "A_BOX": {
+          "AMBIGUOUS": 2,
+          "A_BOX": 40,
+          "T_BOX": 6
+        },
+        "T_BOX": {
+          "AMBIGUOUS": 9,
+          "A_BOX": 32,
+          "PARSE_ERROR": 1,
+          "T_BOX": 6
+        }
+      },
+      "context_bundle": "diagnosis_logic_neutral",
+      "counts": {
+        "ambiguous": 11,
+        "normalized": 95,
+        "parse_error": 1,
+        "request_error": 0,
+        "skipped": 0,
+        "total": 96
+      },
+      "eligible_for_routed_canary": false,
+      "failed_gates": [
+        "balanced_accuracy",
+        "t_box_recall"
+      ],
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_zero_shot_diagnosis_logic_neutral_track_diagnosis_diagnosis_no_abstain",
+      "metrics": {
+        "a_box_f1": 0.6666666666666667,
+        "a_box_recall": 0.8333333333333334,
+        "ambiguous_rate": 0.11458333333333333,
+        "balanced_accuracy": 0.4791666666666667,
+        "macro_f1": 0.43333333333333335,
+        "parse_error_rate": 0.010416666666666666,
+        "request_error_rate": 0.0,
+        "t_box_f1": 0.2,
+        "t_box_recall": 0.125,
+        "wrong_route_rate": 0.3958333333333333
+      },
+      "routed_risk": {
+        "ambiguous_skipped_count": 11,
+        "ambiguous_skipped_rate": 0.11458333333333333,
+        "wrong_repair_prompt_count": 38,
+        "wrong_repair_prompt_rate": 0.3958333333333333
+      }
+    },
+    {
+      "confusion_by_historical_track": {
+        "A_BOX": {
+          "A_BOX": 43,
+          "T_BOX": 5
+        },
+        "T_BOX": {
+          "AMBIGUOUS": 10,
+          "A_BOX": 33,
+          "PARSE_ERROR": 1,
+          "T_BOX": 4
+        }
+      },
+      "context_bundle": "diagnosis_local_neutral",
+      "counts": {
+        "ambiguous": 10,
+        "normalized": 95,
+        "parse_error": 1,
+        "request_error": 0,
+        "skipped": 0,
+        "total": 96
+      },
+      "eligible_for_routed_canary": false,
+      "failed_gates": [
+        "balanced_accuracy",
+        "t_box_recall"
+      ],
+      "matrix_id": "prompt_dev_003_hybrid_json_nl_zero_shot_diagnosis_local_neutral_track_diagnosis_diagnosis_no_abstain",
+      "metrics": {
+        "a_box_f1": 0.6935483870967741,
+        "a_box_recall": 0.8958333333333334,
+        "ambiguous_rate": 0.10416666666666667,
+        "balanced_accuracy": 0.48958333333333337,
+        "macro_f1": 0.4169496321448783,
+        "parse_error_rate": 0.010416666666666666,
+        "request_error_rate": 0.0,
+        "t_box_f1": 0.14035087719298245,
+        "t_box_recall": 0.08333333333333333,
+        "wrong_route_rate": 0.3958333333333333
+      },
+      "routed_risk": {
+        "ambiguous_skipped_count": 10,
+        "ambiguous_skipped_rate": 0.10416666666666667,
+        "wrong_repair_prompt_count": 38,
+        "wrong_repair_prompt_rate": 0.3958333333333333
+      }
+    }
+  ],
+  "model": "gpt-oss:120b",
+  "overall_counts": {
+    "by_parse_status": {
+      "normalized": 286,
+      "parse_error": 2
+    },
+    "evaluated_prompts": 288,
+    "matrix_rows": 3,
+    "rendered_prompts": 288
+  },
+  "prompt_version": "prompt_dev_diag_v1_locus_spec",
+  "provider": "ollama",
+  "sample_size_cases": 96,
+  "tasks": [
+    "track_diagnosis"
+  ],
+  "thresholds": {
+    "continue_diagnosis_development": {
+      "balanced_accuracy_min": 0.55,
+      "t_box_recall_min": 0.25
+    },
+    "diagnosis_gate": {
+      "a_box_recall_min": 0.65,
+      "ambiguous_rate_max": 0.15,
+      "balanced_accuracy_min": 0.7,
+      "parse_error_rate_max": 0.04,
+      "request_error_rate_max": 0.01,
+      "t_box_recall_min": 0.65
+    },
+    "phase_g_diagnosis_routed_ablation": {
+      "balanced_accuracy_min": 0.7,
+      "t_box_recall_min": 0.65
+    },
+    "routed_dev_canary": {
+      "balanced_accuracy_min": 0.65,
+      "t_box_recall_min": 0.5
+    }
+  },
+  "verdict": "STOP_DIAGNOSIS_ROUTED_FOR_MODEL"
+}

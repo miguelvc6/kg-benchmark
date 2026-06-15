@@ -24,7 +24,17 @@ It answers a higher-level question:
 - `scripts/prompt_dev_templates.py`: contains the dev-only `prompt_dev_diag_v1_locus_spec` diagnosis prompt candidate
 - `src/evaluate.py`: scores diagnosis outputs against the historical benchmark track
 
-Diagnosis prompts share the same sanitized bundle builder as proposal prompts. For `logic_only` and `local_graph`, the focus target property is reconstructed from synthetic pre-repair benchmark state rather than copied directly from current world-state target values, so diagnosis does not get post-repair target-property leakage that proposal prompting is supposed to avoid.
+Prompt-dev diagnosis experiments should use the explicit diagnosis-neutral context bundles rather than the ordinary
+repair proposal bundles. The diagnosis-neutral bundles are:
+
+- `diagnosis_minimal`: neutral case ID, QID, property, English labels, and violation context
+- `diagnosis_logic_neutral`: minimal payload plus a structurally neutral current constraint context
+- `diagnosis_local_neutral`: logic-neutral payload plus local graph context with target-property post-repair L1/L3 leakage suppressed
+
+These bundles do not branch on the historical `track`, do not use `repair_target.constraint_delta`, and do not expose
+`classification`, `repair_target`, `persistence_check`, `popularity`, raw `repair_`/`reform_` case IDs, or target-property
+post-repair local graph edges. Ordinary `logic_only` and `local_graph` repair bundles are still used for oracle proposal
+prompting, where the T-box pre-reform temporal policy is intentional.
 
 ## Output Contract
 
@@ -94,5 +104,7 @@ The diagnosis prompt is eligible for a diagnosis-routed dev canary only if all o
 Skipped routed proposals are still visible in run artifacts with synthetic proposal rows, so downstream evaluation and viewer tooling can distinguish `AMBIGUOUS` routing skips from parser failures or missing provider results.
 
 The current v4 spec-only diagnosis prompt failed the Phase F routing gate on the v4 holdout, with accuracy close to
-chance. Use `prompt_dev_diag_v1_locus_spec` for the next dev-only diagnosis validation. If that branch fails, do not run
-Phase G `diagnosis_routed`; write a blocked report instead.
+chance. A follow-up audit found that the legacy diagnosis render path reused repair proposal context bundles whose
+constraint structure could be conditioned on the historical track. Use `prompt_dev_diag_v1_locus_spec` with
+`--diagnosis-context-bundles diagnosis_minimal,diagnosis_logic_neutral,diagnosis_local_neutral` for the next dev-only
+diagnosis validation. If that branch fails, do not run Phase G `diagnosis_routed`; write a blocked report instead.

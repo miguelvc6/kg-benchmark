@@ -58,7 +58,11 @@ For `local_graph`, the prompt builder now:
 - omits `L3_neighborhood` edges on the target property instead of exposing current/post-repair target edges
 - backfills missing `L2_labels.entities` entries for synthetic pre-repair target QIDs from the benchmark's resolved Stage 2 mirrors when world state does not already provide them
 
-This temporal policy is shared by proposal and track-diagnosis prompt bundles. Manifest rows still record pruning audit counts such as `constraint_count_before`, `constraint_count_after`, and for `local_graph` also `edge_count_after` and `label_count_after`.
+This temporal policy applies to proposal prompt bundles. Prompt-dev diagnosis-gating runs should use the separate
+diagnosis-neutral context bundles documented in [Track Diagnosis](./Track_Diagnosis.md), because repair-locus
+classification must not receive model-visible structure conditioned on the historical track. Manifest rows still record
+pruning audit counts such as `constraint_count_before`, `constraint_count_after`, and for `local_graph` also
+`edge_count_after` and `label_count_after`.
 
 ## Provider Interface
 

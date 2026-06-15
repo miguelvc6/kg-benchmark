@@ -40,6 +40,11 @@ def _stable_hash(*parts: Any) -> str:
 
 
 ABLATION_BUNDLES = ("minimal_case", "logic_only", "local_graph")
+DIAGNOSIS_ABLATION_BUNDLES = (
+    "diagnosis_minimal",
+    "diagnosis_logic_neutral",
+    "diagnosis_local_neutral",
+)
 OPENAI_BATCH_COST_ESTIMATION_MULTIPLIER = 0.5
 EVALUATION_IN_MEMORY_CASE_THRESHOLD = 10_000
 GENERATION_IN_MEMORY_CASE_THRESHOLD = 10_000
@@ -974,6 +979,142 @@ def _pruned_local_context(
     return local_context, audit
 
 
+_DIAGNOSIS_FORBIDDEN_CONTEXT_KEYS = {
+    "classification",
+    "repair_target",
+    "persistence_check",
+    "popularity",
+    "sitelinks_count",
+    "track",
+    "target_constraint_is_changed",
+    "changed_constraint_types",
+    "signature_before",
+    "signature_after",
+    "constraint_delta",
+}
+
+
+def _strip_diagnosis_forbidden_context(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: _strip_diagnosis_forbidden_context(item)
+            for key, item in value.items()
+            if key not in _DIAGNOSIS_FORBIDDEN_CONTEXT_KEYS
+        }
+    if isinstance(value, list):
+        return [_strip_diagnosis_forbidden_context(item) for item in value]
+    return value
+
+
+def _diagnosis_neutral_constraints_payload(
+    record: dict[str, Any],
+    world_state_entry: Optional[dict[str, Any]],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    constraints_payload: dict[str, Any] = {}
+    if isinstance(world_state_entry, dict) and isinstance(world_state_entry.get("L4_constraints"), dict):
+        constraints_payload = dict(world_state_entry["L4_constraints"])
+
+    raw_constraints = constraints_payload.get("constraints")
+    valid_constraints = [constraint for constraint in raw_constraints if isinstance(constraint, dict)] if isinstance(raw_constraints, list) else []
+    mapped_constraint_qid = _mapped_constraint_qid(record)
+    referenced_tokens = set(_violation_values(record))
+    kept_constraints: list[dict[str, Any]] = []
+    for constraint in valid_constraints:
+        constraint_qid = _constraint_type_qid(constraint)
+        if mapped_constraint_qid and constraint_qid == mapped_constraint_qid:
+            kept_constraints.append(constraint)
+            continue
+        if constraint_qid in {PROPERTY_SCOPE_CONSTRAINT_QID, ALLOWED_ENTITY_TYPES_CONSTRAINT_QID}:
+            kept_constraints.append(constraint)
+            continue
+        if _constraint_mentions_tokens(constraint, referenced_tokens):
+            kept_constraints.append(constraint)
+
+    if not kept_constraints and valid_constraints:
+        kept_constraints = _fallback_constraints(valid_constraints)
+
+    payload = {
+        "constraints": _strip_diagnosis_forbidden_context(kept_constraints),
+        "constraint_family_inventory": _strip_diagnosis_forbidden_context(
+            _constraint_family_inventory(valid_constraints)
+        ),
+    }
+    audit = {
+        "constraint_count_before": len(valid_constraints),
+        "constraint_count_after": len(kept_constraints),
+        "temporal_policy": "diagnosis_track_agnostic_current_context",
+    }
+    return payload, audit
+
+
+def _diagnosis_neutral_l1_ego_node(
+    record: dict[str, Any],
+    world_state_entry: Optional[dict[str, Any]],
+) -> dict[str, Any]:
+    if not isinstance(world_state_entry, dict) or not isinstance(world_state_entry.get("L1_ego_node"), dict):
+        return {}
+    l1_node = world_state_entry["L1_ego_node"]
+    target_pid = record.get("property")
+    properties = l1_node.get("properties")
+    kept_properties: dict[str, Any] = {}
+    if isinstance(properties, dict):
+        for pid, values in properties.items():
+            if isinstance(target_pid, str) and pid == target_pid:
+                continue
+            kept_properties[pid] = values
+    sanitized = {
+        "qid": l1_node.get("qid"),
+        "label": l1_node.get("label"),
+        "description": l1_node.get("description"),
+        "properties": kept_properties,
+    }
+    return {
+        key: _strip_diagnosis_forbidden_context(value)
+        for key, value in sanitized.items()
+        if value not in (None, {}, [])
+    }
+
+
+def _diagnosis_neutral_local_context(
+    record: dict[str, Any],
+    world_state_entry: Optional[dict[str, Any]],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    l4_constraints, constraint_audit = _diagnosis_neutral_constraints_payload(record, world_state_entry)
+    l1_ego_node = _diagnosis_neutral_l1_ego_node(record, world_state_entry)
+    references = _collect_reference_ids(l1_ego_node) | _collect_reference_ids(l4_constraints)
+    if isinstance(record.get("qid"), str):
+        references.add(record["qid"])
+    if isinstance(record.get("property"), str):
+        references.add(record["property"])
+
+    outgoing_edges: list[dict[str, Any]] = []
+    if isinstance(world_state_entry, dict) and isinstance(world_state_entry.get("L3_neighborhood"), dict):
+        for edge in world_state_entry["L3_neighborhood"].get("outgoing_edges", []):
+            if _edge_matches_references(edge, record.get("property"), references):
+                sanitized_edge = _strip_diagnosis_forbidden_context(edge)
+                outgoing_edges.append(sanitized_edge)
+                references.update(_collect_reference_ids(sanitized_edge))
+
+    l2_payload: Any = {}
+    label_count_after = 0
+    if isinstance(world_state_entry, dict):
+        l2_payload, label_count_after = _pruned_l2_labels(world_state_entry.get("L2_labels"), references)
+        l2_payload = _strip_diagnosis_forbidden_context(l2_payload)
+
+    local_context = {
+        "L1_ego_node": l1_ego_node,
+        "L2_labels": l2_payload,
+        "L3_neighborhood": {"outgoing_edges": outgoing_edges},
+        "L4_constraints": l4_constraints,
+    }
+    audit = {
+        **constraint_audit,
+        "edge_count_after": len(outgoing_edges),
+        "label_count_after": label_count_after,
+    }
+    return local_context, audit
+
+
 def _sanitized_case_payload(record: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": record.get("id"),
@@ -1019,6 +1160,32 @@ def _bundle_payload_and_audit(
     return case_payload, audit
 
 
+def _diagnosis_bundle_payload_and_audit(
+    record: dict[str, Any],
+    world_state_entry: Optional[dict[str, Any]],
+    bundle: str,
+    *,
+    visible_case_id: str | None = None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    if bundle not in DIAGNOSIS_ABLATION_BUNDLES:
+        raise ValueError(f"Unsupported diagnosis ablation bundle: {bundle}")
+    case_payload = _model_visible_case_payload(_sanitized_case_payload(record), visible_case_id)
+    case_payload = _strip_diagnosis_forbidden_context(case_payload)
+    if bundle == "diagnosis_minimal":
+        return case_payload, {
+            "constraint_count_before": 0,
+            "constraint_count_after": 0,
+            "temporal_policy": "diagnosis_track_agnostic_minimal",
+        }
+    if bundle == "diagnosis_logic_neutral":
+        logic_context, audit = _diagnosis_neutral_constraints_payload(record, world_state_entry)
+        case_payload["logic_context"] = logic_context
+        return case_payload, audit
+    local_context, audit = _diagnosis_neutral_local_context(record, world_state_entry)
+    case_payload["local_context"] = local_context
+    return case_payload, audit
+
+
 def build_prompt_bundle(
     record: dict[str, Any],
     world_state_entry: Optional[dict[str, Any]],
@@ -1055,7 +1222,8 @@ def build_track_diagnosis_prompt_bundle(
     *,
     visible_case_id: str | None = None,
 ) -> PromptBundle:
-    case_payload, context_audit = _bundle_payload_and_audit(
+    builder = _diagnosis_bundle_payload_and_audit if bundle in DIAGNOSIS_ABLATION_BUNDLES else _bundle_payload_and_audit
+    case_payload, context_audit = builder(
         record,
         world_state_entry,
         bundle,

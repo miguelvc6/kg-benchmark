@@ -10,8 +10,10 @@ from pathlib import Path
 from tqdm.auto import tqdm
 
 from lib.prompt_dev import (
+    DEFAULT_DIAGNOSIS_CONTEXT_BUNDLES,
     DEFAULT_CONTEXT_BUNDLES,
     DEFAULT_RENDER_TASKS,
+    DIAGNOSIS_ABLATION_BUNDLES,
     EXAMPLE_POLICIES,
     REPAIR_TRACK_MODES,
     SAMPLE_STRATEGIES,
@@ -88,6 +90,14 @@ def _add_axis_args(parser: argparse.ArgumentParser, *, render_defaults: bool = F
         "--context-bundles",
         default=",".join(DEFAULT_CONTEXT_BUNDLES),
         help="Comma-separated context bundles, e.g. logic_only,local_graph.",
+    )
+    parser.add_argument(
+        "--diagnosis-context-bundles",
+        default=",".join(DEFAULT_DIAGNOSIS_CONTEXT_BUNDLES),
+        help=(
+            "Comma-separated diagnosis-only context bundles. When set, track_diagnosis matrices use these "
+            f"instead of --context-bundles. Supported: {', '.join(DIAGNOSIS_ABLATION_BUNDLES)}."
+        ),
     )
     parser.add_argument(
         "--tasks",
@@ -236,6 +246,10 @@ def main() -> int:
                 representations=_csv_tuple(args.representations, REPRESENTATIONS),
                 example_policies=_csv_tuple(args.example_policies, EXAMPLE_POLICIES),
                 context_bundles=_csv_tuple(args.context_bundles, DEFAULT_CONTEXT_BUNDLES),
+                diagnosis_context_bundles=_csv_tuple(
+                    args.diagnosis_context_bundles,
+                    DEFAULT_DIAGNOSIS_CONTEXT_BUNDLES,
+                ),
                 tasks=_csv_tuple(args.tasks, DEFAULT_RENDER_TASKS),
                 repair_track_modes=_csv_tuple(args.repair_track_modes, REPAIR_TRACK_MODES),
                 include_abstention=args.include_abstention,
@@ -266,6 +280,10 @@ def main() -> int:
                 representations=_csv_tuple(args.representations, ("hybrid_json_nl",)),
                 example_policies=_csv_tuple(args.example_policies, ("zero_shot",)),
                 context_bundles=_csv_tuple(args.context_bundles, DEFAULT_CONTEXT_BUNDLES),
+                diagnosis_context_bundles=_csv_tuple(
+                    args.diagnosis_context_bundles,
+                    DEFAULT_DIAGNOSIS_CONTEXT_BUNDLES,
+                ),
                 tasks=_csv_tuple(args.tasks, DEFAULT_RENDER_TASKS),
                 repair_track_modes=_csv_tuple(args.repair_track_modes, ("oracle",)),
                 include_abstention=args.include_abstention,
@@ -308,6 +326,10 @@ def main() -> int:
                     representations=_csv_tuple(args.representations, ("hybrid_json_nl",)),
                     example_policies=_csv_tuple(args.example_policies, ("zero_shot",)),
                     context_bundles=_csv_tuple(args.context_bundles, DEFAULT_CONTEXT_BUNDLES),
+                    diagnosis_context_bundles=_csv_tuple(
+                        args.diagnosis_context_bundles,
+                        DEFAULT_DIAGNOSIS_CONTEXT_BUNDLES,
+                    ),
                     tasks=_csv_tuple(args.tasks, DEFAULT_RENDER_TASKS),
                     repair_track_modes=_csv_tuple(args.repair_track_modes, ("oracle",)),
                     include_abstention=args.include_abstention,

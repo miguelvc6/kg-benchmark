@@ -9,6 +9,7 @@ from unittest.mock import patch
 from guardian.model_provider import BatchExecutionResult, StaticResponseProvider
 from guardian.prompts import get_prompt_template
 from guardian.reasoning import (
+    DIAGNOSIS_ABLATION_BUNDLES,
     _collect_selected_records_in_order,
     _disable_generation_progress,
     build_prompt_bundle,
@@ -839,6 +840,163 @@ class ReasoningFloorTests(unittest.TestCase):
         self.assertNotIn("repair_raw_case", proposal_bundle.prompt)
         self.assertNotIn("repair_raw_case", diagnosis_bundle.prompt)
         self.assertEqual(_extract_input_case(proposal_bundle.prompt)["id"].startswith("case_"), True)
+
+    def test_diagnosis_neutral_context_bundles_are_supported(self) -> None:
+        self.assertEqual(
+            DIAGNOSIS_ABLATION_BUNDLES,
+            ("diagnosis_minimal", "diagnosis_logic_neutral", "diagnosis_local_neutral"),
+        )
+
+    def test_diagnosis_neutral_prompt_context_shape_is_track_agnostic(self) -> None:
+        base_record = {
+            "id": "repair_or_reform_raw_case",
+            "qid": "Q2",
+            "property": "P31",
+            "labels_en": {"qid": "Entity", "property": "instance of"},
+            "violation_context": {
+                "report_violation_type": "one-of",
+                "report_violation_type_normalized": "one-of",
+                "value": ["Q5"],
+                "report_violation_type_qids": ["Q21510859"],
+            },
+            "classification": {"class": "TypeA", "subtype": "RULE_BASED"},
+            "repair_target": {
+                "kind": "T_BOX",
+                "constraint_delta": {
+                    "changed_constraint_types": ["Q21510859"],
+                    "signature_before": [
+                        {
+                            "constraint_type": {"qid": "Q_BEFORE"},
+                            "qualifiers": [{"property_id": "P2305", "values": ["Q_BEFORE_VALUE"]}],
+                        }
+                    ],
+                    "signature_after": [
+                        {
+                            "constraint_type": {"qid": "Q_AFTER"},
+                            "qualifiers": [{"property_id": "P2305", "values": ["Q_AFTER_VALUE"]}],
+                        }
+                    ],
+                },
+            },
+            "persistence_check": {"truth_tokens": ["hidden"]},
+            "popularity": {"score": 10},
+        }
+        a_record = {**base_record, "track": "A_BOX"}
+        t_record = {**base_record, "track": "T_BOX"}
+        world_state_entry = {
+            "L1_ego_node": {
+                "qid": "Q2",
+                "label": "Entity",
+                "description": "desc",
+                "sitelinks_count": 99,
+                "properties": {"P31": ["Q_CURRENT"], "P279": ["Q35120"]},
+            },
+            "L2_labels": {
+                "entities": {
+                    "Q2": {"label": "Entity"},
+                    "P31": {"label": "instance of"},
+                    "Q5": {"label": "value"},
+                    "Q35120": {"label": "entity"},
+                    "Q_CURRENT": {"label": "current target value"},
+                }
+            },
+            "L3_neighborhood": {
+                "outgoing_edges": [
+                    {"pid": "P31", "target": "Q_CURRENT"},
+                    {"pid": "P279", "target": "Q35120"},
+                ]
+            },
+            "L4_constraints": {
+                "constraints": [
+                    {
+                        "constraint_type": {"qid": "Q21510859", "label": "one-of constraint"},
+                        "qualifiers": [{"property_id": "P2305", "values": ["Q5"]}],
+                    }
+                ]
+            },
+        }
+
+        a_payload = _extract_input_case(
+            build_track_diagnosis_prompt_bundle(
+                a_record,
+                world_state_entry,
+                "diagnosis_local_neutral",
+                visible_case_id="case_000001",
+            ).prompt
+        )
+        t_payload = _extract_input_case(
+            build_track_diagnosis_prompt_bundle(
+                t_record,
+                world_state_entry,
+                "diagnosis_local_neutral",
+                visible_case_id="case_000001",
+            ).prompt
+        )
+
+        self.assertEqual(set(a_payload), set(t_payload))
+        self.assertEqual(set(a_payload["local_context"]), set(t_payload["local_context"]))
+        self.assertEqual(a_payload["local_context"], t_payload["local_context"])
+        prompt_text = json.dumps(t_payload, ensure_ascii=False)
+        for forbidden in (
+            "repair_or_reform_raw_case",
+            "classification",
+            "repair_target",
+            "persistence_check",
+            "popularity",
+            "sitelinks_count",
+            '"track"',
+            "changed_constraint_types",
+            "target_constraint_is_changed",
+            "signature_before",
+            "signature_after",
+            "constraint_delta",
+            "Q_BEFORE",
+            "Q_AFTER",
+            "Q_CURRENT",
+        ):
+            self.assertNotIn(forbidden, prompt_text)
+        self.assertIn("Q35120", prompt_text)
+
+    def test_diagnosis_neutral_logic_prompt_does_not_use_tbox_signature_before(self) -> None:
+        record = {
+            "id": "reform_raw_case",
+            "qid": "Q2",
+            "property": "P31",
+            "track": "T_BOX",
+            "labels_en": {},
+            "violation_context": {"value": ["Q5"], "report_violation_type_qids": ["Q21510859"]},
+            "repair_target": {
+                "kind": "T_BOX",
+                "constraint_delta": {
+                    "signature_before": [
+                        {
+                            "constraint_type": {"qid": "Q_SIGNATURE_BEFORE"},
+                            "qualifiers": [{"property_id": "P2305", "values": ["Q_BEFORE_VALUE"]}],
+                        }
+                    ]
+                },
+            },
+        }
+        world_state_entry = {
+            "L4_constraints": {
+                "constraints": [
+                    {
+                        "constraint_type": {"qid": "Q21510859"},
+                        "qualifiers": [{"property_id": "P2305", "values": ["Q5"]}],
+                    }
+                ]
+            }
+        }
+
+        payload = _extract_input_case(
+            build_track_diagnosis_prompt_bundle(record, world_state_entry, "diagnosis_logic_neutral").prompt
+        )
+
+        prompt_text = json.dumps(payload, ensure_ascii=False)
+        self.assertIn("constraint_family_inventory", prompt_text)
+        self.assertIn("Q21510859", prompt_text)
+        self.assertNotIn("Q_SIGNATURE_BEFORE", prompt_text)
+        self.assertNotIn("Q_BEFORE_VALUE", prompt_text)
 
     def test_t_box_prompt_bundle_prunes_local_graph_context(self) -> None:
         record = {

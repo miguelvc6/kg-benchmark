@@ -72,13 +72,15 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python src/prompt_dev.py evaluate \
   --sample-strategy manifest_order \
   --representations hybrid_json_nl \
   --example-policies zero_shot \
-  --context-bundles logic_only,local_graph \
+  --diagnosis-context-bundles diagnosis_minimal,diagnosis_logic_neutral,diagnosis_local_neutral \
   --tasks track_diagnosis
 ```
 
 The current v4 spec-only diagnosis prompt did not pass the routing gate on the v4 holdout; it was near chance and
-should not be used for main repair routing. Oracle repair remains the validated Phase G main condition. Diagnosis-routed
-is a dev-gated ablation only.
+should not be used for main repair routing. A context audit also found that the legacy diagnosis-only run using
+ordinary `logic_only`/`local_graph` repair bundles was confounded because those bundles can apply T-box temporal context
+policy based on the hidden historical track. New diagnosis-only evaluations should use `--diagnosis-context-bundles`.
+Oracle repair remains the validated Phase G main condition. Diagnosis-routed is a dev-gated ablation only.
 
 Supported representations:
 
@@ -149,6 +151,11 @@ This writes:
 - `prompt_dev_prompt_review.md`
 
 The render command opens the Stage 4 artifact and world-state index, builds the same sanitized context bundles used by the reasoning-floor runner, selects dev-only few-shot examples when requested, and writes prompts for manual review. It does not run LLM inference.
+
+For diagnosis-only prompt development, pass `--diagnosis-context-bundles` to keep repair-locus classification context
+structurally track-agnostic. When this option is set, `track_diagnosis` matrix rows use only those diagnosis bundles,
+while repair proposal rows continue to use `--context-bundles`. This prevents diagnosis prompts from inheriting the
+oracle T-box pre-reform/compact temporal policy that is appropriate for repair prompts but confounds track diagnosis.
 
 `--sample-strategy stratified` is the prompt-development default. It samples the dev manifest by rotating across
 historical track, classification class/subtype, and the manifest `selection_stratum` before applying `--max-cases`.

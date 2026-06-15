@@ -107,6 +107,27 @@ class PromptDevTests(unittest.TestCase):
         self.assertTrue(all(row["run_scope"] == "dev_only" for row in matrix["rows"]))
         self.assertIn("parse_validity", matrix["rows"][0]["metrics"])
 
+    def test_matrix_uses_explicit_diagnosis_context_bundles_for_diagnosis_only(self) -> None:
+        matrix = build_prompt_dev_matrix(
+            PromptDevMatrixOptions(
+                representations=("hybrid_json_nl",),
+                example_policies=("zero_shot",),
+                context_bundles=("logic_only",),
+                diagnosis_context_bundles=("diagnosis_minimal", "diagnosis_logic_neutral"),
+                tasks=("track_diagnosis", "repair_proposal"),
+                repair_track_modes=("oracle",),
+            )
+        )
+
+        diagnosis_contexts = {
+            row["context_bundle"] for row in matrix["rows"] if row["task"] == "track_diagnosis"
+        }
+        repair_contexts = {
+            row["context_bundle"] for row in matrix["rows"] if row["task"] == "repair_proposal"
+        }
+        self.assertEqual(diagnosis_contexts, {"diagnosis_minimal", "diagnosis_logic_neutral"})
+        self.assertEqual(repair_contexts, {"logic_only"})
+
     def test_comparison_markdown_marks_track_only_proposal_metrics_not_applicable(self) -> None:
         markdown = _evaluation_comparison_markdown(
             {
@@ -744,6 +765,83 @@ class PromptDevTests(unittest.TestCase):
         self.assertNotIn("TypeC", prompt.user_prompt)
         self.assertNotIn("repair_", prompt.user_prompt)
         self.assertNotIn("reform_", prompt.user_prompt)
+
+    def test_render_diagnosis_neutral_context_does_not_expose_hidden_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            records = [_abox_record("repair_hidden_case", "Q1", "P31"), _tbox_record("reform_hidden_case", "Q2", "P31")]
+            classified = root / "classified.jsonl"
+            classified.write_text("\n".join(json.dumps(record) for record in records) + "\n", encoding="utf-8")
+            manifest = root / "dev.json"
+            manifest.write_text(json.dumps(_manifest([record["id"] for record in records], records)), encoding="utf-8")
+            world_state = root / "world.json"
+            world_state.write_text(
+                json.dumps(
+                    {
+                        record["id"]: {
+                            "L1_ego_node": {
+                                "qid": record["qid"],
+                                "label": "Entity",
+                                "sitelinks_count": 100,
+                                "properties": {"P31": ["Q_CURRENT"], "P279": ["Q35120"]},
+                            },
+                            "L2_labels": {
+                                "entities": {
+                                    "Q35120": {"label": "entity"},
+                                    "Q_CURRENT": {"label": "current"},
+                                }
+                            },
+                            "L3_neighborhood": {"outgoing_edges": [{"pid": "P31", "target": "Q_CURRENT"}]},
+                            "L4_constraints": {
+                                "constraints": [
+                                    {
+                                        "constraint_type": {"qid": "Q21510859"},
+                                        "qualifiers": [{"property_id": "P2305", "values": ["Q1"]}],
+                                    }
+                                ]
+                            },
+                        }
+                        for record in records
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            summary = render_prompt_dev_prompts(
+                PromptDevRenderOptions(
+                    classified_benchmark=classified,
+                    world_state=world_state,
+                    dev_manifest=manifest,
+                    output_dir=root / "rendered",
+                    max_cases=2,
+                    representations=("hybrid_json_nl",),
+                    example_policies=("zero_shot",),
+                    context_bundles=("logic_only",),
+                    diagnosis_context_bundles=("diagnosis_local_neutral",),
+                    tasks=("track_diagnosis",),
+                    sample_strategy="manifest_order",
+                )
+            )
+
+            self.assertEqual(summary["counts"]["by_context_bundle"], {"diagnosis_local_neutral": 2})
+            prompts = "\n".join(
+                json.loads(line)["user_prompt"]
+                for line in (root / "rendered" / "prompt_dev_rendered_prompts.jsonl").read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            )
+            for forbidden in (
+                "repair_hidden_case",
+                "reform_hidden_case",
+                "classification",
+                "repair_target",
+                "persistence_check",
+                "popularity",
+                "sitelinks_count",
+                '"track"',
+                "changed_constraint_types",
+                "target_constraint_is_changed",
+            ):
+                self.assertNotIn(forbidden, prompts)
 
     def test_track_diagnosis_report_computes_confusion_and_gates(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
