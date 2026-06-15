@@ -12,6 +12,7 @@ from guardian.reasoning import (
     DIAGNOSIS_ABLATION_BUNDLES,
     _collect_selected_records_in_order,
     _disable_generation_progress,
+    _prepare_payload_for_case_id,
     build_prompt_bundle,
     build_track_diagnosis_prompt_bundle,
     run_reasoning_floor,
@@ -266,6 +267,22 @@ class ConfiguredStaticOpenAIProvider(StaticResponseProvider):
 
 
 class ReasoningFloorTests(unittest.TestCase):
+    def test_prepare_payload_for_case_id_forces_request_case_id(self) -> None:
+        payload = {
+            "case_id": "case_000_043",
+            "target": {"pid": "P1"},
+            "proposal": {},
+        }
+
+        normalized = _prepare_payload_for_case_id(
+            payload,
+            "reform_Q110612667_P7063_2328309235",
+            "case_000043",
+        )
+
+        self.assertEqual(normalized["case_id"], "reform_Q110612667_P7063_2328309235")
+        self.assertEqual(payload["case_id"], "case_000_043")
+
     def _write_jsonl(self, path: Path, rows: list[dict]) -> None:
         with open(path, "w", encoding="utf-8") as fh:
             for row in rows:

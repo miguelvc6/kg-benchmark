@@ -1547,11 +1547,10 @@ def _prepare_payload_for_case_id(raw_payload: Any, case_id: Any, visible_case_id
     if not isinstance(raw_payload, dict):
         return raw_payload
     payload = dict(raw_payload)
-    if isinstance(visible_case_id, str) and payload.get("case_id") == visible_case_id:
-        payload["case_id"] = case_id
-    if (not isinstance(payload.get("case_id"), str) or not payload.get("case_id", "").strip()) and isinstance(
-        case_id, str
-    ):
+    # Reasoning-floor requests are one case at a time and use neutral model-visible IDs.
+    # The request metadata is authoritative for evaluator joins, even when the model
+    # copies a shortened or malformed neutral ID such as case_000_043.
+    if isinstance(case_id, str) and case_id.strip():
         payload["case_id"] = case_id
     return payload
 
