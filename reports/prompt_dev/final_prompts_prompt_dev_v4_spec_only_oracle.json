@@ -1,0 +1,18 @@
+{
+  "context_bundles": [
+    "logic_only",
+    "local_graph"
+  ],
+  "created_at_utc": "2026-06-15T10:43:21Z",
+  "example_policy": "zero_shot",
+  "frozen": true,
+  "include_abstention": false,
+  "manifest_type": "prompt_dev_frozen_prompt_config",
+  "manifest_version": "prompt_dev_v4_spec_only",
+  "notes": "Frozen spec-only zero-shot oracle prompt. Diagnosis-routed failed dev gate for gpt-oss:120b; abstention blocked.",
+  "prompt_template_script": "scripts/prompt_dev_templates.py",
+  "proposal_track_modes": [
+    "oracle"
+  ],
+  "representation": "hybrid_json_nl"
+}
