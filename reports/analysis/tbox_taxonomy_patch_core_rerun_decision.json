@@ -1,0 +1,99 @@
+{
+  "decision": "RUN_CORE_TBOX_TAXONOMY_PATCH",
+  "date": "2026-06-17",
+  "approved": true,
+  "core_tbox_rows": 596,
+  "planned_prompt_count": 1192,
+  "prerequisites": {
+    "gold_extraction_coverage_100_percent": {
+      "status": "pass",
+      "evidence": "reports/gold/tbox_taxonomy_patch_gold_core_v1_summary.json",
+      "selected_tbox_records": 596,
+      "gold_extracted": 596,
+      "unsupported_count": 0
+    },
+    "dev_validation_passed": {
+      "status": "pass",
+      "evidence": "reports/analysis/tbox_taxonomy_patch_dev_validation.md"
+    },
+    "core_dry_run_passed": {
+      "status": "pass",
+      "evidence": "reports/analysis/tbox_taxonomy_patch_core_tbox64_dry_run.md"
+    },
+    "evaluator_metrics_interpretable": {
+      "status": "pass",
+      "evidence": [
+        "reports/prompt_dev/evaluation_prompt_dev_v5_tbox_taxonomy_patch_holdout96_zero_shot/prompt_dev_evaluation_summary.json",
+        "reports/prompt_dev/evaluation_prompt_dev_v5_tbox_taxonomy_patch_core_tbox64_zero_shot/prompt_dev_evaluation_summary.json"
+      ]
+    },
+    "no_prompt_validity_violations": {
+      "status": "pass",
+      "evidence": [
+        "reports/analysis/tbox_taxonomy_patch_dev_validation.md",
+        "reports/analysis/tbox_taxonomy_patch_core_tbox64_dry_run.md"
+      ]
+    },
+    "compute_budget_acceptable": {
+      "status": "pass",
+      "evidence": "596 core T-box cases x 2 contexts = 1192 prompts on local Ollama gpt-oss:120b"
+    },
+    "old_strict_g3_artifacts_preserved": {
+      "status": "pass",
+      "evidence": "taxonomy-patch outputs use distinct prompt-dev directories and t_box_taxonomy_patch_proposals.jsonl"
+    }
+  },
+  "command": [
+    "PROMPT_DEV_VERSION=prompt_dev_v5_tbox_taxonomy_patch",
+    "OLLAMA_MODEL=gpt-oss:120b",
+    "OLLAMA_TIMEOUT_SECONDS=300",
+    "OLLAMA_MAX_RETRIES=0",
+    "OLLAMA_TEMPERATURE=0",
+    "OLLAMA_CONTEXT_LENGTH=16384",
+    "OLLAMA_MAX_OUTPUT_TOKENS=2048",
+    "OLLAMA_KEEP_ALIVE=30m",
+    "UV_PROJECT_ENVIRONMENT=.venv-wsl",
+    "uv",
+    "run",
+    "python",
+    "src/prompt_dev.py",
+    "evaluate",
+    "--classified-benchmark",
+    "data/04_classified_benchmark.jsonl",
+    "--world-state",
+    "data/03_world_state.json",
+    "--dev-manifest",
+    "reports/benchmark_selection/core_v1_seed_13.json",
+    "--core-manifest",
+    "reports/benchmark_selection/core_v1_seed_13.json",
+    "--output-dir",
+    "reports/prompt_dev/evaluation_prompt_dev_v5_tbox_taxonomy_patch_core_tbox_all_zero_shot",
+    "--model-endpoint",
+    "ollama",
+    "--model",
+    "gpt-oss:120b",
+    "--max-cases",
+    "596",
+    "--track-filter",
+    "T_BOX",
+    "--sample-strategy",
+    "manifest_order",
+    "--representations",
+    "hybrid_json_nl",
+    "--example-policies",
+    "zero_shot",
+    "--context-bundles",
+    "logic_only,local_graph",
+    "--tasks",
+    "repair_proposal",
+    "--repair-track-modes",
+    "oracle",
+    "--no-progress"
+  ],
+  "guardrails": [
+    "Do not overwrite strict-signature G3 artifacts.",
+    "Use taxonomy-patch-specific output directories.",
+    "Keep strict signature_after reconstruction metrics as diagnostics only.",
+    "Do not tune prompts from full-core results."
+  ]
+}
