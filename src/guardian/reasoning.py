@@ -24,6 +24,7 @@ from guardian.prompts import get_prompt_template
 from guardian.tbox_parser import KNOWN_CONSTRAINT_TYPE_QIDS
 from guardian.tbox_parser import load_schema as load_t_box_schema
 from guardian.tbox_parser import normalize_proposal as normalize_t_box_proposal
+from guardian.tbox_taxonomy_patch_parser import normalize_tbox_taxonomy_patch
 from guardian.track_parser import load_schema as load_track_schema
 from guardian.track_parser import normalize_diagnosis
 from lib.benchmark_selection import resolve_case_id_filter
@@ -53,6 +54,13 @@ ALLOWED_ENTITY_TYPES_CONSTRAINT_QID = "Q52004125"
 UNROUTABLE_TRACK = "UNROUTABLE"
 RETRYABLE_BATCH_STATUS_CODES = {408, 409, 429}
 RUN_CONFIG_FILENAME = "run_config.json"
+TBOX_TASK_VERSION_STRICT = "strict_signature_after_v1"
+TBOX_TASK_VERSION_TAXONOMY_PATCH = "tbox_taxonomy_patch_v1"
+TBOX_TASK_VERSION = os.environ.get("TBOX_TASK_VERSION", TBOX_TASK_VERSION_STRICT)
+
+
+def _uses_tbox_taxonomy_patch() -> bool:
+    return TBOX_TASK_VERSION == TBOX_TASK_VERSION_TAXONOMY_PATCH
 
 
 def _slugify(value: str) -> str:
@@ -202,6 +210,10 @@ def _build_run_config_payload(
         "expected_request_count": expected_request_count,
         "skipped_diagnosis_count": skipped_diagnosis_count,
         "generation_strategy": generation_strategy,
+        "tbox_task_version": TBOX_TASK_VERSION_TAXONOMY_PATCH if _uses_tbox_taxonomy_patch() else TBOX_TASK_VERSION_STRICT,
+        "abox_task_version": "prompt_dev_v4_spec_only",
+        "prompt_version": "prompt_dev_v5_tbox_taxonomy_patch" if _uses_tbox_taxonomy_patch() else "reasoning_floor_v4_strict_tbox",
+        "strict_tbox_signature_diagnostic": "enabled" if _uses_tbox_taxonomy_patch() else "disabled",
         "selected_generation_records_path": (
             str(selected_generation_records_path.resolve())
             if isinstance(selected_generation_records_path, Path)
@@ -232,6 +244,10 @@ def _validate_resume_run_config(
         "max_cases",
         "ablation_bundles",
         "selected_case_ids",
+        "tbox_task_version",
+        "abox_task_version",
+        "prompt_version",
+        "strict_tbox_signature_diagnostic",
     ):
         if key == "oracle_diagnosis_mode" and existing_config.get(key) is None and expected_config.get(key) == "run":
             continue
@@ -1201,9 +1217,12 @@ def build_prompt_bundle(
         visible_case_id=visible_case_id or prompt_visible_case_id(str(record.get("id") or "")),
     )
     effective_track = proposal_track or record.get("track")
-    prompt_template_name = (
-        "reasoning_floor_t_box_zero_shot" if effective_track == "T_BOX" else "reasoning_floor_a_box_zero_shot"
-    )
+    if effective_track == "T_BOX" and _uses_tbox_taxonomy_patch():
+        prompt_template_name = "reasoning_floor_t_box_taxonomy_patch_zero_shot"
+    else:
+        prompt_template_name = (
+            "reasoning_floor_t_box_zero_shot" if effective_track == "T_BOX" else "reasoning_floor_a_box_zero_shot"
+        )
     prompt_template = get_prompt_template(prompt_template_name)
     return PromptBundle(
         ablation_bundle=bundle,
@@ -1491,6 +1510,8 @@ def _failure_taxonomy_from_traces(traces: Iterable[dict[str, Any]]) -> dict[str,
 
 
 def _proposal_output_name(track: str) -> str:
+    if track == "T_BOX" and _uses_tbox_taxonomy_patch():
+        return "t_box_taxonomy_patch_proposals.jsonl"
     return "t_box_proposals.jsonl" if track == "T_BOX" else "a_box_proposals.jsonl"
 
 
@@ -1525,6 +1546,12 @@ def _request_metadata(
     }
     if t_box_constraint_type_qids is not None:
         payload["t_box_constraint_type_qids"] = list(t_box_constraint_type_qids)
+    if proposal_track_used == "T_BOX":
+        payload["tbox_task_version"] = TBOX_TASK_VERSION_TAXONOMY_PATCH if _uses_tbox_taxonomy_patch() else TBOX_TASK_VERSION_STRICT
+        payload["strict_tbox_signature_diagnostic"] = "enabled" if _uses_tbox_taxonomy_patch() else "disabled"
+    if proposal_track_used == "A_BOX":
+        payload["abox_task_version"] = "prompt_dev_v4_spec_only"
+    payload["prompt_version"] = "prompt_dev_v5_tbox_taxonomy_patch" if _uses_tbox_taxonomy_patch() else "reasoning_floor_v4_strict_tbox"
     return payload
 
 
@@ -1598,6 +1625,10 @@ def _record_skipped_proposal_result(
         "historical_track": request_info.get("historical_track"),
         "proposal_track_used": request_info.get("proposal_track_used"),
         "routing_source": request_info.get("routing_source"),
+        "prompt_version": request_info.get("prompt_version"),
+        "tbox_task_version": request_info.get("tbox_task_version"),
+        "abox_task_version": request_info.get("abox_task_version"),
+        "strict_tbox_signature_diagnostic": request_info.get("strict_tbox_signature_diagnostic"),
         "context_audit": request_info.get("context_audit") or {},
         "task_type": request_info.get("task_type"),
         "provider": usage.get("provider"),
@@ -1617,6 +1648,10 @@ def _record_skipped_proposal_result(
         "historical_track": request_info.get("historical_track"),
         "proposal_track_used": request_info.get("proposal_track_used"),
         "routing_source": request_info.get("routing_source"),
+        "prompt_version": request_info.get("prompt_version"),
+        "tbox_task_version": request_info.get("tbox_task_version"),
+        "abox_task_version": request_info.get("abox_task_version"),
+        "strict_tbox_signature_diagnostic": request_info.get("strict_tbox_signature_diagnostic"),
         "task_type": request_info.get("task_type"),
         "raw_response": None,
         "parsed_payload": None,
@@ -1646,6 +1681,10 @@ def _record_skipped_diagnosis_result(
         "historical_track": request_info.get("historical_track"),
         "proposal_track_used": request_info.get("proposal_track_used"),
         "routing_source": request_info.get("routing_source"),
+        "prompt_version": request_info.get("prompt_version"),
+        "tbox_task_version": request_info.get("tbox_task_version"),
+        "abox_task_version": request_info.get("abox_task_version"),
+        "strict_tbox_signature_diagnostic": request_info.get("strict_tbox_signature_diagnostic"),
         "context_audit": request_info.get("context_audit") or {},
         "task_type": request_info.get("task_type"),
         "provider": usage.get("provider"),
@@ -1665,6 +1704,10 @@ def _record_skipped_diagnosis_result(
         "historical_track": request_info.get("historical_track"),
         "proposal_track_used": request_info.get("proposal_track_used"),
         "routing_source": request_info.get("routing_source"),
+        "prompt_version": request_info.get("prompt_version"),
+        "tbox_task_version": request_info.get("tbox_task_version"),
+        "abox_task_version": request_info.get("abox_task_version"),
+        "strict_tbox_signature_diagnostic": request_info.get("strict_tbox_signature_diagnostic"),
         "task_type": request_info.get("task_type"),
         "raw_response": None,
         "parsed_payload": None,
@@ -1685,6 +1728,7 @@ def _record_request_result(
     manifest_fh: Any,
     a_box_fh: Any,
     t_box_fh: Any,
+    t_box_taxonomy_patch_fh: Any,
     track_fh: Any,
     elapsed_seconds: float | None = None,
     error_message: str | None = None,
@@ -1700,6 +1744,10 @@ def _record_request_result(
         "historical_track": request_info.get("historical_track"),
         "proposal_track_used": request_info.get("proposal_track_used"),
         "routing_source": request_info.get("routing_source"),
+        "prompt_version": request_info.get("prompt_version"),
+        "tbox_task_version": request_info.get("tbox_task_version"),
+        "abox_task_version": request_info.get("abox_task_version"),
+        "strict_tbox_signature_diagnostic": request_info.get("strict_tbox_signature_diagnostic"),
         "context_audit": request_info.get("context_audit") or {},
         "task_type": request_info.get("task_type"),
         "provider": usage.get("provider"),
@@ -1718,6 +1766,10 @@ def _record_request_result(
         "historical_track": request_info.get("historical_track"),
         "proposal_track_used": request_info.get("proposal_track_used"),
         "routing_source": request_info.get("routing_source"),
+        "prompt_version": request_info.get("prompt_version"),
+        "tbox_task_version": request_info.get("tbox_task_version"),
+        "abox_task_version": request_info.get("abox_task_version"),
+        "strict_tbox_signature_diagnostic": request_info.get("strict_tbox_signature_diagnostic"),
         "task_type": request_info.get("task_type"),
         "raw_response": raw_response,
         "parsed_payload": parsed_payload,
@@ -1749,6 +1801,17 @@ def _record_request_result(
             _append_jsonl_record(track_fh, normalized_diagnosis.to_dict())
             manifest_record["parse_status"] = "normalized"
             manifest_record["canonical_hash"] = normalized_diagnosis.canonical_hash
+        elif (
+            _proposal_track_for_request(request_info) == "T_BOX"
+            and request_info.get("tbox_task_version") == TBOX_TASK_VERSION_TAXONOMY_PATCH
+        ):
+            normalized = normalize_tbox_taxonomy_patch(
+                normalization_payload,
+                constraint_type_qids=request_info.get("t_box_constraint_type_qids"),
+            )
+            _append_jsonl_record(t_box_taxonomy_patch_fh, normalized.schema_dict())
+            manifest_record["parse_status"] = "normalized"
+            manifest_record["canonical_hash"] = normalized.canonical_hash
         elif _proposal_track_for_request(request_info) == "T_BOX":
             normalized = normalize_t_box_proposal(
                 normalization_payload,
@@ -2194,6 +2257,7 @@ def run_reasoning_floor(
                 manifest_fh=manifest_fh,
                 a_box_fh=handles["a_box"],
                 t_box_fh=handles["t_box"],
+                t_box_taxonomy_patch_fh=handles["t_box_taxonomy_patch"],
                 track_fh=handles["track"],
                 elapsed_seconds=elapsed_seconds,
                 error_message=error_message,
@@ -2792,6 +2856,7 @@ def run_reasoning_floor(
             if not resume_requested:
                 (bundle_dir / "a_box_proposals.jsonl").touch()
                 (bundle_dir / "t_box_proposals.jsonl").touch()
+                (bundle_dir / "t_box_taxonomy_patch_proposals.jsonl").touch()
                 (bundle_dir / "track_diagnoses.jsonl").touch()
 
         output_file_mode = "a" if resume_requested else "w"
@@ -2807,6 +2872,9 @@ def run_reasoning_floor(
                     ),
                     "t_box": stack.enter_context(
                         open(bundle_dir / "t_box_proposals.jsonl", output_file_mode, encoding="utf-8")
+                    ),
+                    "t_box_taxonomy_patch": stack.enter_context(
+                        open(bundle_dir / "t_box_taxonomy_patch_proposals.jsonl", output_file_mode, encoding="utf-8")
                     ),
                     "track": stack.enter_context(
                         open(bundle_dir / "track_diagnoses.jsonl", output_file_mode, encoding="utf-8")

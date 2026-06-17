@@ -21,13 +21,17 @@ from guardian.reasoning import (
     _diagnosis_bundle_payload_and_audit,
     _t_box_constraint_type_qids,
 )
+from guardian.tbox_taxonomy_patch_evaluator import evaluate_tbox_taxonomy_patch_predictions, load_jsonl
+from guardian.tbox_taxonomy_patch_parser import normalize_tbox_taxonomy_patch
 from guardian.tbox_parser import normalize_proposal as normalize_t_box_proposal
 from guardian.track_parser import normalize_diagnosis
 from lib.benchmark_selection import derive_case_metadata, group_key_for_record, load_selection_manifest
+from lib.tbox_taxonomy_patch_gold import gold_patch_for_record
 from lib.repair_state import derive_value_change_summary, normalize_value_list
 from lib.utils import iter_jsonl
 from scripts.prompt_dev_templates import (
     PROMPT_DEV_VERSION,
+    PROMPT_DEV_TBOX_TAXONOMY_PATCH_VERSION,
     REPRESENTATIONS,
     render_prompt_dev_prompt,
 )
@@ -689,6 +693,8 @@ def _gold_output_for_task(record: dict[str, Any], task: str) -> dict[str, Any] |
     if task == "a_box_repair":
         return _gold_a_box_output(record)
     if task == "t_box_repair":
+        if PROMPT_DEV_VERSION == PROMPT_DEV_TBOX_TAXONOMY_PATCH_VERSION:
+            return gold_patch_for_record(record)
         return _gold_t_box_output(record)
     return None
 
@@ -1129,6 +1135,15 @@ def _prompt_record_metadata(
     }
     if proposal_track == "T_BOX":
         metadata["t_box_constraint_type_qids"] = _t_box_constraint_type_qids(record, world_state_entry)
+        if PROMPT_DEV_VERSION == PROMPT_DEV_TBOX_TAXONOMY_PATCH_VERSION:
+            metadata["tbox_task_version"] = "tbox_taxonomy_patch_v1"
+            metadata["strict_tbox_signature_diagnostic"] = "enabled"
+        else:
+            metadata["tbox_task_version"] = "strict_signature_after_v1"
+            metadata["strict_tbox_signature_diagnostic"] = "headline"
+    if proposal_track == "A_BOX":
+        metadata["abox_task_version"] = "prompt_dev_v4_spec_only"
+    metadata["prompt_version"] = PROMPT_DEV_VERSION
     return metadata
 
 
@@ -1162,6 +1177,10 @@ def _record_prompt_dev_result(
             "routing_source",
             "task_type",
             "prompt_dev_task",
+            "prompt_version",
+            "tbox_task_version",
+            "abox_task_version",
+            "strict_tbox_signature_diagnostic",
         )},
         "provider": usage.get("provider"),
         "model": usage.get("model"),
@@ -1183,6 +1202,10 @@ def _record_prompt_dev_result(
             "routing_source",
             "task_type",
             "prompt_dev_task",
+            "prompt_version",
+            "tbox_task_version",
+            "abox_task_version",
+            "strict_tbox_signature_diagnostic",
         )},
         "raw_response": raw_response,
         "parsed_payload": parsed_payload,
@@ -1204,6 +1227,15 @@ def _record_prompt_dev_result(
         if metadata["task_type"] == "track_diagnosis":
             normalized = normalize_diagnosis(normalized_payload)
             _append_jsonl(matrix_dir / "track_diagnoses.jsonl", normalized.to_dict())
+        elif (
+            metadata.get("proposal_track_used") == "T_BOX"
+            and metadata.get("tbox_task_version") == "tbox_taxonomy_patch_v1"
+        ):
+            normalized = normalize_tbox_taxonomy_patch(
+                normalized_payload,
+                constraint_type_qids=metadata.get("t_box_constraint_type_qids"),
+            )
+            _append_jsonl(matrix_dir / "t_box_taxonomy_patch_proposals.jsonl", normalized.schema_dict())
         elif metadata.get("proposal_track_used") == "T_BOX":
             normalized = normalize_t_box_proposal(
                 normalized_payload,
@@ -1565,6 +1597,7 @@ def evaluate_prompt_dev_prompts(
         sample_strategy=options.sample_strategy,
         seed=options.seed,
     )
+    dev_manifest_payload = load_selection_manifest(options.dev_manifest)
     log.info("evaluate: loaded eval records=%s", len(eval_records))
     records_by_id = {record["id"]: record for record in eval_records if isinstance(record.get("id"), str)}
     log.info("evaluate: loading candidate records for routed prompts and examples")
@@ -1882,6 +1915,36 @@ def evaluate_prompt_dev_prompts(
             }
             write_json(matrix_dir / "evaluation_summary.json", eval_summary)
             (matrix_dir / "evaluation_traces.jsonl").touch()
+        taxonomy_eval_summary = None
+        taxonomy_eval_path = matrix_dir / "tbox_taxonomy_patch_evaluation_summary.json"
+        if (
+            PROMPT_DEV_VERSION == PROMPT_DEV_TBOX_TAXONOMY_PATCH_VERSION
+            and matrix_info["task"] == "repair_proposal"
+        ):
+            tbox_records = [
+                record
+                for record in eval_records
+                if record.get("id") in set(unique_case_ids) and record.get("track") == "T_BOX"
+            ]
+            gold_rows = [
+                gold
+                for gold in (
+                    gold_patch_for_record(
+                        record,
+                        annotation=(dev_manifest_payload.get("case_annotations") or {}).get(record.get("id"), {}),
+                    )
+                    for record in tbox_records
+                )
+                if gold is not None
+            ]
+            prediction_path = matrix_dir / "t_box_taxonomy_patch_proposals.jsonl"
+            prediction_rows = load_jsonl(prediction_path) if prediction_path.exists() else []
+            taxonomy_eval_summary = evaluate_tbox_taxonomy_patch_predictions(
+                gold_rows=gold_rows,
+                prediction_rows=prediction_rows,
+                case_annotations=dev_manifest_payload.get("case_annotations") or {},
+            )
+            write_json(taxonomy_eval_path, taxonomy_eval_summary)
         status_counts = (
             matrix_info.get("status_counts") if isinstance(matrix_info.get("status_counts"), Counter) else Counter()
         )
@@ -1908,6 +1971,12 @@ def evaluate_prompt_dev_prompts(
             "parse_errors": eval_summary.get("parse_errors", {}),
             "request_errors": eval_summary.get("request_errors", {}),
         }
+        if taxonomy_eval_summary is not None:
+            result["tbox_taxonomy_patch_evaluation_summary"] = str(taxonomy_eval_path)
+            result["tbox_taxonomy_patch_metrics"] = taxonomy_eval_summary.get("subsets", {}).get("all_core", {}).get(
+                "metrics",
+                {},
+            )
         if evaluation_error is not None:
             result["evaluation_error"] = evaluation_error
         results.append(result)
@@ -1945,7 +2014,7 @@ def evaluate_prompt_dev_prompts(
         output_dir=output_dir,
         results=results,
         eval_records=eval_records,
-        manifest=load_selection_manifest(options.dev_manifest),
+        manifest=dev_manifest_payload,
     )
     if diagnosis_report:
         summary["outputs"]["track_diagnosis_report_json"] = str(output_dir / "track_diagnosis_report.json")

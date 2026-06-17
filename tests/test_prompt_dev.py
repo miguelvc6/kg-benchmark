@@ -8,6 +8,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 from guardian.model_provider import StaticResponseProvider
+from guardian.prompts import get_prompt_template
+import lib.prompt_dev as prompt_dev_lib
 from lib.prompt_dev import (
     PromptDevEvaluateOptions,
     PromptDevMatrixOptions,
@@ -765,6 +767,169 @@ class PromptDevTests(unittest.TestCase):
         self.assertNotIn("TypeC", prompt.user_prompt)
         self.assertNotIn("repair_", prompt.user_prompt)
         self.assertNotIn("reform_", prompt.user_prompt)
+
+    def test_prompt_dev_v5_tbox_taxonomy_patch_contract_and_leakage_scan(self) -> None:
+        with patch.object(prompt_templates, "PROMPT_DEV_VERSION", "prompt_dev_v5_tbox_taxonomy_patch"):
+            prompt = prompt_templates.render_prompt_dev_prompt(
+                task="t_box_repair",
+                representation="hybrid_json_nl",
+                case_payload={"id": "case_000001", "property": "P31"},
+            )
+
+        required_fields = (
+            "schema_decision",
+            "target",
+            "constraint_type_qid",
+            "repair_op",
+            "taxonomy_code",
+            "qualifier_property_id",
+            "added_values",
+            "removed_values",
+            "old_value",
+            "new_value",
+            "rank_after",
+            "snaktype_after",
+            "evidence_level",
+            "rationale",
+            "provenance",
+            "uncertainty",
+        )
+        operations = (
+            "CONSTRAINT_REMOVE",
+            "CONSTRAINT_DEPRECATE",
+            "CONSTRAINT_ADD",
+            "CONSTRAINT_TYPE_REPLACE",
+            "CONSTRAINT_QUALIFIER_ADD",
+            "CONSTRAINT_QUALIFIER_REMOVE",
+            "CONSTRAINT_QUALIFIER_REPLACE",
+            "CLASS_HIERARCHY_ADD",
+            "EXCEPTION_ADD",
+            "OTHER_TBOX_UPDATE",
+        )
+        self.assertIn("Prompt version: prompt_dev_v5_tbox_taxonomy_patch", prompt.user_prompt)
+        for field in required_fields:
+            self.assertIn(field, prompt.user_prompt)
+        for operation in operations:
+            self.assertIn(operation, prompt.user_prompt)
+        self.assertIn("Do not construct a full post-repair signature_after", prompt.user_prompt)
+        for forbidden in (
+            "TypeA",
+            "TypeB",
+            "TypeC",
+            "classification",
+            "repair_target",
+            "persistence_check",
+            "popularity",
+            "repair_hidden",
+            "reform_hidden",
+            "temporal_policy",
+        ):
+            self.assertNotIn(forbidden, prompt.user_prompt)
+
+    def test_prompt_dev_v5_leaves_a_box_prompt_unchanged(self) -> None:
+        default_prompt = prompt_templates.render_prompt_dev_prompt(
+            task="a_box_repair",
+            representation="hybrid_json_nl",
+            case_payload={"id": "case_000001"},
+        )
+        with patch.object(prompt_templates, "PROMPT_DEV_VERSION", "prompt_dev_v5_tbox_taxonomy_patch"):
+            v5_a_box = prompt_templates.render_prompt_dev_prompt(
+                task="a_box_repair",
+                representation="hybrid_json_nl",
+                case_payload={"id": "case_000001"},
+            )
+            v5_diagnosis = prompt_templates.render_prompt_dev_prompt(
+                task="track_diagnosis",
+                representation="hybrid_json_nl",
+                case_payload={"id": "case_000001"},
+            )
+        self.assertEqual(default_prompt.user_prompt, v5_a_box.user_prompt)
+        self.assertIn("Prompt version: prompt_dev_v4_spec_only", v5_diagnosis.user_prompt)
+
+    def test_reasoning_floor_tbox_taxonomy_patch_template_registered(self) -> None:
+        template = get_prompt_template("reasoning_floor_t_box_taxonomy_patch_zero_shot")
+        rendered = template.render({"id": "case_000001", "property": "P31"})
+        self.assertIn("schema_decision", rendered)
+        self.assertIn("CONSTRAINT_QUALIFIER_REPLACE", rendered)
+        self.assertNotIn("repair_target", rendered)
+        self.assertNotIn("classification", rendered)
+
+    def test_prompt_dev_v5_tbox_result_uses_distinct_taxonomy_patch_output_file(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            matrix_dir = Path(tmp_dir)
+            prompt_record = {"case_id": "case-1", "visible_case_id": "case_000001"}
+            metadata = {
+                "run_id": "run",
+                "matrix_id": "matrix",
+                "case_id": "case-1",
+                "visible_case_id": "case_000001",
+                "ablation_bundle": "matrix",
+                "context_bundle": "logic_only",
+                "representation": "hybrid_json_nl",
+                "example_policy": "zero_shot",
+                "track_mode": "oracle",
+                "include_abstention": False,
+                "prompt_name": "prompt_dev_v5_tbox_taxonomy_patch_t_box_repair_hybrid_json_nl",
+                "track": "T_BOX",
+                "historical_track": "T_BOX",
+                "proposal_track_used": "T_BOX",
+                "routing_source": "prompt_dev",
+                "task_type": "proposal",
+                "prompt_dev_task": "repair_proposal",
+                "provider": "static",
+                "model": "static",
+                "context_audit": {},
+                "t_box_constraint_type_qids": ["Q21510859"],
+                "tbox_task_version": "tbox_taxonomy_patch_v1",
+                "strict_tbox_signature_diagnostic": "enabled",
+                "prompt_version": "prompt_dev_v5_tbox_taxonomy_patch",
+            }
+            parsed_payload = {
+                "case_id": "case_000001",
+                "schema_decision": "CAUSAL_SCHEMA_REPAIR",
+                "target": {"pid": "P31", "constraint_type_qid": "Q21510859"},
+                "repairs": [
+                    {
+                        "repair_op": "CONSTRAINT_QUALIFIER_ADD",
+                        "taxonomy_code": "CQ_PLUS",
+                        "constraint_type_qid": "Q21510859",
+                        "qualifier_property_id": "P2305",
+                        "added_values": ["Q5"],
+                        "removed_values": [],
+                        "old_value": None,
+                        "new_value": "Q5",
+                        "rank_after": "normal",
+                        "snaktype_after": "VALUE",
+                        "evidence_level": "VALUE_DELTA_VISIBLE",
+                    }
+                ],
+                "rationale": "visible",
+                "provenance": [{"kind": "KG", "node_id": "P31", "snippet": "visible"}],
+                "uncertainty": {"confidence": 0.8, "notes": "visible"},
+            }
+            prompt_dev_lib._record_prompt_dev_result(
+                matrix_dir=matrix_dir,
+                prompt_record=prompt_record,
+                metadata=metadata,
+                raw_response=json.dumps(parsed_payload),
+                parsed_payload=parsed_payload,
+                usage={"provider": "static", "model": "static"},
+                elapsed_seconds=0.0,
+            )
+
+            taxonomy_rows = [
+                json.loads(line)
+                for line in (matrix_dir / "t_box_taxonomy_patch_proposals.jsonl").read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+            manifest_rows = [
+                json.loads(line)
+                for line in (matrix_dir / "run_manifest.jsonl").read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+            self.assertEqual(taxonomy_rows[0]["case_id"], "case-1")
+            self.assertFalse((matrix_dir / "t_box_proposals.jsonl").exists())
+            self.assertEqual(manifest_rows[0]["tbox_task_version"], "tbox_taxonomy_patch_v1")
 
     def test_render_diagnosis_neutral_context_does_not_expose_hidden_fields(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:

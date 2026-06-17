@@ -442,6 +442,67 @@ class ReasoningFloorTests(unittest.TestCase):
         self.assertIsNone(summary["run_info"]["evaluation"]["filtered_classified_path"])
         self.assertEqual(summary["parse_errors"]["proposal_parse_error_count"], 0)
 
+    def test_reasoning_floor_taxonomy_patch_tbox_mode_writes_distinct_output(self) -> None:
+        root, classified_path, world_state_path, selection_manifest_path, _ = self._make_stub_fixture()
+
+        def resolver(metadata: dict[str, Any]) -> dict[str, Any]:
+            visible_case_id = metadata.get("visible_case_id") or metadata["case_id"]
+            if metadata.get("task_type") == "track_diagnosis":
+                return {
+                    "case_id": visible_case_id,
+                    "predicted_track": "T_BOX",
+                    "confidence": "high",
+                    "rationale": "stub",
+                }
+            return {
+                "case_id": visible_case_id,
+                "schema_decision": "CAUSAL_SCHEMA_REPAIR",
+                "target": {"pid": "P31", "constraint_type_qid": "Q21510859"},
+                "repairs": [
+                    {
+                        "repair_op": "CONSTRAINT_QUALIFIER_ADD",
+                        "taxonomy_code": "CQ_PLUS",
+                        "constraint_type_qid": "Q21510859",
+                        "qualifier_property_id": "P2305",
+                        "added_values": ["Q5"],
+                        "removed_values": [],
+                        "old_value": None,
+                        "new_value": "Q5",
+                        "rank_after": "normal",
+                        "snaktype_after": "VALUE",
+                        "evidence_level": "VALUE_DELTA_VISIBLE",
+                    }
+                ],
+                "rationale": "stub",
+                "provenance": [{"kind": "KG", "node_id": "P31", "snippet": "stub"}],
+                "uncertainty": {"confidence": 0.9, "notes": "stub"},
+            }
+
+        with patch("guardian.reasoning.TBOX_TASK_VERSION", "tbox_taxonomy_patch_v1"):
+            summary = run_reasoning_floor(
+                classified_path=classified_path,
+                world_state_path=world_state_path,
+                output_dir=root / "outputs_taxonomy",
+                provider=StaticResponseProvider(resolver, model="stub-model"),
+                ablation_bundles=["minimal_case"],
+                selection_manifest_path=selection_manifest_path,
+                oracle_diagnosis_mode="skip",
+            )
+
+        run_dir = Path(summary["run_info"]["output_dir"])
+        run_config = json.loads((run_dir / "run_config.json").read_text(encoding="utf-8"))
+        manifest_rows = self._read_jsonl(run_dir / "run_manifest.jsonl")
+        taxonomy_rows = self._read_jsonl(run_dir / "minimal_case" / "t_box_taxonomy_patch_proposals.jsonl")
+        strict_rows = self._read_jsonl(run_dir / "minimal_case" / "t_box_proposals.jsonl")
+        self.assertEqual(run_config["tbox_task_version"], "tbox_taxonomy_patch_v1")
+        self.assertEqual(run_config["prompt_version"], "prompt_dev_v5_tbox_taxonomy_patch")
+        self.assertEqual(run_config["strict_tbox_signature_diagnostic"], "enabled")
+        self.assertEqual(taxonomy_rows[0]["case_id"], "reform_case")
+        self.assertEqual(strict_rows, [])
+        proposal_manifest = next(row for row in manifest_rows if row.get("task_type") == "proposal")
+        self.assertEqual(proposal_manifest["prompt_name"], "reasoning_floor_t_box_taxonomy_patch_zero_shot")
+        self.assertEqual(proposal_manifest["tbox_task_version"], "tbox_taxonomy_patch_v1")
+
     def test_reasoning_floor_oracle_skip_omits_diagnosis_inference(self) -> None:
         root, classified_path, world_state_path, selection_manifest_path, resolver = self._make_stub_fixture()
         run_provider = CountingStaticResponseProvider(resolver, model="stub-model")

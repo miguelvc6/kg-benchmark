@@ -10,7 +10,11 @@ Prompt text and representation renderers live in:
 
 This script defines the Phase F prompt version, supported representations, task contracts, optional abstention contract, and prompt rendering function. Keep prompt wording changes there so templates are easy to review before any main-core run.
 
-Current main prompt candidate: `prompt_dev_v4_spec_only`.
+Current main A-box prompt candidate: `prompt_dev_v4_spec_only`.
+
+T-box taxonomy-patch development uses `prompt_dev_v5_tbox_taxonomy_patch`. In that version, A-box repair prompts remain
+the existing `prompt_dev_v4_spec_only` contract, while T-box repair prompts ask for the taxonomy patch schema documented
+in [T-Box Taxonomy Patch Task](./TBox_Taxonomy_Patch_Task.md).
 
 Prompt validity is governed by `reports/prompt_dev/prompt_validity_charter.md`. The main prompt may define tasks,
 fields, operation semantics, the visible-evidence boundary, JSON contracts, and neutral placeholder examples. It must
@@ -53,6 +57,21 @@ include policy labels such as `compact_inventory_no_pre_change_signature`.
 
 To explicitly render or evaluate the scaffolded ablation, set `PROMPT_DEV_VERSION=prompt_dev_v3_scaffolded` in the
 environment for that command. The default is `prompt_dev_v4_spec_only`.
+
+To render the T-box taxonomy-patch prompt contract, set:
+
+```bash
+PROMPT_DEV_VERSION=prompt_dev_v5_tbox_taxonomy_patch \
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python src/prompt_dev.py render \
+  --classified-benchmark data/04_classified_benchmark.jsonl \
+  --world-state data/03_world_state.json \
+  --dev-manifest reports/benchmark_selection/dev_prompt_holdout_spec_v4_96_seed_17.json \
+  --output-dir reports/prompt_dev/rendered_prompt_dev_v5_tbox_taxonomy_patch \
+  --tasks repair_proposal
+```
+
+This version changes only the T-box repair contract. It does not enable track diagnosis for oracle repair evaluation and
+does not change the A-box v4 spec-only prompt.
 
 `prompt_dev_diag_v1_locus_spec` is a separate dev-only diagnosis prompt candidate for testing whether track diagnosis
 is strong enough to route repair prompts. It keeps the same spec-only policy as v4 and defines only `A_BOX`, `T_BOX`,

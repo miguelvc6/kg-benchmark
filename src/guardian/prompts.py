@@ -146,6 +146,78 @@ Input case:
 {payload_json}
 """,
     ),
+    "reasoning_floor_t_box_taxonomy_patch_zero_shot": PromptTemplate(
+        name="reasoning_floor_t_box_taxonomy_patch_zero_shot",
+        description="Zero-shot taxonomy-patch prompt for T-box repair cases in the reasoning floor.",
+        system_prompt=(
+            "Produce one T-box taxonomy patch in the benchmark's canonical JSON shape. Return JSON only. "
+            "Do not include <think> tags, chain-of-thought, markdown, or text before/after JSON."
+        ),
+        user_prompt_template="""Return exactly one JSON object with this shape:
+{
+  "case_id": "<copy input id exactly>",
+  "schema_decision": "CAUSAL_SCHEMA_REPAIR" | "NO_CAUSAL_SCHEMA_REPAIR" | "UNCLEAR_SCHEMA_EVIDENCE",
+  "target": {"pid": "P...", "constraint_type_qid": "Q..."},
+  "repairs": [
+    {
+      "repair_op": "CONSTRAINT_REMOVE" | "CONSTRAINT_DEPRECATE" | "CONSTRAINT_ADD"
+        | "CONSTRAINT_TYPE_REPLACE" | "CONSTRAINT_QUALIFIER_ADD" | "CONSTRAINT_QUALIFIER_REMOVE"
+        | "CONSTRAINT_QUALIFIER_REPLACE" | "CLASS_HIERARCHY_ADD" | "EXCEPTION_ADD" | "OTHER_TBOX_UPDATE",
+      "taxonomy_code": "C_MINUS" | "C_D" | "C_PLUS" | "C_REPLACE" | "CQ_PLUS" | "CQ_MINUS"
+        | "CQ_REPLACE" | "SUBCLASS_PLUS" | "E_PLUS" | "OTHER",
+      "constraint_type_qid": "Q...",
+      "qualifier_property_id": "P... or null",
+      "added_values": ["Q..." | "P..." | "<literal>" | 123],
+      "removed_values": ["Q..." | "P..." | "<literal>" | 123],
+      "old_value": "Q... | P... | <literal> | 123 | null",
+      "new_value": "Q... | P... | <literal> | 123 | null",
+      "rank_after": "normal" | "preferred" | "deprecated" | null,
+      "snaktype_after": "VALUE" | "SOMEVALUE" | "NOVALUE" | null,
+      "evidence_level": "FAMILY_ONLY" | "OPERATION_VISIBLE" | "VALUE_DELTA_VISIBLE"
+    }
+  ],
+  "rationale": "<short evidence-based explanation>",
+  "provenance": [{"kind": "KG" | "OTHER", "node_id": "Q... or P... or null", "snippet": "<visible evidence>"}],
+  "uncertainty": {"confidence": 0.0, "notes": "<short uncertainty note>"}
+}
+
+Operation definitions:
+- CONSTRAINT_REMOVE / C_MINUS removes a property-constraint statement or constraint family.
+- CONSTRAINT_DEPRECATE / C_D deprecates or deactivates a constraint statement by rank or status.
+- CONSTRAINT_ADD / C_PLUS adds a property-constraint statement or constraint family.
+- CONSTRAINT_TYPE_REPLACE / C_REPLACE replaces one constraint family with another.
+- CONSTRAINT_QUALIFIER_ADD / CQ_PLUS adds a qualifier value to a constraint definition.
+- CONSTRAINT_QUALIFIER_REMOVE / CQ_MINUS removes a qualifier value from a constraint definition.
+- CONSTRAINT_QUALIFIER_REPLACE / CQ_REPLACE replaces a qualifier value on the same qualifier property.
+- CLASS_HIERARCHY_ADD / SUBCLASS_PLUS adds a subclass relation that resolves the violation through class hierarchy.
+- EXCEPTION_ADD / E_PLUS adds an exception value to the constraint.
+- OTHER_TBOX_UPDATE / OTHER is a schema-level update not covered by the listed operations.
+
+Rules:
+- Copy "case_id" exactly from the input case.
+- schema_decision must be one of the listed enum values.
+- target.pid is the focus property identifier from the input.
+- target.constraint_type_qid and repairs[*].constraint_type_qid are constraint-family QIDs.
+- repairs may be empty only for NO_CAUSAL_SCHEMA_REPAIR or UNCLEAR_SCHEMA_EVIDENCE.
+- taxonomy_code must match repair_op.
+- qualifier_property_id is the edited qualifier property or null.
+- added_values and removed_values are concrete changed values only when visible; otherwise use empty lists.
+- old_value and new_value summarize a replacement when visible; otherwise use null.
+- rank_after and snaktype_after describe visible post-update rank or snaktype, or null.
+- evidence_level is FAMILY_ONLY, OPERATION_VISIBLE, or VALUE_DELTA_VISIBLE.
+- provenance cites visible prompt evidence used for the proposal.
+- uncertainty records confidence and important visible-evidence limits.
+- Use only visible prompt evidence.
+- Keep constraint-family QIDs separate from ordinary item/type values.
+- Do not copy report-violation QIDs into value deltas unless visibly presented as schema values.
+- Do not construct a full post-repair signature_after.
+- Do not use hidden benchmark metadata, hidden classes, hidden subtypes, historical labels, or raw benchmark prefixes.
+- Output valid JSON only. No markdown. No code fences.
+
+Input case:
+{payload_json}
+""",
+    ),
     "reasoning_floor_track_diagnosis_zero_shot": PromptTemplate(
         name="reasoning_floor_track_diagnosis_zero_shot",
         description="Zero-shot diagnosis prompt that classifies a case into A_BOX, T_BOX, or AMBIGUOUS.",

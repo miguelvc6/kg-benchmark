@@ -1,0 +1,477 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wudata.example.org/schemas/tbox_taxonomy_patch_proposal.schema.json",
+  "title": "TBoxTaxonomyPatchProposal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "case_id",
+    "schema_decision",
+    "target",
+    "repairs",
+    "rationale",
+    "provenance",
+    "uncertainty"
+  ],
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "minLength": 1,
+      "not": {
+        "enum": ["none", "None", "NONE", "null", "NULL"]
+      }
+    },
+    "schema_decision": {
+      "type": "string",
+      "enum": [
+        "CAUSAL_SCHEMA_REPAIR",
+        "NO_CAUSAL_SCHEMA_REPAIR",
+        "UNCLEAR_SCHEMA_EVIDENCE"
+      ]
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pid", "constraint_type_qid"],
+      "properties": {
+        "pid": {
+          "$ref": "#/$defs/pid"
+        },
+        "constraint_type_qid": {
+          "$ref": "#/$defs/qid"
+        }
+      }
+    },
+    "repairs": {
+      "type": "array",
+      "maxItems": 50,
+      "items": {
+        "$ref": "#/$defs/repair"
+      }
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "provenance": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "items": {
+        "$ref": "#/$defs/provenance_item"
+      }
+    },
+    "uncertainty": {
+      "$ref": "#/$defs/uncertainty_assessment"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "schema_decision": {
+            "const": "CAUSAL_SCHEMA_REPAIR"
+          }
+        },
+        "required": ["schema_decision"]
+      },
+      "then": {
+        "properties": {
+          "repairs": {
+            "minItems": 1
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "qid": {
+      "type": "string",
+      "pattern": "^Q[1-9][0-9]*$"
+    },
+    "pid": {
+      "type": "string",
+      "pattern": "^P[1-9][0-9]*$"
+    },
+    "identifier_or_literal": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/qid"
+        },
+        {
+          "$ref": "#/$defs/pid"
+        },
+        {
+          "type": "integer"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string",
+          "minLength": 1,
+          "not": {
+            "enum": [
+              "none",
+              "None",
+              "NONE",
+              "null",
+              "NULL",
+              "Q...",
+              "q...",
+              "P...",
+              "p...",
+              "Q0",
+              "q0",
+              "P0",
+              "p0"
+            ]
+          }
+        }
+      ]
+    },
+    "repair": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repair_op",
+        "taxonomy_code",
+        "constraint_type_qid",
+        "qualifier_property_id",
+        "added_values",
+        "removed_values",
+        "old_value",
+        "new_value",
+        "rank_after",
+        "snaktype_after",
+        "evidence_level"
+      ],
+      "properties": {
+        "repair_op": {
+          "type": "string",
+          "enum": [
+            "CONSTRAINT_REMOVE",
+            "CONSTRAINT_DEPRECATE",
+            "CONSTRAINT_ADD",
+            "CONSTRAINT_TYPE_REPLACE",
+            "CONSTRAINT_QUALIFIER_ADD",
+            "CONSTRAINT_QUALIFIER_REMOVE",
+            "CONSTRAINT_QUALIFIER_REPLACE",
+            "CLASS_HIERARCHY_ADD",
+            "EXCEPTION_ADD",
+            "OTHER_TBOX_UPDATE"
+          ]
+        },
+        "taxonomy_code": {
+          "type": "string",
+          "enum": [
+            "C_MINUS",
+            "C_D",
+            "C_PLUS",
+            "C_REPLACE",
+            "CQ_PLUS",
+            "CQ_MINUS",
+            "CQ_REPLACE",
+            "SUBCLASS_PLUS",
+            "E_PLUS",
+            "OTHER"
+          ]
+        },
+        "constraint_type_qid": {
+          "$ref": "#/$defs/qid"
+        },
+        "qualifier_property_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/pid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "added_values": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/identifier_or_literal"
+          },
+          "default": []
+        },
+        "removed_values": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/identifier_or_literal"
+          },
+          "default": []
+        },
+        "old_value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/identifier_or_literal"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "new_value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/identifier_or_literal"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rank_after": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["normal", "preferred", "deprecated"]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "snaktype_after": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["VALUE", "SOMEVALUE", "NOVALUE"]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidence_level": {
+          "type": "string",
+          "enum": ["FAMILY_ONLY", "OPERATION_VISIBLE", "VALUE_DELTA_VISIBLE"]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "repair_op": {
+                "const": "CONSTRAINT_REMOVE"
+              }
+            },
+            "required": ["repair_op"]
+          },
+          "then": {
+            "properties": {
+              "taxonomy_code": {
+                "const": "C_MINUS"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "repair_op": {
+                "const": "CONSTRAINT_DEPRECATE"
+              }
+            },
+            "required": ["repair_op"]
+          },
+          "then": {
+            "properties": {
+              "taxonomy_code": {
+                "const": "C_D"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "repair_op": {
+                "const": "CONSTRAINT_ADD"
+              }
+            },
+            "required": ["repair_op"]
+          },
+          "then": {
+            "properties": {
+              "taxonomy_code": {
+                "const": "C_PLUS"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "repair_op": {
+                "const": "CONSTRAINT_TYPE_REPLACE"
+              }
+            },
+            "required": ["repair_op"]
+          },
+          "then": {
+            "properties": {
+              "taxonomy_code": {
+                "const": "C_REPLACE"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "repair_op": {
+                "const": "CONSTRAINT_QUALIFIER_ADD"
+              }
+            },
+            "required": ["repair_op"]
+          },
+          "then": {
+            "properties": {
+              "taxonomy_code": {
+                "const": "CQ_PLUS"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "repair_op": {
+                "const": "CONSTRAINT_QUALIFIER_REMOVE"
+              }
+            },
+            "required": ["repair_op"]
+          },
+          "then": {
+            "properties": {
+              "taxonomy_code": {
+                "const": "CQ_MINUS"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "repair_op": {
+                "const": "CONSTRAINT_QUALIFIER_REPLACE"
+              }
+            },
+            "required": ["repair_op"]
+          },
+          "then": {
+            "properties": {
+              "taxonomy_code": {
+                "const": "CQ_REPLACE"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "repair_op": {
+                "const": "CLASS_HIERARCHY_ADD"
+              }
+            },
+            "required": ["repair_op"]
+          },
+          "then": {
+            "properties": {
+              "taxonomy_code": {
+                "const": "SUBCLASS_PLUS"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "repair_op": {
+                "const": "EXCEPTION_ADD"
+              }
+            },
+            "required": ["repair_op"]
+          },
+          "then": {
+            "properties": {
+              "taxonomy_code": {
+                "const": "E_PLUS"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "repair_op": {
+                "const": "OTHER_TBOX_UPDATE"
+              }
+            },
+            "required": ["repair_op"]
+          },
+          "then": {
+            "properties": {
+              "taxonomy_code": {
+                "const": "OTHER"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "provenance_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["KG", "OTHER"]
+        },
+        "node_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/qid"
+            },
+            {
+              "$ref": "#/$defs/pid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "snippet": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        }
+      }
+    },
+    "uncertainty_assessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["confidence", "notes"],
+      "properties": {
+        "confidence": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 2000
+        }
+      }
+    }
+  }
+}

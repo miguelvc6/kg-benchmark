@@ -1,0 +1,60 @@
+{
+  "by_constraint_type_qid": {
+    "Q108139345": 72,
+    "Q19474404": 56,
+    "Q21502404": 39,
+    "Q21502410": 93,
+    "Q21502838": 77,
+    "Q21503247": 61,
+    "Q21503250": 172,
+    "Q21510851": 49,
+    "Q21510855": 38,
+    "Q21510856": 13,
+    "Q21510859": 24,
+    "Q21510860": 2,
+    "Q21510862": 1,
+    "Q21510864": 48,
+    "Q21510865": 76,
+    "Q52004125": 20,
+    "Q52558054": 36,
+    "Q53869507": 25
+  },
+  "by_evidence_level": {
+    "FAMILY_ONLY": 73,
+    "OPERATION_VISIBLE": 20,
+    "VALUE_DELTA_VISIBLE": 213
+  },
+  "by_qualifier_property_id": {
+    "P1793": 19,
+    "P2305": 41,
+    "P2306": 46,
+    "P2308": 94,
+    "P4155": 2,
+    "P424": 31
+  },
+  "by_repair_op": {
+    "CONSTRAINT_QUALIFIER_ADD": 138,
+    "CONSTRAINT_QUALIFIER_REMOVE": 31,
+    "CONSTRAINT_QUALIFIER_REPLACE": 64,
+    "OTHER_TBOX_UPDATE": 73
+  },
+  "by_schema_decision": {
+    "CAUSAL_SCHEMA_REPAIR": 296,
+    "NO_CAUSAL_SCHEMA_REPAIR": 300
+  },
+  "by_taxonomy_code": {
+    "CQ_MINUS": 31,
+    "CQ_PLUS": 138,
+    "CQ_REPLACE": 64,
+    "OTHER": 73
+  },
+  "class_hierarchy_delta_supported": false,
+  "empty_repairs_count": 300,
+  "exception_delta_supported": false,
+  "gold_extracted": 596,
+  "selected_records": 4800,
+  "selected_tbox_records": 596,
+  "unsupported_case_ids": [],
+  "unsupported_count": 0,
+  "value_delta_available_count": 213
+}

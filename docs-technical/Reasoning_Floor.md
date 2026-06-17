@@ -324,6 +324,12 @@ show pre-reform constraints when a `signature_before` exists; otherwise they sho
 and visible violation context. Internal audit metadata records which policy was used, but model-visible prompt payloads
 do not expose policy labels such as `compact_inventory_no_pre_change_signature`.
 
+The template registry also includes `reasoning_floor_t_box_taxonomy_patch_zero_shot` for the Ferranti-style T-box
+taxonomy patch task. This template asks for `schema_decision`, target property and constraint family, taxonomy repair
+operations, value deltas only when visible, provenance, and uncertainty. It is registered separately from the historical
+strict `reasoning_floor_t_box_zero_shot` template so strict `signature_after` reconstruction remains available as a
+diagnostic path rather than the default taxonomy-patch task.
+
 `prompt_dev_v3_scaffolded` remains a Phase F diagnostic ablation only. It must not be used as the Phase G main prompt
 solely because it scores higher on dev or holdout.
 

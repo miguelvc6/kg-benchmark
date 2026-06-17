@@ -12,6 +12,10 @@ from guardian.patch_parser import normalize_proposal as normalize_a_box_proposal
 from guardian.tbox_parser import normalize_proposal as normalize_t_box_proposal
 from guardian.tbox_parser import normalize_signature_after as normalize_t_box_signature_after
 from guardian.track_parser import normalize_diagnosis as normalize_track_diagnosis
+from guardian.tbox_taxonomy_patch_evaluator import (
+    evaluate_tbox_taxonomy_patch_files,
+    evaluate_tbox_taxonomy_patch_predictions,
+)
 from lib.benchmark_selection import resolve_case_id_filter
 from lib.repair_state import comparable_atom, normalize_value_list, reconstruct_properties_with_pre_repair_target
 from lib.utils import iter_jsonl, normalize_text
@@ -1313,6 +1317,8 @@ def summarize_trace_iterable(
             counts["proposal_request_error"] += 1
         diagnosis = trace.get("track_diagnosis")
         if isinstance(diagnosis, dict):
+            if diagnosis.get("parse_status") == "request_error":
+                counts["track_diagnosis_request_error"] += 1
             if diagnosis.get("skipped") or diagnosis.get("parse_status") in {"skipped", "not_run"}:
                 counts["track_diagnosis_skipped"] += 1
             elif diagnosis.get("present"):
@@ -1321,8 +1327,6 @@ def summarize_trace_iterable(
                     counts["track_diagnosis_exact_match"] += 1
                 if diagnosis.get("ambiguous_prediction"):
                     counts["track_diagnosis_ambiguous"] += 1
-                if diagnosis.get("parse_status") == "request_error":
-                    counts["track_diagnosis_request_error"] += 1
         overall.add(trace)
         groups["by_class"][trace.get("classification_class")].add(trace)
         groups["by_subtype"][trace.get("classification_subtype")].add(trace)
