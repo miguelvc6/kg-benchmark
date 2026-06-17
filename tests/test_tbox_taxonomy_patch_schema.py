@@ -125,6 +125,20 @@ class TBoxTaxonomyPatchSchemaTests(unittest.TestCase):
         payload["repairs"] = []
         self.assertValid(payload)
 
+    def test_unclear_schema_evidence_allows_null_target_family(self) -> None:
+        payload = self._valid_patch()
+        payload["schema_decision"] = "UNCLEAR_SCHEMA_EVIDENCE"
+        payload["target"]["constraint_type_qid"] = None
+        payload["repairs"] = []
+        self.assertValid(payload)
+
+    def test_no_causal_schema_repair_rejects_null_target_family(self) -> None:
+        payload = self._valid_patch()
+        payload["schema_decision"] = "NO_CAUSAL_SCHEMA_REPAIR"
+        payload["target"]["constraint_type_qid"] = None
+        payload["repairs"] = []
+        self.assertInvalid(payload)
+
     def test_causal_schema_repair_rejects_empty_repairs(self) -> None:
         payload = self._valid_patch()
         payload["repairs"] = []

@@ -113,7 +113,7 @@ Coincidental schema changes are represented with:
 }
 ```
 
-The target property and constraint family should still be filled when they are visible in the record, because they are useful for analysis. No repair operation is emitted unless the record-level evidence supports a causal schema repair.
+The target property and constraint family must still be filled when they are visible in the record, because they are useful for analysis. No repair operation is emitted unless the record-level evidence supports a causal schema repair. If no visible constraint family can be named, use `UNCLEAR_SCHEMA_EVIDENCE` rather than `NO_CAUSAL_SCHEMA_REPAIR`.
 
 Unknown, weak, missing, or ambiguous T-box causality is represented with:
 
@@ -124,7 +124,7 @@ Unknown, weak, missing, or ambiguous T-box causality is represented with:
 }
 ```
 
-If the property or constraint family is visible, the target should be copied into the answer. If no visible family is available, the parser and schema may allow a documented target relaxation for unclear cases only.
+If the property or constraint family is visible, the target should be copied into the answer. If no visible family is available, the parser and schema allow `target.constraint_type_qid = null` for `UNCLEAR_SCHEMA_EVIDENCE` only. Empty strings, placeholders, and null target families remain invalid for `CAUSAL_SCHEMA_REPAIR` and `NO_CAUSAL_SCHEMA_REPAIR`.
 
 ## Unsupported But Valid Operations
 

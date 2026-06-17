@@ -36,9 +36,9 @@ PLACEHOLDER_STRINGS = {"", "none", "null", "q...", "p...", "q0", "p0"}
 @dataclass(frozen=True)
 class TaxonomyPatchTarget:
     pid: str
-    constraint_type_qid: str
+    constraint_type_qid: str | None
 
-    def to_dict(self) -> dict[str, str]:
+    def to_dict(self) -> dict[str, str | None]:
         return {"pid": self.pid, "constraint_type_qid": self.constraint_type_qid}
 
 
@@ -124,8 +124,11 @@ def normalize_tbox_taxonomy_patch(
     target_payload = payload.get("target")
     if not isinstance(target_payload, dict):
         raise PatchValidationError("SCHEMA_VIOLATION", "target must be an object.")
-    target_qid = normalize_qid(target_payload.get("constraint_type_qid"))
-    _validate_constraint_qid(target_qid, allowed_constraint_qids, "target.constraint_type_qid")
+    target_qid = _normalize_target_constraint_qid(
+        target_payload.get("constraint_type_qid"),
+        schema_decision=schema_decision,
+        allowed_qids=allowed_constraint_qids,
+    )
     target = TaxonomyPatchTarget(pid=normalize_pid(target_payload.get("pid")), constraint_type_qid=target_qid)
 
     repairs_payload = payload.get("repairs")
@@ -182,7 +185,27 @@ def _normalize_allowed_qids(constraint_type_qids: Iterable[str] | None) -> set[s
     return {normalize_qid(value) for value in constraint_type_qids}
 
 
-def _validate_constraint_qid(qid: str, allowed_qids: set[str] | None, field_name: str) -> None:
+def _normalize_target_constraint_qid(
+    value: Any,
+    *,
+    schema_decision: str,
+    allowed_qids: set[str] | None,
+) -> str | None:
+    if value is None:
+        if schema_decision == "UNCLEAR_SCHEMA_EVIDENCE":
+            return None
+        raise PatchValidationError(
+            "SCHEMA_VIOLATION",
+            "target.constraint_type_qid may be null only for UNCLEAR_SCHEMA_EVIDENCE.",
+        )
+    qid = normalize_qid(value)
+    _validate_constraint_qid(qid, allowed_qids, "target.constraint_type_qid")
+    return qid
+
+
+def _validate_constraint_qid(qid: str | None, allowed_qids: set[str] | None, field_name: str) -> None:
+    if qid is None:
+        return
     if allowed_qids is not None and qid not in allowed_qids:
         raise PatchValidationError("SCHEMA_VIOLATION", f"{field_name} is not in the allowed constraint-family set.")
 

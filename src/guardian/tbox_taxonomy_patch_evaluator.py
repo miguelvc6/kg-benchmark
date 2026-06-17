@@ -329,7 +329,7 @@ def _bool_row_metric(rows: list[dict[str, Any]], key: str, total_tbox_rows: int)
 
 
 def _constraint_family_counter(patch: NormalizedTBoxTaxonomyPatch) -> Counter[str]:
-    values = [patch.target.constraint_type_qid]
+    values = [patch.target.constraint_type_qid] if patch.target.constraint_type_qid is not None else []
     values.extend(repair.constraint_type_qid for repair in patch.repairs)
     return Counter(values)
 

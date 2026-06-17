@@ -135,6 +135,22 @@ class TBoxTaxonomyPatchParserTests(unittest.TestCase):
         normalized = normalize_tbox_taxonomy_patch(payload, schema=self.schema)
         self.assertEqual(normalized.repairs, [])
 
+    def test_accepts_unclear_schema_evidence_with_null_target_family(self) -> None:
+        payload = self._patch()
+        payload["schema_decision"] = "UNCLEAR_SCHEMA_EVIDENCE"
+        payload["target"]["constraint_type_qid"] = None
+        payload["repairs"] = []
+        normalized = normalize_tbox_taxonomy_patch(payload, schema=self.schema)
+        self.assertIsNone(normalized.target.constraint_type_qid)
+
+    def test_rejects_no_causal_schema_repair_with_null_target_family(self) -> None:
+        payload = self._patch()
+        payload["schema_decision"] = "NO_CAUSAL_SCHEMA_REPAIR"
+        payload["target"]["constraint_type_qid"] = None
+        payload["repairs"] = []
+        with self.assertRaises(PatchValidationError):
+            normalize_tbox_taxonomy_patch(payload, schema=self.schema)
+
     def test_rejects_constraint_qid_outside_allowed_set(self) -> None:
         payload = self._patch()
         with self.assertRaises(PatchValidationError):

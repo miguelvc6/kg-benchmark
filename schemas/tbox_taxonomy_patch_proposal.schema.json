@@ -38,7 +38,14 @@
           "$ref": "#/$defs/pid"
         },
         "constraint_type_qid": {
-          "$ref": "#/$defs/qid"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/qid"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       }
     },
@@ -80,6 +87,27 @@
         "properties": {
           "repairs": {
             "minItems": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "schema_decision": {
+            "enum": ["CAUSAL_SCHEMA_REPAIR", "NO_CAUSAL_SCHEMA_REPAIR"]
+          }
+        },
+        "required": ["schema_decision"]
+      },
+      "then": {
+        "properties": {
+          "target": {
+            "properties": {
+              "constraint_type_qid": {
+                "$ref": "#/$defs/qid"
+              }
+            }
           }
         }
       }

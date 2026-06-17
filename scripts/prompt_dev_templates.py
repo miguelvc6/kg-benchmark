@@ -284,7 +284,7 @@ V5_T_BOX_TAXONOMY_PATCH_CONTRACT = """Return exactly one JSON object:
   "schema_decision": "CAUSAL_SCHEMA_REPAIR" | "NO_CAUSAL_SCHEMA_REPAIR" | "UNCLEAR_SCHEMA_EVIDENCE",
   "target": {
     "pid": "P...",
-    "constraint_type_qid": "Q..."
+    "constraint_type_qid": "Q... or null only for UNCLEAR_SCHEMA_EVIDENCE when no visible constraint family is available"
   },
   "repairs": [
     {
@@ -319,8 +319,11 @@ Field definitions:
 - schema_decision states whether visible evidence supports a causal schema repair, no causal schema repair, or unclear
   schema evidence.
 - target.pid is the focus property identifier from the input.
-- target.constraint_type_qid is the constraint-family identifier being considered.
+- target.constraint_type_qid is the visible constraint-family identifier being considered; use null only when
+  schema_decision is UNCLEAR_SCHEMA_EVIDENCE and no visible constraint family is available.
 - repairs is empty only for NO_CAUSAL_SCHEMA_REPAIR or UNCLEAR_SCHEMA_EVIDENCE.
+- Use NO_CAUSAL_SCHEMA_REPAIR only when a visible constraint family can be named but visible evidence does not support a
+  causal schema edit for it. If no constraint family can be named from visible evidence, use UNCLEAR_SCHEMA_EVIDENCE.
 - repair_op is the schema-level operation.
 - taxonomy_code is the code paired with repair_op.
 - constraint_type_qid inside each repair is the edited constraint family.
@@ -345,6 +348,7 @@ Operation definitions:
 Evidence boundary:
 - Use only visible prompt evidence.
 - Keep constraint-family QIDs separate from ordinary item/type values.
+- Do not use an empty string or placeholder for target.constraint_type_qid.
 - Do not copy report-violation QIDs into value deltas unless they are visibly presented as schema values.
 - Use empty added_values and removed_values lists when concrete changed values are not visible.
 - Do not construct a full post-repair signature_after.

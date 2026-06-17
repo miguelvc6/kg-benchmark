@@ -86,7 +86,10 @@ Input case:
         user_prompt_template="""Return exactly one JSON object with this shape:
 {
   "case_id": "<copy input id exactly>",
-  "target": {"pid": "P...", "constraint_type_qid": "Q..."},
+  "target": {
+    "pid": "P...",
+    "constraint_type_qid": "Q... or null only for UNCLEAR_SCHEMA_EVIDENCE when no visible constraint family is available"
+  },
   "proposal": {
     "action": "RELAXATION_RANGE_WIDENED"
       | "RESTRICTION_RANGE_NARROWED"
@@ -197,8 +200,12 @@ Rules:
 - Copy "case_id" exactly from the input case.
 - schema_decision must be one of the listed enum values.
 - target.pid is the focus property identifier from the input.
-- target.constraint_type_qid and repairs[*].constraint_type_qid are constraint-family QIDs.
+- target.constraint_type_qid is the visible constraint-family QID being considered; use null only when
+  schema_decision is UNCLEAR_SCHEMA_EVIDENCE and no visible constraint family is available.
+- repairs[*].constraint_type_qid values are constraint-family QIDs.
 - repairs may be empty only for NO_CAUSAL_SCHEMA_REPAIR or UNCLEAR_SCHEMA_EVIDENCE.
+- Use NO_CAUSAL_SCHEMA_REPAIR only when a visible constraint family can be named but visible evidence does not support a
+  causal schema edit for it. If no constraint family can be named from visible evidence, use UNCLEAR_SCHEMA_EVIDENCE.
 - taxonomy_code must match repair_op.
 - qualifier_property_id is the edited qualifier property or null.
 - added_values and removed_values are concrete changed values only when visible; otherwise use empty lists.
@@ -209,6 +216,7 @@ Rules:
 - uncertainty records confidence and important visible-evidence limits.
 - Use only visible prompt evidence.
 - Keep constraint-family QIDs separate from ordinary item/type values.
+- Do not use an empty string or placeholder for target.constraint_type_qid.
 - Do not copy report-violation QIDs into value deltas unless visibly presented as schema values.
 - Do not construct a full post-repair signature_after.
 - Do not use hidden benchmark metadata, hidden classes, hidden subtypes, historical labels, or raw benchmark prefixes.
