@@ -262,32 +262,46 @@ def _summarize_subset(traces: list[dict[str, Any]]) -> dict[str, Any]:
         metric_payload[metric_name] = _bool_row_metric(rows, row_key, total)
 
     counts = _micro_counts(traces)
+    parsed_rows = sum(1 for trace in traces if trace.get("parsed"))
+    value_delta_rows = sum(1 for row in rows if row.get("gold_has_value_delta"))
     metric_payload["tbox_patch_constraint_family_precision"] = _metric(
-        counts["family_tp"], counts["family_pred"], total
+        counts["family_tp"], counts["family_pred"], total, coverage_count=parsed_rows
     )
-    metric_payload["tbox_patch_constraint_family_recall"] = _metric(counts["family_tp"], counts["family_gold"], total)
+    metric_payload["tbox_patch_constraint_family_recall"] = _metric(
+        counts["family_tp"], counts["family_gold"], total, coverage_count=parsed_rows
+    )
     metric_payload["tbox_patch_constraint_family_f1"] = _f1_metric(
-        counts["family_tp"], counts["family_pred"], counts["family_gold"], total
+        counts["family_tp"], counts["family_pred"], counts["family_gold"], total, coverage_count=parsed_rows
     )
-    metric_payload["tbox_patch_repair_op_precision"] = _metric(counts["op_tp"], counts["op_pred"], total)
-    metric_payload["tbox_patch_repair_op_recall"] = _metric(counts["op_tp"], counts["op_gold"], total)
-    metric_payload["tbox_patch_repair_op_f1"] = _f1_metric(counts["op_tp"], counts["op_pred"], counts["op_gold"], total)
+    metric_payload["tbox_patch_repair_op_precision"] = _metric(
+        counts["op_tp"], counts["op_pred"], total, coverage_count=parsed_rows
+    )
+    metric_payload["tbox_patch_repair_op_recall"] = _metric(
+        counts["op_tp"], counts["op_gold"], total, coverage_count=parsed_rows
+    )
+    metric_payload["tbox_patch_repair_op_f1"] = _f1_metric(
+        counts["op_tp"], counts["op_pred"], counts["op_gold"], total, coverage_count=parsed_rows
+    )
     metric_payload["tbox_patch_added_values_precision"] = _metric(
-        counts["added_tp"], counts["added_pred"], total
+        counts["added_tp"], counts["added_pred"], total, coverage_count=value_delta_rows
     )
-    metric_payload["tbox_patch_added_values_recall"] = _metric(counts["added_tp"], counts["added_gold"], total)
+    metric_payload["tbox_patch_added_values_recall"] = _metric(
+        counts["added_tp"], counts["added_gold"], total, coverage_count=value_delta_rows
+    )
     metric_payload["tbox_patch_added_values_f1"] = _f1_metric(
-        counts["added_tp"], counts["added_pred"], counts["added_gold"], total
+        counts["added_tp"], counts["added_pred"], counts["added_gold"], total, coverage_count=value_delta_rows
     )
     metric_payload["tbox_patch_removed_values_precision"] = _metric(
-        counts["removed_tp"], counts["removed_pred"], total
+        counts["removed_tp"], counts["removed_pred"], total, coverage_count=value_delta_rows
     )
-    metric_payload["tbox_patch_removed_values_recall"] = _metric(counts["removed_tp"], counts["removed_gold"], total)
+    metric_payload["tbox_patch_removed_values_recall"] = _metric(
+        counts["removed_tp"], counts["removed_gold"], total, coverage_count=value_delta_rows
+    )
     metric_payload["tbox_patch_removed_values_f1"] = _f1_metric(
-        counts["removed_tp"], counts["removed_pred"], counts["removed_gold"], total
+        counts["removed_tp"], counts["removed_pred"], counts["removed_gold"], total, coverage_count=value_delta_rows
     )
     metric_payload["tbox_patch_value_delta_f1_when_applicable"] = _f1_metric(
-        counts["value_tp"], counts["value_pred"], counts["value_gold"], total
+        counts["value_tp"], counts["value_pred"], counts["value_gold"], total, coverage_count=value_delta_rows
     )
     return {
         "count": total,
@@ -304,22 +318,37 @@ def _micro_counts(traces: list[dict[str, Any]]) -> Counter[str]:
     return counts
 
 
-def _metric(numerator: int | float, denominator: int, total_tbox_rows: int, *, rate: float | None = None) -> dict[str, Any]:
+def _metric(
+    numerator: int | float,
+    denominator: int,
+    total_tbox_rows: int,
+    *,
+    rate: float | None = None,
+    coverage_count: int | None = None,
+) -> dict[str, Any]:
     computed_rate = rate if rate is not None else (float(numerator) / denominator if denominator else None)
+    coverage_numerator = denominator if coverage_count is None else coverage_count
     return {
         "numerator": numerator,
         "applicable_denominator": denominator,
         "total_tbox_rows": total_tbox_rows,
-        "applicability_coverage": denominator / total_tbox_rows if total_tbox_rows else None,
+        "applicability_coverage": coverage_numerator / total_tbox_rows if total_tbox_rows else None,
         "rate": computed_rate,
     }
 
 
-def _f1_metric(tp: int, predicted: int, gold: int, total_tbox_rows: int) -> dict[str, Any]:
+def _f1_metric(
+    tp: int,
+    predicted: int,
+    gold: int,
+    total_tbox_rows: int,
+    *,
+    coverage_count: int | None = None,
+) -> dict[str, Any]:
     precision = tp / predicted if predicted else None
     recall = tp / gold if gold else None
     f1 = None if precision is None or recall is None or precision + recall == 0 else 2 * precision * recall / (precision + recall)
-    return _metric(tp, max(predicted + gold, 0), total_tbox_rows, rate=f1)
+    return _metric(tp, max(predicted + gold, 0), total_tbox_rows, rate=f1, coverage_count=coverage_count)
 
 
 def _bool_row_metric(rows: list[dict[str, Any]], key: str, total_tbox_rows: int) -> dict[str, Any]:

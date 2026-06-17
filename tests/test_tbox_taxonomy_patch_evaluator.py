@@ -165,6 +165,20 @@ class TBoxTaxonomyPatchEvaluatorTests(unittest.TestCase):
         summary = evaluate_tbox_taxonomy_patch_predictions(gold_rows=[gold], prediction_rows=[prediction])
         self.assertEqual(self.metric(summary, "tbox_patch_value_delta_claimed_when_gold_absent_rate")["rate"], 1.0)
 
+    def test_micro_metric_applicability_coverage_is_row_bounded(self) -> None:
+        gold = patch(
+            "case-1",
+            repairs=[repair(added_values=["Q1", "Q2", "Q3"], new_value="Q3")],
+        )
+        prediction = patch(
+            "case-1",
+            repairs=[repair(added_values=["Q1", "Q4", "Q5"], new_value="Q5")],
+        )
+        summary = evaluate_tbox_taxonomy_patch_predictions(gold_rows=[gold], prediction_rows=[prediction])
+        metric = self.metric(summary, "tbox_patch_value_delta_f1_when_applicable")
+        self.assertGreater(metric["applicable_denominator"], metric["total_tbox_rows"])
+        self.assertEqual(metric["applicability_coverage"], 1.0)
+
     def test_missing_prediction_counts_parse_error(self) -> None:
         summary = evaluate_tbox_taxonomy_patch_predictions(gold_rows=[patch("case-1")], prediction_rows=[])
         self.assertEqual(self.metric(summary, "tbox_patch_parse_rate")["rate"], 0.0)
