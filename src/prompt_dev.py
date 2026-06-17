@@ -17,6 +17,7 @@ from lib.prompt_dev import (
     EXAMPLE_POLICIES,
     REPAIR_TRACK_MODES,
     SAMPLE_STRATEGIES,
+    TRACK_FILTERS,
     PromptDevEvaluateOptions,
     PromptDevMatrixOptions,
     PromptDevRenderOptions,
@@ -149,6 +150,11 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     render_parser.add_argument(
+        "--track-filter",
+        default=None,
+        help=f"Comma-separated historical tracks to evaluate. Supported: {', '.join(TRACK_FILTERS)}.",
+    )
+    render_parser.add_argument(
         "--allow-same-property-examples",
         action="store_true",
         help="Allow few-shot examples from the same property. Disabled by default for leakage control.",
@@ -187,6 +193,11 @@ def parse_args() -> argparse.Namespace:
             "Case sampling strategy for --max-cases. Use diverse_stratified for broader canaries that prefer unseen "
             "focus QIDs and properties inside balanced strata."
         ),
+    )
+    evaluate_parser.add_argument(
+        "--track-filter",
+        default=None,
+        help=f"Comma-separated historical tracks to evaluate. Supported: {', '.join(TRACK_FILTERS)}.",
     )
     evaluate_parser.add_argument(
         "--max-prompt-chars",
@@ -291,6 +302,7 @@ def main() -> int:
                 allow_same_property_examples=args.allow_same_property_examples,
                 sample_strategy=args.sample_strategy,
                 allow_core_example_risk=args.allow_core_example_risk,
+                track_filter=_csv_tuple(args.track_filter, ()),
             )
         )
         print(f"[done] rendered={summary['counts']['rendered_prompts']}")
@@ -341,6 +353,7 @@ def main() -> int:
                     progress_callback=progress_callback,
                     sample_strategy=args.sample_strategy,
                     allow_core_example_risk=args.allow_core_example_risk,
+                    track_filter=_csv_tuple(args.track_filter, ()),
                 )
             )
         print(f"[done] evaluated_prompts={summary['counts']['evaluated_prompts']}")

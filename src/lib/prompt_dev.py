@@ -47,6 +47,7 @@ DEFAULT_CONTEXT_BUNDLES = ("logic_only", "local_graph")
 DEFAULT_DIAGNOSIS_CONTEXT_BUNDLES: tuple[str, ...] = ()
 DEFAULT_RENDER_TASKS = ("track_diagnosis", "repair_proposal")
 SAMPLE_STRATEGIES = ("manifest_order", "stratified", "diverse_stratified")
+TRACK_FILTERS = ("A_BOX", "T_BOX")
 T_BOX_ACTIONS = {
     "RELAXATION_RANGE_WIDENED",
     "RESTRICTION_RANGE_NARROWED",
@@ -96,6 +97,7 @@ class PromptDevRenderOptions:
     allow_same_property_examples: bool = False
     sample_strategy: str = "stratified"
     allow_core_example_risk: bool = False
+    track_filter: tuple[str, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -124,6 +126,7 @@ class PromptDevEvaluateOptions:
     progress_callback: Callable[[dict[str, Any]], None] | None = None
     sample_strategy: str = "stratified"
     allow_core_example_risk: bool = False
+    track_filter: tuple[str, ...] | None = None
 
 
 def _utc_now() -> str:
@@ -422,9 +425,11 @@ def _load_manifest_records(
     max_cases: int | None,
     sample_strategy: str = "stratified",
     seed: int = 13,
+    track_filter: tuple[str, ...] | None = None,
 ) -> list[dict[str, Any]]:
     if sample_strategy not in SAMPLE_STRATEGIES:
         raise ValueError(f"Unsupported prompt-dev sample strategy: {sample_strategy}")
+    normalized_track_filter = _normalize_track_filter(track_filter)
     manifest = load_selection_manifest(manifest_path)
     ids = [case_id for case_id in manifest.get("selected_case_ids", []) if isinstance(case_id, str)]
     id_set = set(ids)
@@ -434,6 +439,8 @@ def _load_manifest_records(
         if isinstance(record, dict) and isinstance(record.get("id"), str) and record["id"] in id_set
     }
     ids = [case_id for case_id in ids if case_id in by_id]
+    if normalized_track_filter is not None:
+        ids = [case_id for case_id in ids if by_id[case_id].get("track") in normalized_track_filter]
     if max_cases is not None:
         limit = max(0, max_cases)
         if sample_strategy == "manifest_order":
@@ -452,6 +459,18 @@ def _load_manifest_records(
 
 def _load_all_manifest_records(classified_path: Path, manifest_path: Path) -> list[dict[str, Any]]:
     return _load_manifest_records(classified_path, manifest_path, max_cases=None, sample_strategy="manifest_order")
+
+
+def _normalize_track_filter(track_filter: tuple[str, ...] | None) -> set[str] | None:
+    if track_filter is None:
+        return None
+    normalized = {value.strip().upper() for value in track_filter if isinstance(value, str) and value.strip()}
+    if not normalized:
+        return None
+    invalid = sorted(normalized - set(TRACK_FILTERS))
+    if invalid:
+        raise ValueError(f"Unsupported prompt-dev track filter: {', '.join(invalid)}")
+    return normalized
 
 
 def _metadata(record: dict[str, Any]) -> dict[str, Any]:
@@ -790,11 +809,12 @@ def _validate_core_example_guard(options: PromptDevRenderOptions | PromptDevEval
 def render_prompt_dev_prompts(options: PromptDevRenderOptions) -> dict[str, Any]:
     log = logging.getLogger("prompt_dev")
     log.info(
-        "render: loading manifest records classified=%s manifest=%s max_cases=%s sample_strategy=%s",
+        "render: loading manifest records classified=%s manifest=%s max_cases=%s sample_strategy=%s track_filter=%s",
         options.classified_benchmark,
         options.dev_manifest,
         options.max_cases,
         options.sample_strategy,
+        options.track_filter,
     )
     _validate_core_example_guard(options)
     manifest = load_selection_manifest(options.dev_manifest)
@@ -804,6 +824,7 @@ def render_prompt_dev_prompts(options: PromptDevRenderOptions) -> dict[str, Any]
         max_cases=options.max_cases,
         sample_strategy=options.sample_strategy,
         seed=options.seed,
+        track_filter=options.track_filter,
     )
     log.info("render: selected eval records=%s", len(eval_records))
     log.info("render: loading candidate records for examples and visible ids")
@@ -937,6 +958,7 @@ def render_prompt_dev_prompts(options: PromptDevRenderOptions) -> dict[str, Any]
             "core_manifest": str(options.core_manifest) if options.core_manifest else None,
             "sample_strategy": options.sample_strategy,
             "max_cases": options.max_cases,
+            "track_filter": list(options.track_filter) if options.track_filter else None,
         },
         "outputs": {
             "prompts_jsonl": str(prompts_path),
@@ -1589,6 +1611,7 @@ def evaluate_prompt_dev_prompts(
             allow_same_property_examples=options.allow_same_property_examples,
             sample_strategy=options.sample_strategy,
             allow_core_example_risk=options.allow_core_example_risk,
+            track_filter=options.track_filter,
         )
     )
     log.info("evaluate: render complete rendered_prompts=%s", render_summary["counts"]["rendered_prompts"])
@@ -1606,6 +1629,7 @@ def evaluate_prompt_dev_prompts(
         max_cases=options.max_cases,
         sample_strategy=options.sample_strategy,
         seed=options.seed,
+        track_filter=options.track_filter,
     )
     dev_manifest_payload = load_selection_manifest(options.dev_manifest)
     log.info("evaluate: loaded eval records=%s", len(eval_records))
@@ -2007,6 +2031,7 @@ def evaluate_prompt_dev_prompts(
             "render_summary": str(render_dir / "prompt_dev_render_summary.json"),
             "sample_strategy": options.sample_strategy,
             "max_cases": options.max_cases,
+            "track_filter": list(options.track_filter) if options.track_filter else None,
         },
         "outputs": {
             "output_dir": str(output_dir),

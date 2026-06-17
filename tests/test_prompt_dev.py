@@ -318,6 +318,76 @@ class PromptDevTests(unittest.TestCase):
             self.assertGreater(summary["counts"]["by_track"].get("A_BOX", 0), 0)
             self.assertGreater(summary["counts"]["by_track"].get("T_BOX", 0), 0)
 
+    def test_track_filter_applies_before_manifest_order_limit(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            records = [
+                _abox_record("abox_first", "Q1", "P1"),
+                _abox_record("abox_second", "Q2", "P1"),
+                _tbox_record("tbox_first", "Q3", "P2"),
+                _tbox_record("tbox_second", "Q4", "P2"),
+            ]
+            classified = root / "classified.jsonl"
+            classified.write_text("\n".join(json.dumps(record) for record in records) + "\n", encoding="utf-8")
+            manifest = root / "dev.json"
+            manifest.write_text(json.dumps(_manifest([record["id"] for record in records], records)), encoding="utf-8")
+            world_state = root / "world.json"
+            world_state.write_text("{}", encoding="utf-8")
+
+            summary = render_prompt_dev_prompts(
+                PromptDevRenderOptions(
+                    classified_benchmark=classified,
+                    world_state=world_state,
+                    dev_manifest=manifest,
+                    output_dir=root / "out",
+                    max_cases=1,
+                    representations=("hybrid_json_nl",),
+                    example_policies=("zero_shot",),
+                    context_bundles=("minimal_case",),
+                    tasks=("track_diagnosis",),
+                    sample_strategy="manifest_order",
+                    track_filter=("T_BOX",),
+                )
+            )
+
+            rendered_rows = [
+                json.loads(line)
+                for line in (root / "out" / "prompt_dev_rendered_prompts.jsonl")
+                .read_text(encoding="utf-8")
+                .splitlines()
+            ]
+            self.assertEqual(summary["inputs"]["track_filter"], ["T_BOX"])
+            self.assertEqual(summary["counts"]["eval_cases"], 1)
+            self.assertEqual(summary["counts"]["by_track"], {"T_BOX": 1})
+            self.assertEqual([row["case_id"] for row in rendered_rows], ["tbox_first"])
+
+    def test_track_filter_rejects_unknown_track(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            record = _abox_record("abox", "Q1", "P1")
+            classified = root / "classified.jsonl"
+            classified.write_text(json.dumps(record) + "\n", encoding="utf-8")
+            manifest = root / "dev.json"
+            manifest.write_text(json.dumps(_manifest([record["id"]], [record])), encoding="utf-8")
+            world_state = root / "world.json"
+            world_state.write_text("{}", encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "Unsupported prompt-dev track filter"):
+                render_prompt_dev_prompts(
+                    PromptDevRenderOptions(
+                        classified_benchmark=classified,
+                        world_state=world_state,
+                        dev_manifest=manifest,
+                        output_dir=root / "out",
+                        max_cases=1,
+                        representations=("hybrid_json_nl",),
+                        example_policies=("zero_shot",),
+                        context_bundles=("minimal_case",),
+                        tasks=("track_diagnosis",),
+                        track_filter=("C_BOX",),
+                    )
+                )
+
     def test_rendered_prompt_text_uses_neutral_case_ids(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)
