@@ -180,8 +180,49 @@ class PromptDevTests(unittest.TestCase):
 
         track_line = next(line for line in markdown.splitlines() if "`track_matrix`" in line)
         repair_line = next(line for line in markdown.splitlines() if "`repair_matrix`" in line)
+        self.assertIn("Strict functional", markdown)
+        self.assertIn("Strict audit", markdown)
+        self.assertIn("T-box taxonomy", markdown)
         self.assertIn("| n/a | 0.500 | n/a |", track_line)
         self.assertIn("| 0.250 | n/a | 0.750 |", repair_line)
+
+    def test_comparison_markdown_includes_tbox_taxonomy_patch_headlines(self) -> None:
+        markdown = _evaluation_comparison_markdown(
+            {
+                "run_id": "run",
+                "provider": "static",
+                "model": "static",
+                "counts": {"evaluated_prompts": 1},
+                "results": [
+                    {
+                        "matrix_id": "tbox_matrix",
+                        "task": "repair_proposal",
+                        "representation": "hybrid_json_nl",
+                        "example_policy": "zero_shot",
+                        "context_bundle": "logic_only",
+                        "track_mode": "oracle",
+                        "parse_errors": {"proposal_parse_error_count": 0},
+                        "request_errors": {
+                            "proposal_request_error_count": 0,
+                            "track_diagnosis_request_error_count": 0,
+                        },
+                        "overall_metrics": {
+                            "functional_success_rate": 0.0,
+                            "auditability_complete_rate": 0.0,
+                        },
+                        "tbox_taxonomy_patch_metrics": {
+                            "tbox_patch_family_level_success": {"rate": 0.625},
+                            "tbox_patch_decision_level_success": {"rate": 0.5},
+                            "tbox_patch_taxonomy_level_success": {"rate": 0.25},
+                            "tbox_patch_value_delta_f1_when_applicable": {"rate": 0.125},
+                        },
+                    }
+                ],
+            }
+        )
+
+        tbox_line = next(line for line in markdown.splitlines() if "`tbox_matrix`" in line)
+        self.assertIn("| 0.625 | 0.500 | 0.250 | 0.125 |", tbox_line)
 
     def test_comparison_markdown_does_not_count_skipped_routed_proposals_as_errors(self) -> None:
         markdown = _evaluation_comparison_markdown(

@@ -2386,6 +2386,16 @@ def _metric_text(metrics: dict[str, Any], key: str) -> str:
     return ""
 
 
+def _rate_metric_text(metrics: dict[str, Any], key: str) -> str:
+    value = metrics.get(key)
+    if not isinstance(value, dict):
+        return "n/a"
+    rate = value.get("rate")
+    if isinstance(rate, (int, float)):
+        return f"{rate:.3f}"
+    return "n/a"
+
+
 def _evaluation_comparison_markdown(summary: dict[str, Any]) -> str:
     lines = [
         "# Prompt Development Evaluation",
@@ -2397,12 +2407,18 @@ def _evaluation_comparison_markdown(summary: dict[str, Any]) -> str:
         "",
         (
             "| Matrix id | Task | Representation | Examples | Context | Track mode | "
-            "Parse errors | Request errors | Functional | Track acc | Audit |"
+            "Parse errors | Request errors | Strict functional | Track acc | Strict audit | "
+            "T-box family | T-box decision | T-box taxonomy | T-box value F1 |"
         ),
-        "| --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |",
+        "| --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
     for result in summary["results"]:
         metrics = result.get("overall_metrics") if isinstance(result.get("overall_metrics"), dict) else {}
+        tbox_metrics = (
+            result.get("tbox_taxonomy_patch_metrics")
+            if isinstance(result.get("tbox_taxonomy_patch_metrics"), dict)
+            else {}
+        )
         task = result.get("task")
         parse_errors = (result.get("parse_errors") or {}).get("proposal_parse_error_count", 0)
         request_errors = (result.get("request_errors") or {}).get("proposal_request_error_count", 0)
@@ -2412,6 +2428,10 @@ def _evaluation_comparison_markdown(summary: dict[str, Any]) -> str:
             _metric_text(metrics, "track_diagnosis_accuracy") if task == "track_diagnosis" else "n/a"
         )
         audit_text = "n/a" if task == "track_diagnosis" else _metric_text(metrics, "auditability_complete_rate")
+        tbox_family_text = _rate_metric_text(tbox_metrics, "tbox_patch_family_level_success")
+        tbox_decision_text = _rate_metric_text(tbox_metrics, "tbox_patch_decision_level_success")
+        tbox_taxonomy_text = _rate_metric_text(tbox_metrics, "tbox_patch_taxonomy_level_success")
+        tbox_value_f1_text = _rate_metric_text(tbox_metrics, "tbox_patch_value_delta_f1_when_applicable")
         lines.append(
             " | ".join(
                 [
@@ -2425,7 +2445,11 @@ def _evaluation_comparison_markdown(summary: dict[str, Any]) -> str:
                     str(request_errors),
                     functional_text,
                     track_accuracy_text,
-                    audit_text + " |",
+                    audit_text,
+                    tbox_family_text,
+                    tbox_decision_text,
+                    tbox_taxonomy_text,
+                    tbox_value_f1_text + " |",
                 ]
             )
         )
