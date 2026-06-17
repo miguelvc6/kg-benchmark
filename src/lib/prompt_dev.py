@@ -806,6 +806,15 @@ def _validate_core_example_guard(options: PromptDevRenderOptions | PromptDevEval
     )
 
 
+def _tbox_taxonomy_gold_version_for_manifest(manifest_path: Path) -> str:
+    name = manifest_path.name
+    if name.startswith("core_"):
+        return "tbox_taxonomy_patch_gold_core_v1"
+    if "dev_prompt_holdout" in name:
+        return "tbox_taxonomy_patch_gold_dev_holdout_v1"
+    return "tbox_taxonomy_patch_gold_ad_hoc_v1"
+
+
 def render_prompt_dev_prompts(options: PromptDevRenderOptions) -> dict[str, Any]:
     log = logging.getLogger("prompt_dev")
     log.info(
@@ -1977,6 +1986,7 @@ def evaluate_prompt_dev_prompts(
                 gold_rows=gold_rows,
                 prediction_rows=prediction_rows,
                 case_annotations=dev_manifest_payload.get("case_annotations") or {},
+                gold_version=_tbox_taxonomy_gold_version_for_manifest(options.dev_manifest),
             )
             write_json(taxonomy_eval_path, taxonomy_eval_summary)
         status_counts = (
@@ -2007,6 +2017,7 @@ def evaluate_prompt_dev_prompts(
         }
         if taxonomy_eval_summary is not None:
             result["tbox_taxonomy_patch_evaluation_summary"] = str(taxonomy_eval_path)
+            result["tbox_taxonomy_patch_gold_version"] = taxonomy_eval_summary.get("gold_version")
             result["tbox_taxonomy_patch_metrics"] = taxonomy_eval_summary.get("subsets", {}).get("all_core", {}).get(
                 "metrics",
                 {},

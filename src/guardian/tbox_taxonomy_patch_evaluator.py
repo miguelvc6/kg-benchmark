@@ -64,6 +64,7 @@ def evaluate_tbox_taxonomy_patch_predictions(
     prediction_rows: Iterable[dict[str, Any]],
     case_annotations: dict[str, dict[str, Any]] | None = None,
     constraint_type_qids: Iterable[str] | None = None,
+    gold_version: str | None = None,
 ) -> dict[str, Any]:
     case_annotations = case_annotations or {}
     gold_by_case: dict[str, NormalizedTBoxTaxonomyPatch] = {}
@@ -89,6 +90,7 @@ def evaluate_tbox_taxonomy_patch_predictions(
     ]
     return {
         "metric_family": "tbox_taxonomy_patch_v1",
+        "gold_version": gold_version,
         "strict_signature_metrics_role": "diagnostic_only",
         "total_tbox_rows": len(traces),
         "traces": traces,
@@ -106,12 +108,14 @@ def evaluate_tbox_taxonomy_patch_files(
     predictions_jsonl: str | Path,
     case_annotations: dict[str, dict[str, Any]] | None = None,
     constraint_type_qids: Iterable[str] | None = None,
+    gold_version: str | None = None,
 ) -> dict[str, Any]:
     return evaluate_tbox_taxonomy_patch_predictions(
         gold_rows=load_jsonl(gold_jsonl),
         prediction_rows=load_jsonl(predictions_jsonl),
         case_annotations=case_annotations,
         constraint_type_qids=constraint_type_qids,
+        gold_version=gold_version or Path(gold_jsonl).stem,
     )
 
 

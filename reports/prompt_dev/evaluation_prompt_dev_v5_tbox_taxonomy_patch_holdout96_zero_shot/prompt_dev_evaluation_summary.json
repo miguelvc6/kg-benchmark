@@ -226,6 +226,7 @@
       },
       "task": "repair_proposal",
       "tbox_taxonomy_patch_evaluation_summary": "reports/prompt_dev/evaluation_prompt_dev_v5_tbox_taxonomy_patch_holdout96_zero_shot/matrices/prompt_dev_001_hybrid_json_nl_zero_shot_logic_only_repair_proposal_oracle_no_abstain/tbox_taxonomy_patch_evaluation_summary.json",
+      "tbox_taxonomy_patch_gold_version": "tbox_taxonomy_patch_gold_dev_holdout_v1",
       "tbox_taxonomy_patch_metrics": {
         "tbox_patch_added_values_f1": {
           "applicability_coverage": 0.6875,
@@ -647,6 +648,7 @@
       },
       "task": "repair_proposal",
       "tbox_taxonomy_patch_evaluation_summary": "reports/prompt_dev/evaluation_prompt_dev_v5_tbox_taxonomy_patch_holdout96_zero_shot/matrices/prompt_dev_002_hybrid_json_nl_zero_shot_local_graph_repair_proposal_oracle_no_abstain/tbox_taxonomy_patch_evaluation_summary.json",
+      "tbox_taxonomy_patch_gold_version": "tbox_taxonomy_patch_gold_dev_holdout_v1",
       "tbox_taxonomy_patch_metrics": {
         "tbox_patch_added_values_f1": {
           "applicability_coverage": 0.6875,

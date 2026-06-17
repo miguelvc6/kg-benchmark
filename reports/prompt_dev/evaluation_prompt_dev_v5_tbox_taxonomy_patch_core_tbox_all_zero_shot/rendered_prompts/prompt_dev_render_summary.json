@@ -1,0 +1,63 @@
+{
+  "counts": {
+    "by_class": {
+      "T_BOX": 596
+    },
+    "by_class_subtype": {
+      "T_BOX:COINCIDENTAL_SCHEMA_CHANGE": 300,
+      "T_BOX:RELAXATION_SET_EXPANSION": 33,
+      "T_BOX:SCHEMA_UPDATE": 263
+    },
+    "by_context_bundle": {
+      "local_graph": 596,
+      "logic_only": 596
+    },
+    "by_example_policy": {
+      "zero_shot": 1192
+    },
+    "by_representation": {
+      "hybrid_json_nl": 1192
+    },
+    "by_selection_stratum": {
+      "TBOX_COINCIDENTAL_SCHEMA_CHANGE": 300,
+      "TBOX_RELAXATION_SET_EXPANSION": 33,
+      "TBOX_SCHEMA_UPDATE": 263
+    },
+    "by_subtype": {
+      "COINCIDENTAL_SCHEMA_CHANGE": 300,
+      "RELAXATION_SET_EXPANSION": 33,
+      "SCHEMA_UPDATE": 263
+    },
+    "by_task": {
+      "t_box_repair": 1192
+    },
+    "by_track": {
+      "T_BOX": 596
+    },
+    "eval_cases": 596,
+    "matrix_rows": 2,
+    "rendered_prompts": 1192,
+    "skipped_prompts": 0,
+    "unique_properties": 99,
+    "unique_qids": 596
+  },
+  "created_at_utc": "2026-06-17T19:03:03Z",
+  "inputs": {
+    "classified_benchmark": "data/04_classified_benchmark.jsonl",
+    "core_manifest": "reports/benchmark_selection/core_v1_seed_13.json",
+    "dev_manifest": "reports/benchmark_selection/core_v1_seed_13.json",
+    "max_cases": 596,
+    "sample_strategy": "manifest_order",
+    "track_filter": [
+      "T_BOX"
+    ],
+    "world_state": "data/03_world_state.json"
+  },
+  "manifest_type": "prompt_dev_rendered_prompt_summary",
+  "manifest_version": "prompt_dev_v5_tbox_taxonomy_patch",
+  "note": "No LLM inference was run. These artifacts contain prompts only.",
+  "outputs": {
+    "prompts_jsonl": "reports/prompt_dev/evaluation_prompt_dev_v5_tbox_taxonomy_patch_core_tbox_all_zero_shot/rendered_prompts/prompt_dev_rendered_prompts.jsonl",
+    "review_markdown": "reports/prompt_dev/evaluation_prompt_dev_v5_tbox_taxonomy_patch_core_tbox_all_zero_shot/rendered_prompts/prompt_dev_prompt_review.md"
+  }
+}

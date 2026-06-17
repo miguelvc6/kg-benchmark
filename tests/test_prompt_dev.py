@@ -429,6 +429,18 @@ class PromptDevTests(unittest.TestCase):
                     )
                 )
 
+    def test_tbox_taxonomy_gold_version_tracks_manifest_scope(self) -> None:
+        self.assertEqual(
+            prompt_dev_lib._tbox_taxonomy_gold_version_for_manifest(Path("reports/benchmark_selection/core_v1_seed_13.json")),
+            "tbox_taxonomy_patch_gold_core_v1",
+        )
+        self.assertEqual(
+            prompt_dev_lib._tbox_taxonomy_gold_version_for_manifest(
+                Path("reports/benchmark_selection/dev_prompt_holdout_spec_v4_96_seed_17.json")
+            ),
+            "tbox_taxonomy_patch_gold_dev_holdout_v1",
+        )
+
     def test_rendered_prompt_text_uses_neutral_case_ids(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)
