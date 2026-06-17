@@ -1243,6 +1243,12 @@ def _record_prompt_dev_result(
             )
             _append_jsonl(matrix_dir / "t_box_proposals.jsonl", normalized.to_dict())
         else:
+            if _is_explicit_empty_a_box_ops(normalized_payload):
+                manifest_record["parse_status"] = "non_executable_empty_ops"
+                manifest_record["parser_warning"] = "A-box output was valid JSON but contained no executable operations."
+                _append_jsonl(matrix_dir / "raw_model_responses.jsonl", raw_record)
+                _append_jsonl(matrix_dir / "run_manifest.jsonl", manifest_record)
+                return manifest_record
             normalized = normalize_a_box_proposal(normalized_payload)
             _append_jsonl(matrix_dir / "a_box_proposals.jsonl", normalized.to_dict())
         manifest_record["parse_status"] = "normalized"
@@ -1254,6 +1260,10 @@ def _record_prompt_dev_result(
     _append_jsonl(matrix_dir / "raw_model_responses.jsonl", raw_record)
     _append_jsonl(matrix_dir / "run_manifest.jsonl", manifest_record)
     return manifest_record
+
+
+def _is_explicit_empty_a_box_ops(payload: Any) -> bool:
+    return isinstance(payload, dict) and "ops" in payload and payload.get("ops") == []
 
 
 def _diagnosis_track_from_payload(parsed_payload: Any, case_id: str, visible_case_id: str | None = None) -> str:

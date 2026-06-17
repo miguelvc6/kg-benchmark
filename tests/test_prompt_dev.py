@@ -931,6 +931,63 @@ class PromptDevTests(unittest.TestCase):
             self.assertFalse((matrix_dir / "t_box_proposals.jsonl").exists())
             self.assertEqual(manifest_rows[0]["tbox_task_version"], "tbox_taxonomy_patch_v1")
 
+    def test_prompt_dev_records_explicit_empty_a_box_ops_as_non_executable(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            matrix_dir = Path(tmp_dir)
+            prompt_record = {"case_id": "case-1", "visible_case_id": "case_000001"}
+            metadata = {
+                "run_id": "run",
+                "matrix_id": "matrix",
+                "case_id": "case-1",
+                "visible_case_id": "case_000001",
+                "ablation_bundle": "matrix",
+                "context_bundle": "logic_only",
+                "representation": "hybrid_json_nl",
+                "example_policy": "zero_shot",
+                "track_mode": "oracle",
+                "include_abstention": False,
+                "prompt_name": "prompt_dev_v4_spec_only_a_box_repair_hybrid_json_nl",
+                "track": "A_BOX",
+                "historical_track": "A_BOX",
+                "proposal_track_used": "A_BOX",
+                "routing_source": "prompt_dev",
+                "task_type": "proposal",
+                "prompt_dev_task": "repair_proposal",
+                "provider": "static",
+                "model": "static",
+                "context_audit": {},
+                "abox_task_version": "prompt_dev_v4_spec_only",
+                "prompt_version": "prompt_dev_v5_tbox_taxonomy_patch",
+            }
+            parsed_payload = {
+                "case_id": "case_000001",
+                "target": {"qid": "Q1", "pid": "P31"},
+                "ops": [],
+                "rationale": "No concrete value is visible.",
+                "provenance": [{"kind": "KG", "node_id": "Q1", "snippet": "visible"}],
+                "uncertainty": {"confidence": 0.1, "notes": "missing value"},
+            }
+
+            manifest_record = prompt_dev_lib._record_prompt_dev_result(
+                matrix_dir=matrix_dir,
+                prompt_record=prompt_record,
+                metadata=metadata,
+                raw_response=json.dumps(parsed_payload),
+                parsed_payload=parsed_payload,
+                usage={"provider": "static", "model": "static"},
+                elapsed_seconds=0.0,
+            )
+
+            self.assertEqual(manifest_record["parse_status"], "non_executable_empty_ops")
+            self.assertFalse((matrix_dir / "a_box_proposals.jsonl").exists())
+            manifest_rows = [
+                json.loads(line)
+                for line in (matrix_dir / "run_manifest.jsonl").read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+            self.assertEqual(manifest_rows[0]["parse_status"], "non_executable_empty_ops")
+            self.assertIn("parser_warning", manifest_rows[0])
+
     def test_render_diagnosis_neutral_context_does_not_expose_hidden_fields(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)
