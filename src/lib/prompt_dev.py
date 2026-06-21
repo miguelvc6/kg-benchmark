@@ -3,12 +3,15 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import re
 import time
 from collections import Counter
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Callable, Iterable
+
+from jsonschema import Draft202012Validator
 
 from classifier import WorldStateStore
 from guardian.evaluator import evaluate_benchmark, write_json
@@ -38,6 +41,7 @@ from scripts.prompt_dev_templates import (
 
 EXAMPLE_POLICIES = (
     "zero_shot",
+    "static_diverse_kshot",
     "random_same_task_2shot",
     "same_track_2shot",
     "matched_2shot",
@@ -81,8 +85,10 @@ class PromptDevMatrixOptions:
 class PromptDevRenderOptions:
     classified_benchmark: Path
     world_state: Path
-    dev_manifest: Path
     output_dir: Path
+    eval_manifest: Path | None = None
+    dev_manifest: Path | None = None
+    example_manifest: Path | None = None
     seed: int = 13
     max_cases: int | None = 24
     representations: tuple[str, ...] = ("hybrid_json_nl",)
@@ -93,6 +99,7 @@ class PromptDevRenderOptions:
     repair_track_modes: tuple[str, ...] = ("oracle",)
     include_abstention: bool = False
     core_manifest: Path | None = None
+    support_set_manifest: Path | None = None
     example_count: int = 2
     allow_same_property_examples: bool = False
     sample_strategy: str = "stratified"
@@ -104,8 +111,10 @@ class PromptDevRenderOptions:
 class PromptDevEvaluateOptions:
     classified_benchmark: Path
     world_state: Path
-    dev_manifest: Path
     output_dir: Path
+    eval_manifest: Path | None = None
+    dev_manifest: Path | None = None
+    example_manifest: Path | None = None
     model_endpoint: str | None = None
     model_name: str | None = None
     seed: int = 13
@@ -118,6 +127,7 @@ class PromptDevEvaluateOptions:
     repair_track_modes: tuple[str, ...] = ("oracle",)
     include_abstention: bool = False
     core_manifest: Path | None = None
+    support_set_manifest: Path | None = None
     example_count: int = 2
     allow_same_property_examples: bool = False
     resume_existing: bool = True
@@ -127,6 +137,7 @@ class PromptDevEvaluateOptions:
     sample_strategy: str = "stratified"
     allow_core_example_risk: bool = False
     track_filter: tuple[str, ...] | None = None
+    zero_shot_baseline_summary: Path | None = None
 
 
 def _utc_now() -> str:
@@ -633,6 +644,516 @@ def _blocked_core_sets(core_manifest_path: Path | None) -> dict[str, set[str]]:
     }
 
 
+FORBIDDEN_EXAMPLE_KEYS = {
+    "repair_target",
+    "classification",
+    "persistence_check",
+    "truth_source",
+    "truth_tokens",
+    "selection_stratum",
+    "group_key",
+    "selected_case_ids",
+    "case_annotations",
+    "historical_track",
+}
+RAW_CASE_ID_RE = re.compile(r"\b(?:repair|reform)_(?!op\b)[A-Za-z0-9][A-Za-z0-9_.:-]*")
+CORE_DEV_LABEL_RE = re.compile(r"\b(?:DEV|CORE)_[A-Za-z0-9][A-Za-z0-9_.:-]*")
+FORBIDDEN_EXAMPLE_TEXT_TERMS = tuple(sorted(FORBIDDEN_EXAMPLE_KEYS))
+MODEL_VISIBLE_FORBIDDEN_TERMS = (
+    "repair_target",
+    "classification",
+    "persistence_check",
+    "truth_source",
+    "truth_tokens",
+    "selection_stratum",
+    "group_key",
+    "selected_case_ids",
+    "case_annotations",
+    "sitelinks_count",
+    "popularity",
+    "historical_track",
+    "TypeA",
+    "TypeB",
+    "TypeC",
+)
+
+
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
+def _support_set_schema_path() -> Path:
+    return _repo_root() / "schemas" / "few_shot_support_set.schema.json"
+
+
+def _load_support_set_manifest(path: Path | None) -> dict[str, Any] | None:
+    if path is None:
+        return None
+    with path.open(encoding="utf-8") as handle:
+        manifest = json.load(handle)
+    with _support_set_schema_path().open(encoding="utf-8") as handle:
+        schema = json.load(handle)
+    Draft202012Validator(schema).validate(manifest)
+    return manifest
+
+
+def _support_task_key(task: str) -> str | None:
+    if task == "a_box_repair":
+        return "a_box_repair"
+    if task == "t_box_repair":
+        return "t_box_repair"
+    if task == "track_diagnosis":
+        return "track_diagnosis"
+    return None
+
+
+def _forbidden_key_paths(value: Any, *, path: str = "$") -> list[str]:
+    paths: list[str] = []
+    if isinstance(value, dict):
+        for key, child in value.items():
+            child_path = f"{path}.{key}"
+            if key in FORBIDDEN_EXAMPLE_KEYS:
+                paths.append(child_path)
+            paths.extend(_forbidden_key_paths(child, path=child_path))
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            paths.extend(_forbidden_key_paths(child, path=f"{path}[{index}]"))
+    return paths
+
+
+def _forbidden_string_hits(value: Any) -> list[str]:
+    hits: list[str] = []
+    if isinstance(value, str):
+        hits.extend(RAW_CASE_ID_RE.findall(value))
+        hits.extend(CORE_DEV_LABEL_RE.findall(value))
+        hits.extend(term for term in FORBIDDEN_EXAMPLE_TEXT_TERMS if term in value)
+    elif isinstance(value, dict):
+        for child in value.values():
+            hits.extend(_forbidden_string_hits(child))
+    elif isinstance(value, list):
+        for child in value:
+            hits.extend(_forbidden_string_hits(child))
+    return hits
+
+
+def _sanitize_example_text(value: Any) -> Any:
+    if isinstance(value, str):
+        return (
+            value.replace("classification confidence", "support confidence")
+            .replace("classification", "support metadata")
+            .replace("repair_target", "visible target evidence")
+            .replace("truth_source", "visible source")
+            .replace("truth_tokens", "visible tokens")
+        )
+    if isinstance(value, dict):
+        return {key: _sanitize_example_text(child) for key, child in value.items()}
+    if isinstance(value, list):
+        return [_sanitize_example_text(child) for child in value]
+    return value
+
+
+def _scan_examples_for_leakage(examples: list[dict[str, Any]]) -> dict[str, Any]:
+    payloads = [
+        {
+            "input_payload": example.get("input_payload") if isinstance(example.get("input_payload"), dict) else {},
+            "output_payload": example.get("output_payload") if isinstance(example.get("output_payload"), dict) else {},
+        }
+        for example in examples
+    ]
+    key_hits = sorted({path for payload in payloads for path in _forbidden_key_paths(payload)})
+    text_hits = sorted({hit for payload in payloads for hit in _forbidden_string_hits(payload)})
+    return {
+        "passed": not key_hits and not text_hits,
+        "forbidden_key_paths": key_hits,
+        "forbidden_text_patterns": text_hits,
+    }
+
+
+def _raise_if_examples_leak(examples: list[dict[str, Any]]) -> dict[str, Any]:
+    scan = _scan_examples_for_leakage(examples)
+    if not scan["passed"]:
+        raise ValueError(
+            "Few-shot support examples failed leakage scan: "
+            f"keys={scan['forbidden_key_paths']} text={scan['forbidden_text_patterns']}"
+        )
+    return scan
+
+
+def _model_visible_text_scan(prompt_records: list[dict[str, Any]]) -> dict[str, Any]:
+    rows: list[dict[str, Any]] = []
+    hard_matches: list[dict[str, Any]] = []
+    benign_matches: list[dict[str, Any]] = []
+    for record in prompt_records:
+        text = f"{record.get('system_prompt') or ''}\n{record.get('user_prompt') or ''}"
+        row_matches: list[dict[str, Any]] = []
+        for term in MODEL_VISIBLE_FORBIDDEN_TERMS:
+            if term not in text:
+                continue
+            match = {"kind": "term", "value": term}
+            if term == "classification" and f'"{term}"' not in text and f"{term}:" not in text:
+                benign_matches.append({"matrix_id": record["matrix_id"], "case_id": record["case_id"], **match})
+            else:
+                row_matches.append(match)
+        for raw_id in sorted(set(RAW_CASE_ID_RE.findall(text))):
+            row_matches.append({"kind": "raw_case_id", "value": raw_id})
+        for label in sorted(set(CORE_DEV_LABEL_RE.findall(text))):
+            row_matches.append({"kind": "core_dev_label", "value": label})
+        if row_matches:
+            for match in row_matches:
+                hard_matches.append({"matrix_id": record["matrix_id"], "case_id": record["case_id"], **match})
+        rows.append(
+            {
+                "matrix_id": record["matrix_id"],
+                "case_id": record["case_id"],
+                "task": record["task"],
+                "example_policy": record["example_policy"],
+                "hard_match_count": len(row_matches),
+            }
+        )
+    return {
+        "passed": not hard_matches,
+        "prompt_count": len(prompt_records),
+        "hard_matches": hard_matches,
+        "benign_text_matches": benign_matches,
+        "rows": rows,
+    }
+
+
+def _tbox_revision_key_for_overlap(record: dict[str, Any] | None) -> str | None:
+    if not isinstance(record, dict):
+        return None
+    _, tbox_key, _ = group_key_for_record(record)
+    return tbox_key
+
+
+def _example_overlap_report(
+    *,
+    prompt_records: list[dict[str, Any]],
+    eval_records_by_id: dict[str, dict[str, Any]],
+    example_records_by_id: dict[str, dict[str, Any]],
+    blocked_core: dict[str, set[str]],
+    allow_same_property_examples: bool,
+) -> dict[str, Any]:
+    rows: list[dict[str, Any]] = []
+    hard_failures: list[dict[str, Any]] = []
+    property_overlaps: list[dict[str, Any]] = []
+    core_case_overlap = 0
+    core_tbox_revision_overlap = 0
+    for prompt_record in prompt_records:
+        eval_case_id = prompt_record.get("case_id")
+        eval_record = eval_records_by_id.get(eval_case_id) if isinstance(eval_case_id, str) else None
+        eval_qid = eval_record.get("qid") if isinstance(eval_record, dict) else None
+        eval_property = eval_record.get("property") if isinstance(eval_record, dict) else None
+        eval_tbox_key = _tbox_revision_key_for_overlap(eval_record)
+        is_static = any(
+            isinstance(example, dict) and example.get("support_source") == "support_set_manifest"
+            for example in prompt_record.get("examples", [])
+        )
+        for example in prompt_record.get("examples", []):
+            if not isinstance(example, dict):
+                continue
+            example_case_id = example.get("case_id")
+            example_record = example_records_by_id.get(example_case_id) if isinstance(example_case_id, str) else None
+            example_qid = example_record.get("qid") if isinstance(example_record, dict) else None
+            example_property = example_record.get("property") if isinstance(example_record, dict) else None
+            example_tbox_key = _tbox_revision_key_for_overlap(example_record)
+            checks = {
+                "case_id_overlap": example_case_id == eval_case_id,
+                "qid_overlap": bool(example_qid and eval_qid and example_qid == eval_qid),
+                "property_overlap": bool(example_property and eval_property and example_property == eval_property),
+                "tbox_revision_overlap": bool(example_tbox_key and eval_tbox_key and example_tbox_key == eval_tbox_key),
+                "core_case_overlap": bool(example_case_id and example_case_id in blocked_core["case_ids"]),
+                "core_tbox_revision_overlap": bool(
+                    example_tbox_key and example_tbox_key in blocked_core["tbox_revision_keys"]
+                ),
+            }
+            if checks["core_case_overlap"]:
+                core_case_overlap += 1
+            if checks["core_tbox_revision_overlap"]:
+                core_tbox_revision_overlap += 1
+            failure_keys = [
+                key
+                for key, failed in checks.items()
+                if failed
+                and key != "property_overlap"
+                and key not in {"core_case_overlap", "core_tbox_revision_overlap"}
+            ]
+            if checks["core_case_overlap"] or checks["core_tbox_revision_overlap"]:
+                failure_keys.extend(
+                    key for key in ("core_case_overlap", "core_tbox_revision_overlap") if checks[key]
+                )
+            if checks["property_overlap"]:
+                property_overlap = {
+                    "matrix_id": prompt_record["matrix_id"],
+                    "eval_case_id": eval_case_id,
+                    "example_case_id": example_case_id,
+                    "property": example_property,
+                    "static_support": is_static,
+                    "allowed": is_static or allow_same_property_examples,
+                }
+                property_overlaps.append(property_overlap)
+                if not property_overlap["allowed"]:
+                    failure_keys.append("property_overlap")
+            row = {
+                "matrix_id": prompt_record["matrix_id"],
+                "eval_case_id": eval_case_id,
+                "example_case_id": example_case_id,
+                "visible_case_id": example.get("visible_case_id"),
+                "task": prompt_record.get("task"),
+                "example_task_schema": example.get("task_schema"),
+                "checks": checks,
+                "failure_keys": failure_keys,
+            }
+            if failure_keys:
+                hard_failures.append(row)
+            rows.append(row)
+    return {
+        "passed": not hard_failures and core_case_overlap == 0 and core_tbox_revision_overlap == 0,
+        "example_count": len(rows),
+        "core_case_overlap": core_case_overlap,
+        "core_tbox_revision_overlap": core_tbox_revision_overlap,
+        "property_overlaps": property_overlaps,
+        "hard_failures": hard_failures,
+        "rows": rows,
+    }
+
+
+def _overlap_report_markdown(report: dict[str, Any]) -> str:
+    lines = [
+        "# Few-Shot Overlap Report",
+        "",
+        f"Passed: `{report['passed']}`",
+        f"Examples checked: `{report['example_count']}`",
+        f"Core case overlap: `{report['core_case_overlap']}`",
+        f"Core T-box revision overlap: `{report['core_tbox_revision_overlap']}`",
+        "",
+        "## Property Overlaps",
+        "",
+    ]
+    if report["property_overlaps"]:
+        lines.extend(
+            [
+                "| Matrix | Eval case | Example case | Property | Static support | Allowed |",
+                "| --- | --- | --- | --- | --- | --- |",
+            ]
+        )
+        for row in report["property_overlaps"]:
+            lines.append(
+                f"| `{row['matrix_id']}` | `{row['eval_case_id']}` | `{row['example_case_id']}` | "
+                f"`{row['property']}` | `{row['static_support']}` | `{row['allowed']}` |"
+            )
+    else:
+        lines.append("No property overlaps detected.")
+    if report["hard_failures"]:
+        lines.extend(["", "## Hard Failures", ""])
+        for row in report["hard_failures"]:
+            lines.append(
+                f"- `{row['matrix_id']}` eval `{row['eval_case_id']}` example `{row['example_case_id']}`: "
+                f"{', '.join(row['failure_keys'])}"
+            )
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _validate_example_output_payload(
+    *,
+    task: str,
+    payload: dict[str, Any],
+    record: dict[str, Any],
+    world_state_entry: dict[str, Any] | None,
+    task_schema: str | None = None,
+) -> None:
+    if task == "a_box_repair":
+        normalize_a_box_proposal(payload)
+        return
+    if task == "t_box_repair":
+        if task_schema == "tbox_taxonomy_patch_v1" or PROMPT_DEV_VERSION == PROMPT_DEV_TBOX_TAXONOMY_PATCH_VERSION:
+            normalize_tbox_taxonomy_patch(
+                payload,
+                constraint_type_qids=_t_box_constraint_type_qids(record, world_state_entry),
+            )
+            return
+        normalize_t_box_proposal(payload, constraint_type_qids=_t_box_constraint_type_qids(record, world_state_entry))
+        return
+    if task == "track_diagnosis":
+        normalize_diagnosis(payload)
+        return
+    raise ValueError(f"Unsupported support example task: {task}")
+
+
+def _prepare_example_payloads(
+    *,
+    example: dict[str, Any],
+    candidate: dict[str, Any],
+    task: str,
+    context_bundle: str,
+    world_state_entry: dict[str, Any] | None,
+    visible_case_id: str,
+) -> dict[str, Any]:
+    payload_builder = _prompt_payload_builder_for_task(task, context_bundle)
+    input_payload, _ = payload_builder(candidate, world_state_entry, context_bundle)
+    task_schema = example.get("task_schema") if isinstance(example.get("task_schema"), str) else None
+    if task == "t_box_repair" and task_schema == "tbox_taxonomy_patch_v1":
+        output_payload = gold_patch_for_record(candidate)
+    else:
+        output_payload = _gold_output_for_task(candidate, task)
+    if not isinstance(output_payload, dict):
+        raise ValueError(f"Support example {candidate.get('id')} has no gold output for task {task}.")
+    visible_input = _model_visible_payload(
+        input_payload,
+        raw_case_id=candidate["id"],
+        visible_case_id=visible_case_id,
+    )
+    visible_output = _model_visible_output(
+        output_payload,
+        raw_case_id=candidate["id"],
+        visible_case_id=visible_case_id,
+    )
+    if visible_output is None:
+        raise ValueError(f"Support example {candidate.get('id')} produced an empty visible output.")
+    visible_output = _sanitize_example_text(visible_output)
+    _validate_example_output_payload(
+        task=task,
+        payload=visible_output,
+        record=candidate,
+        world_state_entry=world_state_entry,
+        task_schema=task_schema,
+    )
+    return {
+        **example,
+        "input_payload": visible_input,
+        "output_payload": visible_output,
+        "visible_case_id": visible_case_id,
+    }
+
+
+def _support_set_examples(
+    *,
+    support_manifest: dict[str, Any],
+    eval_record: dict[str, Any],
+    task: str,
+    records_by_id: dict[str, dict[str, Any]],
+    world_store: WorldStateStore,
+    context_bundle: str,
+    example_count: int,
+) -> list[dict[str, Any]]:
+    task_key = _support_task_key(task)
+    if task_key is None:
+        return []
+    entries = support_manifest.get("support_sets", {}).get(task_key, [])
+    if not isinstance(entries, list):
+        raise ValueError(f"Support set for {task_key} must be a list.")
+    eval_case_id = eval_record.get("id")
+    eval_qid = eval_record.get("qid")
+    _, eval_tbox_key, _ = group_key_for_record(eval_record)
+    filtered_entries: list[tuple[dict[str, Any], dict[str, Any]]] = []
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        raw_case_id = entry.get("raw_case_id")
+        if not isinstance(raw_case_id, str):
+            raise ValueError(f"Support set entry for {task_key} must contain raw_case_id.")
+        candidate = records_by_id.get(raw_case_id)
+        if candidate is None:
+            raise ValueError(f"Support example raw_case_id not found in example manifest: {raw_case_id}")
+        _, candidate_tbox_key, _ = group_key_for_record(candidate)
+        if raw_case_id == eval_case_id:
+            continue
+        if candidate.get("qid") == eval_qid and eval_qid:
+            continue
+        if candidate_tbox_key == eval_tbox_key and eval_tbox_key:
+            continue
+        filtered_entries.append((entry, candidate))
+    if not filtered_entries and example_count > 0:
+        raise ValueError(f"Support set for {task_key} has no non-overlapping examples for {eval_case_id}.")
+    examples: list[dict[str, Any]] = []
+    for entry, candidate in filtered_entries[:example_count]:
+        raw_case_id = entry.get("raw_case_id")
+        visible_case_id = entry.get("visible_example_id")
+        if not isinstance(raw_case_id, str) or not isinstance(visible_case_id, str):
+            raise ValueError(f"Support set entry for {task_key} must contain raw_case_id and visible_example_id.")
+        example = {
+            "case_id": raw_case_id,
+            "visible_case_id": visible_case_id,
+            "role": entry.get("role"),
+            "task_schema": entry.get("task_schema"),
+            "support_source": "support_set_manifest",
+        }
+        examples.append(
+            _prepare_example_payloads(
+                example=example,
+                candidate=candidate,
+                task=task,
+                context_bundle=context_bundle,
+                world_state_entry=world_store.get(raw_case_id),
+                visible_case_id=visible_case_id,
+            )
+        )
+    _raise_if_examples_leak(examples)
+    return examples
+
+
+def _examples_for_prompt(
+    *,
+    eval_record: dict[str, Any],
+    task: str,
+    context_bundle: str,
+    policy: str,
+    seed: int,
+    example_count: int,
+    blocked_core: dict[str, set[str]],
+    allow_same_property: bool,
+    candidate_records: list[dict[str, Any]],
+    records_by_id: dict[str, dict[str, Any]],
+    visible_case_ids: dict[str, str],
+    world_store: WorldStateStore,
+    support_manifest: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    if policy == "zero_shot" or example_count <= 0:
+        return []
+    if support_manifest is not None:
+        return _support_set_examples(
+            support_manifest=support_manifest,
+            eval_record=eval_record,
+            task=task,
+            records_by_id=records_by_id,
+            world_store=world_store,
+            context_bundle=context_bundle,
+            example_count=example_count,
+        )
+    if policy == "static_diverse_kshot":
+        raise ValueError("example_policy=static_diverse_kshot requires --support-set-manifest.")
+    selected = select_examples(
+        eval_record=eval_record,
+        candidate_records=candidate_records,
+        policy=policy,
+        task=task,
+        seed=seed,
+        example_count=example_count,
+        blocked_core=blocked_core,
+        allow_same_property=allow_same_property,
+    )
+    examples: list[dict[str, Any]] = []
+    for example in selected:
+        raw_case_id = example["case_id"]
+        candidate = records_by_id.get(raw_case_id)
+        if candidate is None:
+            continue
+        visible_case_id = visible_case_ids.get(raw_case_id, f"case_{_stable_hash(raw_case_id)[:12]}")
+        examples.append(
+            _prepare_example_payloads(
+                example=example,
+                candidate=candidate,
+                task=task,
+                context_bundle=context_bundle,
+                world_state_entry=world_store.get(raw_case_id),
+                visible_case_id=visible_case_id,
+            )
+        )
+    _raise_if_examples_leak(examples)
+    return examples
+
+
 def select_examples(
     *,
     eval_record: dict[str, Any],
@@ -793,9 +1314,53 @@ def _uses_few_shot(example_policies: Iterable[str]) -> bool:
     return any(policy != "zero_shot" for policy in example_policies)
 
 
+def _default_zero_shot_baseline_summary_path() -> Path | None:
+    candidate = (
+        _repo_root()
+        / "reports"
+        / "prompt_dev"
+        / f"evaluation_{PROMPT_DEV_VERSION}_holdout96_zero_shot"
+        / "prompt_dev_evaluation_summary.json"
+    )
+    return candidate if candidate.exists() else None
+
+
+def _load_zero_shot_baseline_summary(path: Path | None) -> dict[str, Any] | None:
+    if path is None:
+        return None
+    if not path.exists():
+        raise FileNotFoundError(f"Zero-shot baseline summary does not exist: {path}")
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError(f"Zero-shot baseline summary must be a JSON object: {path}")
+    payload["_summary_path"] = str(path)
+    return payload
+
+
+def _eval_manifest_path(options: PromptDevRenderOptions | PromptDevEvaluateOptions) -> Path:
+    manifest_path = options.eval_manifest or options.dev_manifest
+    if manifest_path is None:
+        raise ValueError("Prompt development requires --eval-manifest or its legacy alias --dev-manifest.")
+    return manifest_path
+
+
+def _example_manifest_path(options: PromptDevRenderOptions | PromptDevEvaluateOptions) -> Path | None:
+    return options.example_manifest
+
+
 def _validate_core_example_guard(options: PromptDevRenderOptions | PromptDevEvaluateOptions) -> None:
     if not _uses_few_shot(options.example_policies):
         return
+    if options.support_set_manifest is not None and not options.support_set_manifest.exists():
+        raise ValueError(f"Support-set manifest does not exist: {options.support_set_manifest}")
+    if "static_diverse_kshot" in options.example_policies and options.support_set_manifest is None:
+        raise ValueError("example_policy=static_diverse_kshot requires --support-set-manifest.")
+    if options.example_manifest is None and options.support_set_manifest is None and not options.allow_core_example_risk:
+        raise ValueError(
+            "Few-shot prompt development requires --example-manifest or --support-set-manifest so examples are "
+            "selected outside the evaluation manifest. Pass --allow-core-example-risk only for an explicit "
+            "leakage-risk experiment."
+        )
     if options.core_manifest is not None and options.core_manifest.exists():
         return
     if options.allow_core_example_risk:
@@ -817,19 +1382,29 @@ def _tbox_taxonomy_gold_version_for_manifest(manifest_path: Path) -> str:
 
 def render_prompt_dev_prompts(options: PromptDevRenderOptions) -> dict[str, Any]:
     log = logging.getLogger("prompt_dev")
+    eval_manifest_path = _eval_manifest_path(options)
+    example_manifest_path = _example_manifest_path(options)
+    support_manifest = _load_support_set_manifest(options.support_set_manifest)
+    support_source_manifest = (
+        Path(str(support_manifest["source_manifest"]))
+        if isinstance(support_manifest, dict) and isinstance(support_manifest.get("source_manifest"), str)
+        else None
+    )
+    candidate_manifest_path = example_manifest_path or support_source_manifest or eval_manifest_path
     log.info(
-        "render: loading manifest records classified=%s manifest=%s max_cases=%s sample_strategy=%s track_filter=%s",
+        "render: loading manifest records classified=%s eval_manifest=%s example_manifest=%s max_cases=%s sample_strategy=%s track_filter=%s",
         options.classified_benchmark,
-        options.dev_manifest,
+        eval_manifest_path,
+        example_manifest_path,
         options.max_cases,
         options.sample_strategy,
         options.track_filter,
     )
     _validate_core_example_guard(options)
-    manifest = load_selection_manifest(options.dev_manifest)
+    manifest = load_selection_manifest(eval_manifest_path)
     eval_records = _load_manifest_records(
         options.classified_benchmark,
-        options.dev_manifest,
+        eval_manifest_path,
         max_cases=options.max_cases,
         sample_strategy=options.sample_strategy,
         seed=options.seed,
@@ -837,9 +1412,14 @@ def render_prompt_dev_prompts(options: PromptDevRenderOptions) -> dict[str, Any]
     )
     log.info("render: selected eval records=%s", len(eval_records))
     log.info("render: loading candidate records for examples and visible ids")
-    candidate_records = _load_all_manifest_records(options.classified_benchmark, options.dev_manifest)
+    candidate_records = _load_all_manifest_records(options.classified_benchmark, candidate_manifest_path)
     log.info("render: loaded candidate records=%s", len(candidate_records))
-    visible_case_ids = _visible_case_id_map(candidate_records)
+    records_by_id = {
+        record["id"]: record
+        for record in candidate_records
+        if isinstance(record, dict) and isinstance(record.get("id"), str)
+    }
+    visible_case_ids = _visible_case_id_map([*eval_records, *candidate_records])
     blocked_core = _blocked_core_sets(options.core_manifest)
     matrix = build_prompt_dev_matrix(
         PromptDevMatrixOptions(
@@ -885,40 +1465,21 @@ def render_prompt_dev_prompts(options: PromptDevRenderOptions) -> dict[str, Any]
                     raw_case_id=raw_case_id,
                     visible_case_id=visible_case_id,
                 )
-                examples = select_examples(
+                examples = _examples_for_prompt(
                     eval_record=record,
-                    candidate_records=candidate_records,
-                    policy=row["example_policy"],
                     task=task,
+                    context_bundle=row["context_bundle"],
+                    policy=row["example_policy"],
                     seed=options.seed,
                     example_count=options.example_count,
                     blocked_core=blocked_core,
                     allow_same_property=options.allow_same_property_examples,
+                    candidate_records=candidate_records,
+                    records_by_id=records_by_id,
+                    visible_case_ids=visible_case_ids,
+                    world_store=world_store,
+                    support_manifest=support_manifest,
                 )
-                for example in examples:
-                    candidate = next((item for item in candidate_records if item.get("id") == example["case_id"]), None)
-                    if candidate is None:
-                        continue
-                    candidate_raw_case_id = candidate["id"]
-                    candidate_visible_case_id = visible_case_ids.get(
-                        candidate_raw_case_id,
-                        f"case_{_stable_hash(candidate_raw_case_id)[:12]}",
-                    )
-                    candidate_world = world_store.get(candidate["id"])
-                    example_payload, _ = payload_builder(candidate, candidate_world, row["context_bundle"])
-                    example["input_payload"] = _model_visible_payload(
-                        example_payload,
-                        raw_case_id=candidate_raw_case_id,
-                        visible_case_id=candidate_visible_case_id,
-                    )
-                    visible_output = _model_visible_output(
-                        example.get("output_payload") if isinstance(example.get("output_payload"), dict) else None,
-                        raw_case_id=candidate_raw_case_id,
-                        visible_case_id=candidate_visible_case_id,
-                    )
-                    if visible_output is not None:
-                        example["output_payload"] = visible_output
-                    example["visible_case_id"] = candidate_visible_case_id
                 rendered = render_prompt_dev_prompt(
                     task=task,
                     representation=row["representation"],
@@ -943,6 +1504,7 @@ def render_prompt_dev_prompts(options: PromptDevRenderOptions) -> dict[str, Any]
                     "user_prompt": rendered.user_prompt,
                     "response_format": rendered.response_format,
                     "context_audit": context_audit,
+                    "example_leakage_scan": _scan_examples_for_leakage(examples),
                     "examples": [
                         {key: value for key, value in example.items() if key != "input_payload"}
                         for example in examples
@@ -952,6 +1514,55 @@ def render_prompt_dev_prompts(options: PromptDevRenderOptions) -> dict[str, Any]
                 rendered_count += 1
 
     log.info("render: writing prompt artifacts prompts=%s", rendered_count)
+    few_shot_outputs: dict[str, str] = {}
+    if _uses_few_shot(options.example_policies):
+        leakage_scan = {
+            "manifest_type": "few_shot_leakage_scan",
+            "manifest_version": PROMPT_DEV_VERSION,
+            "created_at_utc": _utc_now(),
+            "model_visible_text_scan": _model_visible_text_scan(prompt_records),
+            "example_payload_scans": [
+                {
+                    "matrix_id": record["matrix_id"],
+                    "case_id": record["case_id"],
+                    "task": record["task"],
+                    "example_leakage_scan": record.get("example_leakage_scan") or {},
+                }
+                for record in prompt_records
+            ],
+        }
+        overlap_report = {
+            "manifest_type": "few_shot_overlap_report",
+            "manifest_version": PROMPT_DEV_VERSION,
+            "created_at_utc": _utc_now(),
+            **_example_overlap_report(
+                prompt_records=prompt_records,
+                eval_records_by_id={
+                    record["id"]: record for record in eval_records if isinstance(record.get("id"), str)
+                },
+                example_records_by_id=records_by_id,
+                blocked_core=blocked_core,
+                allow_same_property_examples=options.allow_same_property_examples,
+            ),
+        }
+        leakage_path = output_dir / "few_shot_leakage_scan.json"
+        overlap_json_path = output_dir / "few_shot_overlap_report.json"
+        overlap_md_path = output_dir / "few_shot_overlap_report.md"
+        write_json(leakage_path, leakage_scan)
+        write_json(overlap_json_path, overlap_report)
+        overlap_md_path.write_text(_overlap_report_markdown(overlap_report), encoding="utf-8")
+        few_shot_outputs = {
+            "few_shot_leakage_scan": str(leakage_path),
+            "few_shot_overlap_report_json": str(overlap_json_path),
+            "few_shot_overlap_report_markdown": str(overlap_md_path),
+        }
+        if not leakage_scan["model_visible_text_scan"]["passed"]:
+            raise ValueError(f"Few-shot model-visible leakage scan failed: {leakage_path}")
+        if any(not row["example_leakage_scan"].get("passed", False) for row in leakage_scan["example_payload_scans"]):
+            raise ValueError(f"Few-shot example payload leakage scan failed: {leakage_path}")
+        if not overlap_report["passed"]:
+            raise ValueError(f"Few-shot overlap report failed: {overlap_json_path}")
+
     with prompts_path.open("w", encoding="utf-8") as handle:
         for prompt_record in prompt_records:
             handle.write(json.dumps(prompt_record, ensure_ascii=False) + "\n")
@@ -963,8 +1574,11 @@ def render_prompt_dev_prompts(options: PromptDevRenderOptions) -> dict[str, Any]
         "inputs": {
             "classified_benchmark": str(options.classified_benchmark),
             "world_state": str(options.world_state),
-            "dev_manifest": str(options.dev_manifest),
+            "eval_manifest": str(eval_manifest_path),
+            "dev_manifest": str(eval_manifest_path),
+            "example_manifest": str(example_manifest_path) if example_manifest_path else None,
             "core_manifest": str(options.core_manifest) if options.core_manifest else None,
+            "support_set_manifest": str(options.support_set_manifest) if options.support_set_manifest else None,
             "sample_strategy": options.sample_strategy,
             "max_cases": options.max_cases,
             "track_filter": list(options.track_filter) if options.track_filter else None,
@@ -972,6 +1586,7 @@ def render_prompt_dev_prompts(options: PromptDevRenderOptions) -> dict[str, Any]
         "outputs": {
             "prompts_jsonl": str(prompts_path),
             "review_markdown": str(review_path),
+            **few_shot_outputs,
         },
         "counts": {
             "eval_cases": len(eval_records),
@@ -993,6 +1608,16 @@ def render_prompt_dev_prompts(options: PromptDevRenderOptions) -> dict[str, Any]
 
 
 def _prompt_review_markdown(prompt_records: list[dict[str, Any]], summary: dict[str, Any]) -> str:
+    schema_counts: dict[str, Counter[str]] = {}
+    example_count_by_task: Counter[str] = Counter()
+    for record in prompt_records:
+        task = str(record.get("task") or "unknown")
+        schema_counts.setdefault(task, Counter())
+        for example in record.get("examples", []):
+            if not isinstance(example, dict):
+                continue
+            example_count_by_task[task] += 1
+            schema_counts[task].update([str(example.get("task_schema") or "unknown")])
     lines = [
         "# Prompt Development Review",
         "",
@@ -1000,7 +1625,15 @@ def _prompt_review_markdown(prompt_records: list[dict[str, Any]], summary: dict[
         "",
         f"Rendered prompts: `{summary['counts']['rendered_prompts']}`",
         "",
+        "## Example Schema Summary",
+        "",
+        "| Task | Example count | Example schemas |",
+        "| --- | ---: | --- |",
     ]
+    for task, counts in sorted(schema_counts.items()):
+        schema_text = ", ".join(f"`{schema}`: {count}" for schema, count in sorted(counts.items())) or "n/a"
+        lines.append(f"| `{task}` | {example_count_by_task[task]} | {schema_text} |")
+    lines.append("")
     for record in prompt_records[:12]:
         lines.extend(
             [
@@ -1389,8 +2022,10 @@ def _render_routed_proposal_prompt_record(
     world_state_entry: dict[str, Any] | None,
     world_store: WorldStateStore,
     candidate_records: list[dict[str, Any]],
+    records_by_id: dict[str, dict[str, Any]],
     visible_case_ids: dict[str, str],
     blocked_core: dict[str, set[str]],
+    support_manifest: dict[str, Any] | None,
     options: PromptDevEvaluateOptions,
 ) -> dict[str, Any]:
     task = "a_box_repair" if proposal_track == "A_BOX" else "t_box_repair"
@@ -1401,40 +2036,21 @@ def _render_routed_proposal_prompt_record(
     )
     case_payload, context_audit = _bundle_payload_and_audit(record, world_state_entry, diagnosis_prompt_record["context_bundle"])
     case_payload = _model_visible_payload(case_payload, raw_case_id=raw_case_id, visible_case_id=visible_case_id)
-    examples = select_examples(
+    examples = _examples_for_prompt(
         eval_record=record,
-        candidate_records=candidate_records,
-        policy=diagnosis_prompt_record["example_policy"],
         task=task,
+        context_bundle=diagnosis_prompt_record["context_bundle"],
+        policy=diagnosis_prompt_record["example_policy"],
         seed=options.seed,
         example_count=options.example_count,
         blocked_core=blocked_core,
         allow_same_property=options.allow_same_property_examples,
+        candidate_records=candidate_records,
+        records_by_id=records_by_id,
+        visible_case_ids=visible_case_ids,
+        world_store=world_store,
+        support_manifest=support_manifest,
     )
-    for example in examples:
-        candidate = next((item for item in candidate_records if item.get("id") == example["case_id"]), None)
-        if candidate is None:
-            continue
-        candidate_raw_case_id = candidate["id"]
-        candidate_visible_case_id = visible_case_ids.get(
-            candidate_raw_case_id,
-            f"case_{_stable_hash(candidate_raw_case_id)[:12]}",
-        )
-        candidate_world = world_store.get(candidate["id"])
-        example_payload, _ = _bundle_payload_and_audit(candidate, candidate_world, diagnosis_prompt_record["context_bundle"])
-        example["input_payload"] = _model_visible_payload(
-            example_payload,
-            raw_case_id=candidate_raw_case_id,
-            visible_case_id=candidate_visible_case_id,
-        )
-        visible_output = _model_visible_output(
-            example.get("output_payload") if isinstance(example.get("output_payload"), dict) else None,
-            raw_case_id=candidate_raw_case_id,
-            visible_case_id=candidate_visible_case_id,
-        )
-        if visible_output is not None:
-            example["output_payload"] = visible_output
-        example["visible_case_id"] = candidate_visible_case_id
     rendered = render_prompt_dev_prompt(
         task=task,
         representation=diagnosis_prompt_record["representation"],
@@ -1453,6 +2069,7 @@ def _render_routed_proposal_prompt_record(
         "user_prompt": rendered.user_prompt,
         "response_format": rendered.response_format,
         "context_audit": context_audit,
+        "example_leakage_scan": _scan_examples_for_leakage(examples),
         "examples": [
             {key: value for key, value in example.items() if key != "input_payload"}
             for example in examples
@@ -1596,6 +2213,15 @@ def evaluate_prompt_dev_prompts(
     provider: ModelProvider | None = None,
 ) -> dict[str, Any]:
     log = logging.getLogger("prompt_dev")
+    eval_manifest_path = _eval_manifest_path(options)
+    example_manifest_path = _example_manifest_path(options)
+    support_manifest = _load_support_set_manifest(options.support_set_manifest)
+    support_source_manifest = (
+        Path(str(support_manifest["source_manifest"]))
+        if isinstance(support_manifest, dict) and isinstance(support_manifest.get("source_manifest"), str)
+        else None
+    )
+    candidate_manifest_path = example_manifest_path or support_source_manifest or eval_manifest_path
     output_dir = options.output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
     render_dir = output_dir / "rendered_prompts"
@@ -1604,7 +2230,8 @@ def evaluate_prompt_dev_prompts(
         PromptDevRenderOptions(
             classified_benchmark=options.classified_benchmark,
             world_state=options.world_state,
-            dev_manifest=options.dev_manifest,
+            eval_manifest=eval_manifest_path,
+            example_manifest=example_manifest_path,
             output_dir=render_dir,
             seed=options.seed,
             max_cases=options.max_cases,
@@ -1616,6 +2243,7 @@ def evaluate_prompt_dev_prompts(
             repair_track_modes=options.repair_track_modes,
             include_abstention=options.include_abstention,
             core_manifest=options.core_manifest,
+            support_set_manifest=options.support_set_manifest,
             example_count=options.example_count,
             allow_same_property_examples=options.allow_same_property_examples,
             sample_strategy=options.sample_strategy,
@@ -1634,18 +2262,23 @@ def evaluate_prompt_dev_prompts(
     log.info("evaluate: loading eval records")
     eval_records = _load_manifest_records(
         options.classified_benchmark,
-        options.dev_manifest,
+        eval_manifest_path,
         max_cases=options.max_cases,
         sample_strategy=options.sample_strategy,
         seed=options.seed,
         track_filter=options.track_filter,
     )
-    dev_manifest_payload = load_selection_manifest(options.dev_manifest)
+    eval_manifest_payload = load_selection_manifest(eval_manifest_path)
     log.info("evaluate: loaded eval records=%s", len(eval_records))
     records_by_id = {record["id"]: record for record in eval_records if isinstance(record.get("id"), str)}
     log.info("evaluate: loading candidate records for routed prompts and examples")
-    candidate_records = _load_all_manifest_records(options.classified_benchmark, options.dev_manifest)
-    visible_case_ids = _visible_case_id_map(candidate_records)
+    candidate_records = _load_all_manifest_records(options.classified_benchmark, candidate_manifest_path)
+    support_records_by_id = {
+        record["id"]: record
+        for record in candidate_records
+        if isinstance(record, dict) and isinstance(record.get("id"), str)
+    }
+    visible_case_ids = _visible_case_id_map([*eval_records, *candidate_records])
     blocked_core = _blocked_core_sets(options.core_manifest)
     log.info("evaluate: creating model provider endpoint=%s model=%s", options.model_endpoint or "env", options.model_name or "env")
     provider = provider or create_model_provider(options.model_name, model_endpoint=options.model_endpoint)
@@ -1780,8 +2413,10 @@ def evaluate_prompt_dev_prompts(
                         world_state_entry=world_state_entry,
                         world_store=world_store,
                         candidate_records=candidate_records,
+                        records_by_id=support_records_by_id,
                         visible_case_ids=visible_case_ids,
                         blocked_core=blocked_core,
+                        support_manifest=support_manifest,
                         options=options,
                     )
                     proposal_metadata = _prompt_record_metadata(
@@ -1974,7 +2609,7 @@ def evaluate_prompt_dev_prompts(
                 for gold in (
                     gold_patch_for_record(
                         record,
-                        annotation=(dev_manifest_payload.get("case_annotations") or {}).get(record.get("id"), {}),
+                        annotation=(eval_manifest_payload.get("case_annotations") or {}).get(record.get("id"), {}),
                     )
                     for record in tbox_records
                 )
@@ -1985,8 +2620,8 @@ def evaluate_prompt_dev_prompts(
             taxonomy_eval_summary = evaluate_tbox_taxonomy_patch_predictions(
                 gold_rows=gold_rows,
                 prediction_rows=prediction_rows,
-                case_annotations=dev_manifest_payload.get("case_annotations") or {},
-                gold_version=_tbox_taxonomy_gold_version_for_manifest(options.dev_manifest),
+                case_annotations=eval_manifest_payload.get("case_annotations") or {},
+                gold_version=_tbox_taxonomy_gold_version_for_manifest(eval_manifest_path),
             )
             write_json(taxonomy_eval_path, taxonomy_eval_summary)
         status_counts = (
@@ -2037,8 +2672,20 @@ def evaluate_prompt_dev_prompts(
         "inputs": {
             "classified_benchmark": str(options.classified_benchmark),
             "world_state": str(options.world_state),
-            "dev_manifest": str(options.dev_manifest),
+            "eval_manifest": str(eval_manifest_path),
+            "dev_manifest": str(eval_manifest_path),
+            "example_manifest": str(example_manifest_path) if example_manifest_path else None,
             "core_manifest": str(options.core_manifest) if options.core_manifest else None,
+            "support_set_manifest": str(options.support_set_manifest) if options.support_set_manifest else None,
+            "zero_shot_baseline_summary": str(options.zero_shot_baseline_summary)
+            if options.zero_shot_baseline_summary
+            else (
+                str(_default_zero_shot_baseline_summary_path())
+                if _uses_few_shot(options.example_policies)
+                and "zero_shot" not in options.example_policies
+                and _default_zero_shot_baseline_summary_path() is not None
+                else None
+            ),
             "render_summary": str(render_dir / "prompt_dev_render_summary.json"),
             "sample_strategy": options.sample_strategy,
             "max_cases": options.max_cases,
@@ -2056,11 +2703,19 @@ def evaluate_prompt_dev_prompts(
         },
         "results": results,
     }
+    render_outputs = render_summary.get("outputs") if isinstance(render_summary.get("outputs"), dict) else {}
+    for key in (
+        "few_shot_leakage_scan",
+        "few_shot_overlap_report_json",
+        "few_shot_overlap_report_markdown",
+    ):
+        if isinstance(render_outputs.get(key), str):
+            summary["outputs"][key] = render_outputs[key]
     diagnosis_report = _write_track_diagnosis_report(
         output_dir=output_dir,
         results=results,
         eval_records=eval_records,
-        manifest=dev_manifest_payload,
+        manifest=eval_manifest_payload,
     )
     if diagnosis_report:
         summary["outputs"]["track_diagnosis_report_json"] = str(output_dir / "track_diagnosis_report.json")
@@ -2068,6 +2723,27 @@ def evaluate_prompt_dev_prompts(
         summary["track_diagnosis_report"] = {
             "matrix_count": len(diagnosis_report.get("matrices", [])),
             "gates": diagnosis_report.get("gates"),
+        }
+    if _uses_few_shot(options.example_policies):
+        baseline_path = options.zero_shot_baseline_summary
+        if baseline_path is None and "zero_shot" not in options.example_policies:
+            baseline_path = _default_zero_shot_baseline_summary_path()
+        zero_shot_baseline_summary = _load_zero_shot_baseline_summary(baseline_path)
+        few_shot_config, few_shot_report = _few_shot_reports(
+            summary=summary,
+            output_dir=output_dir,
+            diagnosis_report=diagnosis_report,
+            zero_shot_baseline_summary=zero_shot_baseline_summary,
+        )
+        summary["outputs"]["few_shot_run_config"] = str(output_dir / "few_shot_run_config.json")
+        summary["outputs"]["few_shot_delta_vs_zero_shot_json"] = str(output_dir / "few_shot_delta_vs_zero_shot.json")
+        summary["outputs"]["few_shot_delta_vs_zero_shot_markdown"] = str(output_dir / "few_shot_delta_vs_zero_shot.md")
+        summary["few_shot_report"] = {
+            "condition_count": len(few_shot_config.get("few_shot_conditions", {})),
+            "a_box_comparison_count": len(few_shot_report.get("sections", {}).get("a_box", [])),
+            "t_box_comparison_count": len(few_shot_report.get("sections", {}).get("t_box_taxonomy_patch", [])),
+            "diagnosis_comparison_count": len(few_shot_report.get("sections", {}).get("diagnosis", [])),
+            "unmatched_few_shot_matrix_count": len(few_shot_report.get("unmatched_few_shot_matrix_ids", [])),
         }
     summary_path = output_dir / "prompt_dev_evaluation_summary.json"
     write_json(summary_path, summary)
@@ -2324,6 +3000,526 @@ def _write_track_diagnosis_report(
     write_json(output_dir / "track_diagnosis_report.json", report)
     (output_dir / "track_diagnosis_report.md").write_text(_track_diagnosis_report_markdown(report), encoding="utf-8")
     return report
+
+
+def _result_key(result: dict[str, Any]) -> tuple[Any, ...]:
+    return (
+        result.get("task"),
+        result.get("representation"),
+        result.get("context_bundle"),
+        result.get("track_mode"),
+    )
+
+
+def _few_shot_condition(policy: str) -> dict[str, str]:
+    if policy == "static_diverse_kshot":
+        return {
+            "selection_type": "static_support_set",
+            "paper_status": "paper-facing",
+            "interpretation": "Static few-shot oracle ablation.",
+        }
+    return {
+        "selection_type": "dynamic_retrieval",
+        "paper_status": "exploratory",
+        "interpretation": "Dynamic retrieval ablation; do not merge with paper-facing static few-shot results.",
+    }
+
+
+def _metric_value(metrics: dict[str, Any], key: str) -> float | int | None:
+    value = metrics.get(key)
+    if isinstance(value, dict):
+        rate = value.get("rate")
+        return rate if isinstance(rate, (int, float)) else None
+    return value if isinstance(value, (int, float)) else None
+
+
+def _metric_delta(zero_value: float | int | None, few_value: float | int | None) -> float | None:
+    if not isinstance(zero_value, (int, float)) or not isinstance(few_value, (int, float)):
+        return None
+    return float(few_value) - float(zero_value)
+
+
+def _comparison_metric(
+    *,
+    zero_value: float | int | None,
+    few_value: float | int | None,
+    source: str,
+) -> dict[str, Any]:
+    return {
+        "zero_shot": zero_value,
+        "few_shot": few_value,
+        "delta": _metric_delta(zero_value, few_value),
+        "source": source,
+        "available": isinstance(zero_value, (int, float)) and isinstance(few_value, (int, float)),
+    }
+
+
+def _load_matrix_evaluation_summary(result: dict[str, Any]) -> dict[str, Any]:
+    path = result.get("evaluation_summary")
+    if not isinstance(path, str) or not path:
+        return {}
+    summary_path = Path(path)
+    if not summary_path.exists():
+        return {}
+    return json.loads(summary_path.read_text(encoding="utf-8"))
+
+
+def _group_metrics(result: dict[str, Any], group_name: str, group_key: str) -> dict[str, Any]:
+    summary = _load_matrix_evaluation_summary(result)
+    group = summary.get(group_name, {})
+    if not isinstance(group, dict):
+        return {}
+    metrics = group.get(group_key, {})
+    return metrics if isinstance(metrics, dict) else {}
+
+
+def _status_rate(result: dict[str, Any], status: str) -> float | None:
+    counts = result.get("counts", {})
+    by_status = counts.get("by_parse_status", {}) if isinstance(counts, dict) else {}
+    total = sum(value for value in by_status.values() if isinstance(value, int))
+    count = by_status.get(status)
+    if not isinstance(count, int) or total == 0:
+        return None
+    return count / total
+
+
+def _parse_error_rate(result: dict[str, Any]) -> float | None:
+    parse_errors = result.get("parse_errors", {})
+    if isinstance(parse_errors, dict) and isinstance(parse_errors.get("proposal_parse_error_rate"), (int, float)):
+        return parse_errors["proposal_parse_error_rate"]
+    metrics = result.get("overall_metrics", {})
+    return _metric_value(metrics if isinstance(metrics, dict) else {}, "proposal_parse_error_rate")
+
+
+def _usage_totals(result: dict[str, Any]) -> dict[str, Any]:
+    manifest_path = Path(result.get("output_dir", "")) / "run_manifest.jsonl"
+    rows = list(iter_jsonl(manifest_path)) if manifest_path.exists() else []
+    fields = ("prompt_tokens", "completion_tokens", "total_tokens", "cached_tokens", "estimated_cost_usd")
+    totals: dict[str, int | float | None] = {field: 0 for field in fields}
+    observed: Counter[str] = Counter()
+    elapsed_total = 0.0
+    elapsed_count = 0
+    for row in rows:
+        usage = row.get("usage") if isinstance(row, dict) else None
+        if not isinstance(usage, dict):
+            continue
+        for field in fields:
+            value = usage.get(field)
+            if isinstance(value, (int, float)):
+                totals[field] += value
+                observed[field] += 1
+        elapsed = usage.get("elapsed_seconds")
+        if isinstance(elapsed, (int, float)):
+            elapsed_total += float(elapsed)
+            elapsed_count += 1
+    for field in fields:
+        if observed[field] == 0:
+            totals[field] = None
+    return {
+        **totals,
+        "elapsed_seconds_total": elapsed_total if elapsed_count else None,
+        "elapsed_seconds_mean": elapsed_total / elapsed_count if elapsed_count else None,
+        "rows_with_usage": max(observed.values()) if observed else 0,
+        "rows_total": len(rows),
+    }
+
+
+def _usage_comparison(zero: dict[str, Any], few: dict[str, Any]) -> dict[str, Any]:
+    fields = (
+        "prompt_tokens",
+        "completion_tokens",
+        "total_tokens",
+        "cached_tokens",
+        "estimated_cost_usd",
+        "elapsed_seconds_total",
+        "elapsed_seconds_mean",
+    )
+    return {
+        field: _comparison_metric(zero_value=zero.get(field), few_value=few.get(field), source="run_manifest.usage")
+        for field in fields
+    }
+
+
+def _comparison_key_payload(result: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "task": result.get("task"),
+        "representation": result.get("representation"),
+        "context_bundle": result.get("context_bundle"),
+        "track_mode": result.get("track_mode"),
+    }
+
+
+def _a_box_comparison(zero: dict[str, Any], few: dict[str, Any]) -> dict[str, Any]:
+    zero_a = _group_metrics(zero, "by_track", "A_BOX") or zero.get("overall_metrics", {})
+    few_a = _group_metrics(few, "by_track", "A_BOX") or few.get("overall_metrics", {})
+    metrics = {
+        "overall_a_box_accepted": _comparison_metric(
+            zero_value=_metric_value(zero_a, "accepted_rate"),
+            few_value=_metric_value(few_a, "accepted_rate"),
+            source="evaluation_summary.by_track.A_BOX.accepted_rate",
+        ),
+        "typea_accepted": _comparison_metric(
+            zero_value=_metric_value(_group_metrics(zero, "by_class", "TypeA"), "accepted_rate"),
+            few_value=_metric_value(_group_metrics(few, "by_class", "TypeA"), "accepted_rate"),
+            source="evaluation_summary.by_class.TypeA.accepted_rate",
+        ),
+        "typeb_accepted": _comparison_metric(
+            zero_value=_metric_value(_group_metrics(zero, "by_class", "TypeB"), "accepted_rate"),
+            few_value=_metric_value(_group_metrics(few, "by_class", "TypeB"), "accepted_rate"),
+            source="evaluation_summary.by_class.TypeB.accepted_rate",
+        ),
+        "typec_accepted": _comparison_metric(
+            zero_value=_metric_value(_group_metrics(zero, "by_class", "TypeC"), "accepted_rate"),
+            few_value=_metric_value(_group_metrics(few, "by_class", "TypeC"), "accepted_rate"),
+            source="evaluation_summary.by_class.TypeC.accepted_rate",
+        ),
+        "a_box_exact_value": _comparison_metric(
+            zero_value=_metric_value(zero_a, "a_box_exact_value_match_rate"),
+            few_value=_metric_value(few_a, "a_box_exact_value_match_rate"),
+            source="evaluation_summary.by_track.A_BOX.a_box_exact_value_match_rate",
+        ),
+        "a_box_exact_action": _comparison_metric(
+            zero_value=_metric_value(zero_a, "a_box_exact_action_match_rate"),
+            few_value=_metric_value(few_a, "a_box_exact_action_match_rate"),
+            source="evaluation_summary.by_track.A_BOX.a_box_exact_action_match_rate",
+        ),
+        "a_box_regression_pass": _comparison_metric(
+            zero_value=_metric_value(zero_a, "a_box_regression_pass_rate"),
+            few_value=_metric_value(few_a, "a_box_regression_pass_rate"),
+            source="evaluation_summary.by_track.A_BOX.a_box_regression_pass_rate",
+        ),
+        "overdelete_rate": _comparison_metric(zero_value=None, few_value=None, source="not available in summary"),
+        "empty_ops_rate": _comparison_metric(
+            zero_value=_status_rate(zero, "non_executable_empty_ops"),
+            few_value=_status_rate(few, "non_executable_empty_ops"),
+            source="run_manifest.parse_status.non_executable_empty_ops",
+        ),
+        "constraint_type_qid_as_value_rate": _comparison_metric(
+            zero_value=None,
+            few_value=None,
+            source="not available in summary",
+        ),
+        "parse_error_rate": _comparison_metric(
+            zero_value=_parse_error_rate(zero),
+            few_value=_parse_error_rate(few),
+            source="evaluation_summary.parse_errors.proposal_parse_error_rate",
+        ),
+    }
+    return {
+        "comparison_key": _comparison_key_payload(few),
+        "zero_shot_matrix_id": zero.get("matrix_id"),
+        "few_shot_matrix_id": few.get("matrix_id"),
+        "few_shot_policy": few.get("example_policy"),
+        **_few_shot_condition(str(few.get("example_policy"))),
+        "metrics": metrics,
+        "token_cost_latency_overhead": _usage_comparison(_usage_totals(zero), _usage_totals(few)),
+    }
+
+
+def _tbox_metric_comparison(
+    zero_metrics: dict[str, Any],
+    few_metrics: dict[str, Any],
+    key: str,
+    source: str = "tbox_taxonomy_patch_metrics",
+) -> dict[str, Any]:
+    return _comparison_metric(
+        zero_value=_metric_value(zero_metrics, key),
+        few_value=_metric_value(few_metrics, key),
+        source=f"{source}.{key}",
+    )
+
+
+def _load_tbox_taxonomy_summary(result: dict[str, Any]) -> dict[str, Any]:
+    path = result.get("tbox_taxonomy_patch_evaluation_summary")
+    if not isinstance(path, str) or not path:
+        return {}
+    summary_path = Path(path)
+    if not summary_path.exists():
+        return {}
+    return json.loads(summary_path.read_text(encoding="utf-8"))
+
+
+def _out_of_current_gold_operation_fp_rate(result: dict[str, Any]) -> float | None:
+    summary = _load_tbox_taxonomy_summary(result)
+    report = (
+        summary.get("diagnostic_reports", {})
+        .get("out_of_current_gold_operation_false_positive_rates", {})
+    )
+    value = report.get("overall_out_of_current_gold_false_positive_rate") if isinstance(report, dict) else None
+    return value if isinstance(value, (int, float)) else None
+
+
+def _t_box_comparison(zero: dict[str, Any], few: dict[str, Any]) -> dict[str, Any]:
+    zero_metrics = zero.get("tbox_taxonomy_patch_metrics", {})
+    few_metrics = few.get("tbox_taxonomy_patch_metrics", {})
+    zero_metrics = zero_metrics if isinstance(zero_metrics, dict) else {}
+    few_metrics = few_metrics if isinstance(few_metrics, dict) else {}
+    metrics = {
+        "family_level_success": _tbox_metric_comparison(zero_metrics, few_metrics, "tbox_patch_family_level_success"),
+        "schema_decision_match": _tbox_metric_comparison(
+            zero_metrics, few_metrics, "tbox_patch_schema_decision_match_rate"
+        ),
+        "taxonomy_code_match": _tbox_metric_comparison(
+            zero_metrics, few_metrics, "tbox_patch_taxonomy_code_exact_match_rate"
+        ),
+        "taxonomy_level_success": _tbox_metric_comparison(
+            zero_metrics, few_metrics, "tbox_patch_taxonomy_level_success"
+        ),
+        "constraint_family_f1": _tbox_metric_comparison(zero_metrics, few_metrics, "tbox_patch_constraint_family_f1"),
+        "repair_op_f1": _tbox_metric_comparison(zero_metrics, few_metrics, "tbox_patch_repair_op_f1"),
+        "value_delta_f1_when_applicable": _tbox_metric_comparison(
+            zero_metrics,
+            few_metrics,
+            "tbox_patch_value_delta_f1_when_applicable",
+        ),
+        "value_delta_claimed_when_gold_absent": _tbox_metric_comparison(
+            zero_metrics,
+            few_metrics,
+            "tbox_patch_value_delta_claimed_when_gold_absent_rate",
+        ),
+        "family_only_when_value_delta_gold_present": _tbox_metric_comparison(
+            zero_metrics,
+            few_metrics,
+            "tbox_patch_family_only_when_value_delta_gold_present_rate",
+        ),
+        "out_of_current_gold_operation_false_positive_rate": _comparison_metric(
+            zero_value=_out_of_current_gold_operation_fp_rate(zero),
+            few_value=_out_of_current_gold_operation_fp_rate(few),
+            source=(
+                "tbox_taxonomy_patch_evaluation_summary.diagnostic_reports."
+                "out_of_current_gold_operation_false_positive_rates"
+            ),
+        ),
+        "parse_error_rate": _tbox_metric_comparison(zero_metrics, few_metrics, "tbox_patch_parse_error_rate"),
+    }
+    return {
+        "comparison_key": _comparison_key_payload(few),
+        "zero_shot_matrix_id": zero.get("matrix_id"),
+        "few_shot_matrix_id": few.get("matrix_id"),
+        "few_shot_policy": few.get("example_policy"),
+        **_few_shot_condition(str(few.get("example_policy"))),
+        "metrics": metrics,
+        "token_cost_latency_overhead": _usage_comparison(_usage_totals(zero), _usage_totals(few)),
+    }
+
+
+def _diagnosis_by_matrix(diagnosis_report: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
+    if not diagnosis_report:
+        return {}
+    matrices = diagnosis_report.get("matrices", [])
+    return {
+        matrix.get("matrix_id"): matrix
+        for matrix in matrices
+        if isinstance(matrix, dict) and isinstance(matrix.get("matrix_id"), str)
+    }
+
+
+def _diagnosis_comparison(
+    zero: dict[str, Any],
+    few: dict[str, Any],
+    diagnosis_matrices: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    zero_metrics = diagnosis_matrices.get(str(zero.get("matrix_id")), {}).get("metrics", {})
+    few_metrics = diagnosis_matrices.get(str(few.get("matrix_id")), {}).get("metrics", {})
+    zero_metrics = zero_metrics if isinstance(zero_metrics, dict) else {}
+    few_metrics = few_metrics if isinstance(few_metrics, dict) else {}
+    return {
+        "comparison_key": _comparison_key_payload(few),
+        "zero_shot_matrix_id": zero.get("matrix_id"),
+        "few_shot_matrix_id": few.get("matrix_id"),
+        "few_shot_policy": few.get("example_policy"),
+        **_few_shot_condition(str(few.get("example_policy"))),
+        "metrics": {
+            key: _comparison_metric(
+                zero_value=_metric_value(zero_metrics, key),
+                few_value=_metric_value(few_metrics, key),
+                source=f"track_diagnosis_report.metrics.{key}",
+            )
+            for key in (
+                "balanced_accuracy",
+                "a_box_recall",
+                "t_box_recall",
+                "ambiguous_rate",
+                "wrong_route_rate",
+                "parse_error_rate",
+            )
+        },
+        "token_cost_latency_overhead": _usage_comparison(_usage_totals(zero), _usage_totals(few)),
+    }
+
+
+def _few_shot_reports(
+    *,
+    summary: dict[str, Any],
+    output_dir: Path,
+    diagnosis_report: dict[str, Any] | None,
+    zero_shot_baseline_summary: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    results = [result for result in summary.get("results", []) if isinstance(result, dict)]
+    baseline_results = []
+    if isinstance(zero_shot_baseline_summary, dict):
+        baseline_results = [
+            result for result in zero_shot_baseline_summary.get("results", []) if isinstance(result, dict)
+        ]
+    zero_by_key = {
+        _result_key(result): result
+        for result in [*baseline_results, *results]
+        if result.get("example_policy") == "zero_shot"
+    }
+    diagnosis_matrices = _diagnosis_by_matrix(diagnosis_report)
+    report: dict[str, Any] = {
+        "manifest_type": "prompt_dev_few_shot_delta_vs_zero_shot",
+        "manifest_version": PROMPT_DEV_VERSION,
+        "created_at_utc": _utc_now(),
+        "run_id": summary.get("run_id"),
+        "provider": summary.get("provider"),
+        "model": summary.get("model"),
+        "zero_shot_baseline": {
+            "source": (
+                zero_shot_baseline_summary.get("_summary_path")
+                or (
+                    zero_shot_baseline_summary.get("outputs", {}).get("summary")
+                    if isinstance(zero_shot_baseline_summary.get("outputs"), dict)
+                    else None
+                )
+            )
+            if isinstance(zero_shot_baseline_summary, dict)
+            else None,
+            "run_id": zero_shot_baseline_summary.get("run_id") if isinstance(zero_shot_baseline_summary, dict) else None,
+            "manifest_version": zero_shot_baseline_summary.get("manifest_version")
+            if isinstance(zero_shot_baseline_summary, dict)
+            else None,
+        },
+        "comparison_rule": "Match few-shot matrices to zero-shot by task, representation, context bundle, and track mode.",
+        "headline_policy": "No aggregate A-box/T-box headline is computed.",
+        "sections": {"a_box": [], "t_box_taxonomy_patch": [], "diagnosis": []},
+        "unmatched_few_shot_matrix_ids": [],
+    }
+    for few in results:
+        policy = few.get("example_policy")
+        if not isinstance(policy, str) or policy == "zero_shot":
+            continue
+        zero = zero_by_key.get(_result_key(few))
+        if zero is None:
+            report["unmatched_few_shot_matrix_ids"].append(few.get("matrix_id"))
+            continue
+        if few.get("task") == "track_diagnosis":
+            report["sections"]["diagnosis"].append(_diagnosis_comparison(zero, few, diagnosis_matrices))
+            continue
+        track_counts = few.get("counts", {}).get("by_historical_track", {})
+        if isinstance(track_counts, dict) and track_counts.get("A_BOX", 0):
+            report["sections"]["a_box"].append(_a_box_comparison(zero, few))
+        if isinstance(track_counts, dict) and track_counts.get("T_BOX", 0):
+            report["sections"]["t_box_taxonomy_patch"].append(_t_box_comparison(zero, few))
+
+    config = {
+        "manifest_type": "prompt_dev_few_shot_run_config",
+        "manifest_version": PROMPT_DEV_VERSION,
+        "created_at_utc": _utc_now(),
+        "run_id": summary.get("run_id"),
+        "provider": summary.get("provider"),
+        "model": summary.get("model"),
+        "inputs": summary.get("inputs", {}),
+        "few_shot_conditions": {
+            policy: _few_shot_condition(policy)
+            for policy in sorted(
+                {
+                    result.get("example_policy")
+                    for result in results
+                    if isinstance(result.get("example_policy"), str) and result.get("example_policy") != "zero_shot"
+                }
+            )
+        },
+        "artifact_role": (
+            "paper-facing only for static_diverse_kshot comparisons; dynamic retrieval policies are exploratory."
+        ),
+        "zero_shot_baseline": report["zero_shot_baseline"],
+        "matrix_usage_totals": {result["matrix_id"]: _usage_totals(result) for result in results if "matrix_id" in result},
+    }
+    write_json(output_dir / "few_shot_run_config.json", config)
+    write_json(output_dir / "few_shot_delta_vs_zero_shot.json", report)
+    (output_dir / "few_shot_delta_vs_zero_shot.md").write_text(_few_shot_delta_markdown(report), encoding="utf-8")
+    return config, report
+
+
+def _format_metric_cell(value: Any) -> str:
+    if isinstance(value, (int, float)):
+        return f"{value:.3f}"
+    return "n/a"
+
+
+def _few_shot_delta_markdown(report: dict[str, Any]) -> str:
+    lines = [
+        "# Few-Shot Delta vs Zero-Shot",
+        "",
+        f"Run id: `{report.get('run_id')}`",
+        "",
+        "A-box, T-box taxonomy-patch, and diagnosis metrics are reported separately. "
+        "No combined A-box/T-box headline is computed.",
+        "",
+        "Static few-shot (`static_diverse_kshot`) is paper-facing. Dynamic retrieval policies are exploratory.",
+        "",
+        "Token, cost, and latency overhead are included per comparison from `run_manifest.jsonl` usage fields.",
+        "",
+    ]
+    section_titles = {
+        "a_box": "A-Box",
+        "t_box_taxonomy_patch": "T-Box Taxonomy Patch",
+        "diagnosis": "Diagnosis",
+    }
+    for section_key, title in section_titles.items():
+        lines.extend(
+            [
+                f"## {title}",
+                "",
+                "| Few-shot matrix | Zero-shot matrix | Policy | Selection | Paper status | Metric | Zero-shot | Few-shot | Delta |",
+                "| --- | --- | --- | --- | --- | --- | ---: | ---: | ---: |",
+            ]
+        )
+        comparisons = report.get("sections", {}).get(section_key, [])
+        if not comparisons:
+            lines.append("| n/a | n/a | n/a | n/a | n/a | No comparisons available | n/a | n/a | n/a |")
+        for comparison in comparisons:
+            for metric_name, metric in comparison.get("metrics", {}).items():
+                lines.append(
+                    " | ".join(
+                        [
+                            f"| `{comparison.get('few_shot_matrix_id')}`",
+                            f"`{comparison.get('zero_shot_matrix_id')}`",
+                            f"`{comparison.get('few_shot_policy')}`",
+                            f"`{comparison.get('selection_type')}`",
+                            comparison.get("paper_status", ""),
+                            metric_name,
+                            _format_metric_cell(metric.get("zero_shot")),
+                            _format_metric_cell(metric.get("few_shot")),
+                            _format_metric_cell(metric.get("delta")) + " |",
+                        ]
+                    )
+                )
+            overhead = comparison.get("token_cost_latency_overhead", {})
+            for metric_name, metric in overhead.items():
+                lines.append(
+                    " | ".join(
+                        [
+                            f"| `{comparison.get('few_shot_matrix_id')}`",
+                            f"`{comparison.get('zero_shot_matrix_id')}`",
+                            f"`{comparison.get('few_shot_policy')}`",
+                            f"`{comparison.get('selection_type')}`",
+                            comparison.get("paper_status", ""),
+                            f"overhead_{metric_name}",
+                            _format_metric_cell(metric.get("zero_shot")),
+                            _format_metric_cell(metric.get("few_shot")),
+                            _format_metric_cell(metric.get("delta")) + " |",
+                        ]
+                    )
+                )
+        lines.append("")
+    if report.get("unmatched_few_shot_matrix_ids"):
+        lines.extend(["## Unmatched Few-Shot Matrices", ""])
+        for matrix_id in report["unmatched_few_shot_matrix_ids"]:
+            lines.append(f"- `{matrix_id}`")
+        lines.append("")
+    return "\n".join(lines)
 
 
 def _format_rate(value: Any) -> str:

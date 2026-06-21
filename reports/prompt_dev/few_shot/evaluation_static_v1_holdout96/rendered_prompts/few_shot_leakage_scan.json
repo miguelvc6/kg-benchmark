@@ -1,0 +1,3298 @@
+{
+  "manifest_type": "few_shot_leakage_scan",
+  "manifest_version": "prompt_dev_v5_tbox_taxonomy_patch",
+  "created_at_utc": "2026-06-18T14:56:49Z",
+  "model_visible_text_scan": {
+    "passed": true,
+    "prompt_count": 192,
+    "hard_matches": [],
+    "benign_text_matches": [
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q72476453_2424569289",
+        "kind": "term",
+        "value": "classification"
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q72514377_2425438988",
+        "kind": "term",
+        "value": "classification"
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q27270667_2424882729",
+        "kind": "term",
+        "value": "classification"
+      }
+    ],
+    "rows": [
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q20563062_2442324454",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q20563062_2442324454",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q115933554_P31_2442704771",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q115933554_P31_2442704771",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q18034993_P2293_2433261501",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q18034993_P2293_2433261501",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q3092348_1290289215",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q3092348_1290289215",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q2677285_2425228606",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q2677285_2425228606",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q100541019_1295683310",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q100541019_1295683310",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q135514524_2404099048",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q135514524_2404099048",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q2563437_P1292_2440505308",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q2563437_P1292_2440505308",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q72476453_2424569289",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q72476453_2424569289",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q63900775_2333546182",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q63900775_2333546182",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q67406034_2333806446",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q67406034_2333806446",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q72514377_2425438988",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q72514377_2425438988",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q23222572_P645_690339121",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q23222572_P645_690339121",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q23183630_P644_722137948",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q23183630_P644_722137948",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q60682885_2442336143",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q60682885_2442336143",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q58310204_P6004_1800952303",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q58310204_P6004_1800952303",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q105516185_P5045_2408609469",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q105516185_P5045_2408609469",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q97664834_P4381_2418670693",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q97664834_P4381_2418670693",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q22101130_P1782_2252283680",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q22101130_P1782_2252283680",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q29123009_P481_2317303689",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q29123009_P481_2317303689",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q114758296_P10225_2403749973",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q114758296_P10225_2403749973",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q1410_P9241_2407961125",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q1410_P9241_2407961125",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q12999474_P282_1715882061",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q12999474_P282_1715882061",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q18967834_2445052932",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q18967834_2445052932",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q59870066_P3382_990960789",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q59870066_P3382_990960789",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q77281_2297186429",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q77281_2297186429",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q15879933_P7504_2410670722",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q15879933_P7504_2410670722",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q513185_P1368_2329221897",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q513185_P1368_2329221897",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q544767_2425344764",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q544767_2425344764",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q213513_2309952651",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q213513_2309952651",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q134383336_P20_2442859490",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q134383336_P20_2442859490",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q15377916_P4162_2385729735",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q15377916_P4162_2385729735",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q100545025_1295686209",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q100545025_1295686209",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q1505165_2297182764",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q1505165_2297182764",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q135514273_2404099987",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q135514273_2404099987",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q37070489_P3370_2381040789",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q37070489_P3370_2381040789",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q130389142_P4275_2356827847",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q130389142_P4275_2356827847",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q117185132_2399414360",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q117185132_2399414360",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q1872168_2297168391",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q1872168_2297168391",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q3939898_P4216_2361580316",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q3939898_P4216_2361580316",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q179294_P5082_2442820132",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q179294_P5082_2442820132",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q3839614_P3954_2091124869",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q3839614_P3954_2091124869",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q113344064_2431863793",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q113344064_2431863793",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q29041706_P356_2447249541",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q29041706_P356_2447249541",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q990819_2439880803",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q990819_2439880803",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q439712_P1770_2433393062",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q439712_P1770_2433393062",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q40470175_2441937278",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q40470175_2441937278",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q49005278_P403_2442802452",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q49005278_P403_2442802452",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q11586656_P528_2440224137",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q11586656_P528_2440224137",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q130750019_P9307_2349186400",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q130750019_P9307_2349186400",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q17604476_P242_1687213130",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q17604476_P242_1687213130",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q98848217_P9160_2441138672",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q98848217_P9160_2441138672",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q15557889_2445321661",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q15557889_2445321661",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q54790216_2446942723",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q54790216_2446942723",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q1758639_2367143297",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q1758639_2367143297",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q1068701_2435145587",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q1068701_2435145587",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q21637802_2446577397",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q21637802_2446577397",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q131148728_2447350025",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q131148728_2447350025",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q123265196_2166568597",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q123265196_2166568597",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q1097539_2297192312",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q1097539_2297192312",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q3290762_P4529_2172698999",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q3290762_P4529_2172698999",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q11632273_P1786_2026755025",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q11632273_P1786_2026755025",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q27270667_2424882729",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q27270667_2424882729",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q100542513_1295674485",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q100542513_1295674485",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q1228759_2443517062",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q1228759_2443517062",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q67576157_P7261_2445366058",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q67576157_P7261_2445366058",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q12306457_2445808318",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q12306457_2445808318",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q164149_2086419834",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q164149_2086419834",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q135505548_2404100597",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q135505548_2404100597",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q52412845_2445342378",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q52412845_2445342378",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q17555344_P613_2439848360",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q17555344_P613_2439848360",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q6411517_P140_1858269104",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q6411517_P140_1858269104",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q63904781_2333565896",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q63904781_2333565896",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q67587162_P7261_2445366058",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q67587162_P7261_2445366058",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q135501807_2388780852",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q135501807_2388780852",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q22160576_2388176421",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q22160576_2388176421",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q74781984_2447348164",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q74781984_2447348164",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q863254_2444461637",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q863254_2444461637",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q12204_P5082_2442820132",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q12204_P5082_2442820132",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q95552174_2447348752",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q95552174_2447348752",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q3226689_P460_2370378152",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q3226689_P460_2370378152",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q136822147_2441521861",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q136822147_2441521861",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q129172278_P50_2441781084",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q129172278_P50_2441781084",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q2060553_P3137_2428712581",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q2060553_P3137_2428712581",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q10543829_P2193_2431371575",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q10543829_P2193_2431371575",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q254745_P1346_1580835843",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q254745_P1346_1580835843",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q67409647_2333810791",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q67409647_2333810791",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q190122_P691_2445073477",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q190122_P691_2445073477",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q3246281_2446212835",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q3246281_2446212835",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q100264032_P476_2417146821",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q100264032_P476_2417146821",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q15937515_P7937_2439061952",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q15937515_P7937_2439061952",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q100538531_1295695148",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q100538531_1295695148",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q107164796_P950_2330325818",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q107164796_P950_2330325818",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q3468344_P1140_2143686910",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q3468344_P1140_2143686910",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q134470993_P535_2443240310",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "reform_Q134470993_P535_2443240310",
+        "task": "t_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q110278679_2446687920",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q110278679_2446687920",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      }
+    ]
+  },
+  "example_payload_scans": [
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q20563062_2442324454",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q20563062_2442324454",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q115933554_P31_2442704771",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q115933554_P31_2442704771",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q18034993_P2293_2433261501",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q18034993_P2293_2433261501",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q3092348_1290289215",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q3092348_1290289215",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q2677285_2425228606",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q2677285_2425228606",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q100541019_1295683310",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q100541019_1295683310",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q135514524_2404099048",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q135514524_2404099048",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q2563437_P1292_2440505308",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q2563437_P1292_2440505308",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q72476453_2424569289",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q72476453_2424569289",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q63900775_2333546182",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q63900775_2333546182",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q67406034_2333806446",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q67406034_2333806446",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q72514377_2425438988",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q72514377_2425438988",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q23222572_P645_690339121",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q23222572_P645_690339121",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q23183630_P644_722137948",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q23183630_P644_722137948",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q60682885_2442336143",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q60682885_2442336143",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q58310204_P6004_1800952303",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q58310204_P6004_1800952303",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q105516185_P5045_2408609469",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q105516185_P5045_2408609469",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q97664834_P4381_2418670693",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q97664834_P4381_2418670693",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q22101130_P1782_2252283680",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q22101130_P1782_2252283680",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q29123009_P481_2317303689",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q29123009_P481_2317303689",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q114758296_P10225_2403749973",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q114758296_P10225_2403749973",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q1410_P9241_2407961125",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q1410_P9241_2407961125",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q12999474_P282_1715882061",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q12999474_P282_1715882061",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q18967834_2445052932",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q18967834_2445052932",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q59870066_P3382_990960789",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q59870066_P3382_990960789",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q77281_2297186429",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q77281_2297186429",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q15879933_P7504_2410670722",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q15879933_P7504_2410670722",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q513185_P1368_2329221897",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q513185_P1368_2329221897",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q544767_2425344764",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q544767_2425344764",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q213513_2309952651",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q213513_2309952651",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q134383336_P20_2442859490",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q134383336_P20_2442859490",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q15377916_P4162_2385729735",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q15377916_P4162_2385729735",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q100545025_1295686209",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q100545025_1295686209",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q1505165_2297182764",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q1505165_2297182764",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q135514273_2404099987",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q135514273_2404099987",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q37070489_P3370_2381040789",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q37070489_P3370_2381040789",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q130389142_P4275_2356827847",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q130389142_P4275_2356827847",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q117185132_2399414360",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q117185132_2399414360",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q1872168_2297168391",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q1872168_2297168391",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q3939898_P4216_2361580316",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q3939898_P4216_2361580316",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q179294_P5082_2442820132",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q179294_P5082_2442820132",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q3839614_P3954_2091124869",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q3839614_P3954_2091124869",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q113344064_2431863793",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q113344064_2431863793",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q29041706_P356_2447249541",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q29041706_P356_2447249541",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q990819_2439880803",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q990819_2439880803",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q439712_P1770_2433393062",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q439712_P1770_2433393062",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q40470175_2441937278",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q40470175_2441937278",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q49005278_P403_2442802452",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q49005278_P403_2442802452",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q11586656_P528_2440224137",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q11586656_P528_2440224137",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q130750019_P9307_2349186400",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q130750019_P9307_2349186400",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q17604476_P242_1687213130",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q17604476_P242_1687213130",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q98848217_P9160_2441138672",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q98848217_P9160_2441138672",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q15557889_2445321661",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q15557889_2445321661",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q54790216_2446942723",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q54790216_2446942723",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q1758639_2367143297",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q1758639_2367143297",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q1068701_2435145587",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q1068701_2435145587",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q21637802_2446577397",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q21637802_2446577397",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q131148728_2447350025",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q131148728_2447350025",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q123265196_2166568597",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q123265196_2166568597",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q1097539_2297192312",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q1097539_2297192312",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q3290762_P4529_2172698999",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q3290762_P4529_2172698999",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q11632273_P1786_2026755025",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q11632273_P1786_2026755025",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q27270667_2424882729",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q27270667_2424882729",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q100542513_1295674485",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q100542513_1295674485",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q1228759_2443517062",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q1228759_2443517062",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q67576157_P7261_2445366058",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q67576157_P7261_2445366058",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q12306457_2445808318",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q12306457_2445808318",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q164149_2086419834",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q164149_2086419834",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q135505548_2404100597",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q135505548_2404100597",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q52412845_2445342378",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q52412845_2445342378",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q17555344_P613_2439848360",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q17555344_P613_2439848360",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q6411517_P140_1858269104",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q6411517_P140_1858269104",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q63904781_2333565896",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q63904781_2333565896",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q67587162_P7261_2445366058",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q67587162_P7261_2445366058",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q135501807_2388780852",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q135501807_2388780852",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q22160576_2388176421",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q22160576_2388176421",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q74781984_2447348164",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q74781984_2447348164",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q863254_2444461637",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q863254_2444461637",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q12204_P5082_2442820132",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q12204_P5082_2442820132",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q95552174_2447348752",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q95552174_2447348752",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q3226689_P460_2370378152",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q3226689_P460_2370378152",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q136822147_2441521861",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q136822147_2441521861",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q129172278_P50_2441781084",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q129172278_P50_2441781084",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q2060553_P3137_2428712581",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q2060553_P3137_2428712581",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q10543829_P2193_2431371575",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q10543829_P2193_2431371575",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q254745_P1346_1580835843",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q254745_P1346_1580835843",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q67409647_2333810791",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q67409647_2333810791",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q190122_P691_2445073477",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q190122_P691_2445073477",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q3246281_2446212835",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q3246281_2446212835",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q100264032_P476_2417146821",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q100264032_P476_2417146821",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q15937515_P7937_2439061952",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q15937515_P7937_2439061952",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q100538531_1295695148",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q100538531_1295695148",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q107164796_P950_2330325818",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q107164796_P950_2330325818",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q3468344_P1140_2143686910",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q3468344_P1140_2143686910",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q134470993_P535_2443240310",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "reform_Q134470993_P535_2443240310",
+      "task": "t_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q110278679_2446687920",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q110278679_2446687920",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    }
+  ]
+}

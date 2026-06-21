@@ -186,6 +186,46 @@ class TBoxTaxonomyPatchEvaluatorTests(unittest.TestCase):
         self.assertEqual(self.metric(summary, "tbox_patch_parse_rate")["rate"], 0.0)
         self.assertEqual(self.metric(summary, "tbox_patch_parse_error_rate")["rate"], 1.0)
 
+    def test_diagnostic_reports_include_confusions_value_delta_display_and_macros(self) -> None:
+        gold = [
+            patch(
+                "case-1",
+                repairs=[
+                    repair(
+                        "OTHER_TBOX_UPDATE",
+                        "OTHER",
+                        qualifier_property_id=None,
+                        added_values=[],
+                        removed_values=[],
+                        old_value=None,
+                        new_value=None,
+                        evidence_level="FAMILY_ONLY",
+                    )
+                ],
+            )
+        ]
+        prediction = [patch("case-1")]
+        summary = evaluate_tbox_taxonomy_patch_predictions(
+            gold_rows=gold,
+            prediction_rows=prediction,
+            case_annotations={"case-1": {"main_score": True, "tbox_revision_key": "P31@1"}},
+        )
+
+        diagnostics = summary["diagnostic_reports"]
+        schema_rows = diagnostics["confusion_matrices"]["schema_decision"]["rows"]
+        self.assertIn(
+            {"gold": "CAUSAL_SCHEMA_REPAIR", "predicted": "CAUSAL_SCHEMA_REPAIR", "count": 1},
+            schema_rows,
+        )
+        fp_report = diagnostics["out_of_current_gold_operation_false_positive_rates"]
+        self.assertEqual(fp_report["overall_out_of_current_gold_false_positive_rate"], 1.0)
+        display = diagnostics["value_delta_display_metrics"]["all_core"]
+        self.assertEqual(display["value_delta_f1_display"], "n/a")
+        self.assertEqual(display["value_delta_false_positive_rate"], 1.0)
+        self.assertIn("P31", diagnostics["macro_averages"]["by_property"]["groups"])
+        self.assertIn("P31@1", diagnostics["macro_averages"]["by_tbox_revision"]["groups"])
+        self.assertEqual(summary["subset_label_audit"]["report_subset_labels"]["main_score"], "taxonomy_main_score")
+
 
 if __name__ == "__main__":
     unittest.main()

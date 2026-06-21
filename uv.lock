@@ -1223,6 +1223,7 @@ version = "0.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "ijson" },
+    { name = "jsonschema" },
     { name = "mwclient" },
     { name = "openai" },
     { name = "requests" },
@@ -1238,7 +1239,6 @@ analysis = [
     { name = "seaborn" },
 ]
 dev = [
-    { name = "jsonschema" },
     { name = "pytest" },
     { name = "ruff" },
 ]
@@ -1254,7 +1254,7 @@ ui = [
 requires-dist = [
     { name = "ijson", specifier = ">=3.2" },
     { name = "ipykernel", marker = "extra == 'notebook'", specifier = ">=6.29" },
-    { name = "jsonschema", marker = "extra == 'dev'", specifier = ">=4.18" },
+    { name = "jsonschema", specifier = ">=4.18" },
     { name = "jupyter", marker = "extra == 'notebook'", specifier = ">=1.0" },
     { name = "matplotlib", marker = "extra == 'analysis'", specifier = ">=3.8" },
     { name = "mwclient", specifier = ">=0.11" },

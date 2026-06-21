@@ -134,8 +134,24 @@ def parse_args() -> argparse.Namespace:
     render_parser = subparsers.add_parser("render", help="Render prompt-review artifacts over the dev manifest.")
     render_parser.add_argument("--classified-benchmark", default="data/04_classified_benchmark.jsonl")
     render_parser.add_argument("--world-state", default="data/03_world_state.json")
-    render_parser.add_argument("--dev-manifest", default="reports/benchmark_selection/dev_prompt_v1_seed_13.json")
+    render_parser.add_argument(
+        "--eval-manifest",
+        "--dev-manifest",
+        dest="eval_manifest",
+        default="reports/benchmark_selection/dev_prompt_v1_seed_13.json",
+        help="Manifest containing cases to render or evaluate. --dev-manifest is a legacy alias.",
+    )
+    render_parser.add_argument(
+        "--example-manifest",
+        default=None,
+        help="Candidate manifest for selecting few-shot examples. Required for few-shot unless a support set is supplied.",
+    )
     render_parser.add_argument("--core-manifest", default=None)
+    render_parser.add_argument(
+        "--support-set-manifest",
+        default=None,
+        help="Fixed preselected support examples for static few-shot policies.",
+    )
     render_parser.add_argument("--output-dir", default="reports/prompt_dev/rendered_prompt_dev_v1")
     render_parser.add_argument("--seed", type=int, default=13)
     render_parser.add_argument("--max-cases", type=int, default=24)
@@ -172,8 +188,24 @@ def parse_args() -> argparse.Namespace:
     )
     evaluate_parser.add_argument("--classified-benchmark", default="data/04_classified_benchmark.jsonl")
     evaluate_parser.add_argument("--world-state", default="data/03_world_state.json")
-    evaluate_parser.add_argument("--dev-manifest", default="reports/benchmark_selection/dev_prompt_v1_seed_13.json")
+    evaluate_parser.add_argument(
+        "--eval-manifest",
+        "--dev-manifest",
+        dest="eval_manifest",
+        default="reports/benchmark_selection/dev_prompt_v1_seed_13.json",
+        help="Manifest containing cases to render or evaluate. --dev-manifest is a legacy alias.",
+    )
+    evaluate_parser.add_argument(
+        "--example-manifest",
+        default=None,
+        help="Candidate manifest for selecting few-shot examples. Required for few-shot unless a support set is supplied.",
+    )
     evaluate_parser.add_argument("--core-manifest", default=None)
+    evaluate_parser.add_argument(
+        "--support-set-manifest",
+        default=None,
+        help="Fixed preselected support examples for static few-shot policies.",
+    )
     evaluate_parser.add_argument("--output-dir", default="reports/prompt_dev/evaluation_prompt_dev_v1")
     evaluate_parser.add_argument("--model", default=None, help="Override the model name configured in .env.")
     evaluate_parser.add_argument(
@@ -230,6 +262,15 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Disable the tqdm progress bar for prompt evaluation.",
     )
+    evaluate_parser.add_argument(
+        "--zero-shot-baseline-summary",
+        default=None,
+        help=(
+            "Existing zero-shot prompt_dev_evaluation_summary.json to use for few-shot delta reporting. "
+            "If omitted for a static few-shot-only holdout run, the standard v5 holdout zero-shot summary is used "
+            "when present."
+        ),
+    )
     _add_axis_args(evaluate_parser, render_defaults=True)
 
     freeze_parser = subparsers.add_parser("freeze", help="Write a frozen Phase F prompt configuration.")
@@ -272,10 +313,11 @@ def main() -> int:
 
     if args.command == "render":
         log.info(
-            "render start classified=%s world_state=%s dev_manifest=%s output_dir=%s max_cases=%s",
+            "render start classified=%s world_state=%s eval_manifest=%s example_manifest=%s output_dir=%s max_cases=%s",
             args.classified_benchmark,
             args.world_state,
-            args.dev_manifest,
+            args.eval_manifest,
+            args.example_manifest,
             args.output_dir,
             args.max_cases,
         )
@@ -283,8 +325,10 @@ def main() -> int:
             PromptDevRenderOptions(
                 classified_benchmark=Path(args.classified_benchmark),
                 world_state=Path(args.world_state),
-                dev_manifest=Path(args.dev_manifest),
+                eval_manifest=Path(args.eval_manifest),
+                example_manifest=Path(args.example_manifest) if args.example_manifest else None,
                 core_manifest=Path(args.core_manifest) if args.core_manifest else None,
+                support_set_manifest=Path(args.support_set_manifest) if args.support_set_manifest else None,
                 output_dir=Path(args.output_dir),
                 seed=args.seed,
                 max_cases=args.max_cases,
@@ -313,12 +357,13 @@ def main() -> int:
 
     if args.command == "evaluate":
         log.info(
-            "evaluate start endpoint=%s model=%s classified=%s world_state=%s dev_manifest=%s output_dir=%s max_cases=%s",
+            "evaluate start endpoint=%s model=%s classified=%s world_state=%s eval_manifest=%s example_manifest=%s output_dir=%s max_cases=%s",
             args.model_endpoint or "env",
             args.model or "env",
             args.classified_benchmark,
             args.world_state,
-            args.dev_manifest,
+            args.eval_manifest,
+            args.example_manifest,
             args.output_dir,
             args.max_cases,
         )
@@ -328,8 +373,10 @@ def main() -> int:
                 PromptDevEvaluateOptions(
                     classified_benchmark=Path(args.classified_benchmark),
                     world_state=Path(args.world_state),
-                    dev_manifest=Path(args.dev_manifest),
+                    eval_manifest=Path(args.eval_manifest),
+                    example_manifest=Path(args.example_manifest) if args.example_manifest else None,
                     core_manifest=Path(args.core_manifest) if args.core_manifest else None,
+                    support_set_manifest=Path(args.support_set_manifest) if args.support_set_manifest else None,
                     output_dir=Path(args.output_dir),
                     model_endpoint=args.model_endpoint,
                     model_name=args.model,
@@ -354,6 +401,9 @@ def main() -> int:
                     sample_strategy=args.sample_strategy,
                     allow_core_example_risk=args.allow_core_example_risk,
                     track_filter=_csv_tuple(args.track_filter, ()),
+                    zero_shot_baseline_summary=Path(args.zero_shot_baseline_summary)
+                    if args.zero_shot_baseline_summary
+                    else None,
                 )
             )
         print(f"[done] evaluated_prompts={summary['counts']['evaluated_prompts']}")

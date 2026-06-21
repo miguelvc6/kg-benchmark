@@ -1,0 +1,81 @@
+{
+  "manifest_type": "few_shot_overlap_report",
+  "manifest_version": "prompt_dev_v5_tbox_taxonomy_patch",
+  "created_at_utc": "2026-06-18T13:14:03Z",
+  "passed": true,
+  "example_count": 4,
+  "core_case_overlap": 0,
+  "core_tbox_revision_overlap": 0,
+  "property_overlaps": [],
+  "hard_failures": [],
+  "rows": [
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_track_diagnosis_diagnosis_no_abstain",
+      "eval_case_id": "repair_Q100525462_2441306822",
+      "example_case_id": "repair_Q15484095_2443725779",
+      "visible_case_id": "example_d_000001",
+      "task": "track_diagnosis",
+      "example_task_schema": "track_diagnosis_v1",
+      "checks": {
+        "case_id_overlap": false,
+        "qid_overlap": false,
+        "property_overlap": false,
+        "tbox_revision_overlap": false,
+        "core_case_overlap": false,
+        "core_tbox_revision_overlap": false
+      },
+      "failure_keys": []
+    },
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_track_diagnosis_diagnosis_no_abstain",
+      "eval_case_id": "repair_Q100525462_2441306822",
+      "example_case_id": "reform_Q364189_P1368_2329221897",
+      "visible_case_id": "example_d_000002",
+      "task": "track_diagnosis",
+      "example_task_schema": "track_diagnosis_v1",
+      "checks": {
+        "case_id_overlap": false,
+        "qid_overlap": false,
+        "property_overlap": false,
+        "tbox_revision_overlap": false,
+        "core_case_overlap": false,
+        "core_tbox_revision_overlap": false
+      },
+      "failure_keys": []
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "eval_case_id": "repair_Q100525462_2441306822",
+      "example_case_id": "repair_Q95552174_2447348752",
+      "visible_case_id": "example_a_000001",
+      "task": "a_box_repair",
+      "example_task_schema": "a_box_v4_spec_only",
+      "checks": {
+        "case_id_overlap": false,
+        "qid_overlap": false,
+        "property_overlap": false,
+        "tbox_revision_overlap": false,
+        "core_case_overlap": false,
+        "core_tbox_revision_overlap": false
+      },
+      "failure_keys": []
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "eval_case_id": "repair_Q100525462_2441306822",
+      "example_case_id": "repair_Q136738478_2443608153",
+      "visible_case_id": "example_a_000002",
+      "task": "a_box_repair",
+      "example_task_schema": "a_box_v4_spec_only",
+      "checks": {
+        "case_id_overlap": false,
+        "qid_overlap": false,
+        "property_overlap": false,
+        "tbox_revision_overlap": false,
+        "core_case_overlap": false,
+        "core_tbox_revision_overlap": false
+      },
+      "failure_keys": []
+    }
+  ]
+}

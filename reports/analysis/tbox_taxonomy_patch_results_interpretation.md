@@ -36,25 +36,27 @@ The result is technically clean enough for reporting: failures are metric-level 
 | --- | ---: | ---: | ---: | ---: |
 | `logic_only`, all core | 0.601 | 0.456 | 0.295 | 0.036 |
 | `local_graph`, all core | 0.695 | 0.497 | 0.307 | 0.047 |
-| `logic_only`, causal main-score subset | 0.686 | 0.679 | 0.115 | 0.048 |
-| `local_graph`, causal main-score subset | 0.764 | 0.682 | 0.166 | 0.056 |
+| `logic_only`, taxonomy main-score subset | 0.686 | 0.679 | 0.115 | 0.048 |
+| `local_graph`, taxonomy main-score subset | 0.764 | 0.682 | 0.166 | 0.056 |
 
-The `local_graph` context improves all-core family success by about 9.4 percentage points and main-score family success by about 7.8 points. This is the clearest positive result: local neighborhood and labels help the model identify which constraint family is implicated.
+The `local_graph` context improves all-core family success by about 9.4 percentage points and taxonomy main-score family success by about 7.8 points. This is the clearest positive result: local neighborhood and labels help the model identify which constraint family is implicated.
 
-Schema-decision matching improves only modestly in all-core scoring, from 0.456 to 0.497. On the causal main-score subset, both contexts are nearly tied at about 0.68. This suggests that the main difficulty is not only deciding whether a schema repair is causal, but distinguishing causal repairs from no-causal and unclear cases across the full mixed T-box set.
+Schema-decision matching improves only modestly in all-core scoring, from 0.456 to 0.497. On the taxonomy main-score subset, both contexts are nearly tied at about 0.68. This suggests that the main difficulty is not only deciding whether a schema repair is causal, but distinguishing causal repairs from no-causal and unclear cases across the full mixed T-box set.
 
-Taxonomy-code matching remains low: 0.295 all-core for `logic_only`, 0.307 all-core for `local_graph`, and only 0.166 on the local-graph main-score subset. This means the model often finds the right general schema area but does not reliably choose the same fine-grained operation as the deterministic gold extractor.
+Taxonomy-code matching remains low: 0.295 all-core for `logic_only`, 0.307 all-core for `local_graph`, and only 0.166 on the local-graph taxonomy main-score subset. This means the model often finds the right general schema area but does not reliably choose the same fine-grained operation as the deterministic gold extractor.
 
-Value-delta F1 is weak in both contexts. Even where value deltas are applicable, the model rarely recovers the exact added/removed values. This should be reported as a separate fine-grained extraction limitation rather than blended into the family-level repair result.
+Value-delta F1 is weak in both contexts. Even where value deltas are applicable, the model rarely recovers the exact added/removed values. Diagnostic-subset value-delta F1 should be reported as n/a rather than 0.000 because gold value-delta applicability is zero in that subset.
+
+The subset name also needs precision. The taxonomy report's `taxonomy_main_score` rows are the 296 T-box taxonomy gold rows intersected with the core manifest `main_score_case_ids`; they are not the full manifest-level `main_score_case_ids` list of 3818 cases.
 
 ## What The Model Can Do
 
 The strongest capability is coarse schema localization. With `local_graph`, the model reaches:
 
 - 0.695 family-level success on all core T-box rows.
-- 0.764 family-level success on causal main-score rows.
+- 0.764 family-level success on taxonomy main-score rows.
 - 0.654 constraint-family F1 on all core rows.
-- 0.747 constraint-family F1 on causal main-score rows.
+- 0.747 constraint-family F1 on taxonomy main-score rows.
 
 This supports the claim that the model can often identify the relevant property-constraint family from visible benchmark evidence, especially when local graph context is available.
 
@@ -78,7 +80,11 @@ The predictions instead spread mass over operations that are schema-plausible bu
 
 This explains the gap between family success and taxonomy-code success. The model often sees that the schema is implicated, but it tends to propose broad schema edits rather than the exact qualifier-level edit represented in historical gold.
 
-The model also struggles with concrete values. Value-delta F1 is 0.036 for `logic_only` and 0.047 for `local_graph` on all core rows. On the causal main-score subset, the rates are only 0.048 and 0.056. This is the clearest evidence that exact value-delta prediction should not be the headline result.
+The model also struggles with concrete values. Value-delta F1 is 0.036 for `logic_only` and 0.047 for `local_graph` on all core rows. On the taxonomy main-score subset, the rates are only 0.048 and 0.056. This is the clearest evidence that exact value-delta prediction should not be the headline result.
+
+Value-delta false positives remain visible even outside the causal subset: 0.127 for `logic_only` and 0.150 for `local_graph` on taxonomy diagnostic rows. On rows where gold value deltas exist, under-specification is 0.394 in both contexts: the model often finds the family-level signal without recovering the exact value delta.
+
+Operation-level false positives are also concentrated in operations absent from the current gold operation set. Among predicted repairs, 260/360 = 0.722 of `logic_only` operations and 244/369 = 0.661 of `local_graph` operations are out-of-current-gold operations, mostly broad `CONSTRAINT_REMOVE`, `CONSTRAINT_DEPRECATE`, `CONSTRAINT_ADD`, and `EXCEPTION_ADD` edits rather than qualifier-level edits.
 
 ## Diagnostic Subset
 
@@ -88,6 +94,8 @@ The diagnostic subset contains 300 rows where the gold decision is not a causal 
 - `local_graph`: 0.313
 
 The model often predicts causal edits even when gold marks the case as no causal schema repair or unclear. This matters because over-attributing causality can inflate apparent schema-repair confidence if only family overlap is reported. The diagnostic subset should remain visible in the paper or appendix.
+
+Diagnostic value-delta F1 is n/a for this subset because there are no gold value-delta-applicable diagnostic rows. This is a reporting clarification, not a change to gold extraction or prediction outputs.
 
 ## Recommended Reporting
 

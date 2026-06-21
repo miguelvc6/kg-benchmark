@@ -2,11 +2,18 @@ from __future__ import annotations
 
 import json
 from collections import Counter
+from collections import defaultdict
 from pathlib import Path
+from statistics import mean
 from typing import Any, Iterable
 
 from .common import PatchValidationError
 from .tbox_taxonomy_patch_parser import NormalizedTBoxTaxonomyPatch, normalize_tbox_taxonomy_patch
+
+MISSING_LABEL = "__MISSING__"
+EXTRA_LABEL = "__EXTRA__"
+NO_REPAIR_LABEL = "__NO_REPAIR__"
+NO_QUALIFIER_LABEL = "__NO_QUALIFIER__"
 
 
 NEW_TBOX_PATCH_METRICS = [
@@ -88,17 +95,20 @@ def evaluate_tbox_taxonomy_patch_predictions(
         )
         for case_id, gold in sorted(gold_by_case.items())
     ]
+    subsets = {
+        "all_core": _summarize_subset(traces),
+        "main_score": _summarize_subset([trace for trace in traces if trace["subset_flags"]["main_score"]]),
+        "diagnostic": _summarize_subset([trace for trace in traces if trace["subset_flags"]["diagnostic"]]),
+    }
     return {
         "metric_family": "tbox_taxonomy_patch_v1",
         "gold_version": gold_version,
         "strict_signature_metrics_role": "diagnostic_only",
         "total_tbox_rows": len(traces),
         "traces": traces,
-        "subsets": {
-            "all_core": _summarize_subset(traces),
-            "main_score": _summarize_subset([trace for trace in traces if trace["subset_flags"]["main_score"]]),
-            "diagnostic": _summarize_subset([trace for trace in traces if trace["subset_flags"]["diagnostic"]]),
-        },
+        "subsets": subsets,
+        "subset_label_audit": _subset_label_audit(traces),
+        "diagnostic_reports": _diagnostic_reports(traces),
     }
 
 
@@ -145,11 +155,13 @@ def _evaluate_case(
         "parse_error": parse_error,
         "gold_schema_decision": gold.schema_decision,
         "prediction_schema_decision": prediction.schema_decision if prediction else None,
+        "label_sets": _label_sets(gold, prediction),
         "metrics": row,
         "metric_detail": _metric_detail(gold, prediction),
         "subset_flags": {
             "main_score": bool(annotation.get("main_score", True) and not annotation.get("diagnostic_only", False)),
             "diagnostic": bool(annotation.get("diagnostic_only", False) or annotation.get("main_score") is False),
+            "tbox_revision_key": annotation.get("tbox_revision_key") or annotation.get("group_key"),
         },
     }
 
@@ -310,6 +322,296 @@ def _summarize_subset(traces: list[dict[str, Any]]) -> dict[str, Any]:
     return {
         "count": total,
         "metrics": metric_payload,
+    }
+
+
+def _label_sets(
+    gold: NormalizedTBoxTaxonomyPatch,
+    prediction: NormalizedTBoxTaxonomyPatch | None,
+) -> dict[str, dict[str, list[str]]]:
+    return {
+        "gold": _patch_label_values(gold),
+        "prediction": _patch_label_values(prediction) if prediction else _empty_prediction_label_values(),
+    }
+
+
+def _patch_label_values(patch: NormalizedTBoxTaxonomyPatch) -> dict[str, list[str]]:
+    repair_ops = [repair.repair_op for repair in patch.repairs]
+    taxonomy_codes = [repair.taxonomy_code for repair in patch.repairs]
+    qualifier_properties = [
+        repair.qualifier_property_id for repair in patch.repairs if repair.qualifier_property_id is not None
+    ]
+    return {
+        "schema_decision": [patch.schema_decision],
+        "target_pid": [patch.target.pid],
+        "repair_operation": repair_ops or [NO_REPAIR_LABEL],
+        "taxonomy_code": taxonomy_codes or [NO_REPAIR_LABEL],
+        "qualifier_property": qualifier_properties or [NO_QUALIFIER_LABEL],
+    }
+
+
+def _empty_prediction_label_values() -> dict[str, list[str]]:
+    return {
+        "schema_decision": [MISSING_LABEL],
+        "target_pid": [MISSING_LABEL],
+        "repair_operation": [MISSING_LABEL],
+        "taxonomy_code": [MISSING_LABEL],
+        "qualifier_property": [MISSING_LABEL],
+    }
+
+
+def _aligned_multiset_confusion(gold_values: list[str], pred_values: list[str]) -> Counter[tuple[str, str]]:
+    gold = Counter(gold_values)
+    pred = Counter(pred_values)
+    pairs: Counter[tuple[str, str]] = Counter()
+
+    for label in sorted(gold.keys() & pred.keys()):
+        overlap = min(gold[label], pred[label])
+        if overlap:
+            pairs[(label, label)] += overlap
+            gold[label] -= overlap
+            pred[label] -= overlap
+
+    remaining_gold = [label for label, count in sorted(gold.items()) for _ in range(count) if count > 0]
+    remaining_pred = [label for label, count in sorted(pred.items()) for _ in range(count) if count > 0]
+    for gold_label, pred_label in zip(remaining_gold, remaining_pred):
+        pairs[(gold_label, pred_label)] += 1
+    if len(remaining_gold) > len(remaining_pred):
+        for gold_label in remaining_gold[len(remaining_pred) :]:
+            pairs[(gold_label, MISSING_LABEL)] += 1
+    elif len(remaining_pred) > len(remaining_gold):
+        for pred_label in remaining_pred[len(remaining_gold) :]:
+            pairs[(EXTRA_LABEL, pred_label)] += 1
+    return pairs
+
+
+def _confusion_matrices(traces: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    matrices: dict[str, dict[str, Any]] = {}
+    for name in ("schema_decision", "taxonomy_code", "repair_operation", "qualifier_property"):
+        pair_counts: Counter[tuple[str, str]] = Counter()
+        for trace in traces:
+            labels = trace.get("label_sets", {})
+            gold_values = labels.get("gold", {}).get(name, [MISSING_LABEL])
+            pred_values = labels.get("prediction", {}).get(name, [MISSING_LABEL])
+            pair_counts.update(_aligned_multiset_confusion(gold_values, pred_values))
+        matrices[name] = {
+            "alignment": (
+                "exact-overlap-first multiset alignment; unmatched gold labels use __MISSING__, "
+                "unmatched predicted labels use __EXTRA__"
+            ),
+            "labels": sorted({gold for gold, _ in pair_counts} | {pred for _, pred in pair_counts}),
+            "rows": [
+                {"gold": gold, "predicted": pred, "count": count}
+                for (gold, pred), count in sorted(pair_counts.items())
+            ],
+            "total_aligned_items": sum(pair_counts.values()),
+            "total_cases": len(traces),
+        }
+    return matrices
+
+
+def _out_of_current_gold_operation_false_positive_rates(traces: list[dict[str, Any]]) -> dict[str, Any]:
+    gold_counts: Counter[str] = Counter()
+    pred_counts: Counter[str] = Counter()
+    for trace in traces:
+        labels = trace.get("label_sets", {})
+        gold_counts.update(
+            label for label in labels.get("gold", {}).get("repair_operation", []) if label != NO_REPAIR_LABEL
+        )
+        pred_counts.update(
+            label
+            for label in labels.get("prediction", {}).get("repair_operation", [])
+            if label not in {NO_REPAIR_LABEL, MISSING_LABEL}
+        )
+    current_gold_ops = set(gold_counts)
+    total_predicted = sum(pred_counts.values())
+    rows = []
+    for operation, predicted_count in sorted(pred_counts.items()):
+        out_of_current_gold = operation not in current_gold_ops
+        false_positive_count = predicted_count if out_of_current_gold else 0
+        rows.append(
+            {
+                "operation": operation,
+                "predicted_count": predicted_count,
+                "gold_count": gold_counts.get(operation, 0),
+                "out_of_current_gold_operation": out_of_current_gold,
+                "false_positive_count": false_positive_count,
+                "false_positive_rate_among_predicted_repairs": (
+                    false_positive_count / total_predicted if total_predicted else None
+                ),
+            }
+        )
+    return {
+        "definition": (
+            "Predicted operations absent from the current gold operation set are counted as "
+            "out-of-current-gold false positives."
+        ),
+        "current_gold_operation_set": sorted(current_gold_ops),
+        "gold_operation_counts": dict(sorted(gold_counts.items())),
+        "total_predicted_repairs": total_predicted,
+        "rows": rows,
+        "overall_out_of_current_gold_false_positive_rate": (
+            sum(row["false_positive_count"] for row in rows) / total_predicted if total_predicted else None
+        ),
+    }
+
+
+def _f1_from_counts(tp: int, predicted: int, gold: int) -> float | None:
+    denominator = predicted + gold
+    return 2 * tp / denominator if denominator else None
+
+
+def _value_delta_display_metrics(subsets: dict[str, Any]) -> dict[str, Any]:
+    display = {}
+    for subset_name, subset in sorted(subsets.items()):
+        metrics = subset.get("metrics", {})
+        f1_metric = metrics.get("tbox_patch_value_delta_f1_when_applicable", {})
+        coverage = f1_metric.get("applicability_coverage")
+        display[subset_name] = {
+            "value_delta_f1_display_rate": None if coverage == 0 else f1_metric.get("rate"),
+            "value_delta_f1_display": (
+                "n/a"
+                if coverage == 0
+                else (f"{f1_metric.get('rate'):.3f}" if isinstance(f1_metric.get("rate"), (int, float)) else "n/a")
+            ),
+            "value_delta_f1_reason": (
+                "n/a because gold value-delta applicability is zero"
+                if coverage == 0
+                else "computed on applicable gold value-delta rows"
+            ),
+            "value_delta_false_positive_rate": metrics.get(
+                "tbox_patch_value_delta_claimed_when_gold_absent_rate", {}
+            ).get("rate"),
+            "value_delta_under_specification_rate": metrics.get(
+                "tbox_patch_family_only_when_value_delta_gold_present_rate", {}
+            ).get("rate"),
+        }
+    return display
+
+
+def _summarize_trace_group(traces: list[dict[str, Any]]) -> dict[str, Any]:
+    headline = {
+        "family_success": "family_level_success",
+        "schema_decision_match": "schema_decision_match",
+        "taxonomy_code_match": "taxonomy_code_exact_match",
+        "value_delta_false_positive": "value_delta_claimed_when_gold_absent",
+        "value_delta_under_specification": "family_only_when_value_delta_gold_present",
+    }
+    metrics: dict[str, Any] = {}
+    for display_name, trace_metric_name in headline.items():
+        values = [
+            trace.get("metrics", {}).get(trace_metric_name)
+            for trace in traces
+            if trace.get("metrics", {}).get(trace_metric_name) is not None
+        ]
+        numerator = sum(1 for value in values if value is True)
+        denominator = len(values)
+        metrics[display_name] = {
+            "numerator": numerator,
+            "denominator": denominator,
+            "rate": numerator / denominator if denominator else None,
+        }
+
+    detail = Counter()
+    applicable_rows = 0
+    for trace in traces:
+        detail.update(trace.get("metric_detail", {}))
+        if trace.get("metrics", {}).get("gold_has_value_delta") is True:
+            applicable_rows += 1
+    metrics["value_delta_f1_when_applicable"] = {
+        "applicable_gold_rows": applicable_rows,
+        "gold_value_delta_items": int(detail.get("value_gold", 0)),
+        "predicted_value_delta_items": int(detail.get("value_pred", 0)),
+        "true_positive_value_delta_items": int(detail.get("value_tp", 0)),
+        "rate": _f1_from_counts(
+            int(detail.get("value_tp", 0)),
+            int(detail.get("value_pred", 0)),
+            int(detail.get("value_gold", 0)),
+        )
+        if detail.get("value_gold", 0)
+        else None,
+    }
+    return {"row_count": len(traces), "metrics": metrics}
+
+
+def _macro_from_groups(groups: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    metric_names = sorted({metric for group in groups.values() for metric in group.get("metrics", {})})
+    metrics: dict[str, Any] = {}
+    for metric_name in metric_names:
+        rates = [
+            group["metrics"][metric_name]["rate"]
+            for group in groups.values()
+            if group["metrics"][metric_name].get("rate") is not None
+        ]
+        metrics[metric_name] = {
+            "macro_average": mean(rates) if rates else None,
+            "groups_with_applicable_rate": len(rates),
+            "total_groups": len(groups),
+        }
+    return {
+        "group_count": len(groups),
+        "row_count": sum(group["row_count"] for group in groups.values()),
+        "metrics": metrics,
+        "groups": groups,
+    }
+
+
+def _macro_averages(traces: list[dict[str, Any]]) -> dict[str, Any]:
+    by_property: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    by_revision: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for trace in traces:
+        labels = trace.get("label_sets", {})
+        property_key = "__UNKNOWN_PROPERTY__"
+        target_pid = labels.get("gold", {}).get("target_pid")
+        if isinstance(target_pid, list) and target_pid:
+            property_key = target_pid[0]
+        revision_key = trace.get("subset_flags", {}).get("tbox_revision_key") or "__UNKNOWN_REVISION__"
+        by_property[property_key].append(trace)
+        by_revision[str(revision_key)].append(trace)
+    return {
+        "by_property": _macro_from_groups({key: _summarize_trace_group(value) for key, value in sorted(by_property.items())}),
+        "by_tbox_revision": _macro_from_groups(
+            {key: _summarize_trace_group(value) for key, value in sorted(by_revision.items())}
+        ),
+    }
+
+
+def _subset_label_audit(traces: list[dict[str, Any]]) -> dict[str, Any]:
+    main_score_case_ids = sorted(
+        trace["case_id"] for trace in traces if trace.get("subset_flags", {}).get("main_score") is True
+    )
+    diagnostic_case_ids = sorted(
+        trace["case_id"] for trace in traces if trace.get("subset_flags", {}).get("diagnostic") is True
+    )
+    return {
+        "taxonomy_gold_case_ids_count": len(traces),
+        "evaluator_main_score_subset_count": len(main_score_case_ids),
+        "evaluator_diagnostic_subset_count": len(diagnostic_case_ids),
+        "report_subset_labels": {
+            "main_score": "taxonomy_main_score",
+            "diagnostic": "taxonomy_diagnostic",
+        },
+        "interpretation": (
+            "The taxonomy evaluator subset named main_score contains T-box taxonomy gold rows whose manifest "
+            "annotations mark them as main-score eligible; it is not the full manifest main_score_case_ids list "
+            "when the manifest also contains A-box cases."
+        ),
+    }
+
+
+def _diagnostic_reports(traces: list[dict[str, Any]]) -> dict[str, Any]:
+    subsets = {
+        "all_core": _summarize_subset(traces),
+        "main_score": _summarize_subset([trace for trace in traces if trace["subset_flags"]["main_score"]]),
+        "diagnostic": _summarize_subset([trace for trace in traces if trace["subset_flags"]["diagnostic"]]),
+    }
+    return {
+        "confusion_matrices": _confusion_matrices(traces),
+        "out_of_current_gold_operation_false_positive_rates": (
+            _out_of_current_gold_operation_false_positive_rates(traces)
+        ),
+        "value_delta_display_metrics": _value_delta_display_metrics(subsets),
+        "macro_averages": _macro_averages(traces),
     }
 
 

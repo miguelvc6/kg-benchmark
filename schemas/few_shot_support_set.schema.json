@@ -1,0 +1,201 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kg-benchmark.local/schemas/few_shot_support_set.schema.json",
+  "title": "Few-Shot Static Support-Set Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest_type",
+    "manifest_version",
+    "created_at_utc",
+    "source_manifest",
+    "blocked_manifest",
+    "selection_policy",
+    "support_sets",
+    "blocked_overlaps"
+  ],
+  "properties": {
+    "manifest_type": {
+      "const": "few_shot_support_set"
+    },
+    "manifest_version": {
+      "const": "static_support_v1"
+    },
+    "created_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source_manifest": {
+      "type": "string",
+      "minLength": 1
+    },
+    "blocked_manifest": {
+      "type": "string",
+      "minLength": 1
+    },
+    "selection_policy": {
+      "const": "static_diverse"
+    },
+    "support_sets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "a_box_repair",
+        "t_box_repair",
+        "track_diagnosis"
+      ],
+      "properties": {
+        "a_box_repair": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/a_box_example"
+          }
+        },
+        "t_box_repair": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/t_box_example"
+          }
+        },
+        "track_diagnosis": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/diagnosis_example"
+          }
+        }
+      }
+    },
+    "blocked_overlaps": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "core_case_overlap",
+        "core_qid_overlap",
+        "core_tbox_revision_overlap"
+      ],
+      "properties": {
+        "core_case_overlap": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "core_qid_overlap": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "core_tbox_revision_overlap": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  },
+  "$defs": {
+    "raw_case_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Internal benchmark case id. This field is metadata only and must not be rendered into prompts."
+    },
+    "notes": {
+      "type": "string",
+      "description": "Internal selection note. This field must not be rendered into prompts."
+    },
+    "a_box_example": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "raw_case_id",
+        "visible_example_id",
+        "role",
+        "task_schema",
+        "notes"
+      ],
+      "properties": {
+        "raw_case_id": {
+          "$ref": "#/$defs/raw_case_id"
+        },
+        "visible_example_id": {
+          "type": "string",
+          "pattern": "^example_a_[0-9]{6}$"
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Internal selection role. This field must not be rendered into prompts."
+        },
+        "task_schema": {
+          "const": "a_box_v4_spec_only"
+        },
+        "notes": {
+          "$ref": "#/$defs/notes"
+        }
+      }
+    },
+    "t_box_example": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "raw_case_id",
+        "visible_example_id",
+        "role",
+        "task_schema",
+        "gold_version",
+        "notes"
+      ],
+      "properties": {
+        "raw_case_id": {
+          "$ref": "#/$defs/raw_case_id"
+        },
+        "visible_example_id": {
+          "type": "string",
+          "pattern": "^example_t_[0-9]{6}$"
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Internal selection role. This field must not be rendered into prompts."
+        },
+        "task_schema": {
+          "const": "tbox_taxonomy_patch_v1"
+        },
+        "gold_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "notes": {
+          "$ref": "#/$defs/notes"
+        }
+      }
+    },
+    "diagnosis_example": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "raw_case_id",
+        "visible_example_id",
+        "role",
+        "task_schema",
+        "notes"
+      ],
+      "properties": {
+        "raw_case_id": {
+          "$ref": "#/$defs/raw_case_id"
+        },
+        "visible_example_id": {
+          "type": "string",
+          "pattern": "^example_d_[0-9]{6}$"
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Internal selection role. This field must not be rendered into prompts."
+        },
+        "task_schema": {
+          "const": "track_diagnosis_v1"
+        },
+        "notes": {
+          "$ref": "#/$defs/notes"
+        }
+      }
+    }
+  }
+}

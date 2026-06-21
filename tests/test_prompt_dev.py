@@ -8,7 +8,10 @@ from pathlib import Path
 from unittest.mock import patch
 
 from guardian.model_provider import StaticResponseProvider
+from guardian.patch_parser import normalize_proposal as normalize_a_box_proposal
 from guardian.prompts import get_prompt_template
+from guardian.tbox_taxonomy_patch_parser import normalize_tbox_taxonomy_patch
+from guardian.track_parser import normalize_diagnosis
 import lib.prompt_dev as prompt_dev_lib
 from lib.prompt_dev import (
     PromptDevEvaluateOptions,
@@ -91,6 +94,59 @@ def _manifest(case_ids: list[str], records: list[dict]) -> dict:
             "tbox_revision_key": record.get("repair_target", {}).get("property_revision_id"),
         }
     return {"selected_case_ids": case_ids, "case_annotations": annotations}
+
+
+def _support_manifest(source_manifest: Path, blocked_manifest: Path) -> dict:
+    return {
+        "manifest_type": "few_shot_support_set",
+        "manifest_version": "static_support_v1",
+        "created_at_utc": "2026-06-18T00:00:00Z",
+        "source_manifest": str(source_manifest),
+        "blocked_manifest": str(blocked_manifest),
+        "selection_policy": "static_diverse",
+        "support_sets": {
+            "a_box_repair": [
+                {
+                    "raw_case_id": "support_abox",
+                    "visible_example_id": "example_a_000001",
+                    "role": "a_box_local_evidence",
+                    "task_schema": "a_box_v4_spec_only",
+                    "notes": "internal only",
+                }
+            ],
+            "t_box_repair": [
+                {
+                    "raw_case_id": "support_tbox",
+                    "visible_example_id": "example_t_000001",
+                    "role": "tbox_taxonomy_other_or_family_only",
+                    "task_schema": "tbox_taxonomy_patch_v1",
+                    "gold_version": "tbox_taxonomy_patch_gold_dev_v1",
+                    "notes": "internal only",
+                }
+            ],
+            "track_diagnosis": [
+                {
+                    "raw_case_id": "support_abox",
+                    "visible_example_id": "example_d_000001",
+                    "role": "diagnosis_a_box",
+                    "task_schema": "track_diagnosis_v1",
+                    "notes": "internal only",
+                },
+                {
+                    "raw_case_id": "support_tbox",
+                    "visible_example_id": "example_d_000002",
+                    "role": "diagnosis_t_box",
+                    "task_schema": "track_diagnosis_v1",
+                    "notes": "internal only",
+                },
+            ],
+        },
+        "blocked_overlaps": {
+            "core_case_overlap": 0,
+            "core_qid_overlap": 0,
+            "core_tbox_revision_overlap": 0,
+        },
+    }
 
 
 class PromptDevTests(unittest.TestCase):
@@ -574,6 +630,32 @@ class PromptDevTests(unittest.TestCase):
             self.assertIn("Q_BEFORE", prompt_text)
             self.assertNotIn("Q_AFTER", prompt_text)
 
+    def test_few_shot_requires_example_manifest_unless_explicitly_allowed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            records = [_abox_record("eval", "Q1", "P1"), _abox_record("example", "Q2", "P2")]
+            classified = root / "classified.jsonl"
+            classified.write_text("\n".join(json.dumps(record) for record in records) + "\n", encoding="utf-8")
+            manifest = root / "dev.json"
+            manifest.write_text(json.dumps(_manifest([record["id"] for record in records], records)), encoding="utf-8")
+            world_state = root / "world.json"
+            world_state.write_text("{}", encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "requires --example-manifest or --support-set-manifest"):
+                render_prompt_dev_prompts(
+                    PromptDevRenderOptions(
+                        classified_benchmark=classified,
+                        world_state=world_state,
+                        dev_manifest=manifest,
+                        output_dir=root / "out",
+                        max_cases=1,
+                        representations=("hybrid_json_nl",),
+                        example_policies=("matched_2shot",),
+                        context_bundles=("minimal_case",),
+                        tasks=("track_diagnosis",),
+                    )
+                )
+
     def test_few_shot_requires_core_manifest_unless_explicitly_allowed(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)
@@ -591,12 +673,376 @@ class PromptDevTests(unittest.TestCase):
                         classified_benchmark=classified,
                         world_state=world_state,
                         dev_manifest=manifest,
+                        example_manifest=manifest,
                         output_dir=root / "out",
                         max_cases=1,
                         representations=("hybrid_json_nl",),
                         example_policies=("matched_2shot",),
                         context_bundles=("minimal_case",),
                         tasks=("track_diagnosis",),
+                    )
+                )
+
+    def test_eval_and_example_manifests_are_separate_and_core_blocked(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            eval_record = _abox_record("eval", "Q1", "P1")
+            blocked_core = _abox_record("blocked_core", "Q2", "P2")
+            usable = _abox_record("usable", "Q3", "P3")
+            records = [eval_record, blocked_core, usable]
+            classified = root / "classified.jsonl"
+            classified.write_text("\n".join(json.dumps(record) for record in records) + "\n", encoding="utf-8")
+            eval_manifest = root / "eval.json"
+            eval_manifest.write_text(json.dumps(_manifest(["eval"], records)), encoding="utf-8")
+            example_manifest = root / "examples.json"
+            example_manifest.write_text(json.dumps(_manifest(["blocked_core", "usable"], records)), encoding="utf-8")
+            core_manifest = root / "core.json"
+            core_manifest.write_text(json.dumps(_manifest(["blocked_core"], records)), encoding="utf-8")
+            world_state = root / "world.json"
+            world_state.write_text("{}", encoding="utf-8")
+
+            summary = render_prompt_dev_prompts(
+                PromptDevRenderOptions(
+                    classified_benchmark=classified,
+                    world_state=world_state,
+                    eval_manifest=eval_manifest,
+                    example_manifest=example_manifest,
+                    core_manifest=core_manifest,
+                    output_dir=root / "out",
+                    max_cases=1,
+                    representations=("hybrid_json_nl",),
+                    example_policies=("matched_2shot",),
+                    context_bundles=("minimal_case",),
+                    tasks=("track_diagnosis",),
+                )
+            )
+
+            rendered_rows = [
+                json.loads(line)
+                for line in (root / "out" / "prompt_dev_rendered_prompts.jsonl")
+                .read_text(encoding="utf-8")
+                .splitlines()
+            ]
+            self.assertEqual(summary["inputs"]["eval_manifest"], str(eval_manifest))
+            self.assertEqual(summary["inputs"]["example_manifest"], str(example_manifest))
+            self.assertEqual(summary["counts"]["eval_cases"], 1)
+            self.assertEqual([row["case_id"] for row in rendered_rows], ["eval"])
+            self.assertEqual(rendered_rows[0]["examples"][0]["case_id"], "usable")
+
+    def test_support_set_examples_render_safe_schema_specific_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            records = [
+                _abox_record("eval_abox", "Q1", "P1"),
+                _tbox_record("eval_tbox", "Q2", "P2"),
+                _abox_record("support_abox", "Q3", "P3"),
+                _tbox_record("support_tbox", "Q4", "P4"),
+            ]
+            classified = root / "classified.jsonl"
+            classified.write_text("\n".join(json.dumps(record) for record in records) + "\n", encoding="utf-8")
+            eval_manifest = root / "eval.json"
+            eval_manifest.write_text(json.dumps(_manifest(["eval_abox", "eval_tbox"], records)), encoding="utf-8")
+            source_manifest = root / "support_source.json"
+            source_manifest.write_text(json.dumps(_manifest(["support_abox", "support_tbox"], records)), encoding="utf-8")
+            core_manifest = root / "core.json"
+            core_manifest.write_text(json.dumps(_manifest([], [])), encoding="utf-8")
+            support_manifest = root / "support.json"
+            support_manifest.write_text(json.dumps(_support_manifest(source_manifest, core_manifest)), encoding="utf-8")
+            world_state = root / "world.json"
+            world_state.write_text("{}", encoding="utf-8")
+
+            summary = render_prompt_dev_prompts(
+                PromptDevRenderOptions(
+                    classified_benchmark=classified,
+                    world_state=world_state,
+                    eval_manifest=eval_manifest,
+                    core_manifest=core_manifest,
+                    support_set_manifest=support_manifest,
+                    output_dir=root / "out",
+                    max_cases=2,
+                    sample_strategy="manifest_order",
+                    representations=("hybrid_json_nl",),
+                    example_policies=("matched_2shot",),
+                    example_count=1,
+                    context_bundles=("minimal_case",),
+                    tasks=("track_diagnosis", "repair_proposal"),
+                    repair_track_modes=("oracle",),
+                )
+            )
+
+            rendered_rows = [
+                json.loads(line)
+                for line in (root / "out" / "prompt_dev_rendered_prompts.jsonl")
+                .read_text(encoding="utf-8")
+                .splitlines()
+            ]
+            self.assertEqual(summary["counts"]["rendered_prompts"], 4)
+            self.assertTrue(Path(summary["outputs"]["few_shot_leakage_scan"]).exists())
+            self.assertTrue(Path(summary["outputs"]["few_shot_overlap_report_json"]).exists())
+            self.assertTrue(Path(summary["outputs"]["few_shot_overlap_report_markdown"]).exists())
+            leakage_scan = json.loads(Path(summary["outputs"]["few_shot_leakage_scan"]).read_text(encoding="utf-8"))
+            overlap_report = json.loads(
+                Path(summary["outputs"]["few_shot_overlap_report_json"]).read_text(encoding="utf-8")
+            )
+            self.assertTrue(leakage_scan["model_visible_text_scan"]["passed"])
+            self.assertTrue(overlap_report["passed"])
+            self.assertTrue(all(row["example_leakage_scan"]["passed"] for row in rendered_rows))
+            prompts = "\n".join(row["user_prompt"] for row in rendered_rows)
+            for visible_id in ("example_a_000001", "example_t_000001", "example_d_000001"):
+                self.assertIn(visible_id, prompts)
+            for forbidden in (
+                "support_abox",
+                "support_tbox",
+                "repair_target",
+                "classification",
+                "persistence_check",
+                "truth_source",
+                "truth_tokens",
+                "selection_stratum",
+                "group_key",
+                "selected_case_ids",
+                "case_annotations",
+                "historical_track",
+                "DEV_",
+                "CORE_",
+            ):
+                self.assertNotIn(forbidden, prompts)
+
+            by_task = {row["task"]: row for row in rendered_rows if row["case_id"] == "eval_abox"}
+            diagnosis_examples = by_task["track_diagnosis"]["examples"]
+            self.assertEqual([example["task_schema"] for example in diagnosis_examples], ["track_diagnosis_v1"])
+            for example in diagnosis_examples:
+                normalize_diagnosis(example["output_payload"])
+
+            a_box_examples = by_task["a_box_repair"]["examples"]
+            self.assertEqual([example["task_schema"] for example in a_box_examples], ["a_box_v4_spec_only"])
+            normalize_a_box_proposal(a_box_examples[0]["output_payload"])
+
+            t_box_row = next(row for row in rendered_rows if row["case_id"] == "eval_tbox" and row["task"] == "t_box_repair")
+            t_box_examples = t_box_row["examples"]
+            self.assertEqual([example["task_schema"] for example in t_box_examples], ["tbox_taxonomy_patch_v1"])
+            normalize_tbox_taxonomy_patch(t_box_examples[0]["output_payload"])
+            self.assertIn("schema_decision", t_box_examples[0]["output_payload"])
+            self.assertNotIn("proposal", t_box_examples[0]["output_payload"])
+            self.assertNotIn("signature_after", json.dumps(t_box_examples[0]["output_payload"]))
+
+    def test_static_diverse_kshot_uses_first_k_support_examples_by_task(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            records = [
+                _abox_record("eval_abox", "Q1", "P1"),
+                _tbox_record("eval_tbox", "Q2", "P2"),
+                _abox_record("support_abox", "Q3", "P3"),
+                _tbox_record("support_tbox", "Q4", "P4"),
+            ]
+            classified = root / "classified.jsonl"
+            classified.write_text("\n".join(json.dumps(record) for record in records) + "\n", encoding="utf-8")
+            eval_manifest = root / "eval.json"
+            eval_manifest.write_text(json.dumps(_manifest(["eval_abox", "eval_tbox"], records)), encoding="utf-8")
+            source_manifest = root / "support_source.json"
+            source_manifest.write_text(
+                json.dumps(_manifest(["support_abox", "support_tbox"], records)),
+                encoding="utf-8",
+            )
+            core_manifest = root / "core.json"
+            core_manifest.write_text(json.dumps(_manifest([], [])), encoding="utf-8")
+            support_manifest = root / "support.json"
+            support_manifest.write_text(json.dumps(_support_manifest(source_manifest, core_manifest)), encoding="utf-8")
+            world_state = root / "world.json"
+            world_state.write_text("{}", encoding="utf-8")
+
+            render_prompt_dev_prompts(
+                PromptDevRenderOptions(
+                    classified_benchmark=classified,
+                    world_state=world_state,
+                    eval_manifest=eval_manifest,
+                    core_manifest=core_manifest,
+                    support_set_manifest=support_manifest,
+                    output_dir=root / "out",
+                    max_cases=2,
+                    sample_strategy="manifest_order",
+                    representations=("hybrid_json_nl",),
+                    example_policies=("static_diverse_kshot",),
+                    example_count=1,
+                    context_bundles=("minimal_case",),
+                    tasks=("track_diagnosis", "repair_proposal"),
+                    repair_track_modes=("oracle",),
+                )
+            )
+
+            rows = [
+                json.loads(line)
+                for line in (root / "out" / "prompt_dev_rendered_prompts.jsonl")
+                .read_text(encoding="utf-8")
+                .splitlines()
+            ]
+            a_box_row = next(row for row in rows if row["task"] == "a_box_repair")
+            t_box_row = next(row for row in rows if row["task"] == "t_box_repair")
+            diagnosis_row = next(row for row in rows if row["task"] == "track_diagnosis")
+
+            self.assertEqual([example["visible_case_id"] for example in a_box_row["examples"]], ["example_a_000001"])
+            self.assertEqual([example["task_schema"] for example in a_box_row["examples"]], ["a_box_v4_spec_only"])
+            self.assertNotIn("schema_decision", json.dumps(a_box_row["examples"]))
+
+            self.assertEqual([example["visible_case_id"] for example in t_box_row["examples"]], ["example_t_000001"])
+            self.assertEqual([example["task_schema"] for example in t_box_row["examples"]], ["tbox_taxonomy_patch_v1"])
+            self.assertNotIn('"ops"', json.dumps(t_box_row["examples"]))
+
+            self.assertEqual([example["visible_case_id"] for example in diagnosis_row["examples"]], ["example_d_000001"])
+            self.assertEqual([example["task_schema"] for example in diagnosis_row["examples"]], ["track_diagnosis_v1"])
+            self.assertNotIn('"ops"', json.dumps(diagnosis_row["examples"]))
+            self.assertNotIn("schema_decision", json.dumps(diagnosis_row["examples"]))
+
+    def test_static_diverse_kshot_allows_task_support_sets_smaller_than_requested_k(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            records = [
+                _abox_record("eval_abox", "Q1", "P1"),
+                _abox_record("support_abox", "Q3", "P3"),
+                _tbox_record("support_tbox", "Q4", "P4"),
+            ]
+            classified = root / "classified.jsonl"
+            classified.write_text("\n".join(json.dumps(record) for record in records) + "\n", encoding="utf-8")
+            eval_manifest = root / "eval.json"
+            eval_manifest.write_text(json.dumps(_manifest(["eval_abox"], records)), encoding="utf-8")
+            source_manifest = root / "support_source.json"
+            source_manifest.write_text(
+                json.dumps(_manifest(["support_abox", "support_tbox"], records)),
+                encoding="utf-8",
+            )
+            core_manifest = root / "core.json"
+            core_manifest.write_text(json.dumps(_manifest([], [])), encoding="utf-8")
+            support_manifest = root / "support.json"
+            support_manifest.write_text(json.dumps(_support_manifest(source_manifest, core_manifest)), encoding="utf-8")
+            world_state = root / "world.json"
+            world_state.write_text("{}", encoding="utf-8")
+
+            summary = render_prompt_dev_prompts(
+                PromptDevRenderOptions(
+                    classified_benchmark=classified,
+                    world_state=world_state,
+                    eval_manifest=eval_manifest,
+                    core_manifest=core_manifest,
+                    support_set_manifest=support_manifest,
+                    output_dir=root / "out",
+                    max_cases=1,
+                    sample_strategy="manifest_order",
+                    representations=("hybrid_json_nl",),
+                    example_policies=("static_diverse_kshot",),
+                    example_count=4,
+                    context_bundles=("minimal_case",),
+                    tasks=("repair_proposal",),
+                    repair_track_modes=("oracle",),
+                )
+            )
+
+            rows = [
+                json.loads(line)
+                for line in (root / "out" / "prompt_dev_rendered_prompts.jsonl")
+                .read_text(encoding="utf-8")
+                .splitlines()
+            ]
+            self.assertEqual(summary["counts"]["rendered_prompts"], 1)
+            self.assertEqual([example["visible_case_id"] for example in rows[0]["examples"]], ["example_a_000001"])
+
+    def test_static_diverse_kshot_skips_same_case_qid_and_tbox_revision_support_entries(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            records = [
+                _abox_record("eval_abox", "Q1", "P1"),
+                _abox_record("same_qid_abox", "Q1", "P2"),
+                _abox_record("usable_abox", "Q3", "P3"),
+            ]
+            classified = root / "classified.jsonl"
+            classified.write_text("\n".join(json.dumps(record) for record in records) + "\n", encoding="utf-8")
+            eval_manifest = root / "eval.json"
+            eval_manifest.write_text(json.dumps(_manifest(["eval_abox"], records)), encoding="utf-8")
+            source_manifest = root / "support_source.json"
+            source_manifest.write_text(
+                json.dumps(_manifest(["same_qid_abox", "usable_abox"], records)),
+                encoding="utf-8",
+            )
+            core_manifest = root / "core.json"
+            core_manifest.write_text(json.dumps(_manifest([], [])), encoding="utf-8")
+            support_payload = _support_manifest(source_manifest, core_manifest)
+            support_payload["support_sets"]["a_box_repair"] = [
+                {
+                    "raw_case_id": "same_qid_abox",
+                    "visible_example_id": "example_a_000001",
+                    "role": "a_box_local_evidence",
+                    "task_schema": "a_box_v4_spec_only",
+                    "notes": "filtered same qid",
+                },
+                {
+                    "raw_case_id": "usable_abox",
+                    "visible_example_id": "example_a_000002",
+                    "role": "a_box_local_evidence",
+                    "task_schema": "a_box_v4_spec_only",
+                    "notes": "usable",
+                },
+            ]
+            support_manifest = root / "support.json"
+            support_manifest.write_text(json.dumps(support_payload), encoding="utf-8")
+            world_state = root / "world.json"
+            world_state.write_text("{}", encoding="utf-8")
+
+            render_prompt_dev_prompts(
+                PromptDevRenderOptions(
+                    classified_benchmark=classified,
+                    world_state=world_state,
+                    eval_manifest=eval_manifest,
+                    core_manifest=core_manifest,
+                    support_set_manifest=support_manifest,
+                    output_dir=root / "out",
+                    max_cases=1,
+                    sample_strategy="manifest_order",
+                    representations=("hybrid_json_nl",),
+                    example_policies=("static_diverse_kshot",),
+                    example_count=1,
+                    context_bundles=("minimal_case",),
+                    tasks=("repair_proposal",),
+                    repair_track_modes=("oracle",),
+                )
+            )
+
+            rows = [
+                json.loads(line)
+                for line in (root / "out" / "prompt_dev_rendered_prompts.jsonl")
+                .read_text(encoding="utf-8")
+                .splitlines()
+            ]
+            self.assertEqual([example["case_id"] for example in rows[0]["examples"]], ["usable_abox"])
+            overlap_report = json.loads((root / "out" / "few_shot_overlap_report.json").read_text(encoding="utf-8"))
+            self.assertTrue(overlap_report["passed"])
+
+    def test_static_diverse_kshot_requires_support_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            record = _abox_record("eval_abox", "Q1", "P1")
+            classified = root / "classified.jsonl"
+            classified.write_text(json.dumps(record) + "\n", encoding="utf-8")
+            manifest = root / "eval.json"
+            manifest.write_text(json.dumps(_manifest(["eval_abox"], [record])), encoding="utf-8")
+            core_manifest = root / "core.json"
+            core_manifest.write_text(json.dumps(_manifest([], [])), encoding="utf-8")
+            world_state = root / "world.json"
+            world_state.write_text("{}", encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "static_diverse_kshot requires --support-set-manifest"):
+                render_prompt_dev_prompts(
+                    PromptDevRenderOptions(
+                        classified_benchmark=classified,
+                        world_state=world_state,
+                        eval_manifest=manifest,
+                        example_manifest=manifest,
+                        core_manifest=core_manifest,
+                        output_dir=root / "out",
+                        max_cases=1,
+                        representations=("hybrid_json_nl",),
+                        example_policies=("static_diverse_kshot",),
+                        context_bundles=("minimal_case",),
+                        tasks=("repair_proposal",),
+                        repair_track_modes=("oracle",),
                     )
                 )
 
@@ -672,6 +1118,151 @@ class PromptDevTests(unittest.TestCase):
                 self.assertTrue((matrix_dir / "evaluation_summary.json").exists())
                 if result["task"] == "repair_proposal":
                     self.assertEqual(result["request_errors"]["track_diagnosis_request_error_count"], 0)
+
+    def test_evaluate_few_shot_writes_separated_delta_reports(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            records = [
+                _abox_record("eval_abox", "Q1", "P1"),
+                _abox_record("support_abox", "Q2", "P2"),
+                _tbox_record("support_tbox", "Q3", "P3"),
+            ]
+            classified = root / "classified.jsonl"
+            classified.write_text("\n".join(json.dumps(record) for record in records) + "\n", encoding="utf-8")
+            eval_manifest = root / "eval.json"
+            eval_manifest.write_text(json.dumps(_manifest(["eval_abox"], records)), encoding="utf-8")
+            source_manifest = root / "support_source.json"
+            source_manifest.write_text(
+                json.dumps(_manifest(["support_abox", "support_tbox"], records)),
+                encoding="utf-8",
+            )
+            core_manifest = root / "core.json"
+            core_manifest.write_text(json.dumps(_manifest([], [])), encoding="utf-8")
+            support_manifest = root / "support.json"
+            support_manifest.write_text(json.dumps(_support_manifest(source_manifest, core_manifest)), encoding="utf-8")
+            world_state = root / "world.json"
+            world_state.write_text("{}", encoding="utf-8")
+
+            def resolver(metadata: dict) -> dict:
+                return {
+                    "case_id": metadata["visible_case_id"],
+                    "target": {"qid": "Q1", "pid": "P1"},
+                    "ops": [{"op": "SET", "pid": "P1", "value": "Q5", "rank": "normal"}],
+                }
+
+            summary = evaluate_prompt_dev_prompts(
+                PromptDevEvaluateOptions(
+                    classified_benchmark=classified,
+                    world_state=world_state,
+                    eval_manifest=eval_manifest,
+                    core_manifest=core_manifest,
+                    support_set_manifest=support_manifest,
+                    output_dir=root / "eval_out",
+                    max_cases=1,
+                    representations=("hybrid_json_nl",),
+                    example_policies=("zero_shot", "static_diverse_kshot"),
+                    example_count=1,
+                    context_bundles=("minimal_case",),
+                    tasks=("repair_proposal",),
+                    repair_track_modes=("oracle",),
+                ),
+                provider=StaticResponseProvider(resolver, provider_name="static", model="static"),
+            )
+
+            self.assertIn("few_shot_run_config", summary["outputs"])
+            self.assertIn("few_shot_delta_vs_zero_shot_json", summary["outputs"])
+            self.assertIn("few_shot_delta_vs_zero_shot_markdown", summary["outputs"])
+            self.assertIn("few_shot_leakage_scan", summary["outputs"])
+            self.assertIn("few_shot_overlap_report_json", summary["outputs"])
+            self.assertTrue(Path(summary["outputs"]["few_shot_leakage_scan"]).exists())
+            self.assertTrue(Path(summary["outputs"]["few_shot_overlap_report_json"]).exists())
+            report = json.loads(Path(summary["outputs"]["few_shot_delta_vs_zero_shot_json"]).read_text(encoding="utf-8"))
+            self.assertEqual(len(report["sections"]["a_box"]), 1)
+            self.assertEqual(report["sections"]["t_box_taxonomy_patch"], [])
+            comparison = report["sections"]["a_box"][0]
+            self.assertEqual(comparison["selection_type"], "static_support_set")
+            self.assertEqual(comparison["paper_status"], "paper-facing")
+            self.assertIn("token_cost_latency_overhead", comparison)
+            markdown = Path(summary["outputs"]["few_shot_delta_vs_zero_shot_markdown"]).read_text(encoding="utf-8")
+            self.assertIn("## A-Box", markdown)
+            self.assertIn("## T-Box Taxonomy Patch", markdown)
+            self.assertIn("No combined A-box/T-box headline", markdown)
+
+    def test_static_only_few_shot_delta_uses_existing_zero_shot_baseline_summary(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            records = [
+                _abox_record("eval_abox", "Q1", "P1"),
+                _abox_record("support_abox", "Q2", "P2"),
+                _tbox_record("support_tbox", "Q3", "P3"),
+            ]
+            classified = root / "classified.jsonl"
+            classified.write_text("\n".join(json.dumps(record) for record in records) + "\n", encoding="utf-8")
+            eval_manifest = root / "eval.json"
+            eval_manifest.write_text(json.dumps(_manifest(["eval_abox"], records)), encoding="utf-8")
+            source_manifest = root / "support_source.json"
+            source_manifest.write_text(
+                json.dumps(_manifest(["support_abox", "support_tbox"], records)),
+                encoding="utf-8",
+            )
+            core_manifest = root / "core.json"
+            core_manifest.write_text(json.dumps(_manifest([], [])), encoding="utf-8")
+            support_manifest = root / "support.json"
+            support_manifest.write_text(json.dumps(_support_manifest(source_manifest, core_manifest)), encoding="utf-8")
+            world_state = root / "world.json"
+            world_state.write_text("{}", encoding="utf-8")
+
+            def resolver(metadata: dict) -> dict:
+                return {
+                    "case_id": metadata["visible_case_id"],
+                    "target": {"qid": "Q1", "pid": "P1"},
+                    "ops": [{"op": "SET", "pid": "P1", "value": "Q5", "rank": "normal"}],
+                }
+
+            baseline = evaluate_prompt_dev_prompts(
+                PromptDevEvaluateOptions(
+                    classified_benchmark=classified,
+                    world_state=world_state,
+                    eval_manifest=eval_manifest,
+                    output_dir=root / "zero",
+                    max_cases=1,
+                    representations=("hybrid_json_nl",),
+                    example_policies=("zero_shot",),
+                    context_bundles=("minimal_case",),
+                    tasks=("repair_proposal",),
+                    repair_track_modes=("oracle",),
+                ),
+                provider=StaticResponseProvider(resolver, provider_name="static", model="static"),
+            )
+
+            summary = evaluate_prompt_dev_prompts(
+                PromptDevEvaluateOptions(
+                    classified_benchmark=classified,
+                    world_state=world_state,
+                    eval_manifest=eval_manifest,
+                    core_manifest=core_manifest,
+                    support_set_manifest=support_manifest,
+                    zero_shot_baseline_summary=root / "zero" / "prompt_dev_evaluation_summary.json",
+                    output_dir=root / "few",
+                    max_cases=1,
+                    representations=("hybrid_json_nl",),
+                    example_policies=("static_diverse_kshot",),
+                    example_count=4,
+                    context_bundles=("minimal_case",),
+                    tasks=("repair_proposal",),
+                    repair_track_modes=("oracle",),
+                ),
+                provider=StaticResponseProvider(resolver, provider_name="static", model="static"),
+            )
+
+            self.assertEqual(baseline["counts"]["matrix_rows"], 1)
+            report = json.loads(Path(summary["outputs"]["few_shot_delta_vs_zero_shot_json"]).read_text(encoding="utf-8"))
+            self.assertEqual(report["zero_shot_baseline"]["source"], str(root / "zero" / "prompt_dev_evaluation_summary.json"))
+            self.assertEqual(len(report["sections"]["a_box"]), 1)
+            self.assertFalse(report["unmatched_few_shot_matrix_ids"])
+            comparison = report["sections"]["a_box"][0]
+            self.assertEqual(comparison["zero_shot_matrix_id"], baseline["results"][0]["matrix_id"])
+            self.assertEqual(comparison["few_shot_policy"], "static_diverse_kshot")
 
     def test_evaluate_prompts_can_retry_existing_failures(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:

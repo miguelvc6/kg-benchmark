@@ -1,0 +1,49 @@
+{
+  "manifest_type": "few_shot_leakage_scan",
+  "manifest_version": "prompt_dev_v5_tbox_taxonomy_patch",
+  "created_at_utc": "2026-06-18T13:14:03Z",
+  "model_visible_text_scan": {
+    "passed": true,
+    "prompt_count": 2,
+    "hard_matches": [],
+    "benign_text_matches": [],
+    "rows": [
+      {
+        "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_track_diagnosis_diagnosis_no_abstain",
+        "case_id": "repair_Q100525462_2441306822",
+        "task": "track_diagnosis",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      },
+      {
+        "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+        "case_id": "repair_Q100525462_2441306822",
+        "task": "a_box_repair",
+        "example_policy": "static_diverse_kshot",
+        "hard_match_count": 0
+      }
+    ]
+  },
+  "example_payload_scans": [
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_track_diagnosis_diagnosis_no_abstain",
+      "case_id": "repair_Q100525462_2441306822",
+      "task": "track_diagnosis",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "case_id": "repair_Q100525462_2441306822",
+      "task": "a_box_repair",
+      "example_leakage_scan": {
+        "passed": true,
+        "forbidden_key_paths": [],
+        "forbidden_text_patterns": []
+      }
+    }
+  ]
+}

@@ -145,13 +145,13 @@ The matrix records representation, example policy, context bundle, task, track m
 
 ## Render Prompts For Review
 
-Render a small review pack over the dev manifest:
+Render a small review pack over an evaluation manifest:
 
 ```bash
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-prompt-dev render \
   --classified-benchmark data/04_classified_benchmark.jsonl \
   --world-state data/03_world_state.json \
-  --dev-manifest reports/benchmark_selection/dev_prompt_v1_seed_13.json \
+  --eval-manifest reports/benchmark_selection/dev_prompt_v1_seed_13.json \
   --core-manifest reports/benchmark_selection/core_v1_seed_13.json \
   --output-dir reports/prompt_dev/rendered_prompt_dev_v1 \
   --max-cases 24 \
@@ -171,6 +171,34 @@ This writes:
 
 The render command opens the Stage 4 artifact and world-state index, builds the same sanitized context bundles used by the reasoning-floor runner, selects dev-only few-shot examples when requested, and writes prompts for manual review. It does not run LLM inference.
 
+`--eval-manifest` is the manifest of cases to render or evaluate. `--dev-manifest` remains a legacy alias for the same
+field. Few-shot example candidates are separate: pass `--example-manifest` for dynamic candidate selection or
+`--support-set-manifest` for a fixed static support set. Render and evaluation summaries record `eval_manifest`,
+`example_manifest`, `core_manifest`, and `support_set_manifest` separately.
+
+Use `--example-policies static_diverse_kshot` for the fixed static support condition. It requires
+`--support-set-manifest` and uses `--example-count` to take the first `k` examples from the matching support-set section:
+A-box repair prompts receive only A-box examples, T-box taxonomy prompts receive only T-box taxonomy-patch examples, and
+track-diagnosis prompts receive only diagnosis examples. When `--support-set-manifest` is supplied with any non-zero-shot
+example policy, examples are taken from the fixed support manifest rather than dynamically selected from the evaluation
+manifest. The renderer builds example inputs with the same context bundle as the evaluated case, replaces raw support
+case IDs with neutral `example_*` IDs, generates expected outputs under the support entry's task schema, and validates
+those outputs with the A-box, T-box taxonomy-patch, or track-diagnosis parser. Each rendered prompt row records
+`example_leakage_scan`; rendering fails if example inputs or outputs contain hidden benchmark fields, raw `repair_...` /
+`reform_...` IDs, or `DEV_` / `CORE_` labels.
+
+Every few-shot render writes three run-level guard artifacts:
+
+- `few_shot_leakage_scan.json`: scans model-visible system/user prompt text and per-row example payloads for hidden
+  fields, raw benchmark IDs, `DEV_` / `CORE_` labels, and hidden TypeA/TypeB/TypeC labels.
+- `few_shot_overlap_report.json`: checks example/evaluation overlap by raw case ID, focus QID, property, T-box
+  revision key, core case ID, and core T-box revision key.
+- `few_shot_overlap_report.md`: summarizes the overlap report for review.
+
+Core case overlap and core T-box revision overlap are hard failures. Static support property overlap is disclosed in
+the overlap report; dynamic same-property overlap remains a failure unless `--allow-same-property-examples` is passed.
+Ordinary visible text matches, such as benign prose uses of a word, are recorded separately as benign text matches.
+
 For diagnosis-only prompt development, pass `--diagnosis-context-bundles` to keep repair-locus classification context
 structurally track-agnostic. When this option is set, `track_diagnosis` matrix rows use only those diagnosis bundles,
 while repair proposal rows continue to use `--context-bundles`. This prevents diagnosis prompts from inheriting the
@@ -189,13 +217,14 @@ benchmark IDs remain internal run metadata and should not appear in model-visibl
 
 ## Evaluate Prompt Variants On The Dev Manifest
 
-After static review, run selected prompt variants on the dev manifest only:
+After static review, run selected prompt variants on the chosen evaluation manifest only:
 
 ```bash
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-prompt-dev evaluate \
   --classified-benchmark data/04_classified_benchmark.jsonl \
   --world-state data/03_world_state.json \
-  --dev-manifest reports/benchmark_selection/dev_prompt_v1_seed_13.json \
+  --eval-manifest reports/benchmark_selection/dev_prompt_v1_seed_13.json \
+  --example-manifest reports/benchmark_selection/dev_prompt_v1_seed_13.json \
   --core-manifest reports/benchmark_selection/core_v1_seed_13.json \
   --output-dir reports/prompt_dev/evaluation_prompt_dev_v1 \
   --model-endpoint ollama \
@@ -208,7 +237,8 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-prompt-dev evaluate \
   --repair-track-modes oracle
 ```
 
-`evaluate` runs LLM inference. Keep it restricted to the dev manifest and do not use it on the frozen core selection.
+`evaluate` runs LLM inference. Keep development runs restricted to dev or holdout manifests and do not use the frozen
+core selection until the relevant readiness gate says to do so.
 
 During evaluation, the CLI shows a `tqdm` progress bar over rendered prompt requests. The postfix reports prompt outcomes
 as they are observed, including normalized rows, skipped resumed rows, request errors, and parse errors. Use
@@ -320,10 +350,11 @@ Matched examples rank candidates by:
 
 Use `--allow-same-property-examples` only for explicit precedent-retrieval experiments.
 
-For few-shot prompt development, `--core-manifest` is required by default so examples can exclude core cases and core
-T-box property-revision groups. If you intentionally want to render or evaluate few-shot prompts without this guard,
-pass `--allow-core-example-risk` and treat the output as a leakage-risk experiment, not a paper-facing prompt-selection
-run.
+For few-shot prompt development, `--example-manifest` or `--support-set-manifest` is required by default so examples do
+not silently come from the evaluation manifest. `--core-manifest` is also required by default so examples can exclude
+core cases and core T-box property-revision groups. If you intentionally want to render or evaluate few-shot prompts
+without these guards, pass `--allow-core-example-risk` and treat the output as a leakage-risk experiment, not a
+paper-facing prompt-selection run.
 
 ## T-Box Temporal Context Policy
 

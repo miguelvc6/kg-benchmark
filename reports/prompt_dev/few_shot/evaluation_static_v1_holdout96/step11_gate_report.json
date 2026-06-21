@@ -1,0 +1,484 @@
+{
+  "created_at_utc": "2026-06-18T15:36:44Z",
+  "gates": {
+    "correct_schema_outputs_present": true,
+    "delta_report_compares_to_zero_shot": true,
+    "leakage_scan_passed": true,
+    "local_only_provider": true,
+    "overlap_scan_passed": true,
+    "proposal_parse_error_rate_lte_4pct": true,
+    "request_error_rate_lte_1pct": true,
+    "required_artifacts_present": true,
+    "tbox_taxonomy_metrics_and_diagnostics_emitted": true
+  },
+  "leakage_scan": {
+    "benign_text_match_count": 3,
+    "failed_example_payload_scan_count": 0,
+    "hard_match_count": 0,
+    "model_visible_text_passed": true,
+    "passed": true,
+    "path": "reports/prompt_dev/few_shot/evaluation_static_v1_holdout96/rendered_prompts/few_shot_leakage_scan.json"
+  },
+  "manifest_type": "prompt_dev_few_shot_step11_gate_report",
+  "matrix_reports": [
+    {
+      "a_box_metrics": {
+        "accepted_rate": 0.5208333333333334,
+        "exact_action_match_rate": 0.6458333333333334,
+        "exact_value_match_rate": 0.5208333333333334,
+        "regression_pass_rate": 0.9583333333333334
+      },
+      "a_box_proposals_present": true,
+      "context_bundle": "logic_only",
+      "counts": {
+        "by_context": {
+          "logic_only": 96
+        },
+        "by_historical_track": {
+          "A_BOX": 48,
+          "T_BOX": 48
+        },
+        "by_parse_status": {
+          "non_executable_empty_ops": 2,
+          "normalized": 94
+        },
+        "by_task": {
+          "a_box_repair": 48,
+          "t_box_repair": 48
+        },
+        "normalized": 94,
+        "parse_error": 0,
+        "request_error": 0,
+        "skipped": 0
+      },
+      "legacy_t_box_proposals_present": false,
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "proposal_parse_error_rate": 0.0,
+      "proposal_request_error_rate": 0.0,
+      "t_box_taxonomy_metrics": {
+        "confusion_matrix_keys": [
+          "qualifier_property",
+          "repair_operation",
+          "schema_decision",
+          "taxonomy_code"
+        ],
+        "diagnostic_report_keys": [
+          "confusion_matrices",
+          "macro_averages",
+          "out_of_current_gold_operation_false_positive_rates",
+          "value_delta_display_metrics"
+        ],
+        "family_level_success": 0.0,
+        "has_macro_averages": true,
+        "has_out_of_current_gold_false_positive_rates": true,
+        "has_value_delta_display_metrics": true,
+        "metric_family": "tbox_taxonomy_patch_v1",
+        "subset_label_audit": {
+          "evaluator_diagnostic_subset_count": 12,
+          "evaluator_main_score_subset_count": 36,
+          "interpretation": "The taxonomy evaluator subset named main_score contains T-box taxonomy gold rows whose manifest annotations mark them as main-score eligible; it is not the full manifest main_score_case_ids list when the manifest also contains A-box cases.",
+          "report_subset_labels": {
+            "diagnostic": "taxonomy_diagnostic",
+            "main_score": "taxonomy_main_score"
+          },
+          "taxonomy_gold_case_ids_count": 48
+        },
+        "taxonomy_patch_summary_keys": [
+          "diagnostic_reports",
+          "gold_version",
+          "metric_family",
+          "strict_signature_metrics_role",
+          "subset_label_audit",
+          "subsets",
+          "total_tbox_rows",
+          "traces"
+        ],
+        "total_tbox_rows": 48
+      },
+      "t_box_taxonomy_patch_proposals_present": true
+    },
+    {
+      "a_box_metrics": {
+        "accepted_rate": 0.5625,
+        "exact_action_match_rate": 0.6666666666666666,
+        "exact_value_match_rate": 0.5625,
+        "regression_pass_rate": 0.9375
+      },
+      "a_box_proposals_present": true,
+      "context_bundle": "local_graph",
+      "counts": {
+        "by_context": {
+          "local_graph": 96
+        },
+        "by_historical_track": {
+          "A_BOX": 48,
+          "T_BOX": 48
+        },
+        "by_parse_status": {
+          "non_executable_empty_ops": 3,
+          "normalized": 92,
+          "parse_error": 1
+        },
+        "by_task": {
+          "a_box_repair": 48,
+          "t_box_repair": 48
+        },
+        "normalized": 92,
+        "parse_error": 1,
+        "request_error": 0,
+        "skipped": 0
+      },
+      "legacy_t_box_proposals_present": false,
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "proposal_parse_error_rate": 0.010416666666666666,
+      "proposal_request_error_rate": 0.0,
+      "t_box_taxonomy_metrics": {
+        "confusion_matrix_keys": [
+          "qualifier_property",
+          "repair_operation",
+          "schema_decision",
+          "taxonomy_code"
+        ],
+        "diagnostic_report_keys": [
+          "confusion_matrices",
+          "macro_averages",
+          "out_of_current_gold_operation_false_positive_rates",
+          "value_delta_display_metrics"
+        ],
+        "family_level_success": 0.0,
+        "has_macro_averages": true,
+        "has_out_of_current_gold_false_positive_rates": true,
+        "has_value_delta_display_metrics": true,
+        "metric_family": "tbox_taxonomy_patch_v1",
+        "subset_label_audit": {
+          "evaluator_diagnostic_subset_count": 12,
+          "evaluator_main_score_subset_count": 36,
+          "interpretation": "The taxonomy evaluator subset named main_score contains T-box taxonomy gold rows whose manifest annotations mark them as main-score eligible; it is not the full manifest main_score_case_ids list when the manifest also contains A-box cases.",
+          "report_subset_labels": {
+            "diagnostic": "taxonomy_diagnostic",
+            "main_score": "taxonomy_main_score"
+          },
+          "taxonomy_gold_case_ids_count": 48
+        },
+        "taxonomy_patch_summary_keys": [
+          "diagnostic_reports",
+          "gold_version",
+          "metric_family",
+          "strict_signature_metrics_role",
+          "subset_label_audit",
+          "subsets",
+          "total_tbox_rows",
+          "traces"
+        ],
+        "total_tbox_rows": 48
+      },
+      "t_box_taxonomy_patch_proposals_present": true
+    }
+  ],
+  "overlap_scan": {
+    "allowed_property_overlap_count": 12,
+    "core_case_overlap_count": 0,
+    "core_tbox_revision_overlap_count": 0,
+    "hard_failure_count": 0,
+    "passed": true,
+    "path": "reports/prompt_dev/few_shot/evaluation_static_v1_holdout96/rendered_prompts/few_shot_overlap_report.json"
+  },
+  "performance_regressions_to_review": [
+    {
+      "context_bundle": "logic_only",
+      "delta": -0.025265957446808512,
+      "metric": "taxonomy_code_match"
+    },
+    {
+      "context_bundle": "local_graph",
+      "delta": -0.059840425531914904,
+      "metric": "taxonomy_code_match"
+    },
+    {
+      "context_bundle": "local_graph",
+      "delta": 0.06666666666666668,
+      "metric": "value_delta_claimed_when_gold_absent"
+    },
+    {
+      "context_bundle": "local_graph",
+      "delta": 0.020833333333333332,
+      "metric": "t_box_parse_error_rate"
+    },
+    {
+      "context_bundle": "local_graph",
+      "delta": 0.010416666666666666,
+      "metric": "a_box_parse_error_rate"
+    }
+  ],
+  "recommendation": "Step 11 satisfies the stated hard gates. Do not treat it as a silent go-ahead for the larger core canary: token usage rose sharply, taxonomy-code exact match regressed in both contexts, and local_graph value-delta false positives increased. Proceed to Step 12 only after accepting that cost/regression tradeoff or after choosing a mitigation threshold.",
+  "required_artifacts": {
+    "reports/prompt_dev/few_shot/evaluation_static_v1_holdout96/few_shot_delta_vs_zero_shot.json": true,
+    "reports/prompt_dev/few_shot/evaluation_static_v1_holdout96/few_shot_delta_vs_zero_shot.md": true,
+    "reports/prompt_dev/few_shot/evaluation_static_v1_holdout96/prompt_dev_evaluation_comparison.md": true,
+    "reports/prompt_dev/few_shot/evaluation_static_v1_holdout96/prompt_dev_evaluation_summary.json": true
+  },
+  "run": {
+    "counts": {
+      "by_parse_status": {
+        "non_executable_empty_ops": 5,
+        "normalized": 186,
+        "parse_error": 1
+      },
+      "evaluated_prompts": 192,
+      "matrix_rows": 2,
+      "rendered_prompts": 192
+    },
+    "manifest_version": "prompt_dev_v5_tbox_taxonomy_patch",
+    "model": "gpt-oss:120b",
+    "provider": "ollama",
+    "run_config_model": "gpt-oss:120b",
+    "run_config_provider": null,
+    "run_id": "prompt_dev_eval_20260618T145902"
+  },
+  "status": "PASS_WITH_REVIEW",
+  "zero_shot_delta": {
+    "a_box": [
+      {
+        "a_box_exact_action": {
+          "delta": 0.08333333333333337,
+          "few_shot": 0.6458333333333334,
+          "zero_shot": 0.5625
+        },
+        "a_box_exact_value": {
+          "delta": 0.12500000000000006,
+          "few_shot": 0.5208333333333334,
+          "zero_shot": 0.3958333333333333
+        },
+        "a_box_regression_pass": {
+          "delta": 0.02083333333333337,
+          "few_shot": 0.9583333333333334,
+          "zero_shot": 0.9375
+        },
+        "context_bundle": "logic_only",
+        "empty_ops_rate": {
+          "delta": 0.0,
+          "few_shot": 0.020833333333333332,
+          "zero_shot": 0.020833333333333332
+        },
+        "overall_a_box_accepted": {
+          "delta": 0.12500000000000006,
+          "few_shot": 0.5208333333333334,
+          "zero_shot": 0.3958333333333333
+        },
+        "overhead_elapsed_seconds_mean": {
+          "delta": 3.1509413958333363,
+          "few_shot": 10.624617500000003,
+          "zero_shot": 7.473676104166667
+        },
+        "overhead_estimated_cost_usd": {
+          "delta": 0.0,
+          "few_shot": 0.0,
+          "zero_shot": 0.0
+        },
+        "overhead_total_tokens": {
+          "delta": 269941.0,
+          "few_shot": 505317,
+          "zero_shot": 235376
+        },
+        "parse_error_rate": {
+          "delta": -0.010416666666666666,
+          "few_shot": 0.0,
+          "zero_shot": 0.010416666666666666
+        }
+      },
+      {
+        "a_box_exact_action": {
+          "delta": 0.0,
+          "few_shot": 0.6666666666666666,
+          "zero_shot": 0.6666666666666666
+        },
+        "a_box_exact_value": {
+          "delta": 0.0625,
+          "few_shot": 0.5625,
+          "zero_shot": 0.5
+        },
+        "a_box_regression_pass": {
+          "delta": 0.02083333333333337,
+          "few_shot": 0.9375,
+          "zero_shot": 0.9166666666666666
+        },
+        "context_bundle": "local_graph",
+        "empty_ops_rate": {
+          "delta": 0.0,
+          "few_shot": 0.03125,
+          "zero_shot": 0.03125
+        },
+        "overall_a_box_accepted": {
+          "delta": 0.0625,
+          "few_shot": 0.5625,
+          "zero_shot": 0.5
+        },
+        "overhead_elapsed_seconds_mean": {
+          "delta": 1.6368614687499958,
+          "few_shot": 9.32841677083333,
+          "zero_shot": 7.6915553020833345
+        },
+        "overhead_estimated_cost_usd": {
+          "delta": 0.0,
+          "few_shot": 0.0,
+          "zero_shot": 0.0
+        },
+        "overhead_total_tokens": {
+          "delta": 434891.0,
+          "few_shot": 729091,
+          "zero_shot": 294200
+        },
+        "parse_error_rate": {
+          "delta": 0.010416666666666666,
+          "few_shot": 0.010416666666666666,
+          "zero_shot": 0.0
+        }
+      }
+    ],
+    "baseline": {
+      "manifest_version": "prompt_dev_v5_tbox_taxonomy_patch",
+      "run_id": "prompt_dev_eval_20260617T172125",
+      "source": "/home/wucloud/kg-benchmark/reports/prompt_dev/evaluation_prompt_dev_v5_tbox_taxonomy_patch_holdout96_zero_shot/prompt_dev_evaluation_summary.json"
+    },
+    "diagnosis_rows": 0,
+    "t_box_taxonomy_patch": [
+      {
+        "constraint_family_f1": {
+          "delta": 0.19634473507712957,
+          "few_shot": 0.7738095238095238,
+          "zero_shot": 0.5774647887323943
+        },
+        "context_bundle": "logic_only",
+        "family_level_success": {
+          "delta": 0.17464539007092195,
+          "few_shot": 0.7916666666666666,
+          "zero_shot": 0.6170212765957447
+        },
+        "family_only_when_value_delta_gold_present": {
+          "delta": 0.10132575757575757,
+          "few_shot": 0.7575757575757576,
+          "zero_shot": 0.65625
+        },
+        "overhead_elapsed_seconds_mean": {
+          "delta": 3.1509413958333363,
+          "few_shot": 10.624617500000003,
+          "zero_shot": 7.473676104166667
+        },
+        "overhead_estimated_cost_usd": {
+          "delta": 0.0,
+          "few_shot": 0.0,
+          "zero_shot": 0.0
+        },
+        "overhead_total_tokens": {
+          "delta": 269941.0,
+          "few_shot": 505317,
+          "zero_shot": 235376
+        },
+        "parse_error_rate": {
+          "delta": -0.020833333333333332,
+          "few_shot": 0.0,
+          "zero_shot": 0.020833333333333332
+        },
+        "repair_op_f1": {
+          "delta": 0.04155614500442087,
+          "few_shot": 0.1794871794871795,
+          "zero_shot": 0.13793103448275862
+        },
+        "schema_decision_match": {
+          "delta": 0.2632978723404255,
+          "few_shot": 0.625,
+          "zero_shot": 0.3617021276595745
+        },
+        "taxonomy_code_match": {
+          "delta": -0.025265957446808512,
+          "few_shot": 0.1875,
+          "zero_shot": 0.2127659574468085
+        },
+        "taxonomy_level_success": {
+          "delta": 0.018173758865248246,
+          "few_shot": 0.14583333333333334,
+          "zero_shot": 0.1276595744680851
+        },
+        "value_delta_claimed_when_gold_absent": {
+          "delta": 0.0,
+          "few_shot": 0.13333333333333333,
+          "zero_shot": 0.13333333333333333
+        },
+        "value_delta_f1_when_applicable": {
+          "delta": 0.08280542986425342,
+          "few_shot": 0.2058823529411765,
+          "zero_shot": 0.12307692307692307
+        }
+      },
+      {
+        "constraint_family_f1": {
+          "delta": 0.20254464991307086,
+          "few_shot": 0.783625730994152,
+          "zero_shot": 0.5810810810810811
+        },
+        "context_bundle": "local_graph",
+        "family_level_success": {
+          "delta": 0.1839539007092198,
+          "few_shot": 0.8297872340425532,
+          "zero_shot": 0.6458333333333334
+        },
+        "family_only_when_value_delta_gold_present": {
+          "delta": 0.019886363636363646,
+          "few_shot": 0.65625,
+          "zero_shot": 0.6363636363636364
+        },
+        "overhead_elapsed_seconds_mean": {
+          "delta": 1.6368614687499958,
+          "few_shot": 9.32841677083333,
+          "zero_shot": 7.6915553020833345
+        },
+        "overhead_estimated_cost_usd": {
+          "delta": 0.0,
+          "few_shot": 0.0,
+          "zero_shot": 0.0
+        },
+        "overhead_total_tokens": {
+          "delta": 434891.0,
+          "few_shot": 729091,
+          "zero_shot": 294200
+        },
+        "parse_error_rate": {
+          "delta": 0.020833333333333332,
+          "few_shot": 0.020833333333333332,
+          "zero_shot": 0.0
+        },
+        "repair_op_f1": {
+          "delta": 0.020512820512820495,
+          "few_shot": 0.15384615384615383,
+          "zero_shot": 0.13333333333333333
+        },
+        "schema_decision_match": {
+          "delta": 0.30540780141843965,
+          "few_shot": 0.6595744680851063,
+          "zero_shot": 0.3541666666666667
+        },
+        "taxonomy_code_match": {
+          "delta": -0.059840425531914904,
+          "few_shot": 0.1276595744680851,
+          "zero_shot": 0.1875
+        },
+        "taxonomy_level_success": {
+          "delta": 0.023049645390070927,
+          "few_shot": 0.10638297872340426,
+          "zero_shot": 0.08333333333333333
+        },
+        "value_delta_claimed_when_gold_absent": {
+          "delta": 0.06666666666666668,
+          "few_shot": 0.2,
+          "zero_shot": 0.13333333333333333
+        },
+        "value_delta_f1_when_applicable": {
+          "delta": 0.1134575569358178,
+          "few_shot": 0.17142857142857143,
+          "zero_shot": 0.057971014492753624
+        }
+      }
+    ],
+    "unmatched_few_shot_matrix_ids": []
+  }
+}

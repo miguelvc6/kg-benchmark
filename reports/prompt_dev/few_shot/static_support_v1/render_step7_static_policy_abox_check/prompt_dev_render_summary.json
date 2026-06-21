@@ -1,0 +1,63 @@
+{
+  "counts": {
+    "by_class": {
+      "TypeC": 1
+    },
+    "by_class_subtype": {
+      "TypeC:EXTERNAL_BY_ELIMINATION": 1
+    },
+    "by_context_bundle": {
+      "logic_only": 2
+    },
+    "by_example_policy": {
+      "static_diverse_kshot": 2
+    },
+    "by_representation": {
+      "hybrid_json_nl": 2
+    },
+    "by_selection_stratum": {
+      "DEV_TYPEC_EXTERNAL_OR_UNKNOWN": 1
+    },
+    "by_subtype": {
+      "EXTERNAL_BY_ELIMINATION": 1
+    },
+    "by_task": {
+      "a_box_repair": 1,
+      "track_diagnosis": 1
+    },
+    "by_track": {
+      "A_BOX": 1
+    },
+    "eval_cases": 1,
+    "matrix_rows": 2,
+    "rendered_prompts": 2,
+    "skipped_prompts": 0,
+    "unique_properties": 1,
+    "unique_qids": 1
+  },
+  "created_at_utc": "2026-06-18T13:14:03Z",
+  "inputs": {
+    "classified_benchmark": "data/04_classified_benchmark.jsonl",
+    "core_manifest": "reports/benchmark_selection/core_v1_seed_13.json",
+    "dev_manifest": "reports/benchmark_selection/dev_prompt_v1_seed_13.json",
+    "eval_manifest": "reports/benchmark_selection/dev_prompt_v1_seed_13.json",
+    "example_manifest": null,
+    "max_cases": 1,
+    "sample_strategy": "manifest_order",
+    "support_set_manifest": "reports/prompt_dev/few_shot/static_support_v1/static_support_manifest.json",
+    "track_filter": [
+      "A_BOX"
+    ],
+    "world_state": "data/03_world_state.json"
+  },
+  "manifest_type": "prompt_dev_rendered_prompt_summary",
+  "manifest_version": "prompt_dev_v5_tbox_taxonomy_patch",
+  "note": "No LLM inference was run. These artifacts contain prompts only.",
+  "outputs": {
+    "few_shot_leakage_scan": "reports/prompt_dev/few_shot/static_support_v1/render_step7_static_policy_abox_check/few_shot_leakage_scan.json",
+    "few_shot_overlap_report_json": "reports/prompt_dev/few_shot/static_support_v1/render_step7_static_policy_abox_check/few_shot_overlap_report.json",
+    "few_shot_overlap_report_markdown": "reports/prompt_dev/few_shot/static_support_v1/render_step7_static_policy_abox_check/few_shot_overlap_report.md",
+    "prompts_jsonl": "reports/prompt_dev/few_shot/static_support_v1/render_step7_static_policy_abox_check/prompt_dev_rendered_prompts.jsonl",
+    "review_markdown": "reports/prompt_dev/few_shot/static_support_v1/render_step7_static_policy_abox_check/prompt_dev_prompt_review.md"
+  }
+}

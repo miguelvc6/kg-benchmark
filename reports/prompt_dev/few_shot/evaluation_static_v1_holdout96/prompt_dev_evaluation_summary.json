@@ -1,0 +1,900 @@
+{
+  "manifest_type": "prompt_dev_evaluation_summary",
+  "manifest_version": "prompt_dev_v5_tbox_taxonomy_patch",
+  "created_at_utc": "2026-06-18T15:31:09Z",
+  "run_id": "prompt_dev_eval_20260618T145902",
+  "provider": "ollama",
+  "model": "gpt-oss:120b",
+  "inputs": {
+    "classified_benchmark": "data/04_classified_benchmark.jsonl",
+    "world_state": "data/03_world_state.json",
+    "eval_manifest": "reports/benchmark_selection/dev_prompt_holdout_spec_v4_96_seed_17.json",
+    "dev_manifest": "reports/benchmark_selection/dev_prompt_holdout_spec_v4_96_seed_17.json",
+    "example_manifest": "reports/benchmark_selection/dev_prompt_v1_seed_13.json",
+    "core_manifest": "reports/benchmark_selection/core_v1_seed_13.json",
+    "support_set_manifest": "reports/prompt_dev/few_shot/static_support_v1/static_support_manifest.json",
+    "zero_shot_baseline_summary": "/home/wucloud/kg-benchmark/reports/prompt_dev/evaluation_prompt_dev_v5_tbox_taxonomy_patch_holdout96_zero_shot/prompt_dev_evaluation_summary.json",
+    "render_summary": "reports/prompt_dev/few_shot/evaluation_static_v1_holdout96/rendered_prompts/prompt_dev_render_summary.json",
+    "sample_strategy": "manifest_order",
+    "max_cases": 96,
+    "track_filter": null
+  },
+  "outputs": {
+    "output_dir": "reports/prompt_dev/few_shot/evaluation_static_v1_holdout96",
+    "comparison_markdown": "reports/prompt_dev/few_shot/evaluation_static_v1_holdout96/prompt_dev_evaluation_comparison.md",
+    "few_shot_leakage_scan": "reports/prompt_dev/few_shot/evaluation_static_v1_holdout96/rendered_prompts/few_shot_leakage_scan.json",
+    "few_shot_overlap_report_json": "reports/prompt_dev/few_shot/evaluation_static_v1_holdout96/rendered_prompts/few_shot_overlap_report.json",
+    "few_shot_overlap_report_markdown": "reports/prompt_dev/few_shot/evaluation_static_v1_holdout96/rendered_prompts/few_shot_overlap_report.md",
+    "few_shot_run_config": "reports/prompt_dev/few_shot/evaluation_static_v1_holdout96/few_shot_run_config.json",
+    "few_shot_delta_vs_zero_shot_json": "reports/prompt_dev/few_shot/evaluation_static_v1_holdout96/few_shot_delta_vs_zero_shot.json",
+    "few_shot_delta_vs_zero_shot_markdown": "reports/prompt_dev/few_shot/evaluation_static_v1_holdout96/few_shot_delta_vs_zero_shot.md"
+  },
+  "counts": {
+    "rendered_prompts": 192,
+    "evaluated_prompts": 192,
+    "matrix_rows": 2,
+    "by_parse_status": {
+      "normalized": 186,
+      "parse_error": 1,
+      "non_executable_empty_ops": 5
+    }
+  },
+  "results": [
+    {
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "output_dir": "reports/prompt_dev/few_shot/evaluation_static_v1_holdout96/matrices/prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "representation": "hybrid_json_nl",
+      "example_policy": "static_diverse_kshot",
+      "context_bundle": "logic_only",
+      "task": "repair_proposal",
+      "track_mode": "oracle",
+      "include_abstention": false,
+      "case_ids": [
+        "reform_Q100264032_P476_2417146821",
+        "reform_Q10543829_P2193_2431371575",
+        "reform_Q105516185_P5045_2408609469",
+        "reform_Q107164796_P950_2330325818",
+        "reform_Q114758296_P10225_2403749973",
+        "reform_Q11586656_P528_2440224137",
+        "reform_Q115933554_P31_2442704771",
+        "reform_Q11632273_P1786_2026755025",
+        "reform_Q12204_P5082_2442820132",
+        "reform_Q129172278_P50_2441781084",
+        "reform_Q12999474_P282_1715882061",
+        "reform_Q130389142_P4275_2356827847",
+        "reform_Q130750019_P9307_2349186400",
+        "reform_Q134383336_P20_2442859490",
+        "reform_Q134470993_P535_2443240310",
+        "reform_Q1410_P9241_2407961125",
+        "reform_Q15377916_P4162_2385729735",
+        "reform_Q15879933_P7504_2410670722",
+        "reform_Q15937515_P7937_2439061952",
+        "reform_Q17555344_P613_2439848360",
+        "reform_Q17604476_P242_1687213130",
+        "reform_Q179294_P5082_2442820132",
+        "reform_Q18034993_P2293_2433261501",
+        "reform_Q190122_P691_2445073477",
+        "reform_Q2060553_P3137_2428712581",
+        "reform_Q22101130_P1782_2252283680",
+        "reform_Q23183630_P644_722137948",
+        "reform_Q23222572_P645_690339121",
+        "reform_Q254745_P1346_1580835843",
+        "reform_Q2563437_P1292_2440505308",
+        "reform_Q29041706_P356_2447249541",
+        "reform_Q29123009_P481_2317303689",
+        "reform_Q3226689_P460_2370378152",
+        "reform_Q3290762_P4529_2172698999",
+        "reform_Q3468344_P1140_2143686910",
+        "reform_Q37070489_P3370_2381040789",
+        "reform_Q3839614_P3954_2091124869",
+        "reform_Q3939898_P4216_2361580316",
+        "reform_Q439712_P1770_2433393062",
+        "reform_Q49005278_P403_2442802452",
+        "reform_Q513185_P1368_2329221897",
+        "reform_Q58310204_P6004_1800952303",
+        "reform_Q59870066_P3382_990960789",
+        "reform_Q6411517_P140_1858269104",
+        "reform_Q67576157_P7261_2445366058",
+        "reform_Q67587162_P7261_2445366058",
+        "reform_Q97664834_P4381_2418670693",
+        "reform_Q98848217_P9160_2441138672",
+        "repair_Q100538531_1295695148",
+        "repair_Q100541019_1295683310",
+        "repair_Q100542513_1295674485",
+        "repair_Q100545025_1295686209",
+        "repair_Q1068701_2435145587",
+        "repair_Q1097539_2297192312",
+        "repair_Q110278679_2446687920",
+        "repair_Q113344064_2431863793",
+        "repair_Q117185132_2399414360",
+        "repair_Q1228759_2443517062",
+        "repair_Q12306457_2445808318",
+        "repair_Q123265196_2166568597",
+        "repair_Q131148728_2447350025",
+        "repair_Q135501807_2388780852",
+        "repair_Q135505548_2404100597",
+        "repair_Q135514273_2404099987",
+        "repair_Q135514524_2404099048",
+        "repair_Q136822147_2441521861",
+        "repair_Q1505165_2297182764",
+        "repair_Q15557889_2445321661",
+        "repair_Q164149_2086419834",
+        "repair_Q1758639_2367143297",
+        "repair_Q1872168_2297168391",
+        "repair_Q18967834_2445052932",
+        "repair_Q20563062_2442324454",
+        "repair_Q213513_2309952651",
+        "repair_Q21637802_2446577397",
+        "repair_Q22160576_2388176421",
+        "repair_Q2677285_2425228606",
+        "repair_Q27270667_2424882729",
+        "repair_Q3092348_1290289215",
+        "repair_Q3246281_2446212835",
+        "repair_Q40470175_2441937278",
+        "repair_Q52412845_2445342378",
+        "repair_Q544767_2425344764",
+        "repair_Q54790216_2446942723",
+        "repair_Q60682885_2442336143",
+        "repair_Q63900775_2333546182",
+        "repair_Q63904781_2333565896",
+        "repair_Q67406034_2333806446",
+        "repair_Q67409647_2333810791",
+        "repair_Q72476453_2424569289",
+        "repair_Q72514377_2425438988",
+        "repair_Q74781984_2447348164",
+        "repair_Q77281_2297186429",
+        "repair_Q863254_2444461637",
+        "repair_Q95552174_2447348752",
+        "repair_Q990819_2439880803"
+      ],
+      "counts": {
+        "normalized": 94,
+        "parse_error": 0,
+        "request_error": 0,
+        "skipped": 0,
+        "by_parse_status": {
+          "normalized": 94,
+          "non_executable_empty_ops": 2
+        },
+        "by_historical_track": {
+          "A_BOX": 48,
+          "T_BOX": 48
+        },
+        "by_task": {
+          "a_box_repair": 48,
+          "t_box_repair": 48
+        },
+        "by_context": {
+          "logic_only": 96
+        }
+      },
+      "evaluation_summary": "reports/prompt_dev/few_shot/evaluation_static_v1_holdout96/matrices/prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain/evaluation_summary.json",
+      "overall_metrics": {
+        "count": 96,
+        "accepted_rate": 0.2604166666666667,
+        "functional_success_rate": 0.2604166666666667,
+        "exact_historical_agreement_rate": 0.2604166666666667,
+        "semantic_success_rate": 0.0,
+        "semantic_family_success_rate": 0.0,
+        "information_preservation_mean": 0.375,
+        "provenance_completeness_mean": 0.4791666666666667,
+        "auditability_complete_rate": 0.4791666666666667,
+        "conversion_rate": 0.2604166666666667,
+        "tokens_to_fix_mean": 4684.12,
+        "a_box_exact_action_match_rate": 0.6458333333333334,
+        "a_box_exact_value_match_rate": 0.5208333333333334,
+        "a_box_regression_pass_rate": 0.9583333333333334,
+        "exact_action_match_rate": 0.0,
+        "exact_signature_match_rate": 0.0,
+        "changed_constraint_type_hit_rate": null,
+        "signature_after_jaccard_mean": null,
+        "t_box_target_constraint_match_rate": null,
+        "proposal_admits_current_values_rate": null,
+        "metric_applicability": {
+          "semantic_success": 48,
+          "semantic_family_success": 48,
+          "information_preservation": 48,
+          "auditability_complete": 96,
+          "conversion_rate": 96,
+          "tokens_to_fix": 25,
+          "a_box_exact_action_match": 48,
+          "a_box_exact_value_match": 48,
+          "a_box_regression_pass": 48,
+          "exact_action_match": 48,
+          "exact_signature_match": 48,
+          "changed_constraint_type_hit": 0,
+          "signature_after_jaccard": 0,
+          "t_box_target_constraint_match": 0,
+          "proposal_admits_current_values": 0
+        },
+        "proposal_parse_error_count": 0,
+        "proposal_parse_error_rate": 0.0,
+        "proposal_request_error_count": 0,
+        "proposal_request_error_rate": 0.0,
+        "proposal_parse_errors_by_message": {},
+        "track_diagnosis_request_error_count": 0,
+        "track_diagnosis_request_error_rate": 0.0,
+        "token_usage_total_mean": 5263.71875,
+        "track_diagnosis_accuracy": null,
+        "track_diagnosis_present_rate": 0.0,
+        "track_diagnosis_skipped_count": 96,
+        "track_diagnosis_skipped_rate": 1.0
+      },
+      "parse_errors": {
+        "proposal_parse_error_count": 0,
+        "proposal_parse_error_rate": 0.0,
+        "by_message": {}
+      },
+      "request_errors": {
+        "proposal_request_error_count": 0,
+        "proposal_request_error_rate": 0.0,
+        "track_diagnosis_request_error_count": 0,
+        "track_diagnosis_request_error_rate": 0.0,
+        "track_diagnosis_skipped_count": 96,
+        "track_diagnosis_skipped_rate": 1.0
+      },
+      "tbox_taxonomy_patch_evaluation_summary": "reports/prompt_dev/few_shot/evaluation_static_v1_holdout96/matrices/prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain/tbox_taxonomy_patch_evaluation_summary.json",
+      "tbox_taxonomy_patch_gold_version": "tbox_taxonomy_patch_gold_dev_holdout_v1",
+      "tbox_taxonomy_patch_metrics": {
+        "tbox_patch_parse_rate": {
+          "numerator": 48,
+          "applicable_denominator": 48,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 1.0,
+          "rate": 1.0
+        },
+        "tbox_patch_contract_valid_rate": {
+          "numerator": 48,
+          "applicable_denominator": 48,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 1.0,
+          "rate": 1.0
+        },
+        "tbox_patch_parse_error_rate": {
+          "numerator": 0,
+          "applicable_denominator": 48,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 1.0,
+          "rate": 0.0
+        },
+        "tbox_patch_target_pid_match_rate": {
+          "numerator": 48,
+          "applicable_denominator": 48,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 1.0,
+          "rate": 1.0
+        },
+        "tbox_patch_primary_constraint_family_match_rate": {
+          "numerator": 38,
+          "applicable_denominator": 48,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 1.0,
+          "rate": 0.7916666666666666
+        },
+        "tbox_patch_any_changed_family_hit_rate": {
+          "numerator": 38,
+          "applicable_denominator": 48,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 1.0,
+          "rate": 0.7916666666666666
+        },
+        "tbox_patch_schema_decision_match_rate": {
+          "numerator": 30,
+          "applicable_denominator": 48,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 1.0,
+          "rate": 0.625
+        },
+        "tbox_patch_no_causal_schema_repair_match_rate": {
+          "numerator": 0,
+          "applicable_denominator": 12,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.25,
+          "rate": 0.0
+        },
+        "tbox_patch_unclear_schema_evidence_match_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.0,
+          "rate": null
+        },
+        "tbox_patch_repair_op_exact_match_rate": {
+          "numerator": 9,
+          "applicable_denominator": 48,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 1.0,
+          "rate": 0.1875
+        },
+        "tbox_patch_taxonomy_code_exact_match_rate": {
+          "numerator": 9,
+          "applicable_denominator": 48,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 1.0,
+          "rate": 0.1875
+        },
+        "tbox_patch_qualifier_property_match_rate": {
+          "numerator": 1,
+          "applicable_denominator": 33,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.6875,
+          "rate": 0.030303030303030304
+        },
+        "tbox_patch_evidence_level_exact_match_rate": {
+          "numerator": 10,
+          "applicable_denominator": 48,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 1.0,
+          "rate": 0.20833333333333334
+        },
+        "tbox_patch_value_delta_claimed_when_gold_absent_rate": {
+          "numerator": 2,
+          "applicable_denominator": 15,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.3125,
+          "rate": 0.13333333333333333
+        },
+        "tbox_patch_family_only_when_value_delta_gold_present_rate": {
+          "numerator": 25,
+          "applicable_denominator": 33,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.6875,
+          "rate": 0.7575757575757576
+        },
+        "tbox_patch_family_level_success": {
+          "numerator": 38,
+          "applicable_denominator": 48,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 1.0,
+          "rate": 0.7916666666666666
+        },
+        "tbox_patch_decision_level_success": {
+          "numerator": 27,
+          "applicable_denominator": 48,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 1.0,
+          "rate": 0.5625
+        },
+        "tbox_patch_taxonomy_level_success": {
+          "numerator": 7,
+          "applicable_denominator": 48,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 1.0,
+          "rate": 0.14583333333333334
+        },
+        "tbox_patch_value_delta_success": {
+          "numerator": 0,
+          "applicable_denominator": 48,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 1.0,
+          "rate": 0.0
+        },
+        "tbox_patch_constraint_family_precision": {
+          "numerator": 65,
+          "applicable_denominator": 82,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 1.0,
+          "rate": 0.7926829268292683
+        },
+        "tbox_patch_constraint_family_recall": {
+          "numerator": 65,
+          "applicable_denominator": 86,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 1.0,
+          "rate": 0.7558139534883721
+        },
+        "tbox_patch_constraint_family_f1": {
+          "numerator": 65,
+          "applicable_denominator": 168,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 1.0,
+          "rate": 0.7738095238095238
+        },
+        "tbox_patch_repair_op_precision": {
+          "numerator": 7,
+          "applicable_denominator": 40,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 1.0,
+          "rate": 0.175
+        },
+        "tbox_patch_repair_op_recall": {
+          "numerator": 7,
+          "applicable_denominator": 38,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 1.0,
+          "rate": 0.18421052631578946
+        },
+        "tbox_patch_repair_op_f1": {
+          "numerator": 7,
+          "applicable_denominator": 78,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 1.0,
+          "rate": 0.1794871794871795
+        },
+        "tbox_patch_added_values_precision": {
+          "numerator": 4,
+          "applicable_denominator": 27,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.6875,
+          "rate": 0.14814814814814814
+        },
+        "tbox_patch_added_values_recall": {
+          "numerator": 4,
+          "applicable_denominator": 22,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.6875,
+          "rate": 0.18181818181818182
+        },
+        "tbox_patch_added_values_f1": {
+          "numerator": 4,
+          "applicable_denominator": 49,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.6875,
+          "rate": 0.16326530612244897
+        },
+        "tbox_patch_removed_values_precision": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.6875,
+          "rate": null
+        },
+        "tbox_patch_removed_values_recall": {
+          "numerator": 0,
+          "applicable_denominator": 19,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.6875,
+          "rate": 0.0
+        },
+        "tbox_patch_removed_values_f1": {
+          "numerator": 0,
+          "applicable_denominator": 19,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.6875,
+          "rate": 0.0
+        },
+        "tbox_patch_value_delta_f1_when_applicable": {
+          "numerator": 7,
+          "applicable_denominator": 68,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.6875,
+          "rate": 0.2058823529411765
+        }
+      }
+    },
+    {
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "output_dir": "reports/prompt_dev/few_shot/evaluation_static_v1_holdout96/matrices/prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "representation": "hybrid_json_nl",
+      "example_policy": "static_diverse_kshot",
+      "context_bundle": "local_graph",
+      "task": "repair_proposal",
+      "track_mode": "oracle",
+      "include_abstention": false,
+      "case_ids": [
+        "reform_Q100264032_P476_2417146821",
+        "reform_Q10543829_P2193_2431371575",
+        "reform_Q105516185_P5045_2408609469",
+        "reform_Q107164796_P950_2330325818",
+        "reform_Q114758296_P10225_2403749973",
+        "reform_Q11586656_P528_2440224137",
+        "reform_Q115933554_P31_2442704771",
+        "reform_Q11632273_P1786_2026755025",
+        "reform_Q12204_P5082_2442820132",
+        "reform_Q129172278_P50_2441781084",
+        "reform_Q12999474_P282_1715882061",
+        "reform_Q130389142_P4275_2356827847",
+        "reform_Q130750019_P9307_2349186400",
+        "reform_Q134383336_P20_2442859490",
+        "reform_Q134470993_P535_2443240310",
+        "reform_Q1410_P9241_2407961125",
+        "reform_Q15377916_P4162_2385729735",
+        "reform_Q15879933_P7504_2410670722",
+        "reform_Q15937515_P7937_2439061952",
+        "reform_Q17555344_P613_2439848360",
+        "reform_Q17604476_P242_1687213130",
+        "reform_Q179294_P5082_2442820132",
+        "reform_Q18034993_P2293_2433261501",
+        "reform_Q190122_P691_2445073477",
+        "reform_Q2060553_P3137_2428712581",
+        "reform_Q22101130_P1782_2252283680",
+        "reform_Q23183630_P644_722137948",
+        "reform_Q23222572_P645_690339121",
+        "reform_Q254745_P1346_1580835843",
+        "reform_Q2563437_P1292_2440505308",
+        "reform_Q29041706_P356_2447249541",
+        "reform_Q29123009_P481_2317303689",
+        "reform_Q3226689_P460_2370378152",
+        "reform_Q3290762_P4529_2172698999",
+        "reform_Q3468344_P1140_2143686910",
+        "reform_Q37070489_P3370_2381040789",
+        "reform_Q3839614_P3954_2091124869",
+        "reform_Q3939898_P4216_2361580316",
+        "reform_Q439712_P1770_2433393062",
+        "reform_Q49005278_P403_2442802452",
+        "reform_Q513185_P1368_2329221897",
+        "reform_Q58310204_P6004_1800952303",
+        "reform_Q59870066_P3382_990960789",
+        "reform_Q6411517_P140_1858269104",
+        "reform_Q67576157_P7261_2445366058",
+        "reform_Q67587162_P7261_2445366058",
+        "reform_Q97664834_P4381_2418670693",
+        "reform_Q98848217_P9160_2441138672",
+        "repair_Q100538531_1295695148",
+        "repair_Q100541019_1295683310",
+        "repair_Q100542513_1295674485",
+        "repair_Q100545025_1295686209",
+        "repair_Q1068701_2435145587",
+        "repair_Q1097539_2297192312",
+        "repair_Q110278679_2446687920",
+        "repair_Q113344064_2431863793",
+        "repair_Q117185132_2399414360",
+        "repair_Q1228759_2443517062",
+        "repair_Q12306457_2445808318",
+        "repair_Q123265196_2166568597",
+        "repair_Q131148728_2447350025",
+        "repair_Q135501807_2388780852",
+        "repair_Q135505548_2404100597",
+        "repair_Q135514273_2404099987",
+        "repair_Q135514524_2404099048",
+        "repair_Q136822147_2441521861",
+        "repair_Q1505165_2297182764",
+        "repair_Q15557889_2445321661",
+        "repair_Q164149_2086419834",
+        "repair_Q1758639_2367143297",
+        "repair_Q1872168_2297168391",
+        "repair_Q18967834_2445052932",
+        "repair_Q20563062_2442324454",
+        "repair_Q213513_2309952651",
+        "repair_Q21637802_2446577397",
+        "repair_Q22160576_2388176421",
+        "repair_Q2677285_2425228606",
+        "repair_Q27270667_2424882729",
+        "repair_Q3092348_1290289215",
+        "repair_Q3246281_2446212835",
+        "repair_Q40470175_2441937278",
+        "repair_Q52412845_2445342378",
+        "repair_Q544767_2425344764",
+        "repair_Q54790216_2446942723",
+        "repair_Q60682885_2442336143",
+        "repair_Q63900775_2333546182",
+        "repair_Q63904781_2333565896",
+        "repair_Q67406034_2333806446",
+        "repair_Q67409647_2333810791",
+        "repair_Q72476453_2424569289",
+        "repair_Q72514377_2425438988",
+        "repair_Q74781984_2447348164",
+        "repair_Q77281_2297186429",
+        "repair_Q863254_2444461637",
+        "repair_Q95552174_2447348752",
+        "repair_Q990819_2439880803"
+      ],
+      "counts": {
+        "normalized": 92,
+        "parse_error": 1,
+        "request_error": 0,
+        "skipped": 0,
+        "by_parse_status": {
+          "normalized": 92,
+          "parse_error": 1,
+          "non_executable_empty_ops": 3
+        },
+        "by_historical_track": {
+          "A_BOX": 48,
+          "T_BOX": 48
+        },
+        "by_task": {
+          "a_box_repair": 48,
+          "t_box_repair": 48
+        },
+        "by_context": {
+          "local_graph": 96
+        }
+      },
+      "evaluation_summary": "reports/prompt_dev/few_shot/evaluation_static_v1_holdout96/matrices/prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain/evaluation_summary.json",
+      "overall_metrics": {
+        "count": 96,
+        "accepted_rate": 0.28125,
+        "functional_success_rate": 0.28125,
+        "exact_historical_agreement_rate": 0.28125,
+        "semantic_success_rate": 0.0,
+        "semantic_family_success_rate": 0.0,
+        "information_preservation_mean": 0.4270833333333333,
+        "provenance_completeness_mean": 0.46875,
+        "auditability_complete_rate": 0.46875,
+        "conversion_rate": 0.28125,
+        "tokens_to_fix_mean": 6960.2962962962965,
+        "a_box_exact_action_match_rate": 0.6666666666666666,
+        "a_box_exact_value_match_rate": 0.5625,
+        "a_box_regression_pass_rate": 0.9375,
+        "exact_action_match_rate": 0.0,
+        "exact_signature_match_rate": 0.0,
+        "changed_constraint_type_hit_rate": null,
+        "signature_after_jaccard_mean": null,
+        "t_box_target_constraint_match_rate": null,
+        "proposal_admits_current_values_rate": null,
+        "metric_applicability": {
+          "semantic_success": 48,
+          "semantic_family_success": 48,
+          "information_preservation": 48,
+          "auditability_complete": 96,
+          "conversion_rate": 96,
+          "tokens_to_fix": 27,
+          "a_box_exact_action_match": 48,
+          "a_box_exact_value_match": 48,
+          "a_box_regression_pass": 48,
+          "exact_action_match": 48,
+          "exact_signature_match": 48,
+          "changed_constraint_type_hit": 0,
+          "signature_after_jaccard": 0,
+          "t_box_target_constraint_match": 0,
+          "proposal_admits_current_values": 0
+        },
+        "proposal_parse_error_count": 1,
+        "proposal_parse_error_rate": 0.010416666666666666,
+        "proposal_request_error_count": 0,
+        "proposal_request_error_rate": 0.0,
+        "proposal_parse_errors_by_message": {
+          "provenance must contain at least one entry.": 1
+        },
+        "track_diagnosis_request_error_count": 0,
+        "track_diagnosis_request_error_rate": 0.0,
+        "token_usage_total_mean": 7594.697916666667,
+        "track_diagnosis_accuracy": null,
+        "track_diagnosis_present_rate": 0.0,
+        "track_diagnosis_skipped_count": 96,
+        "track_diagnosis_skipped_rate": 1.0
+      },
+      "parse_errors": {
+        "proposal_parse_error_count": 1,
+        "proposal_parse_error_rate": 0.010416666666666666,
+        "by_message": {
+          "provenance must contain at least one entry.": 1
+        }
+      },
+      "request_errors": {
+        "proposal_request_error_count": 0,
+        "proposal_request_error_rate": 0.0,
+        "track_diagnosis_request_error_count": 0,
+        "track_diagnosis_request_error_rate": 0.0,
+        "track_diagnosis_skipped_count": 96,
+        "track_diagnosis_skipped_rate": 1.0
+      },
+      "tbox_taxonomy_patch_evaluation_summary": "reports/prompt_dev/few_shot/evaluation_static_v1_holdout96/matrices/prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain/tbox_taxonomy_patch_evaluation_summary.json",
+      "tbox_taxonomy_patch_gold_version": "tbox_taxonomy_patch_gold_dev_holdout_v1",
+      "tbox_taxonomy_patch_metrics": {
+        "tbox_patch_parse_rate": {
+          "numerator": 47,
+          "applicable_denominator": 48,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 1.0,
+          "rate": 0.9791666666666666
+        },
+        "tbox_patch_contract_valid_rate": {
+          "numerator": 47,
+          "applicable_denominator": 48,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 1.0,
+          "rate": 0.9791666666666666
+        },
+        "tbox_patch_parse_error_rate": {
+          "numerator": 1,
+          "applicable_denominator": 48,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 1.0,
+          "rate": 0.020833333333333332
+        },
+        "tbox_patch_target_pid_match_rate": {
+          "numerator": 47,
+          "applicable_denominator": 47,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.9791666666666666,
+          "rate": 1.0
+        },
+        "tbox_patch_primary_constraint_family_match_rate": {
+          "numerator": 39,
+          "applicable_denominator": 47,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.9791666666666666,
+          "rate": 0.8297872340425532
+        },
+        "tbox_patch_any_changed_family_hit_rate": {
+          "numerator": 39,
+          "applicable_denominator": 47,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.9791666666666666,
+          "rate": 0.8297872340425532
+        },
+        "tbox_patch_schema_decision_match_rate": {
+          "numerator": 31,
+          "applicable_denominator": 47,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.9791666666666666,
+          "rate": 0.6595744680851063
+        },
+        "tbox_patch_no_causal_schema_repair_match_rate": {
+          "numerator": 1,
+          "applicable_denominator": 12,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.25,
+          "rate": 0.08333333333333333
+        },
+        "tbox_patch_unclear_schema_evidence_match_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.0,
+          "rate": null
+        },
+        "tbox_patch_repair_op_exact_match_rate": {
+          "numerator": 6,
+          "applicable_denominator": 47,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.9791666666666666,
+          "rate": 0.1276595744680851
+        },
+        "tbox_patch_taxonomy_code_exact_match_rate": {
+          "numerator": 6,
+          "applicable_denominator": 47,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.9791666666666666,
+          "rate": 0.1276595744680851
+        },
+        "tbox_patch_qualifier_property_match_rate": {
+          "numerator": 5,
+          "applicable_denominator": 32,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.6666666666666666,
+          "rate": 0.15625
+        },
+        "tbox_patch_evidence_level_exact_match_rate": {
+          "numerator": 9,
+          "applicable_denominator": 47,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.9791666666666666,
+          "rate": 0.19148936170212766
+        },
+        "tbox_patch_value_delta_claimed_when_gold_absent_rate": {
+          "numerator": 3,
+          "applicable_denominator": 15,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.3125,
+          "rate": 0.2
+        },
+        "tbox_patch_family_only_when_value_delta_gold_present_rate": {
+          "numerator": 21,
+          "applicable_denominator": 32,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.6666666666666666,
+          "rate": 0.65625
+        },
+        "tbox_patch_family_level_success": {
+          "numerator": 39,
+          "applicable_denominator": 47,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.9791666666666666,
+          "rate": 0.8297872340425532
+        },
+        "tbox_patch_decision_level_success": {
+          "numerator": 28,
+          "applicable_denominator": 47,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.9791666666666666,
+          "rate": 0.5957446808510638
+        },
+        "tbox_patch_taxonomy_level_success": {
+          "numerator": 5,
+          "applicable_denominator": 47,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.9791666666666666,
+          "rate": 0.10638297872340426
+        },
+        "tbox_patch_value_delta_success": {
+          "numerator": 1,
+          "applicable_denominator": 47,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.9791666666666666,
+          "rate": 0.02127659574468085
+        },
+        "tbox_patch_constraint_family_precision": {
+          "numerator": 67,
+          "applicable_denominator": 87,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.9791666666666666,
+          "rate": 0.7701149425287356
+        },
+        "tbox_patch_constraint_family_recall": {
+          "numerator": 67,
+          "applicable_denominator": 84,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.9791666666666666,
+          "rate": 0.7976190476190477
+        },
+        "tbox_patch_constraint_family_f1": {
+          "numerator": 67,
+          "applicable_denominator": 171,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.9791666666666666,
+          "rate": 0.783625730994152
+        },
+        "tbox_patch_repair_op_precision": {
+          "numerator": 6,
+          "applicable_denominator": 41,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.9791666666666666,
+          "rate": 0.14634146341463414
+        },
+        "tbox_patch_repair_op_recall": {
+          "numerator": 6,
+          "applicable_denominator": 37,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.9791666666666666,
+          "rate": 0.16216216216216217
+        },
+        "tbox_patch_repair_op_f1": {
+          "numerator": 6,
+          "applicable_denominator": 78,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.9791666666666666,
+          "rate": 0.15384615384615383
+        },
+        "tbox_patch_added_values_precision": {
+          "numerator": 5,
+          "applicable_denominator": 30,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.6875,
+          "rate": 0.16666666666666666
+        },
+        "tbox_patch_added_values_recall": {
+          "numerator": 5,
+          "applicable_denominator": 22,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.6875,
+          "rate": 0.22727272727272727
+        },
+        "tbox_patch_added_values_f1": {
+          "numerator": 5,
+          "applicable_denominator": 52,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.6875,
+          "rate": 0.1923076923076923
+        },
+        "tbox_patch_removed_values_precision": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.6875,
+          "rate": null
+        },
+        "tbox_patch_removed_values_recall": {
+          "numerator": 0,
+          "applicable_denominator": 18,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.6875,
+          "rate": 0.0
+        },
+        "tbox_patch_removed_values_f1": {
+          "numerator": 0,
+          "applicable_denominator": 18,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.6875,
+          "rate": 0.0
+        },
+        "tbox_patch_value_delta_f1_when_applicable": {
+          "numerator": 6,
+          "applicable_denominator": 70,
+          "total_tbox_rows": 48,
+          "applicability_coverage": 0.6875,
+          "rate": 0.17142857142857143
+        }
+      }
+    }
+  ],
+  "few_shot_report": {
+    "condition_count": 1,
+    "a_box_comparison_count": 2,
+    "t_box_comparison_count": 2,
+    "diagnosis_comparison_count": 0,
+    "unmatched_few_shot_matrix_count": 0
+  }
+}

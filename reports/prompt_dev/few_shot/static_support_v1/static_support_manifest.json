@@ -1,0 +1,88 @@
+{
+  "blocked_manifest": "reports/benchmark_selection/core_v1_seed_13.json",
+  "blocked_overlaps": {
+    "core_case_overlap": 0,
+    "core_qid_overlap": 0,
+    "core_tbox_revision_overlap": 0
+  },
+  "created_at_utc": "2026-06-18T12:45:07Z",
+  "manifest_type": "few_shot_support_set",
+  "manifest_version": "static_support_v1",
+  "selection_policy": "static_diverse",
+  "source_manifest": "reports/benchmark_selection/dev_prompt_v1_seed_13.json",
+  "support_sets": {
+    "a_box_repair": [
+      {
+        "notes": "clean rule / constraint rejection / target-required claim",
+        "raw_case_id": "repair_Q95552174_2447348752",
+        "role": "a_box_clean_rule",
+        "task_schema": "a_box_v4_spec_only",
+        "visible_example_id": "example_a_000001"
+      },
+      {
+        "notes": "format or literal normalization/pruning",
+        "raw_case_id": "repair_Q136738478_2443608153",
+        "role": "a_box_format_or_literal_normalization",
+        "task_schema": "a_box_v4_spec_only",
+        "visible_example_id": "example_a_000002"
+      },
+      {
+        "notes": "local-evidence case",
+        "raw_case_id": "repair_Q100548289_1295700461",
+        "role": "a_box_local_evidence",
+        "task_schema": "a_box_v4_spec_only",
+        "visible_example_id": "example_a_000003"
+      }
+    ],
+    "t_box_repair": [
+      {
+        "gold_version": "tbox_taxonomy_patch_gold_dev_v1",
+        "notes": "CAUSAL_SCHEMA_REPAIR + CQ_PLUS / CONSTRAINT_QUALIFIER_ADD",
+        "raw_case_id": "reform_Q17555344_P613_2439848360",
+        "role": "tbox_taxonomy_cq_plus",
+        "task_schema": "tbox_taxonomy_patch_v1",
+        "visible_example_id": "example_t_000001"
+      },
+      {
+        "gold_version": "tbox_taxonomy_patch_gold_dev_v1",
+        "notes": "CAUSAL_SCHEMA_REPAIR + CQ_MINUS or CQ_REPLACE",
+        "raw_case_id": "reform_Q29041706_P356_2447249541",
+        "role": "tbox_taxonomy_cq_minus_or_replace",
+        "task_schema": "tbox_taxonomy_patch_v1",
+        "visible_example_id": "example_t_000002"
+      },
+      {
+        "gold_version": "tbox_taxonomy_patch_gold_dev_v1",
+        "notes": "NO_CAUSAL_SCHEMA_REPAIR with repairs=[]",
+        "raw_case_id": "reform_Q7199901_P3137_2428712581",
+        "role": "tbox_taxonomy_no_causal_empty",
+        "task_schema": "tbox_taxonomy_patch_v1",
+        "visible_example_id": "example_t_000003"
+      },
+      {
+        "gold_version": "tbox_taxonomy_patch_gold_dev_v1",
+        "notes": "OTHER_TBOX_UPDATE or FAMILY_ONLY / OPERATION_VISIBLE case",
+        "raw_case_id": "reform_Q85808015_P1552_2405574367",
+        "role": "tbox_taxonomy_other_or_family_only",
+        "task_schema": "tbox_taxonomy_patch_v1",
+        "visible_example_id": "example_t_000004"
+      }
+    ],
+    "track_diagnosis": [
+      {
+        "notes": "A_BOX diagnosis example",
+        "raw_case_id": "repair_Q15484095_2443725779",
+        "role": "diagnosis_a_box",
+        "task_schema": "track_diagnosis_v1",
+        "visible_example_id": "example_d_000001"
+      },
+      {
+        "notes": "T_BOX diagnosis example",
+        "raw_case_id": "reform_Q364189_P1368_2329221897",
+        "role": "diagnosis_t_box",
+        "task_schema": "track_diagnosis_v1",
+        "visible_example_id": "example_d_000002"
+      }
+    ]
+  }
+}
