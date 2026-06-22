@@ -1,0 +1,2320 @@
+{
+  "by_context": {
+    "local_graph": {
+      "added_vs_removed_false_positive_values": {
+        "added_values": 56
+      },
+      "by_evidence_level": {
+        "VALUE_DELTA_VISIBLE": 14
+      },
+      "by_gold_schema_decision": {
+        "CAUSAL_SCHEMA_REPAIR": 5,
+        "NO_CAUSAL_SCHEMA_REPAIR": 9
+      },
+      "by_prediction_schema_decision": {
+        "CAUSAL_SCHEMA_REPAIR": 14
+      },
+      "by_qualifier_property_id": {
+        "P2302": 1,
+        "P2308": 9,
+        "__NULL__": 4
+      },
+      "by_repair_op": {
+        "CONSTRAINT_QUALIFIER_ADD": 14
+      },
+      "by_subset": {
+        "diagnostic": 9,
+        "main_score": 5
+      },
+      "by_taxonomy_code": {
+        "CQ_PLUS": 14
+      },
+      "cases": [
+        {
+          "added_values": [
+            "P279"
+          ],
+          "case_id": "reform_Q115179765_P2670_2370327892",
+          "context_bundle": "local_graph",
+          "gold_schema_decision": "NO_CAUSAL_SCHEMA_REPAIR",
+          "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+          "metric_detail": {
+            "added_gold": 0,
+            "added_pred": 1,
+            "added_tp": 0,
+            "family_gold": 1,
+            "family_pred": 2,
+            "family_tp": 1,
+            "op_gold": 0,
+            "op_pred": 1,
+            "op_tp": 0,
+            "removed_gold": 0,
+            "removed_pred": 0,
+            "removed_tp": 0,
+            "value_gold": 0,
+            "value_pred": 1,
+            "value_tp": 0
+          },
+          "prediction_schema_decision": "CAUSAL_SCHEMA_REPAIR",
+          "removed_values": [],
+          "repairs": [
+            {
+              "added_values": [
+                "P279"
+              ],
+              "evidence_level": "VALUE_DELTA_VISIBLE",
+              "qualifier_property_id": "P2308",
+              "removed_values": [],
+              "repair_op": "CONSTRAINT_QUALIFIER_ADD",
+              "taxonomy_code": "CQ_PLUS"
+            }
+          ],
+          "subset": "diagnostic",
+          "support_pattern_matches": {
+            "tbox_taxonomy_cq_plus": 1
+          },
+          "target": {
+            "constraint_type_qid": "Q21510864",
+            "pid": "P2670"
+          },
+          "tbox_revision_key": "TBOX::P2670::2370327892",
+          "visibility_by_value": [
+            {
+              "value": "P279",
+              "visible_in_input_case": false,
+              "visible_in_prompt": false,
+              "visible_in_static_examples": false
+            }
+          ]
+        },
+        {
+          "added_values": [
+            "Q1190554",
+            "Q12737077",
+            "Q1322323",
+            "Q13226383",
+            "Q14623646",
+            "Q16334295",
+            "Q1656682",
+            "Q24229398",
+            "Q268592",
+            "Q3249551",
+            "Q340169",
+            "Q47311934",
+            "Q55006986",
+            "Q62934160",
+            "Q7397",
+            "Q7406919",
+            "Q95074"
+          ],
+          "case_id": "reform_Q115902917_P121_2442147265",
+          "context_bundle": "local_graph",
+          "gold_schema_decision": "NO_CAUSAL_SCHEMA_REPAIR",
+          "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+          "metric_detail": {
+            "added_gold": 0,
+            "added_pred": 17,
+            "added_tp": 0,
+            "family_gold": 1,
+            "family_pred": 2,
+            "family_tp": 0,
+            "op_gold": 0,
+            "op_pred": 1,
+            "op_tp": 0,
+            "removed_gold": 0,
+            "removed_pred": 0,
+            "removed_tp": 0,
+            "value_gold": 0,
+            "value_pred": 17,
+            "value_tp": 0
+          },
+          "prediction_schema_decision": "CAUSAL_SCHEMA_REPAIR",
+          "removed_values": [],
+          "repairs": [
+            {
+              "added_values": [
+                "Q1190554",
+                "Q12737077",
+                "Q1322323",
+                "Q13226383",
+                "Q14623646",
+                "Q16334295",
+                "Q1656682",
+                "Q24229398",
+                "Q268592",
+                "Q3249551",
+                "Q340169",
+                "Q47311934",
+                "Q55006986",
+                "Q62934160",
+                "Q7397",
+                "Q7406919",
+                "Q95074"
+              ],
+              "evidence_level": "VALUE_DELTA_VISIBLE",
+              "qualifier_property_id": null,
+              "removed_values": [],
+              "repair_op": "CONSTRAINT_QUALIFIER_ADD",
+              "taxonomy_code": "CQ_PLUS"
+            }
+          ],
+          "subset": "diagnostic",
+          "support_pattern_matches": {},
+          "target": {
+            "constraint_type_qid": "Q21510865",
+            "pid": "P121"
+          },
+          "tbox_revision_key": "TBOX::P121::2442147265",
+          "visibility_by_value": [
+            {
+              "value": "Q1190554",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q12737077",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q1322323",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q13226383",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q14623646",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q16334295",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q1656682",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q24229398",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q268592",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q3249551",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q340169",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q47311934",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q55006986",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q62934160",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q7397",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q7406919",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q95074",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            }
+          ]
+        },
+        {
+          "added_values": [
+            "P31"
+          ],
+          "case_id": "reform_Q118428583_P2670_2370327892",
+          "context_bundle": "local_graph",
+          "gold_schema_decision": "NO_CAUSAL_SCHEMA_REPAIR",
+          "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+          "metric_detail": {
+            "added_gold": 0,
+            "added_pred": 1,
+            "added_tp": 0,
+            "family_gold": 1,
+            "family_pred": 2,
+            "family_tp": 1,
+            "op_gold": 0,
+            "op_pred": 1,
+            "op_tp": 0,
+            "removed_gold": 0,
+            "removed_pred": 0,
+            "removed_tp": 0,
+            "value_gold": 0,
+            "value_pred": 1,
+            "value_tp": 0
+          },
+          "prediction_schema_decision": "CAUSAL_SCHEMA_REPAIR",
+          "removed_values": [],
+          "repairs": [
+            {
+              "added_values": [
+                "P31"
+              ],
+              "evidence_level": "VALUE_DELTA_VISIBLE",
+              "qualifier_property_id": "P2308",
+              "removed_values": [],
+              "repair_op": "CONSTRAINT_QUALIFIER_ADD",
+              "taxonomy_code": "CQ_PLUS"
+            }
+          ],
+          "subset": "diagnostic",
+          "support_pattern_matches": {
+            "tbox_taxonomy_cq_plus": 1
+          },
+          "target": {
+            "constraint_type_qid": "Q21503247",
+            "pid": "P2670"
+          },
+          "tbox_revision_key": "TBOX::P2670::2370327892",
+          "visibility_by_value": [
+            {
+              "value": "P31",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            }
+          ]
+        },
+        {
+          "added_values": [
+            "Q10832",
+            "Q11012",
+            "Q111282474",
+            "Q115537581",
+            "Q1285470",
+            "Q15619164",
+            "Q15707583",
+            "Q16521",
+            "Q168658",
+            "Q201662",
+            "Q2345820",
+            "Q2593744",
+            "Q26401003",
+            "Q26513",
+            "Q40614",
+            "Q5",
+            "Q61002",
+            "Q7239",
+            "Q729",
+            "Q79600797"
+          ],
+          "case_id": "reform_Q137180735_P21_2439154480",
+          "context_bundle": "local_graph",
+          "gold_schema_decision": "NO_CAUSAL_SCHEMA_REPAIR",
+          "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+          "metric_detail": {
+            "added_gold": 0,
+            "added_pred": 20,
+            "added_tp": 0,
+            "family_gold": 1,
+            "family_pred": 2,
+            "family_tp": 1,
+            "op_gold": 0,
+            "op_pred": 1,
+            "op_tp": 0,
+            "removed_gold": 0,
+            "removed_pred": 0,
+            "removed_tp": 0,
+            "value_gold": 0,
+            "value_pred": 20,
+            "value_tp": 0
+          },
+          "prediction_schema_decision": "CAUSAL_SCHEMA_REPAIR",
+          "removed_values": [],
+          "repairs": [
+            {
+              "added_values": [
+                "Q10832",
+                "Q11012",
+                "Q111282474",
+                "Q115537581",
+                "Q1285470",
+                "Q15619164",
+                "Q15707583",
+                "Q16521",
+                "Q168658",
+                "Q201662",
+                "Q2345820",
+                "Q2593744",
+                "Q26401003",
+                "Q26513",
+                "Q40614",
+                "Q5",
+                "Q61002",
+                "Q7239",
+                "Q729",
+                "Q79600797"
+              ],
+              "evidence_level": "VALUE_DELTA_VISIBLE",
+              "qualifier_property_id": "P2308",
+              "removed_values": [],
+              "repair_op": "CONSTRAINT_QUALIFIER_ADD",
+              "taxonomy_code": "CQ_PLUS"
+            }
+          ],
+          "subset": "diagnostic",
+          "support_pattern_matches": {
+            "tbox_taxonomy_cq_plus": 1
+          },
+          "target": {
+            "constraint_type_qid": "Q21503250",
+            "pid": "P21"
+          },
+          "tbox_revision_key": "TBOX::P21::2439154480",
+          "visibility_by_value": [
+            {
+              "value": "Q10832",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q11012",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q111282474",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q115537581",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q1285470",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q15619164",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q15707583",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q16521",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q168658",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q201662",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q2345820",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q2593744",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q26401003",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q26513",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q40614",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q5",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q61002",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q7239",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q729",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q79600797",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            }
+          ]
+        },
+        {
+          "added_values": [
+            "Q115668795",
+            "Q14514600",
+            "Q1656682",
+            "Q1707847",
+            "Q386724",
+            "Q7725310",
+            "Q95074",
+            "Q98216532"
+          ],
+          "case_id": "reform_Q1430158_P175_2292837202",
+          "context_bundle": "local_graph",
+          "gold_schema_decision": "NO_CAUSAL_SCHEMA_REPAIR",
+          "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+          "metric_detail": {
+            "added_gold": 0,
+            "added_pred": 8,
+            "added_tp": 0,
+            "family_gold": 1,
+            "family_pred": 2,
+            "family_tp": 0,
+            "op_gold": 0,
+            "op_pred": 1,
+            "op_tp": 0,
+            "removed_gold": 0,
+            "removed_pred": 0,
+            "removed_tp": 0,
+            "value_gold": 0,
+            "value_pred": 8,
+            "value_tp": 0
+          },
+          "prediction_schema_decision": "CAUSAL_SCHEMA_REPAIR",
+          "removed_values": [],
+          "repairs": [
+            {
+              "added_values": [
+                "Q115668795",
+                "Q14514600",
+                "Q1656682",
+                "Q1707847",
+                "Q386724",
+                "Q7725310",
+                "Q95074",
+                "Q98216532"
+              ],
+              "evidence_level": "VALUE_DELTA_VISIBLE",
+              "qualifier_property_id": "P2308",
+              "removed_values": [],
+              "repair_op": "CONSTRAINT_QUALIFIER_ADD",
+              "taxonomy_code": "CQ_PLUS"
+            }
+          ],
+          "subset": "diagnostic",
+          "support_pattern_matches": {
+            "tbox_taxonomy_cq_plus": 1
+          },
+          "target": {
+            "constraint_type_qid": "Q21510865",
+            "pid": "P175"
+          },
+          "tbox_revision_key": "TBOX::P175::2292837202",
+          "visibility_by_value": [
+            {
+              "value": "Q115668795",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q14514600",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q1656682",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q1707847",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q386724",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q7725310",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q95074",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q98216532",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            }
+          ]
+        },
+        {
+          "added_values": [
+            "P17"
+          ],
+          "case_id": "reform_Q16476914_P131_2437507566",
+          "context_bundle": "local_graph",
+          "gold_schema_decision": "NO_CAUSAL_SCHEMA_REPAIR",
+          "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+          "metric_detail": {
+            "added_gold": 0,
+            "added_pred": 1,
+            "added_tp": 0,
+            "family_gold": 1,
+            "family_pred": 2,
+            "family_tp": 0,
+            "op_gold": 0,
+            "op_pred": 1,
+            "op_tp": 0,
+            "removed_gold": 0,
+            "removed_pred": 0,
+            "removed_tp": 0,
+            "value_gold": 0,
+            "value_pred": 1,
+            "value_tp": 0
+          },
+          "prediction_schema_decision": "CAUSAL_SCHEMA_REPAIR",
+          "removed_values": [],
+          "repairs": [
+            {
+              "added_values": [
+                "P17"
+              ],
+              "evidence_level": "VALUE_DELTA_VISIBLE",
+              "qualifier_property_id": "P2308",
+              "removed_values": [],
+              "repair_op": "CONSTRAINT_QUALIFIER_ADD",
+              "taxonomy_code": "CQ_PLUS"
+            }
+          ],
+          "subset": "diagnostic",
+          "support_pattern_matches": {
+            "tbox_taxonomy_cq_plus": 1
+          },
+          "target": {
+            "constraint_type_qid": "Q21503247",
+            "pid": "P131"
+          },
+          "tbox_revision_key": "TBOX::P131::2437507566",
+          "visibility_by_value": [
+            {
+              "value": "P17",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            }
+          ]
+        },
+        {
+          "added_values": [
+            "P279"
+          ],
+          "case_id": "reform_Q1958622_P31_2441005469",
+          "context_bundle": "local_graph",
+          "gold_schema_decision": "CAUSAL_SCHEMA_REPAIR",
+          "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+          "metric_detail": {
+            "added_gold": 0,
+            "added_pred": 1,
+            "added_tp": 0,
+            "family_gold": 3,
+            "family_pred": 2,
+            "family_tp": 2,
+            "op_gold": 2,
+            "op_pred": 1,
+            "op_tp": 0,
+            "removed_gold": 0,
+            "removed_pred": 0,
+            "removed_tp": 0,
+            "value_gold": 0,
+            "value_pred": 1,
+            "value_tp": 0
+          },
+          "prediction_schema_decision": "CAUSAL_SCHEMA_REPAIR",
+          "removed_values": [],
+          "repairs": [
+            {
+              "added_values": [
+                "P279"
+              ],
+              "evidence_level": "VALUE_DELTA_VISIBLE",
+              "qualifier_property_id": "P2308",
+              "removed_values": [],
+              "repair_op": "CONSTRAINT_QUALIFIER_ADD",
+              "taxonomy_code": "CQ_PLUS"
+            }
+          ],
+          "subset": "main_score",
+          "support_pattern_matches": {
+            "tbox_taxonomy_cq_plus": 1
+          },
+          "target": {
+            "constraint_type_qid": "Q21510864",
+            "pid": "P31"
+          },
+          "tbox_revision_key": "TBOX::P31::2441005469",
+          "visibility_by_value": [
+            {
+              "value": "P279",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            }
+          ]
+        },
+        {
+          "added_values": [
+            "P31"
+          ],
+          "case_id": "reform_Q19907031_P910_2444366220",
+          "context_bundle": "local_graph",
+          "gold_schema_decision": "NO_CAUSAL_SCHEMA_REPAIR",
+          "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+          "metric_detail": {
+            "added_gold": 0,
+            "added_pred": 1,
+            "added_tp": 0,
+            "family_gold": 1,
+            "family_pred": 2,
+            "family_tp": 1,
+            "op_gold": 0,
+            "op_pred": 1,
+            "op_tp": 0,
+            "removed_gold": 0,
+            "removed_pred": 0,
+            "removed_tp": 0,
+            "value_gold": 0,
+            "value_pred": 1,
+            "value_tp": 0
+          },
+          "prediction_schema_decision": "CAUSAL_SCHEMA_REPAIR",
+          "removed_values": [],
+          "repairs": [
+            {
+              "added_values": [
+                "P31"
+              ],
+              "evidence_level": "VALUE_DELTA_VISIBLE",
+              "qualifier_property_id": null,
+              "removed_values": [],
+              "repair_op": "CONSTRAINT_QUALIFIER_ADD",
+              "taxonomy_code": "CQ_PLUS"
+            }
+          ],
+          "subset": "diagnostic",
+          "support_pattern_matches": {},
+          "target": {
+            "constraint_type_qid": "Q21502838",
+            "pid": "P910"
+          },
+          "tbox_revision_key": "TBOX::P910::2444366220",
+          "visibility_by_value": [
+            {
+              "value": "P31",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            }
+          ]
+        },
+        {
+          "added_values": [
+            "P279"
+          ],
+          "case_id": "reform_Q2248769_P31_2441005469",
+          "context_bundle": "local_graph",
+          "gold_schema_decision": "CAUSAL_SCHEMA_REPAIR",
+          "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+          "metric_detail": {
+            "added_gold": 0,
+            "added_pred": 1,
+            "added_tp": 0,
+            "family_gold": 3,
+            "family_pred": 2,
+            "family_tp": 2,
+            "op_gold": 2,
+            "op_pred": 1,
+            "op_tp": 0,
+            "removed_gold": 0,
+            "removed_pred": 0,
+            "removed_tp": 0,
+            "value_gold": 0,
+            "value_pred": 1,
+            "value_tp": 0
+          },
+          "prediction_schema_decision": "CAUSAL_SCHEMA_REPAIR",
+          "removed_values": [],
+          "repairs": [
+            {
+              "added_values": [
+                "P279"
+              ],
+              "evidence_level": "VALUE_DELTA_VISIBLE",
+              "qualifier_property_id": "P2302",
+              "removed_values": [],
+              "repair_op": "CONSTRAINT_QUALIFIER_ADD",
+              "taxonomy_code": "CQ_PLUS"
+            }
+          ],
+          "subset": "main_score",
+          "support_pattern_matches": {},
+          "target": {
+            "constraint_type_qid": "Q21510864",
+            "pid": "P31"
+          },
+          "tbox_revision_key": "TBOX::P31::2441005469",
+          "visibility_by_value": [
+            {
+              "value": "P279",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            }
+          ]
+        },
+        {
+          "added_values": [
+            "P279"
+          ],
+          "case_id": "reform_Q2383723_P31_2441005469",
+          "context_bundle": "local_graph",
+          "gold_schema_decision": "CAUSAL_SCHEMA_REPAIR",
+          "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+          "metric_detail": {
+            "added_gold": 0,
+            "added_pred": 1,
+            "added_tp": 0,
+            "family_gold": 3,
+            "family_pred": 2,
+            "family_tp": 2,
+            "op_gold": 2,
+            "op_pred": 1,
+            "op_tp": 0,
+            "removed_gold": 0,
+            "removed_pred": 0,
+            "removed_tp": 0,
+            "value_gold": 0,
+            "value_pred": 1,
+            "value_tp": 0
+          },
+          "prediction_schema_decision": "CAUSAL_SCHEMA_REPAIR",
+          "removed_values": [],
+          "repairs": [
+            {
+              "added_values": [
+                "P279"
+              ],
+              "evidence_level": "VALUE_DELTA_VISIBLE",
+              "qualifier_property_id": "P2308",
+              "removed_values": [],
+              "repair_op": "CONSTRAINT_QUALIFIER_ADD",
+              "taxonomy_code": "CQ_PLUS"
+            }
+          ],
+          "subset": "main_score",
+          "support_pattern_matches": {
+            "tbox_taxonomy_cq_plus": 1
+          },
+          "target": {
+            "constraint_type_qid": "Q21510864",
+            "pid": "P31"
+          },
+          "tbox_revision_key": "TBOX::P31::2441005469",
+          "visibility_by_value": [
+            {
+              "value": "P279",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            }
+          ]
+        },
+        {
+          "added_values": [
+            "P279"
+          ],
+          "case_id": "reform_Q3124778_P31_2441005469",
+          "context_bundle": "local_graph",
+          "gold_schema_decision": "CAUSAL_SCHEMA_REPAIR",
+          "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+          "metric_detail": {
+            "added_gold": 0,
+            "added_pred": 1,
+            "added_tp": 0,
+            "family_gold": 3,
+            "family_pred": 2,
+            "family_tp": 2,
+            "op_gold": 2,
+            "op_pred": 1,
+            "op_tp": 0,
+            "removed_gold": 0,
+            "removed_pred": 0,
+            "removed_tp": 0,
+            "value_gold": 0,
+            "value_pred": 1,
+            "value_tp": 0
+          },
+          "prediction_schema_decision": "CAUSAL_SCHEMA_REPAIR",
+          "removed_values": [],
+          "repairs": [
+            {
+              "added_values": [
+                "P279"
+              ],
+              "evidence_level": "VALUE_DELTA_VISIBLE",
+              "qualifier_property_id": "P2308",
+              "removed_values": [],
+              "repair_op": "CONSTRAINT_QUALIFIER_ADD",
+              "taxonomy_code": "CQ_PLUS"
+            }
+          ],
+          "subset": "main_score",
+          "support_pattern_matches": {
+            "tbox_taxonomy_cq_plus": 1
+          },
+          "target": {
+            "constraint_type_qid": "Q21510864",
+            "pid": "P31"
+          },
+          "tbox_revision_key": "TBOX::P31::2441005469",
+          "visibility_by_value": [
+            {
+              "value": "P279",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            }
+          ]
+        },
+        {
+          "added_values": [
+            "P279"
+          ],
+          "case_id": "reform_Q3209488_P31_2441005469",
+          "context_bundle": "local_graph",
+          "gold_schema_decision": "CAUSAL_SCHEMA_REPAIR",
+          "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+          "metric_detail": {
+            "added_gold": 0,
+            "added_pred": 1,
+            "added_tp": 0,
+            "family_gold": 3,
+            "family_pred": 2,
+            "family_tp": 2,
+            "op_gold": 2,
+            "op_pred": 1,
+            "op_tp": 0,
+            "removed_gold": 0,
+            "removed_pred": 0,
+            "removed_tp": 0,
+            "value_gold": 0,
+            "value_pred": 1,
+            "value_tp": 0
+          },
+          "prediction_schema_decision": "CAUSAL_SCHEMA_REPAIR",
+          "removed_values": [],
+          "repairs": [
+            {
+              "added_values": [
+                "P279"
+              ],
+              "evidence_level": "VALUE_DELTA_VISIBLE",
+              "qualifier_property_id": null,
+              "removed_values": [],
+              "repair_op": "CONSTRAINT_QUALIFIER_ADD",
+              "taxonomy_code": "CQ_PLUS"
+            }
+          ],
+          "subset": "main_score",
+          "support_pattern_matches": {},
+          "target": {
+            "constraint_type_qid": "Q21510864",
+            "pid": "P31"
+          },
+          "tbox_revision_key": "TBOX::P31::2441005469",
+          "visibility_by_value": [
+            {
+              "value": "P279",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            }
+          ]
+        },
+        {
+          "added_values": [
+            "P279"
+          ],
+          "case_id": "reform_Q3538487_P31_2442828050",
+          "context_bundle": "local_graph",
+          "gold_schema_decision": "NO_CAUSAL_SCHEMA_REPAIR",
+          "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+          "metric_detail": {
+            "added_gold": 0,
+            "added_pred": 1,
+            "added_tp": 0,
+            "family_gold": 1,
+            "family_pred": 2,
+            "family_tp": 1,
+            "op_gold": 0,
+            "op_pred": 1,
+            "op_tp": 0,
+            "removed_gold": 0,
+            "removed_pred": 0,
+            "removed_tp": 0,
+            "value_gold": 0,
+            "value_pred": 1,
+            "value_tp": 0
+          },
+          "prediction_schema_decision": "CAUSAL_SCHEMA_REPAIR",
+          "removed_values": [],
+          "repairs": [
+            {
+              "added_values": [
+                "P279"
+              ],
+              "evidence_level": "VALUE_DELTA_VISIBLE",
+              "qualifier_property_id": null,
+              "removed_values": [],
+              "repair_op": "CONSTRAINT_QUALIFIER_ADD",
+              "taxonomy_code": "CQ_PLUS"
+            }
+          ],
+          "subset": "diagnostic",
+          "support_pattern_matches": {},
+          "target": {
+            "constraint_type_qid": "Q21510864",
+            "pid": "P31"
+          },
+          "tbox_revision_key": "TBOX::P31::2442828050",
+          "visibility_by_value": [
+            {
+              "value": "P279",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            }
+          ]
+        },
+        {
+          "added_values": [
+            "P3137"
+          ],
+          "case_id": "reform_Q3695908_P2659_1488142524",
+          "context_bundle": "local_graph",
+          "gold_schema_decision": "NO_CAUSAL_SCHEMA_REPAIR",
+          "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+          "metric_detail": {
+            "added_gold": 0,
+            "added_pred": 1,
+            "added_tp": 0,
+            "family_gold": 1,
+            "family_pred": 2,
+            "family_tp": 1,
+            "op_gold": 0,
+            "op_pred": 1,
+            "op_tp": 0,
+            "removed_gold": 0,
+            "removed_pred": 0,
+            "removed_tp": 0,
+            "value_gold": 0,
+            "value_pred": 1,
+            "value_tp": 0
+          },
+          "prediction_schema_decision": "CAUSAL_SCHEMA_REPAIR",
+          "removed_values": [],
+          "repairs": [
+            {
+              "added_values": [
+                "P3137"
+              ],
+              "evidence_level": "VALUE_DELTA_VISIBLE",
+              "qualifier_property_id": "P2308",
+              "removed_values": [],
+              "repair_op": "CONSTRAINT_QUALIFIER_ADD",
+              "taxonomy_code": "CQ_PLUS"
+            }
+          ],
+          "subset": "diagnostic",
+          "support_pattern_matches": {
+            "tbox_taxonomy_cq_plus": 1
+          },
+          "target": {
+            "constraint_type_qid": "Q21503247",
+            "pid": "P2659"
+          },
+          "tbox_revision_key": "TBOX::P2659::1488142524",
+          "visibility_by_value": [
+            {
+              "value": "P3137",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            }
+          ]
+        }
+      ],
+      "local_graph_specific_cause_counts": {
+        "missing qualifier_property_id on value-delta repair": 4,
+        "over-causal schema decision on gold no-repair row": 9,
+        "unsupported value hallucination despite local graph": 1
+      },
+      "matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
+      "prompt_visibility": {
+        "not_visible_in_prompt": 1,
+        "visible_only_in_static_examples": 55
+      },
+      "support_example_pattern_matches": {
+        "tbox_taxonomy_cq_plus": 9
+      },
+      "total_tbox_rows": 128,
+      "value_delta_false_positive_cases": 14,
+      "value_delta_false_positive_metric": {
+        "applicability_coverage": 0.4921875,
+        "applicable_denominator": 63,
+        "numerator": 14,
+        "rate": 0.2222222222222222,
+        "total_tbox_rows": 128
+      },
+      "value_delta_false_positive_rate": 0.2222222222222222
+    },
+    "logic_only": {
+      "added_vs_removed_false_positive_values": {
+        "added_values": 61
+      },
+      "by_evidence_level": {
+        "VALUE_DELTA_VISIBLE": 10
+      },
+      "by_gold_schema_decision": {
+        "CAUSAL_SCHEMA_REPAIR": 4,
+        "NO_CAUSAL_SCHEMA_REPAIR": 6
+      },
+      "by_prediction_schema_decision": {
+        "CAUSAL_SCHEMA_REPAIR": 10
+      },
+      "by_qualifier_property_id": {
+        "P2308": 6,
+        "__NULL__": 4
+      },
+      "by_repair_op": {
+        "CONSTRAINT_QUALIFIER_ADD": 10
+      },
+      "by_subset": {
+        "diagnostic": 6,
+        "main_score": 4
+      },
+      "by_taxonomy_code": {
+        "CQ_PLUS": 10
+      },
+      "cases": [
+        {
+          "added_values": [
+            "Q1190554",
+            "Q12737077",
+            "Q1322323",
+            "Q13226383",
+            "Q14623646",
+            "Q16334295",
+            "Q1656682",
+            "Q24229398",
+            "Q268592",
+            "Q3249551",
+            "Q340169",
+            "Q47311934",
+            "Q55006986",
+            "Q62934160",
+            "Q7397",
+            "Q7406919",
+            "Q95074"
+          ],
+          "case_id": "reform_Q115902917_P121_2442147265",
+          "context_bundle": "logic_only",
+          "gold_schema_decision": "NO_CAUSAL_SCHEMA_REPAIR",
+          "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+          "metric_detail": {
+            "added_gold": 0,
+            "added_pred": 17,
+            "added_tp": 0,
+            "family_gold": 1,
+            "family_pred": 2,
+            "family_tp": 1,
+            "op_gold": 0,
+            "op_pred": 1,
+            "op_tp": 0,
+            "removed_gold": 0,
+            "removed_pred": 0,
+            "removed_tp": 0,
+            "value_gold": 0,
+            "value_pred": 17,
+            "value_tp": 0
+          },
+          "prediction_schema_decision": "CAUSAL_SCHEMA_REPAIR",
+          "removed_values": [],
+          "repairs": [
+            {
+              "added_values": [
+                "Q1190554",
+                "Q12737077",
+                "Q1322323",
+                "Q13226383",
+                "Q14623646",
+                "Q16334295",
+                "Q1656682",
+                "Q24229398",
+                "Q268592",
+                "Q3249551",
+                "Q340169",
+                "Q47311934",
+                "Q55006986",
+                "Q62934160",
+                "Q7397",
+                "Q7406919",
+                "Q95074"
+              ],
+              "evidence_level": "VALUE_DELTA_VISIBLE",
+              "qualifier_property_id": "P2308",
+              "removed_values": [],
+              "repair_op": "CONSTRAINT_QUALIFIER_ADD",
+              "taxonomy_code": "CQ_PLUS"
+            }
+          ],
+          "subset": "diagnostic",
+          "support_pattern_matches": {
+            "tbox_taxonomy_cq_plus": 1
+          },
+          "target": {
+            "constraint_type_qid": "Q21503250",
+            "pid": "P121"
+          },
+          "tbox_revision_key": "TBOX::P121::2442147265",
+          "visibility_by_value": [
+            {
+              "value": "Q1190554",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q12737077",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q1322323",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q13226383",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q14623646",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q16334295",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q1656682",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q24229398",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q268592",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q3249551",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q340169",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q47311934",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q55006986",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q62934160",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q7397",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q7406919",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q95074",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            }
+          ]
+        },
+        {
+          "added_values": [
+            "Q1190554",
+            "Q12737077",
+            "Q1322323",
+            "Q13226383",
+            "Q14623646",
+            "Q16334295",
+            "Q1656682",
+            "Q24229398",
+            "Q268592",
+            "Q3249551",
+            "Q340169",
+            "Q47311934",
+            "Q55006986",
+            "Q62934160",
+            "Q7397",
+            "Q7406919",
+            "Q95074"
+          ],
+          "case_id": "reform_Q115918462_P121_2442147265",
+          "context_bundle": "logic_only",
+          "gold_schema_decision": "NO_CAUSAL_SCHEMA_REPAIR",
+          "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+          "metric_detail": {
+            "added_gold": 0,
+            "added_pred": 17,
+            "added_tp": 0,
+            "family_gold": 1,
+            "family_pred": 2,
+            "family_tp": 1,
+            "op_gold": 0,
+            "op_pred": 1,
+            "op_tp": 0,
+            "removed_gold": 0,
+            "removed_pred": 0,
+            "removed_tp": 0,
+            "value_gold": 0,
+            "value_pred": 17,
+            "value_tp": 0
+          },
+          "prediction_schema_decision": "CAUSAL_SCHEMA_REPAIR",
+          "removed_values": [],
+          "repairs": [
+            {
+              "added_values": [
+                "Q1190554",
+                "Q12737077",
+                "Q1322323",
+                "Q13226383",
+                "Q14623646",
+                "Q16334295",
+                "Q1656682",
+                "Q24229398",
+                "Q268592",
+                "Q3249551",
+                "Q340169",
+                "Q47311934",
+                "Q55006986",
+                "Q62934160",
+                "Q7397",
+                "Q7406919",
+                "Q95074"
+              ],
+              "evidence_level": "VALUE_DELTA_VISIBLE",
+              "qualifier_property_id": "P2308",
+              "removed_values": [],
+              "repair_op": "CONSTRAINT_QUALIFIER_ADD",
+              "taxonomy_code": "CQ_PLUS"
+            }
+          ],
+          "subset": "diagnostic",
+          "support_pattern_matches": {
+            "tbox_taxonomy_cq_plus": 1
+          },
+          "target": {
+            "constraint_type_qid": "Q21503250",
+            "pid": "P121"
+          },
+          "tbox_revision_key": "TBOX::P121::2442147265",
+          "visibility_by_value": [
+            {
+              "value": "Q1190554",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q12737077",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q1322323",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q13226383",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q14623646",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q16334295",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q1656682",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q24229398",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q268592",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q3249551",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q340169",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q47311934",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q55006986",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q62934160",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q7397",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q7406919",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q95074",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            }
+          ]
+        },
+        {
+          "added_values": [
+            "Q10832",
+            "Q11012",
+            "Q111282474",
+            "Q115537581",
+            "Q1285470",
+            "Q15619164",
+            "Q15707583",
+            "Q16521",
+            "Q168658",
+            "Q201662",
+            "Q2345820",
+            "Q2593744",
+            "Q26401003",
+            "Q26513",
+            "Q40614",
+            "Q5",
+            "Q61002",
+            "Q7239",
+            "Q729",
+            "Q79600797"
+          ],
+          "case_id": "reform_Q137180735_P21_2439154480",
+          "context_bundle": "logic_only",
+          "gold_schema_decision": "NO_CAUSAL_SCHEMA_REPAIR",
+          "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+          "metric_detail": {
+            "added_gold": 0,
+            "added_pred": 20,
+            "added_tp": 0,
+            "family_gold": 1,
+            "family_pred": 2,
+            "family_tp": 0,
+            "op_gold": 0,
+            "op_pred": 1,
+            "op_tp": 0,
+            "removed_gold": 0,
+            "removed_pred": 0,
+            "removed_tp": 0,
+            "value_gold": 0,
+            "value_pred": 20,
+            "value_tp": 0
+          },
+          "prediction_schema_decision": "CAUSAL_SCHEMA_REPAIR",
+          "removed_values": [],
+          "repairs": [
+            {
+              "added_values": [
+                "Q10832",
+                "Q11012",
+                "Q111282474",
+                "Q115537581",
+                "Q1285470",
+                "Q15619164",
+                "Q15707583",
+                "Q16521",
+                "Q168658",
+                "Q201662",
+                "Q2345820",
+                "Q2593744",
+                "Q26401003",
+                "Q26513",
+                "Q40614",
+                "Q5",
+                "Q61002",
+                "Q7239",
+                "Q729",
+                "Q79600797"
+              ],
+              "evidence_level": "VALUE_DELTA_VISIBLE",
+              "qualifier_property_id": null,
+              "removed_values": [],
+              "repair_op": "CONSTRAINT_QUALIFIER_ADD",
+              "taxonomy_code": "CQ_PLUS"
+            }
+          ],
+          "subset": "diagnostic",
+          "support_pattern_matches": {},
+          "target": {
+            "constraint_type_qid": "Q52004125",
+            "pid": "P21"
+          },
+          "tbox_revision_key": "TBOX::P21::2439154480",
+          "visibility_by_value": [
+            {
+              "value": "Q10832",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q11012",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q111282474",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q115537581",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q1285470",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q15619164",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q15707583",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q16521",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q168658",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q201662",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q2345820",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q2593744",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q26401003",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q26513",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q40614",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q5",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q61002",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q7239",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q729",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            },
+            {
+              "value": "Q79600797",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            }
+          ]
+        },
+        {
+          "added_values": [
+            "P17"
+          ],
+          "case_id": "reform_Q16476914_P131_2437507566",
+          "context_bundle": "logic_only",
+          "gold_schema_decision": "NO_CAUSAL_SCHEMA_REPAIR",
+          "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+          "metric_detail": {
+            "added_gold": 0,
+            "added_pred": 1,
+            "added_tp": 0,
+            "family_gold": 1,
+            "family_pred": 2,
+            "family_tp": 1,
+            "op_gold": 0,
+            "op_pred": 1,
+            "op_tp": 0,
+            "removed_gold": 0,
+            "removed_pred": 0,
+            "removed_tp": 0,
+            "value_gold": 0,
+            "value_pred": 1,
+            "value_tp": 0
+          },
+          "prediction_schema_decision": "CAUSAL_SCHEMA_REPAIR",
+          "removed_values": [],
+          "repairs": [
+            {
+              "added_values": [
+                "P17"
+              ],
+              "evidence_level": "VALUE_DELTA_VISIBLE",
+              "qualifier_property_id": "P2308",
+              "removed_values": [],
+              "repair_op": "CONSTRAINT_QUALIFIER_ADD",
+              "taxonomy_code": "CQ_PLUS"
+            }
+          ],
+          "subset": "diagnostic",
+          "support_pattern_matches": {
+            "tbox_taxonomy_cq_plus": 1
+          },
+          "target": {
+            "constraint_type_qid": "Q21510864",
+            "pid": "P131"
+          },
+          "tbox_revision_key": "TBOX::P131::2437507566",
+          "visibility_by_value": [
+            {
+              "value": "P17",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            }
+          ]
+        },
+        {
+          "added_values": [
+            "P279"
+          ],
+          "case_id": "reform_Q1958622_P31_2441005469",
+          "context_bundle": "logic_only",
+          "gold_schema_decision": "CAUSAL_SCHEMA_REPAIR",
+          "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+          "metric_detail": {
+            "added_gold": 0,
+            "added_pred": 1,
+            "added_tp": 0,
+            "family_gold": 3,
+            "family_pred": 2,
+            "family_tp": 2,
+            "op_gold": 2,
+            "op_pred": 1,
+            "op_tp": 0,
+            "removed_gold": 0,
+            "removed_pred": 0,
+            "removed_tp": 0,
+            "value_gold": 0,
+            "value_pred": 1,
+            "value_tp": 0
+          },
+          "prediction_schema_decision": "CAUSAL_SCHEMA_REPAIR",
+          "removed_values": [],
+          "repairs": [
+            {
+              "added_values": [
+                "P279"
+              ],
+              "evidence_level": "VALUE_DELTA_VISIBLE",
+              "qualifier_property_id": "P2308",
+              "removed_values": [],
+              "repair_op": "CONSTRAINT_QUALIFIER_ADD",
+              "taxonomy_code": "CQ_PLUS"
+            }
+          ],
+          "subset": "main_score",
+          "support_pattern_matches": {
+            "tbox_taxonomy_cq_plus": 1
+          },
+          "target": {
+            "constraint_type_qid": "Q21510864",
+            "pid": "P31"
+          },
+          "tbox_revision_key": "TBOX::P31::2441005469",
+          "visibility_by_value": [
+            {
+              "value": "P279",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            }
+          ]
+        },
+        {
+          "added_values": [
+            "P279"
+          ],
+          "case_id": "reform_Q2128470_P31_2441005469",
+          "context_bundle": "logic_only",
+          "gold_schema_decision": "CAUSAL_SCHEMA_REPAIR",
+          "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+          "metric_detail": {
+            "added_gold": 0,
+            "added_pred": 1,
+            "added_tp": 0,
+            "family_gold": 3,
+            "family_pred": 2,
+            "family_tp": 2,
+            "op_gold": 2,
+            "op_pred": 1,
+            "op_tp": 0,
+            "removed_gold": 0,
+            "removed_pred": 0,
+            "removed_tp": 0,
+            "value_gold": 0,
+            "value_pred": 1,
+            "value_tp": 0
+          },
+          "prediction_schema_decision": "CAUSAL_SCHEMA_REPAIR",
+          "removed_values": [],
+          "repairs": [
+            {
+              "added_values": [
+                "P279"
+              ],
+              "evidence_level": "VALUE_DELTA_VISIBLE",
+              "qualifier_property_id": "P2308",
+              "removed_values": [],
+              "repair_op": "CONSTRAINT_QUALIFIER_ADD",
+              "taxonomy_code": "CQ_PLUS"
+            }
+          ],
+          "subset": "main_score",
+          "support_pattern_matches": {
+            "tbox_taxonomy_cq_plus": 1
+          },
+          "target": {
+            "constraint_type_qid": "Q21510864",
+            "pid": "P31"
+          },
+          "tbox_revision_key": "TBOX::P31::2441005469",
+          "visibility_by_value": [
+            {
+              "value": "P279",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            }
+          ]
+        },
+        {
+          "added_values": [
+            "P279"
+          ],
+          "case_id": "reform_Q2248769_P31_2441005469",
+          "context_bundle": "logic_only",
+          "gold_schema_decision": "CAUSAL_SCHEMA_REPAIR",
+          "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+          "metric_detail": {
+            "added_gold": 0,
+            "added_pred": 1,
+            "added_tp": 0,
+            "family_gold": 3,
+            "family_pred": 2,
+            "family_tp": 2,
+            "op_gold": 2,
+            "op_pred": 1,
+            "op_tp": 0,
+            "removed_gold": 0,
+            "removed_pred": 0,
+            "removed_tp": 0,
+            "value_gold": 0,
+            "value_pred": 1,
+            "value_tp": 0
+          },
+          "prediction_schema_decision": "CAUSAL_SCHEMA_REPAIR",
+          "removed_values": [],
+          "repairs": [
+            {
+              "added_values": [
+                "P279"
+              ],
+              "evidence_level": "VALUE_DELTA_VISIBLE",
+              "qualifier_property_id": null,
+              "removed_values": [],
+              "repair_op": "CONSTRAINT_QUALIFIER_ADD",
+              "taxonomy_code": "CQ_PLUS"
+            }
+          ],
+          "subset": "main_score",
+          "support_pattern_matches": {},
+          "target": {
+            "constraint_type_qid": "Q21510864",
+            "pid": "P31"
+          },
+          "tbox_revision_key": "TBOX::P31::2441005469",
+          "visibility_by_value": [
+            {
+              "value": "P279",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            }
+          ]
+        },
+        {
+          "added_values": [
+            "P279"
+          ],
+          "case_id": "reform_Q2554356_P31_2441005469",
+          "context_bundle": "logic_only",
+          "gold_schema_decision": "CAUSAL_SCHEMA_REPAIR",
+          "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+          "metric_detail": {
+            "added_gold": 0,
+            "added_pred": 1,
+            "added_tp": 0,
+            "family_gold": 3,
+            "family_pred": 2,
+            "family_tp": 2,
+            "op_gold": 2,
+            "op_pred": 1,
+            "op_tp": 0,
+            "removed_gold": 0,
+            "removed_pred": 0,
+            "removed_tp": 0,
+            "value_gold": 0,
+            "value_pred": 1,
+            "value_tp": 0
+          },
+          "prediction_schema_decision": "CAUSAL_SCHEMA_REPAIR",
+          "removed_values": [],
+          "repairs": [
+            {
+              "added_values": [
+                "P279"
+              ],
+              "evidence_level": "VALUE_DELTA_VISIBLE",
+              "qualifier_property_id": null,
+              "removed_values": [],
+              "repair_op": "CONSTRAINT_QUALIFIER_ADD",
+              "taxonomy_code": "CQ_PLUS"
+            }
+          ],
+          "subset": "main_score",
+          "support_pattern_matches": {},
+          "target": {
+            "constraint_type_qid": "Q21510864",
+            "pid": "P31"
+          },
+          "tbox_revision_key": "TBOX::P31::2441005469",
+          "visibility_by_value": [
+            {
+              "value": "P279",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            }
+          ]
+        },
+        {
+          "added_values": [
+            "P279"
+          ],
+          "case_id": "reform_Q3538487_P31_2442828050",
+          "context_bundle": "logic_only",
+          "gold_schema_decision": "NO_CAUSAL_SCHEMA_REPAIR",
+          "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+          "metric_detail": {
+            "added_gold": 0,
+            "added_pred": 1,
+            "added_tp": 0,
+            "family_gold": 1,
+            "family_pred": 2,
+            "family_tp": 1,
+            "op_gold": 0,
+            "op_pred": 1,
+            "op_tp": 0,
+            "removed_gold": 0,
+            "removed_pred": 0,
+            "removed_tp": 0,
+            "value_gold": 0,
+            "value_pred": 1,
+            "value_tp": 0
+          },
+          "prediction_schema_decision": "CAUSAL_SCHEMA_REPAIR",
+          "removed_values": [],
+          "repairs": [
+            {
+              "added_values": [
+                "P279"
+              ],
+              "evidence_level": "VALUE_DELTA_VISIBLE",
+              "qualifier_property_id": null,
+              "removed_values": [],
+              "repair_op": "CONSTRAINT_QUALIFIER_ADD",
+              "taxonomy_code": "CQ_PLUS"
+            }
+          ],
+          "subset": "diagnostic",
+          "support_pattern_matches": {},
+          "target": {
+            "constraint_type_qid": "Q21510864",
+            "pid": "P31"
+          },
+          "tbox_revision_key": "TBOX::P31::2442828050",
+          "visibility_by_value": [
+            {
+              "value": "P279",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            }
+          ]
+        },
+        {
+          "added_values": [
+            "P3137"
+          ],
+          "case_id": "reform_Q3695908_P2659_1488142524",
+          "context_bundle": "logic_only",
+          "gold_schema_decision": "NO_CAUSAL_SCHEMA_REPAIR",
+          "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+          "metric_detail": {
+            "added_gold": 0,
+            "added_pred": 1,
+            "added_tp": 0,
+            "family_gold": 1,
+            "family_pred": 2,
+            "family_tp": 1,
+            "op_gold": 0,
+            "op_pred": 1,
+            "op_tp": 0,
+            "removed_gold": 0,
+            "removed_pred": 0,
+            "removed_tp": 0,
+            "value_gold": 0,
+            "value_pred": 1,
+            "value_tp": 0
+          },
+          "prediction_schema_decision": "CAUSAL_SCHEMA_REPAIR",
+          "removed_values": [],
+          "repairs": [
+            {
+              "added_values": [
+                "P3137"
+              ],
+              "evidence_level": "VALUE_DELTA_VISIBLE",
+              "qualifier_property_id": "P2308",
+              "removed_values": [],
+              "repair_op": "CONSTRAINT_QUALIFIER_ADD",
+              "taxonomy_code": "CQ_PLUS"
+            }
+          ],
+          "subset": "diagnostic",
+          "support_pattern_matches": {
+            "tbox_taxonomy_cq_plus": 1
+          },
+          "target": {
+            "constraint_type_qid": "Q21503247",
+            "pid": "P2659"
+          },
+          "tbox_revision_key": "TBOX::P2659::1488142524",
+          "visibility_by_value": [
+            {
+              "value": "P3137",
+              "visible_in_input_case": false,
+              "visible_in_prompt": true,
+              "visible_in_static_examples": true
+            }
+          ]
+        }
+      ],
+      "local_graph_specific_cause_counts": {},
+      "matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
+      "prompt_visibility": {
+        "visible_only_in_static_examples": 61
+      },
+      "support_example_pattern_matches": {
+        "tbox_taxonomy_cq_plus": 6
+      },
+      "total_tbox_rows": 128,
+      "value_delta_false_positive_cases": 10,
+      "value_delta_false_positive_metric": {
+        "applicability_coverage": 0.4921875,
+        "applicable_denominator": 63,
+        "numerator": 10,
+        "rate": 0.15873015873015872,
+        "total_tbox_rows": 128
+      },
+      "value_delta_false_positive_rate": 0.15873015873015872
+    }
+  },
+  "constraints": {
+    "modified_static_support_set": false,
+    "ran_additional_tbox_inference": false,
+    "used_api_provider": false,
+    "used_dynamic_retrieval": false
+  },
+  "created_at_utc": "2026-06-22T07:34:58Z",
+  "cross_context": {
+    "local_graph_only_fp_case_count": 7,
+    "local_graph_only_fp_cases": [
+      "reform_Q115179765_P2670_2370327892",
+      "reform_Q118428583_P2670_2370327892",
+      "reform_Q1430158_P175_2292837202",
+      "reform_Q19907031_P910_2444366220",
+      "reform_Q2383723_P31_2441005469",
+      "reform_Q3124778_P31_2441005469",
+      "reform_Q3209488_P31_2441005469"
+    ],
+    "logic_only_only_fp_case_count": 3,
+    "logic_only_only_fp_cases": [
+      "reform_Q115918462_P121_2442147265",
+      "reform_Q2128470_P31_2441005469",
+      "reform_Q2554356_P31_2441005469"
+    ],
+    "shared_fp_case_count": 7,
+    "shared_fp_cases": [
+      "reform_Q115902917_P121_2442147265",
+      "reform_Q137180735_P21_2439154480",
+      "reform_Q16476914_P131_2437507566",
+      "reform_Q1958622_P31_2441005469",
+      "reform_Q2248769_P31_2441005469",
+      "reform_Q3538487_P31_2442828050",
+      "reform_Q3695908_P2659_1488142524"
+    ]
+  },
+  "evaluator_overcounting_review": {
+    "local_graph": {
+      "case_visible_value_case_rate": 0.0,
+      "case_visible_value_cases": 0,
+      "fp_cases": 14,
+      "interpretation": "case-visible values may be plausible report-derived values, but they remain false positives under current gold because gold_has_value_delta is false",
+      "unsupported_value_case_rate": 0.07142857142857142,
+      "unsupported_value_cases": 1
+    },
+    "logic_only": {
+      "case_visible_value_case_rate": 0.0,
+      "case_visible_value_cases": 0,
+      "fp_cases": 10,
+      "interpretation": "case-visible values may be plausible report-derived values, but they remain false positives under current gold because gold_has_value_delta is false",
+      "unsupported_value_case_rate": 0.0,
+      "unsupported_value_cases": 0
+    }
+  },
+  "final_verdict": "DO_NOT_USE_TBOX_FEW_SHOT",
+  "final_verdict_rationale": "Step 12B value-delta false positives increased by more than 5 pp in both contexts. The false-positive value arrays are overwhelmingly copied from static T-box support examples rather than visible in the held-out input case; local_graph adds more FP cases and one unsupported value. Do not run full T-box few-shot; redesign T-box support only in dev if this path is revisited.",
+  "manifest_type": "tbox_value_delta_false_positive_analysis",
+  "source_dir": "reports/prompt_dev/few_shot/evaluation_static_v1_core_tbox_canary",
+  "support_examples": {
+    "tbox_taxonomy_cq_minus_or_replace": {
+      "case_id": "reform_Q29041706_P356_2447249541",
+      "signatures": [
+        [
+          "CONSTRAINT_QUALIFIER_REMOVE",
+          "CQ_MINUS",
+          "P1793",
+          "VALUE_DELTA_VISIBLE",
+          false,
+          true
+        ]
+      ],
+      "task_schema": "tbox_taxonomy_patch_v1",
+      "values": [
+        "^(?!10\\.1145).*"
+      ],
+      "visible_case_id": "example_t_000002"
+    },
+    "tbox_taxonomy_cq_plus": {
+      "case_id": "reform_Q17555344_P613_2439848360",
+      "signatures": [
+        [
+          "CONSTRAINT_QUALIFIER_ADD",
+          "CQ_PLUS",
+          "P2308",
+          "VALUE_DELTA_VISIBLE",
+          true,
+          false
+        ]
+      ],
+      "task_schema": "tbox_taxonomy_patch_v1",
+      "values": [
+        "Q179700"
+      ],
+      "visible_case_id": "example_t_000001"
+    },
+    "tbox_taxonomy_no_causal_empty": {
+      "case_id": "reform_Q7199901_P3137_2428712581",
+      "signatures": [],
+      "task_schema": "tbox_taxonomy_patch_v1",
+      "values": [],
+      "visible_case_id": "example_t_000003"
+    },
+    "tbox_taxonomy_other_or_family_only": {
+      "case_id": "reform_Q85808015_P1552_2405574367",
+      "signatures": [
+        [
+          "OTHER_TBOX_UPDATE",
+          "OTHER",
+          null,
+          "FAMILY_ONLY",
+          false,
+          false
+        ]
+      ],
+      "task_schema": "tbox_taxonomy_patch_v1",
+      "values": [],
+      "visible_case_id": "example_t_000004"
+    }
+  }
+}
