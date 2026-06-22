@@ -1,0 +1,61 @@
+{
+  "manifest_type": "prompt_dev_few_shot_run_config",
+  "manifest_version": "prompt_dev_v5_tbox_taxonomy_patch",
+  "created_at_utc": "2026-06-21T17:28:28Z",
+  "run_id": "prompt_dev_eval_20260621T160709",
+  "provider": "ollama",
+  "model": "gpt-oss:120b",
+  "inputs": {
+    "classified_benchmark": "data/04_classified_benchmark.jsonl",
+    "world_state": "data/03_world_state.json",
+    "eval_manifest": "reports/benchmark_selection/core_abox_canary_v1_256_seed_17.json",
+    "dev_manifest": "reports/benchmark_selection/core_abox_canary_v1_256_seed_17.json",
+    "example_manifest": "reports/benchmark_selection/dev_prompt_v1_seed_13.json",
+    "core_manifest": "reports/benchmark_selection/core_v1_seed_13.json",
+    "support_set_manifest": "reports/prompt_dev/few_shot/static_support_v1/static_support_manifest.json",
+    "zero_shot_baseline_summary": "reports/prompt_dev/few_shot/evaluation_static_v1_core_abox_canary_zero_shot/prompt_dev_evaluation_summary.json",
+    "render_summary": "reports/prompt_dev/few_shot/evaluation_static_v1_core_abox_canary/rendered_prompts/prompt_dev_render_summary.json",
+    "sample_strategy": "manifest_order",
+    "max_cases": 256,
+    "track_filter": [
+      "A_BOX"
+    ]
+  },
+  "few_shot_conditions": {
+    "static_diverse_kshot": {
+      "selection_type": "static_support_set",
+      "paper_status": "paper-facing",
+      "interpretation": "Static few-shot oracle ablation."
+    }
+  },
+  "artifact_role": "paper-facing only for static_diverse_kshot comparisons; dynamic retrieval policies are exploratory.",
+  "zero_shot_baseline": {
+    "source": "reports/prompt_dev/few_shot/evaluation_static_v1_core_abox_canary_zero_shot/prompt_dev_evaluation_summary.json",
+    "run_id": "prompt_dev_eval_20260621T144508",
+    "manifest_version": "prompt_dev_v5_tbox_taxonomy_patch"
+  },
+  "matrix_usage_totals": {
+    "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain": {
+      "prompt_tokens": 1213396,
+      "completion_tokens": 58775,
+      "total_tokens": 1272171,
+      "cached_tokens": null,
+      "estimated_cost_usd": 0.0,
+      "elapsed_seconds_total": 2264.3427370000004,
+      "elapsed_seconds_mean": 8.845088816406252,
+      "rows_with_usage": 256,
+      "rows_total": 512
+    },
+    "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain": {
+      "prompt_tokens": 1830426,
+      "completion_tokens": 59664,
+      "total_tokens": 1890090,
+      "cached_tokens": null,
+      "estimated_cost_usd": 0.0,
+      "elapsed_seconds_total": 2580.3866050000006,
+      "elapsed_seconds_mean": 10.079635175781252,
+      "rows_with_usage": 256,
+      "rows_total": 512
+    }
+  }
+}

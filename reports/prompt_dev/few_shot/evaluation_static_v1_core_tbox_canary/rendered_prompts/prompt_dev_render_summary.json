@@ -1,0 +1,69 @@
+{
+  "counts": {
+    "by_class": {
+      "T_BOX": 128
+    },
+    "by_class_subtype": {
+      "T_BOX:COINCIDENTAL_SCHEMA_CHANGE": 26,
+      "T_BOX:RELAXATION_SET_EXPANSION": 8,
+      "T_BOX:SCHEMA_UPDATE": 94
+    },
+    "by_context_bundle": {
+      "local_graph": 128,
+      "logic_only": 128
+    },
+    "by_example_policy": {
+      "static_diverse_kshot": 256
+    },
+    "by_representation": {
+      "hybrid_json_nl": 256
+    },
+    "by_selection_stratum": {
+      "TBOX_COINCIDENTAL_SCHEMA_CHANGE": 26,
+      "TBOX_RELAXATION_SET_EXPANSION": 8,
+      "TBOX_SCHEMA_UPDATE": 94
+    },
+    "by_subtype": {
+      "COINCIDENTAL_SCHEMA_CHANGE": 26,
+      "RELAXATION_SET_EXPANSION": 8,
+      "SCHEMA_UPDATE": 94
+    },
+    "by_task": {
+      "t_box_repair": 256
+    },
+    "by_track": {
+      "T_BOX": 128
+    },
+    "eval_cases": 128,
+    "matrix_rows": 2,
+    "rendered_prompts": 256,
+    "skipped_prompts": 0,
+    "unique_properties": 52,
+    "unique_qids": 128
+  },
+  "created_at_utc": "2026-06-21T18:12:41Z",
+  "inputs": {
+    "classified_benchmark": "data/04_classified_benchmark.jsonl",
+    "core_manifest": "reports/benchmark_selection/core_v1_seed_13.json",
+    "dev_manifest": "reports/benchmark_selection/core_tbox_taxonomy_patch_canary_v1_128_seed_17.json",
+    "eval_manifest": "reports/benchmark_selection/core_tbox_taxonomy_patch_canary_v1_128_seed_17.json",
+    "example_manifest": "reports/benchmark_selection/dev_prompt_v1_seed_13.json",
+    "max_cases": 128,
+    "sample_strategy": "manifest_order",
+    "support_set_manifest": "reports/prompt_dev/few_shot/static_support_v1/static_support_manifest.json",
+    "track_filter": [
+      "T_BOX"
+    ],
+    "world_state": "data/03_world_state.json"
+  },
+  "manifest_type": "prompt_dev_rendered_prompt_summary",
+  "manifest_version": "prompt_dev_v5_tbox_taxonomy_patch",
+  "note": "No LLM inference was run. These artifacts contain prompts only.",
+  "outputs": {
+    "few_shot_leakage_scan": "reports/prompt_dev/few_shot/evaluation_static_v1_core_tbox_canary/rendered_prompts/few_shot_leakage_scan.json",
+    "few_shot_overlap_report_json": "reports/prompt_dev/few_shot/evaluation_static_v1_core_tbox_canary/rendered_prompts/few_shot_overlap_report.json",
+    "few_shot_overlap_report_markdown": "reports/prompt_dev/few_shot/evaluation_static_v1_core_tbox_canary/rendered_prompts/few_shot_overlap_report.md",
+    "prompts_jsonl": "reports/prompt_dev/few_shot/evaluation_static_v1_core_tbox_canary/rendered_prompts/prompt_dev_rendered_prompts.jsonl",
+    "review_markdown": "reports/prompt_dev/few_shot/evaluation_static_v1_core_tbox_canary/rendered_prompts/prompt_dev_prompt_review.md"
+  }
+}

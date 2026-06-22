@@ -1,0 +1,237 @@
+{
+  "created_at_utc": "2026-06-21T19:01:38Z",
+  "delta_by_context": {
+    "local_graph": {
+      "metrics": {
+        "family_level_success": {
+          "delta": 0.0,
+          "few_shot": 0.78125,
+          "zero_shot": 0.78125
+        },
+        "out_of_current_gold_operation_false_positive_rate": {
+          "delta": -0.5929786724179248,
+          "few_shot": 0.11214953271028037,
+          "zero_shot": 0.7051282051282052
+        },
+        "parse_error_rate": {
+          "delta": 0.0,
+          "few_shot": 0.0,
+          "zero_shot": 0.0
+        },
+        "repair_op_f1": {
+          "delta": 0.1307858687815429,
+          "few_shot": 0.24657534246575344,
+          "zero_shot": 0.11578947368421053
+        },
+        "schema_decision_match": {
+          "delta": 0.1640625,
+          "few_shot": 0.7421875,
+          "zero_shot": 0.578125
+        },
+        "taxonomy_code_match": {
+          "delta": 0.078125,
+          "few_shot": 0.2734375,
+          "zero_shot": 0.1953125
+        },
+        "taxonomy_level_success": {
+          "delta": 0.0546875,
+          "few_shot": 0.171875,
+          "zero_shot": 0.1171875
+        },
+        "value_delta_claimed_when_gold_absent": {
+          "delta": 0.19047619047619047,
+          "few_shot": 0.2222222222222222,
+          "zero_shot": 0.031746031746031744
+        },
+        "value_delta_f1_when_applicable": {
+          "delta": 0.007304009089433516,
+          "few_shot": 0.06010928961748632,
+          "zero_shot": 0.052805280528052806
+        }
+      },
+      "token_cost_latency_overhead": {
+        "completion_tokens": {
+          "delta": -5284.0,
+          "few_shot": 36079,
+          "zero_shot": 41363
+        },
+        "elapsed_seconds_mean": {
+          "delta": 1.819170765624996,
+          "few_shot": 10.532322023437496,
+          "zero_shot": 8.7131512578125
+        },
+        "estimated_cost_usd": {
+          "delta": 0.0,
+          "few_shot": 0.0,
+          "zero_shot": 0.0
+        },
+        "prompt_tokens": {
+          "delta": 660408.0,
+          "few_shot": 1102397,
+          "zero_shot": 441989
+        },
+        "total_tokens": {
+          "delta": 655124.0,
+          "few_shot": 1138476,
+          "zero_shot": 483352
+        }
+      }
+    },
+    "logic_only": {
+      "metrics": {
+        "family_level_success": {
+          "delta": 0.140625,
+          "few_shot": 0.8125,
+          "zero_shot": 0.671875
+        },
+        "out_of_current_gold_operation_false_positive_rate": {
+          "delta": -0.5725040108601753,
+          "few_shot": 0.12612612612612611,
+          "zero_shot": 0.6986301369863014
+        },
+        "parse_error_rate": {
+          "delta": 0.0,
+          "few_shot": 0.0,
+          "zero_shot": 0.0
+        },
+        "repair_op_f1": {
+          "delta": 0.17200339352805719,
+          "few_shot": 0.21524663677130043,
+          "zero_shot": 0.043243243243243246
+        },
+        "schema_decision_match": {
+          "delta": 0.28125,
+          "few_shot": 0.75,
+          "zero_shot": 0.46875
+        },
+        "taxonomy_code_match": {
+          "delta": 0.1328125,
+          "few_shot": 0.234375,
+          "zero_shot": 0.1015625
+        },
+        "taxonomy_level_success": {
+          "delta": 0.1796875,
+          "few_shot": 0.203125,
+          "zero_shot": 0.0234375
+        },
+        "value_delta_claimed_when_gold_absent": {
+          "delta": 0.07936507936507936,
+          "few_shot": 0.15873015873015872,
+          "zero_shot": 0.07936507936507936
+        },
+        "value_delta_f1_when_applicable": {
+          "delta": 0.0036783085043124233,
+          "few_shot": 0.055374592833876225,
+          "zero_shot": 0.0516962843295638
+        }
+      },
+      "token_cost_latency_overhead": {
+        "completion_tokens": {
+          "delta": -2816.0,
+          "few_shot": 38436,
+          "zero_shot": 41252
+        },
+        "elapsed_seconds_mean": {
+          "delta": 1.947585132812499,
+          "few_shot": 10.193537171875002,
+          "zero_shot": 8.245952039062503
+        },
+        "estimated_cost_usd": {
+          "delta": 0.0,
+          "few_shot": 0.0,
+          "zero_shot": 0.0
+        },
+        "prompt_tokens": {
+          "delta": 411681.0,
+          "few_shot": 755528,
+          "zero_shot": 343847
+        },
+        "total_tokens": {
+          "delta": 408865.0,
+          "few_shot": 793964,
+          "zero_shot": 385099
+        }
+      }
+    }
+  },
+  "effect_gates": {
+    "family_success_improves_5pp": true,
+    "schema_decision_match_improves_5pp": true,
+    "taxonomy_code_exact_regression_lte_5pp_or_review": true,
+    "taxonomy_level_success_does_not_regress": true,
+    "token_delta_documented": true,
+    "value_delta_false_positive_increase_lte_5pp_or_review": true
+  },
+  "evidence": {
+    "leakage": {
+      "failed_payload_scan_count": 0,
+      "hard_match_count": 0,
+      "passed": true,
+      "path": "reports/prompt_dev/few_shot/evaluation_static_v1_core_tbox_canary/rendered_prompts/few_shot_leakage_scan.json"
+    },
+    "overlap": {
+      "core_case_overlap": 0,
+      "core_tbox_revision_overlap": 0,
+      "hard_failure_count": 0,
+      "passed": true,
+      "path": "reports/prompt_dev/few_shot/evaluation_static_v1_core_tbox_canary/rendered_prompts/few_shot_overlap_report.json"
+    },
+    "same_case_baseline": {
+      "contexts": {
+        "local_graph": {
+          "baseline_case_count": 128,
+          "case_count": 128,
+          "same_case_ids": true
+        },
+        "logic_only": {
+          "baseline_case_count": 128,
+          "case_count": 128,
+          "same_case_ids": true
+        }
+      },
+      "passed": true
+    },
+    "schema_outputs": {
+      "local_graph": {
+        "a_box_proposals": false,
+        "legacy_t_box_proposals": false,
+        "passed": true,
+        "t_box_taxonomy_patch_proposals": true
+      },
+      "logic_only": {
+        "a_box_proposals": false,
+        "legacy_t_box_proposals": false,
+        "passed": true,
+        "t_box_taxonomy_patch_proposals": true
+      }
+    }
+  },
+  "hard_gates": {
+    "correct_schema_outputs_present": true,
+    "delta_report_same_case_zero_shot": true,
+    "leakage_scan_pass": true,
+    "local_only_provider": true,
+    "overlap_scan_pass": true,
+    "proposal_parse_error_lte_4pct": true,
+    "request_error_lte_1pct": true
+  },
+  "manifest_type": "step12b_tbox_gate_report",
+  "review_flags": [
+    "value_delta_false_positive_increase_gt_5pp"
+  ],
+  "run": {
+    "counts": {
+      "by_parse_status": {
+        "normalized": 256
+      },
+      "evaluated_prompts": 256,
+      "matrix_rows": 2,
+      "rendered_prompts": 256
+    },
+    "few_shot_summary": "reports/prompt_dev/few_shot/evaluation_static_v1_core_tbox_canary/prompt_dev_evaluation_summary.json",
+    "model": "gpt-oss:120b",
+    "provider": "ollama",
+    "zero_shot_summary": "reports/prompt_dev/few_shot/evaluation_static_v1_core_tbox_canary_zero_shot/prompt_dev_evaluation_summary.json"
+  },
+  "status": "PASS_WITH_REVIEW"
+}

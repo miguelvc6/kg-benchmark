@@ -1,0 +1,110 @@
+{
+  "counts": {
+    "by_class": {
+      "TypeA": 86,
+      "TypeB": 85,
+      "TypeC": 85
+    },
+    "by_class_subtype": {
+      "TypeA:DELETE_AMBIGUOUS": 43,
+      "TypeA:FORMAT_NORMALIZATION": 7,
+      "TypeA:FORMAT_VALUE_PRUNING": 6,
+      "TypeA:LOGICAL": 2,
+      "TypeA:MULTIPLICITY_NORMALIZATION": 6,
+      "TypeA:REJECTION_FORMAT_INVALID": 6,
+      "TypeA:SELF_LINK_REJECTION": 6,
+      "TypeA:SET_MEMBERSHIP_REJECTION": 6,
+      "TypeA:TARGET_REQUIRED_CLAIM": 4,
+      "TypeB:LOCAL_FOCUS_NON_TARGET_PROPERTY": 21,
+      "TypeB:LOCAL_MIXED": 14,
+      "TypeB:LOCAL_NEIGHBOR_IDS": 2,
+      "TypeB:LOCAL_SELECTION_CONFIRMED": 18,
+      "TypeB:LOCAL_TEXT_CONFIRMED": 18,
+      "TypeB:LOCAL_TEXT_DERIVED": 12,
+      "TypeC:EXTERNAL_BY_ELIMINATION": 85
+    },
+    "by_context_bundle": {
+      "local_graph": 256,
+      "logic_only": 256
+    },
+    "by_example_policy": {
+      "static_diverse_kshot": 512
+    },
+    "by_representation": {
+      "hybrid_json_nl": 512
+    },
+    "by_selection_stratum": {
+      "TypeA_DELETE_AMBIGUOUS": 43,
+      "TypeA_FORMAT_NORMALIZATION": 7,
+      "TypeA_FORMAT_VALUE_PRUNING": 6,
+      "TypeA_LOGICAL": 2,
+      "TypeA_MULTIPLICITY_NORMALIZATION": 6,
+      "TypeA_REJECTION_FORMAT_INVALID": 6,
+      "TypeA_SELF_LINK_REJECTION": 6,
+      "TypeA_SET_MEMBERSHIP_REJECTION": 6,
+      "TypeA_TARGET_REQUIRED_CLAIM": 4,
+      "TypeB_LOCAL_FOCUS_NON_TARGET_PROPERTY": 21,
+      "TypeB_LOCAL_MIXED": 14,
+      "TypeB_LOCAL_NEIGHBOR_IDS": 2,
+      "TypeB_LOCAL_SELECTION_CONFIRMED": 18,
+      "TypeB_LOCAL_TEXT_CONFIRMED": 18,
+      "TypeB_LOCAL_TEXT_DERIVED": 12,
+      "TypeC_EXTERNAL_BY_ELIMINATION": 85
+    },
+    "by_subtype": {
+      "DELETE_AMBIGUOUS": 43,
+      "EXTERNAL_BY_ELIMINATION": 85,
+      "FORMAT_NORMALIZATION": 7,
+      "FORMAT_VALUE_PRUNING": 6,
+      "LOCAL_FOCUS_NON_TARGET_PROPERTY": 21,
+      "LOCAL_MIXED": 14,
+      "LOCAL_NEIGHBOR_IDS": 2,
+      "LOCAL_SELECTION_CONFIRMED": 18,
+      "LOCAL_TEXT_CONFIRMED": 18,
+      "LOCAL_TEXT_DERIVED": 12,
+      "LOGICAL": 2,
+      "MULTIPLICITY_NORMALIZATION": 6,
+      "REJECTION_FORMAT_INVALID": 6,
+      "SELF_LINK_REJECTION": 6,
+      "SET_MEMBERSHIP_REJECTION": 6,
+      "TARGET_REQUIRED_CLAIM": 4
+    },
+    "by_task": {
+      "a_box_repair": 512
+    },
+    "by_track": {
+      "A_BOX": 256
+    },
+    "eval_cases": 256,
+    "matrix_rows": 2,
+    "rendered_prompts": 512,
+    "skipped_prompts": 0,
+    "unique_properties": 103,
+    "unique_qids": 255
+  },
+  "created_at_utc": "2026-06-21T16:04:56Z",
+  "inputs": {
+    "classified_benchmark": "data/04_classified_benchmark.jsonl",
+    "core_manifest": "reports/benchmark_selection/core_v1_seed_13.json",
+    "dev_manifest": "reports/benchmark_selection/core_abox_canary_v1_256_seed_17.json",
+    "eval_manifest": "reports/benchmark_selection/core_abox_canary_v1_256_seed_17.json",
+    "example_manifest": "reports/benchmark_selection/dev_prompt_v1_seed_13.json",
+    "max_cases": 256,
+    "sample_strategy": "manifest_order",
+    "support_set_manifest": "reports/prompt_dev/few_shot/static_support_v1/static_support_manifest.json",
+    "track_filter": [
+      "A_BOX"
+    ],
+    "world_state": "data/03_world_state.json"
+  },
+  "manifest_type": "prompt_dev_rendered_prompt_summary",
+  "manifest_version": "prompt_dev_v5_tbox_taxonomy_patch",
+  "note": "No LLM inference was run. These artifacts contain prompts only.",
+  "outputs": {
+    "few_shot_leakage_scan": "reports/prompt_dev/few_shot/evaluation_static_v1_core_abox_canary/rendered_prompts/few_shot_leakage_scan.json",
+    "few_shot_overlap_report_json": "reports/prompt_dev/few_shot/evaluation_static_v1_core_abox_canary/rendered_prompts/few_shot_overlap_report.json",
+    "few_shot_overlap_report_markdown": "reports/prompt_dev/few_shot/evaluation_static_v1_core_abox_canary/rendered_prompts/few_shot_overlap_report.md",
+    "prompts_jsonl": "reports/prompt_dev/few_shot/evaluation_static_v1_core_abox_canary/rendered_prompts/prompt_dev_rendered_prompts.jsonl",
+    "review_markdown": "reports/prompt_dev/few_shot/evaluation_static_v1_core_abox_canary/rendered_prompts/prompt_dev_prompt_review.md"
+  }
+}

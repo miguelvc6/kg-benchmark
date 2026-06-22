@@ -1,0 +1,234 @@
+{
+  "created_at_utc": "2026-06-21T19:01:38Z",
+  "delta_by_context": {
+    "local_graph": {
+      "metrics": {
+        "a_box_exact_action": {
+          "delta": 0.02734375,
+          "few_shot": 0.57421875,
+          "zero_shot": 0.546875
+        },
+        "a_box_exact_value": {
+          "delta": 0.0625,
+          "few_shot": 0.4609375,
+          "zero_shot": 0.3984375
+        },
+        "a_box_regression_pass": {
+          "delta": 0.046875,
+          "few_shot": 0.921875,
+          "zero_shot": 0.875
+        },
+        "empty_ops_rate": {
+          "delta": -0.0390625,
+          "few_shot": 0.0390625,
+          "zero_shot": 0.078125
+        },
+        "overall_a_box_accepted": {
+          "delta": 0.05859375,
+          "few_shot": 0.45703125,
+          "zero_shot": 0.3984375
+        },
+        "parse_error_rate": {
+          "delta": 0.01171875,
+          "few_shot": 0.0234375,
+          "zero_shot": 0.01171875
+        },
+        "typec_accepted": {
+          "delta": 0.0,
+          "few_shot": 0.07058823529411765,
+          "zero_shot": 0.07058823529411765
+        }
+      },
+      "token_cost_latency_overhead": {
+        "completion_tokens": {
+          "delta": -3181.0,
+          "few_shot": 59664,
+          "zero_shot": 62845
+        },
+        "elapsed_seconds_mean": {
+          "delta": 1.5164782382812518,
+          "few_shot": 10.079635175781252,
+          "zero_shot": 8.5631569375
+        },
+        "estimated_cost_usd": {
+          "delta": 0.0,
+          "few_shot": 0.0,
+          "zero_shot": 0.0
+        },
+        "prompt_tokens": {
+          "delta": 1065457.0,
+          "few_shot": 1830426,
+          "zero_shot": 764969
+        },
+        "total_tokens": {
+          "delta": 1062276.0,
+          "few_shot": 1890090,
+          "zero_shot": 827814
+        }
+      }
+    },
+    "logic_only": {
+      "metrics": {
+        "a_box_exact_action": {
+          "delta": 0.0,
+          "few_shot": 0.546875,
+          "zero_shot": 0.546875
+        },
+        "a_box_exact_value": {
+          "delta": 0.0234375,
+          "few_shot": 0.43359375,
+          "zero_shot": 0.41015625
+        },
+        "a_box_regression_pass": {
+          "delta": 0.03515625,
+          "few_shot": 0.95703125,
+          "zero_shot": 0.921875
+        },
+        "empty_ops_rate": {
+          "delta": -0.0078125,
+          "few_shot": 0.03125,
+          "zero_shot": 0.0390625
+        },
+        "overall_a_box_accepted": {
+          "delta": 0.02734375,
+          "few_shot": 0.43359375,
+          "zero_shot": 0.40625
+        },
+        "parse_error_rate": {
+          "delta": 0.00390625,
+          "few_shot": 0.00390625,
+          "zero_shot": 0.0
+        },
+        "typec_accepted": {
+          "delta": 0.011764705882352941,
+          "few_shot": 0.07058823529411765,
+          "zero_shot": 0.058823529411764705
+        }
+      },
+      "token_cost_latency_overhead": {
+        "completion_tokens": {
+          "delta": -3755.0,
+          "few_shot": 58775,
+          "zero_shot": 62530
+        },
+        "elapsed_seconds_mean": {
+          "delta": -0.4943689296874947,
+          "few_shot": 8.845088816406252,
+          "zero_shot": 9.339457746093746
+        },
+        "estimated_cost_usd": {
+          "delta": 0.0,
+          "few_shot": 0.0,
+          "zero_shot": 0.0
+        },
+        "prompt_tokens": {
+          "delta": 648584.0,
+          "few_shot": 1213396,
+          "zero_shot": 564812
+        },
+        "total_tokens": {
+          "delta": 644829.0,
+          "few_shot": 1272171,
+          "zero_shot": 627342
+        }
+      }
+    }
+  },
+  "effect_gates": {
+    "accepted_or_exact_value_improves_3pp_in_at_least_one_context": true,
+    "no_exact_value_regression_gt_2pp": true,
+    "token_delta_documented": true,
+    "typec_hallucination_empty_op_not_materially_worse": true
+  },
+  "evidence": {
+    "leakage": {
+      "failed_payload_scan_count": 0,
+      "hard_match_count": 0,
+      "passed": true,
+      "path": "reports/prompt_dev/few_shot/evaluation_static_v1_core_abox_canary/rendered_prompts/few_shot_leakage_scan.json"
+    },
+    "overlap": {
+      "core_case_overlap": 0,
+      "core_tbox_revision_overlap": 0,
+      "hard_failure_count": 0,
+      "passed": true,
+      "path": "reports/prompt_dev/few_shot/evaluation_static_v1_core_abox_canary/rendered_prompts/few_shot_overlap_report.json"
+    },
+    "same_case_baseline": {
+      "contexts": {
+        "local_graph": {
+          "baseline_case_count": 256,
+          "case_count": 256,
+          "same_case_ids": true
+        },
+        "logic_only": {
+          "baseline_case_count": 256,
+          "case_count": 256,
+          "same_case_ids": true
+        }
+      },
+      "passed": true
+    },
+    "schema_outputs": {
+      "local_graph": {
+        "a_box_proposals": true,
+        "legacy_t_box_proposals": false,
+        "passed": true,
+        "t_box_taxonomy_patch_proposals": false
+      },
+      "logic_only": {
+        "a_box_proposals": true,
+        "legacy_t_box_proposals": false,
+        "passed": true,
+        "t_box_taxonomy_patch_proposals": false
+      }
+    }
+  },
+  "hard_gates": {
+    "correct_schema_outputs_present": true,
+    "delta_report_same_case_zero_shot": true,
+    "leakage_scan_pass": true,
+    "local_only_provider": true,
+    "overlap_scan_pass": true,
+    "proposal_parse_error_lte_4pct": true,
+    "request_error_lte_1pct": true
+  },
+  "manifest_type": "step12a_abox_gate_report",
+  "run": {
+    "counts": {
+      "by_parse_status": {
+        "non_executable_empty_ops": 18,
+        "normalized": 487,
+        "parse_error": 7
+      },
+      "evaluated_prompts": 512,
+      "matrix_rows": 2,
+      "rendered_prompts": 512
+    },
+    "few_shot_summary": "reports/prompt_dev/few_shot/evaluation_static_v1_core_abox_canary/prompt_dev_evaluation_summary.json",
+    "model": "gpt-oss:120b",
+    "provider": "ollama",
+    "zero_shot_summary": "reports/prompt_dev/few_shot/evaluation_static_v1_core_abox_canary_zero_shot/prompt_dev_evaluation_summary.json"
+  },
+  "status": "PASS",
+  "typec_behavior": {
+    "local_graph": {
+      "empty_ops_delta": -0.03529411764705882,
+      "few_shot_empty_ops_rate": 0.011764705882352941,
+      "few_shot_parse_error_rate": 0.011764705882352941,
+      "parse_error_delta": 0.0058823529411764705,
+      "typec_accepted_delta": 0.0,
+      "zero_shot_empty_ops_rate": 0.047058823529411764,
+      "zero_shot_parse_error_rate": 0.0058823529411764705
+    },
+    "logic_only": {
+      "empty_ops_delta": -0.0058823529411764705,
+      "few_shot_empty_ops_rate": 0.011764705882352941,
+      "few_shot_parse_error_rate": 0.0058823529411764705,
+      "parse_error_delta": 0.0058823529411764705,
+      "typec_accepted_delta": 0.011764705882352941,
+      "zero_shot_empty_ops_rate": 0.01764705882352941,
+      "zero_shot_parse_error_rate": 0.0
+    }
+  }
+}

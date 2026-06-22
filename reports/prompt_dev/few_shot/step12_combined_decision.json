@@ -1,0 +1,15 @@
+{
+  "abox_status": "PASS",
+  "created_at_utc": "2026-06-21T19:01:38Z",
+  "final_verdict": "RUN_ABOX_ONLY_FEW_SHOT_ABLATION",
+  "manifest_type": "step12_combined_decision",
+  "rationale": {
+    "abox": "A-box hard gates pass and local_graph accepted/exact-value gains exceed the 3 pp effect gate with no exact-value regression.",
+    "tbox": "T-box hard gates pass and primary taxonomy metrics improve, but value-delta false positives increase by more than 5 pp, so T-box is review-gated rather than full-run ready."
+  },
+  "reports": {
+    "step12a": "reports/prompt_dev/few_shot/evaluation_static_v1_core_abox_canary/step12a_gate_report.json",
+    "step12b": "reports/prompt_dev/few_shot/evaluation_static_v1_core_tbox_canary/step12b_gate_report.json"
+  },
+  "tbox_status": "PASS_WITH_REVIEW"
+}
