@@ -12,12 +12,11 @@ import argparse
 import hashlib
 import json
 import math
-import random
 from collections import Counter, defaultdict
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List
 
-from lib.benchmark_selection import group_key_for_record
+from lib.benchmark_selection import group_key_for_record, popularity_bucket_for_record
 from lib.utils import iter_jsonl
 
 DEFAULT_IN_PATH = "04_classified_benchmark.jsonl"
@@ -28,8 +27,6 @@ SEED = 13
 TRAIN_RATIO = 0.8
 DEV_RATIO = 0.1
 TEST_RATIO = 0.1
-TAIL_FRAC = 0.2
-HEAD_FRAC = 0.2
 ALLOW_MISSING_POPULARITY = False
 MAX_DELTA = 0.02
 
@@ -43,60 +40,10 @@ def derive_split_group(record: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _popularity_score(rec: Dict[str, Any]) -> Optional[float]:
-    pop = rec.get("popularity")
-    if isinstance(pop, dict):
-        score = pop.get("score")
-        if isinstance(score, (int, float)):
-            return float(score)
-    return None
-
-
 def _stable_hash_seed(seed: int, salt: str) -> int:
     raw = f"{seed}|{salt}".encode("utf-8")
     digest = hashlib.sha1(raw).digest()
     return int.from_bytes(digest[:8], "big", signed=False)
-
-
-def _assign_popularity_buckets(
-    entries: List[Dict[str, Any]],
-    *,
-    tail_frac: float,
-    head_frac: float,
-    allow_missing: bool,
-) -> Dict[str, str]:
-    scored: List[Tuple[float, str]] = []
-    missing_ids: List[str] = []
-    for e in entries:
-        rid = e["id"]
-        score = e.get("popularity_score")
-        if score is None:
-            missing_ids.append(rid)
-        else:
-            scored.append((score, rid))
-
-    if missing_ids and not allow_missing:
-        raise ValueError(f"Missing popularity score for {len(missing_ids)} records.")
-
-    scored.sort(key=lambda x: (x[0], x[1]))
-    n = len(scored)
-    n_tail = int(n * tail_frac)
-    n_head = int(n * head_frac)
-
-    buckets: Dict[str, str] = {}
-    for idx, (_, rid) in enumerate(scored):
-        if idx < n_tail:
-            buckets[rid] = "tail"
-        elif idx >= n - n_head:
-            buckets[rid] = "head"
-        else:
-            buckets[rid] = "mid"
-
-    if allow_missing:
-        for rid in missing_ids:
-            buckets[rid] = "unknown"
-
-    return buckets
 
 
 def _normalize_ratios(train: float, dev: float, test: float) -> Dict[str, float]:
@@ -153,6 +100,168 @@ def _check_proportions(
     return issues
 
 
+def _assign_grouped_splits(
+    entries: list[dict[str, Any]],
+    *,
+    ratios: dict[str, float],
+    seed: int,
+) -> dict[str, list[str]]:
+    """Assign complete leakage groups while approximately preserving all strata."""
+    split_names = ("train", "dev", "test")
+    grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for entry in entries:
+        grouped[entry["group_key"]].append(entry)
+
+    stratum_totals: Counter[tuple[str, str, str]] = Counter(
+        (entry["class"], entry["track"], entry["popularity_bucket"]) for entry in entries
+    )
+    stratum_assigned: dict[str, Counter[tuple[str, str, str]]] = {
+        name: Counter() for name in split_names
+    }
+    total_assigned: Counter[str] = Counter()
+    target_total = {name: len(entries) * ratios[name] for name in split_names}
+
+    group_rows: list[tuple[str, list[dict[str, Any]], Counter[tuple[str, str, str]]]] = []
+    for group_key, rows in grouped.items():
+        profile = Counter((row["class"], row["track"], row["popularity_bucket"]) for row in rows)
+        group_rows.append((group_key, rows, profile))
+    group_rows.sort(
+        key=lambda item: (
+            -len(item[1]),
+            _stable_hash_seed(seed, item[0]),
+            item[0],
+        )
+    )
+
+    splits: dict[str, list[str]] = {name: [] for name in split_names}
+    for group_key, rows, profile in group_rows:
+        candidate_scores: list[tuple[float, int, str]] = []
+        for name in split_names:
+            delta = 0.0
+            for stratum, count in profile.items():
+                target = stratum_totals[stratum] * ratios[name]
+                before = stratum_assigned[name][stratum]
+                scale = max(target, 1.0)
+                delta += ((before + count - target) ** 2 - (before - target) ** 2) / scale
+            before_total = total_assigned[name]
+            delta += (
+                (before_total + len(rows) - target_total[name]) ** 2
+                - (before_total - target_total[name]) ** 2
+            ) / max(target_total[name], 1.0)
+            tie_break = _stable_hash_seed(seed, f"{group_key}|{name}")
+            candidate_scores.append((delta, tie_break, name))
+        _, _, selected_split = min(candidate_scores)
+        splits[selected_split].extend(row["id"] for row in rows)
+        total_assigned[selected_split] += len(rows)
+        stratum_assigned[selected_split].update(profile)
+
+    return {name: sorted(ids) for name, ids in splits.items()}
+
+
+def build_split_manifest(
+    records: Iterable[dict[str, Any]],
+    *,
+    seed: int = SEED,
+    train_ratio: float = TRAIN_RATIO,
+    dev_ratio: float = DEV_RATIO,
+    test_ratio: float = TEST_RATIO,
+    allow_missing_popularity: bool = ALLOW_MISSING_POPULARITY,
+    max_delta: float = MAX_DELTA,
+    input_path: str | Path = DEFAULT_IN_PATH,
+) -> dict[str, Any]:
+    entries: list[dict[str, Any]] = []
+    by_id: dict[str, dict[str, str]] = {}
+    for rec in records:
+        rid = rec.get("id")
+        if not isinstance(rid, str) or not rid:
+            continue
+        if rid in by_id:
+            raise ValueError(f"Duplicate id detected: {rid}")
+        classification = rec.get("classification") if isinstance(rec.get("classification"), dict) else {}
+        cls = classification.get("class") if isinstance(classification, dict) else None
+        track = rec.get("track")
+        group = derive_split_group(rec)
+        entry = {
+            "id": rid,
+            "class": cls if isinstance(cls, str) and cls else "UNKNOWN",
+            "track": track if isinstance(track, str) and track else "UNKNOWN",
+            "popularity_bucket": popularity_bucket_for_record(rec),
+            **group,
+        }
+        if entry["popularity_bucket"] == "unknown" and not allow_missing_popularity:
+            raise ValueError(f"Missing popularity score for record: {rid}")
+        entries.append(entry)
+        by_id[rid] = {
+            "class": entry["class"],
+            "track": entry["track"],
+            "popularity_bucket": entry["popularity_bucket"],
+        }
+
+    ratios = _normalize_ratios(train_ratio, dev_ratio, test_ratio)
+    splits = _assign_grouped_splits(entries, ratios=ratios, seed=seed)
+
+    overall = {
+        "class": _distribution(by_id.keys(), by_id, "class"),
+        "track": _distribution(by_id.keys(), by_id, "track"),
+        "popularity_bucket": _distribution(by_id.keys(), by_id, "popularity_bucket"),
+    }
+    issues: list[str] = []
+    for name, ids in splits.items():
+        for field, distribution in overall.items():
+            issues.extend(
+                _check_proportions(
+                    overall=distribution,
+                    split=_distribution(ids, by_id, field),
+                    split_name=name,
+                    field=field,
+                    n_split=len(ids),
+                    max_delta=max_delta,
+                )
+            )
+
+    split_for_id = {case_id: name for name, ids in splits.items() for case_id in ids}
+    group_splits: dict[str, set[str]] = defaultdict(set)
+    weak_groups: set[str] = set()
+    for entry in entries:
+        group_splits[entry["group_key"]].add(split_for_id[entry["id"]])
+        if entry["weak_group_key"]:
+            weak_groups.add(entry["group_key"])
+    cross_split_groups = sorted(key for key, names in group_splits.items() if len(names) > 1)
+    if cross_split_groups:
+        raise ValueError(f"Grouped split isolation failed for {len(cross_split_groups)} groups.")
+
+    return {
+        "inputs": {"classified_benchmark": str(input_path)},
+        "policy": {
+            "seed": seed,
+            "ratios": ratios,
+            "assignment_unit": "ABOX qid-property or TBOX property-revision group",
+            "assignment_algorithm": "deterministic greedy stratum-balance v1",
+            "popularity_buckets": {
+                "policy": "explicit bucket, else score thresholds tail<=1/3 and head>=2/3",
+                "missing_policy": "unknown" if allow_missing_popularity else "error",
+            },
+            "max_delta": max_delta,
+        },
+        "counts": {
+            "total": len(entries),
+            "splits": {key: len(value) for key, value in splits.items()},
+            "classes": dict(Counter(entry["class"] for entry in entries)),
+            "tracks": dict(Counter(entry["track"] for entry in entries)),
+            "popularity_buckets": dict(Counter(entry["popularity_bucket"] for entry in entries)),
+            "groups": len(group_splits),
+            "weak_groups": len(weak_groups),
+        },
+        "validation": {
+            "cross_split_group_count": len(cross_split_groups),
+            "cross_split_groups": cross_split_groups,
+            "proportion_issues": issues,
+            "proportion_checks_passed": not issues,
+        },
+        "splits": splits,
+    }
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--sample", action="store_true", help="Use data_sample/ inputs/outputs instead of data/.")
@@ -162,126 +271,12 @@ def main() -> int:
     in_path = folder / DEFAULT_IN_PATH
     out_path = folder / DEFAULT_OUT_PATH
 
-    entries: List[Dict[str, Any]] = []
-    by_id: Dict[str, Dict[str, str]] = {}
+    output = build_split_manifest(iter_jsonl(in_path), input_path=in_path)
 
-    for rec in iter_jsonl(in_path):
-        rid = rec.get("id")
-        if not isinstance(rid, str) or not rid:
-            continue
-        if rid in by_id:
-            raise ValueError(f"Duplicate id detected: {rid}")
-        classification = rec.get("classification") if isinstance(rec.get("classification"), dict) else {}
-        cls = classification.get("class") if isinstance(classification, dict) else None
-        track = rec.get("track")
-        entry = {
-            "id": rid,
-            "class": cls if isinstance(cls, str) and cls else "UNKNOWN",
-            "track": track if isinstance(track, str) and track else "UNKNOWN",
-            "popularity_score": _popularity_score(rec),
-        }
-        entries.append(entry)
-        by_id[rid] = {"class": entry["class"], "track": entry["track"]}
-
-    buckets = _assign_popularity_buckets(
-        entries,
-        tail_frac=TAIL_FRAC,
-        head_frac=HEAD_FRAC,
-        allow_missing=ALLOW_MISSING_POPULARITY,
-    )
-
-    for e in entries:
-        bucket = buckets.get(e["id"])
-        e["popularity_bucket"] = bucket if isinstance(bucket, str) else "unknown"
-        by_id[e["id"]]["popularity_bucket"] = e["popularity_bucket"]
-
-    ratios = _normalize_ratios(TRAIN_RATIO, DEV_RATIO, TEST_RATIO)
-
-    strata: Dict[Tuple[str, str, str], List[str]] = defaultdict(list)
-    for e in entries:
-        key = (e["class"], e["track"], e["popularity_bucket"])
-        strata[key].append(e["id"])
-
-    splits: Dict[str, List[str]] = {"train": [], "dev": [], "test": []}
-
-    for key in sorted(strata.keys()):
-        ids = sorted(strata[key])
-        seed = _stable_hash_seed(SEED, "|".join(key))
-        rng = random.Random(seed)
-        rng.shuffle(ids)
-        counts = _allocate_counts(len(ids), ratios)
-        n_train = counts["train"]
-        n_dev = counts["dev"]
-        splits["train"].extend(ids[:n_train])
-        splits["dev"].extend(ids[n_train : n_train + n_dev])
-        splits["test"].extend(ids[n_train + n_dev :])
-
-    for name in splits:
-        splits[name] = sorted(splits[name])
-
-    overall_class = _distribution(by_id.keys(), by_id, "class")
-    overall_track = _distribution(by_id.keys(), by_id, "track")
-    overall_pop = _distribution(by_id.keys(), by_id, "popularity_bucket")
-
-    issues: List[str] = []
-    for name in ("train", "dev", "test"):
-        ids = splits[name]
-        issues.extend(
-            _check_proportions(
-                overall=overall_class,
-                split=_distribution(ids, by_id, "class"),
-                split_name=name,
-                field="class",
-                n_split=len(ids),
-                max_delta=MAX_DELTA,
-            )
-        )
-        issues.extend(
-            _check_proportions(
-                overall=overall_track,
-                split=_distribution(ids, by_id, "track"),
-                split_name=name,
-                field="track",
-                n_split=len(ids),
-                max_delta=MAX_DELTA,
-            )
-        )
-        issues.extend(
-            _check_proportions(
-                overall=overall_pop,
-                split=_distribution(ids, by_id, "popularity_bucket"),
-                split_name=name,
-                field="popularity_bucket",
-                n_split=len(ids),
-                max_delta=MAX_DELTA,
-            )
-        )
-
+    issues = output["validation"]["proportion_issues"]
     if issues:
         preview = "\n".join(issues[:10])
         raise ValueError(f"Split proportion checks failed (showing up to 10):\n{preview}")
-
-    output = {
-        "inputs": {"classified_benchmark": str(in_path)},
-        "policy": {
-            "seed": SEED,
-            "ratios": ratios,
-            "popularity_buckets": {
-                "tail_frac": TAIL_FRAC,
-                "head_frac": HEAD_FRAC,
-                "missing_policy": "unknown" if ALLOW_MISSING_POPULARITY else "error",
-            },
-            "max_delta": MAX_DELTA,
-        },
-        "counts": {
-            "total": len(entries),
-            "splits": {k: len(v) for k, v in splits.items()},
-            "classes": dict(Counter(e["class"] for e in entries)),
-            "tracks": dict(Counter(e["track"] for e in entries)),
-            "popularity_buckets": dict(Counter(e["popularity_bucket"] for e in entries)),
-        },
-        "splits": splits,
-    }
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as fh:

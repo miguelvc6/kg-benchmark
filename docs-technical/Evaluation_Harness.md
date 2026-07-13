@@ -1,6 +1,6 @@
 # Evaluation Harness
 
-The benchmark evaluation entry point is [evaluate.py](/home/mvazquez/kg-benchmark/src/evaluate.py).
+The benchmark evaluation entry point is `src/evaluate.py`.
 
 ## Inputs
 
@@ -27,6 +27,7 @@ Current A-box scoring:
 - applies normalized proposal ops in memory
 - checks executability against the benchmark target ids
 - compares the resulting target property against the historical repair target
+- treats target values as an unordered multiset, so serialization order does not change exactness while duplicate counts remain meaningful
 - requires auditability completeness for acceptance:
   - non-empty rationale
   - usable provenance
@@ -85,8 +86,11 @@ The evaluator aggregates results by:
 - track
 - ablation bundle
 - popularity bucket
+- manifest-defined evaluation subset
 
-Grouped summaries now also expose metric applicability counts so track-specific fields such as `semantic_success`, `conversion_rate`, and `tokens_to_fix` can be interpreted against the right denominator.
+Popularity buckets use the selection policy's explicit bucket or fixed score thresholds; they are not recomputed on the evaluated slice. `paper_subsets` contains separate `all_selected`, `main_score`, and `diagnostic` aggregates. Grouped summaries also expose metric applicability counts so track-specific fields such as `semantic_success`, `conversion_rate`, and `tokens_to_fix` can be interpreted against the right denominator.
+
+Evaluation fails on duplicate proposal IDs, duplicate selected Stage 4 IDs, or selected IDs missing from Stage 4. Traces carry the selection stratum, analysis slice, confidence, and leakage-group key used by cluster-aware analysis.
 
 ## Track-Diagnosis Evaluation
 

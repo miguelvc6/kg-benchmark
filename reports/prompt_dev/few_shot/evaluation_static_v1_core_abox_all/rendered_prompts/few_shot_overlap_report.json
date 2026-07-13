@@ -1,7 +1,7 @@
 {
   "manifest_type": "few_shot_overlap_report",
   "manifest_version": "prompt_dev_v5_tbox_taxonomy_patch",
-  "created_at_utc": "2026-06-22T07:39:29Z",
+  "created_at_utc": "2026-06-22T08:29:18Z",
   "passed": true,
   "example_count": 25224,
   "core_case_overlap": 0,

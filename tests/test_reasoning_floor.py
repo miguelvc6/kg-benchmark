@@ -435,6 +435,10 @@ class ReasoningFloorTests(unittest.TestCase):
         raw_rows = self._read_jsonl(run_dir / "raw_model_responses.jsonl")
         t_box_rows = self._read_jsonl(run_dir / "minimal_case" / "t_box_proposals.jsonl")
         self.assertEqual(run_config["visible_case_id_map"], {"reform_case": "case_000001"})
+        self.assertEqual(len(run_config["artifact_fingerprints"]["classified_benchmark"]["sha256"]), 64)
+        self.assertEqual(len(run_config["artifact_fingerprints"]["world_state"]["sha256"]), 64)
+        self.assertIn("temperature", run_config["inference_settings"])
+        self.assertIn("commit", run_config["code"])
         self.assertTrue(all(row.get("visible_case_id") == "case_000001" for row in manifest_rows))
         self.assertTrue(all(row.get("parsed_payload", {}).get("case_id") == "case_000001" for row in raw_rows))
         self.assertEqual(t_box_rows[0]["case_id"], "reform_case")
@@ -1168,13 +1172,15 @@ class ReasoningFloorTests(unittest.TestCase):
                 "label": "Entity",
                 "description": "desc",
                 "sitelinks_count": 1,
-                "properties": {"P31": ["Q_NEW"]},
+                "properties": {"P31": ["Q_NEW"], "P279": ["Q_LOCAL"]},
             },
             "L2_labels": {
                 "entities": {
                     "Q1": {"label": "Entity"},
                     "P31": {"label": "instance of"},
+                    "P279": {"label": "subclass of"},
                     "Q_NEW": {"label": "New value", "description": "Current value"},
+                    "Q_LOCAL": {"label": "Local neighbor"},
                 }
             },
             "L3_neighborhood": {
@@ -1184,7 +1190,8 @@ class ReasoningFloorTests(unittest.TestCase):
                         "target_qid": "Q_NEW",
                         "target_label": "New value",
                         "target_description": "Current value",
-                    }
+                    },
+                    {"property_id": "P279", "target_qid": "Q_LOCAL"},
                 ]
             },
             "L4_constraints": {"constraints": []},
@@ -1197,11 +1204,18 @@ class ReasoningFloorTests(unittest.TestCase):
 
         for payload in (proposal_payload, diagnosis_payload):
             local_context = payload["local_context"]
-            self.assertEqual(local_context["L1_ego_node"]["properties"], {"P31": ["Q_OLD"]})
-            self.assertEqual(local_context["L3_neighborhood"]["outgoing_edges"], [])
+            self.assertEqual(
+                local_context["L1_ego_node"]["properties"],
+                {"P31": ["Q_OLD"], "P279": ["Q_LOCAL"]},
+            )
+            self.assertEqual(
+                local_context["L3_neighborhood"]["outgoing_edges"],
+                [{"property_id": "P279", "target_qid": "Q_LOCAL"}],
+            )
             self.assertEqual(local_context["L2_labels"]["entities"]["Q_OLD"]["label"], "Old value")
             self.assertEqual(local_context["L2_labels"]["entities"]["Q_OLD"]["description"], "Old description")
             self.assertNotIn("Q_NEW", local_context["L2_labels"]["entities"])
+            self.assertEqual(local_context["L2_labels"]["entities"]["Q_LOCAL"]["label"], "Local neighbor")
 
     def test_logic_only_prompt_uses_pre_repair_target_values_for_constraint_pruning(self) -> None:
         record = {

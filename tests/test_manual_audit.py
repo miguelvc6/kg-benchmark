@@ -397,6 +397,29 @@ class ManualAuditTests(unittest.TestCase):
         self.assertEqual(summary["TypeA_overclaim_rate"]["rate"], 1.0)
         self.assertEqual(summary["diagnostic_or_exclude_rate"]["rate"], 2 / 3)
 
+    def test_typea_overclaim_denominator_includes_all_non_delete_subtypes(self) -> None:
+        rows = []
+        for case_id, subtype, judgment in (
+            ("format", "REJECTION_FORMAT_INVALID", "clean_rule_or_format"),
+            ("logical", "LOGICAL", "overclaimed"),
+            ("delete", "DELETE_AMBIGUOUS", "delete_ambiguous_ok"),
+        ):
+            row = {field: "" for field in AUDIT_FIELDNAMES}
+            row.update(
+                {
+                    "case_id": case_id,
+                    "class": "TypeA",
+                    "subtype": subtype,
+                    "typea_judgment": judgment,
+                }
+            )
+            rows.append(row)
+
+        metric = summarize_annotations(rows)["TypeA_overclaim_rate"]
+
+        self.assertEqual(metric["denominator"], 2)
+        self.assertEqual(metric["rate"], 0.5)
+
     def test_label_precision_uses_stratum_specific_good_values(self) -> None:
         def row(case_id: str, cls: str, subtype: str, stratum: str, field: str, judgment: str) -> dict[str, str]:
             values = {name: "" for name in AUDIT_FIELDNAMES}

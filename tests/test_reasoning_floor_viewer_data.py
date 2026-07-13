@@ -432,7 +432,8 @@ class ReasoningFloorViewerDataTests(unittest.TestCase):
         self.assertIsNone(prompt_debug.error)
         self.assertEqual(prompt_debug.proposal_prompt.prompt_name, "reasoning_floor_a_box_zero_shot")
         self.assertEqual(prompt_debug.diagnosis_prompt.prompt_name, "reasoning_floor_track_diagnosis_zero_shot")
-        self.assertIn('"id": "repair_case"', prompt_debug.proposal_prompt.prompt)
+        self.assertIn('"id": "case_8ad0dfa8368a"', prompt_debug.proposal_prompt.prompt)
+        self.assertNotIn('"id": "repair_case"', prompt_debug.proposal_prompt.prompt)
 
     def test_build_case_prompt_debug_uses_routed_proposal_track_when_present(self) -> None:
         root, reports_root, run_dir, _ = self._build_fixture(with_evaluation_artifacts=False)

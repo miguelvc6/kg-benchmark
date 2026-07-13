@@ -23,5 +23,6 @@ This area contains repository-facing documentation: how the benchmark is built, 
 - [T-Box Taxonomy Patch Governance](./TBox_Taxonomy_Patch_Governance.md): version labels, artifact separation, and score-interpretation guardrails for taxonomy-patch runs.
 - [Paper Execution Plan](./Paper_Execution_Plan.md): terminal runbook for building the benchmark and paper artifacts end to end.
 - [Conceptual Deviation Report](./Conceptual_Deviation_Report.md): mismatches between current conceptual claims and the implemented repository.
+- [Research Release Protocol](./Research_Release_Protocol.md): schema gates, run fingerprints, blinded validation, untouched-test sealing, statistical analysis, experiment registration, and release-candidate manifests.
 
 Conceptual rationale and research framing live in [docs-conceptual](../docs-conceptual/README.md).

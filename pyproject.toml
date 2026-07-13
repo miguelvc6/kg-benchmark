@@ -51,12 +51,22 @@ kg-reasoning-floor-viewer = "scripts.reasoning_floor_viewer:main"
 kg-test-llm-endpoint = "scripts.test_llm_endpoint:main"
 kg-analyze-tbox-updates = "scripts.analyze_tbox_updates:main"
 kg-classifier-audit-report = "scripts.classifier_audit_report:main"
+kg-artifact-release = "artifact_release:main"
+kg-annotation-protocol = "annotation_protocol:main"
+kg-select-untouched-test = "select_untouched_test:main"
+kg-analyze-results = "analyze_results:main"
+kg-experiment-registry = "experiment_registry:main"
 
 [tool.setuptools]
 package-dir = {"" = "src", "scripts" = "scripts"}
 packages = ["guardian", "lib", "scripts"]
 py-modules = [
     "classifier",
+    "artifact_release",
+    "annotation_protocol",
+    "select_untouched_test",
+    "analyze_results",
+    "experiment_registry",
     "evaluate",
     "fetcher",
     "non_llm_baselines",

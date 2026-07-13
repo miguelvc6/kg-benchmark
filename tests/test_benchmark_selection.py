@@ -8,6 +8,7 @@ from lib.benchmark_selection import (
     build_tier_manifest,
     derive_case_metadata,
     load_selection_manifest,
+    popularity_bucket_for_record,
     resolve_case_id_filter,
 )
 
@@ -151,6 +152,34 @@ class BenchmarkSelectionTests(unittest.TestCase):
             self.assertFalse(dev_keys & core_keys)
             self.assertEqual(core["validation"]["dev_core_tbox_revision_overlap"], 0)
 
+    def test_core_does_not_backfill_from_excluded_dev_abox_group(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            path = root / "classified.jsonl"
+            rows = [
+                _record("shared_1", "TypeB", "LOCAL_TEXT", qid="Q1", property_id="P1"),
+                _record("shared_2", "TypeB", "LOCAL_TEXT", qid="Q1", property_id="P1"),
+            ]
+            self._write_jsonl(path, rows)
+            dev = self._manifest(
+                path,
+                tier="dev",
+                quotas={"DEV_TYPEB_LOCAL": 1},
+                abox_cap_dev=1,
+            )
+            dev_path = root / "dev.json"
+            dev_path.write_text(json.dumps(dev), encoding="utf-8")
+
+            core = self._manifest(
+                path,
+                quotas={"TypeB_LOCAL_TEXT": 1},
+                exclude_manifest=dev_path,
+            )
+
+            self.assertEqual(core["selected_case_ids"], [])
+            self.assertEqual(core["validation"]["dev_core_abox_group_overlap"], 0)
+            self.assertFalse(core["validation"]["hard_validation_passed"])
+
     def test_core_tbox_cap_is_enforced(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             path = Path(tmp_dir) / "classified.jsonl"
@@ -284,6 +313,28 @@ class BenchmarkSelectionTests(unittest.TestCase):
 
             resolved = resolve_case_id_filter(case_ids=["case_b", "case_c"], selection_manifest_path=manifest_path)
             self.assertEqual(resolved, ["case_c", "case_b"])
+
+    def test_load_selection_manifest_rejects_invalid_subset_partition(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            manifest_path = Path(tmp_dir) / "selection.json"
+            manifest_path.write_text(
+                json.dumps(
+                    {
+                        "selected_case_ids": ["case_a", "case_b"],
+                        "main_score_case_ids": ["case_a"],
+                        "diagnostic_case_ids": ["case_a"],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "overlap"):
+                load_selection_manifest(manifest_path)
+
+    def test_popularity_bucket_policy_is_independent_of_evaluation_subset(self) -> None:
+        self.assertEqual(popularity_bucket_for_record({"popularity": {"score": 0.2}}), "tail")
+        self.assertEqual(popularity_bucket_for_record({"popularity": {"score": 0.5}}), "mid")
+        self.assertEqual(popularity_bucket_for_record({"popularity": {"score": 0.8}}), "head")
 
 
 if __name__ == "__main__":

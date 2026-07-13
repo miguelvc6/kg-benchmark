@@ -52,6 +52,43 @@ class EvaluatorTests(unittest.TestCase):
         self.assertEqual(trace["details"]["supported_violations_before"], 1)
         self.assertEqual(trace["details"]["supported_violations_after"], 1)
 
+    def test_a_box_exact_values_treat_set_order_as_irrelevant(self) -> None:
+        from guardian.evaluator import evaluate_a_box_case
+        from guardian.patch_parser import normalize_proposal
+
+        record = {
+            "id": "repair_set",
+            "qid": "Q1",
+            "property": "P1",
+            "track": "A_BOX",
+            "repair_target": {"action": "UPDATE", "old_value": ["Q4"], "new_value": ["Q2", "Q3"]},
+            "classification": {"class": "TypeB", "subtype": "LOCAL_TEXT_CONFIRMED"},
+        }
+        world_state = {
+            "L1_ego_node": {"properties": {"P1": ["Q4"]}},
+            "L4_constraints": {"constraints": []},
+        }
+        proposal = normalize_proposal(
+            {
+                "case_id": "repair_set",
+                "target": {"qid": "Q1", "pid": "P1"},
+                "ops": [
+                    {"op": "REMOVE", "pid": "P1", "value": "Q4"},
+                    {"op": "ADD", "pid": "P1", "value": "Q3"},
+                    {"op": "ADD", "pid": "P1", "value": "Q2"},
+                ],
+                "rationale": "Restore both expected values.",
+                "provenance": [{"kind": "KG", "node_id": "Q2"}],
+                "uncertainty": {"confidence": 0.9},
+            }
+        )
+
+        trace = evaluate_a_box_case(record, world_state, proposal, {}, {}, "mid", None)
+
+        self.assertTrue(trace["comparison"]["exact_value_match"])
+        self.assertTrue(trace["comparison"]["exact_action_match"])
+        self.assertTrue(trace["accepted"])
+
     def test_a_box_and_t_box_evaluation(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)
@@ -183,7 +220,20 @@ class EvaluatorTests(unittest.TestCase):
                 ],
             )
             selection_manifest_path.write_text(
-                json.dumps({"selected_case_ids": ["reform_case"]}),
+                json.dumps(
+                    {
+                        "selected_case_ids": ["reform_case"],
+                        "main_score_case_ids": [],
+                        "diagnostic_case_ids": ["reform_case"],
+                        "case_annotations": {
+                            "reform_case": {
+                                "selection_stratum": "TBOX_RELAXATION_SET_EXPANSION",
+                                "analysis_slice": "schema_repair",
+                                "confidence": "high",
+                            }
+                        },
+                    }
+                ),
                 encoding="utf-8",
             )
 
@@ -201,6 +251,10 @@ class EvaluatorTests(unittest.TestCase):
             self.assertEqual(summary["counts"]["accepted"], 1)
             self.assertEqual(summary["counts"]["track_diagnosis_exact_match"], 1)
             self.assertEqual(summary["inputs"]["selection_manifest"], str(selection_manifest_path))
+            self.assertEqual(traces[0]["evaluation_subset"], "diagnostic")
+            self.assertEqual(traces[0]["popularity_bucket"], "head")
+            self.assertEqual(summary["paper_subsets"]["diagnostic"]["count"], 1)
+            self.assertEqual(summary["paper_subsets"]["main_score"]["count"], 0)
 
     def test_evaluate_benchmark_invokes_progress_callback_per_case(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:

@@ -1,0 +1,783 @@
+{
+  "metric_family": "tbox_taxonomy_patch_v1",
+  "gold_version": "tbox_taxonomy_patch_gold_core_v1",
+  "strict_signature_metrics_role": "diagnostic_only",
+  "total_tbox_rows": 0,
+  "traces": [],
+  "subsets": {
+    "all_core": {
+      "count": 0,
+      "metrics": {
+        "tbox_patch_parse_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_contract_valid_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_parse_error_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_target_pid_match_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_primary_constraint_family_match_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_any_changed_family_hit_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_schema_decision_match_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_no_causal_schema_repair_match_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_unclear_schema_evidence_match_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_repair_op_exact_match_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_taxonomy_code_exact_match_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_qualifier_property_match_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_evidence_level_exact_match_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_value_delta_claimed_when_gold_absent_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_family_only_when_value_delta_gold_present_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_family_level_success": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_decision_level_success": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_taxonomy_level_success": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_value_delta_success": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_constraint_family_precision": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_constraint_family_recall": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_constraint_family_f1": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_repair_op_precision": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_repair_op_recall": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_repair_op_f1": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_added_values_precision": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_added_values_recall": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_added_values_f1": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_removed_values_precision": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_removed_values_recall": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_removed_values_f1": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_value_delta_f1_when_applicable": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        }
+      }
+    },
+    "main_score": {
+      "count": 0,
+      "metrics": {
+        "tbox_patch_parse_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_contract_valid_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_parse_error_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_target_pid_match_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_primary_constraint_family_match_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_any_changed_family_hit_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_schema_decision_match_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_no_causal_schema_repair_match_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_unclear_schema_evidence_match_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_repair_op_exact_match_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_taxonomy_code_exact_match_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_qualifier_property_match_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_evidence_level_exact_match_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_value_delta_claimed_when_gold_absent_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_family_only_when_value_delta_gold_present_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_family_level_success": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_decision_level_success": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_taxonomy_level_success": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_value_delta_success": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_constraint_family_precision": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_constraint_family_recall": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_constraint_family_f1": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_repair_op_precision": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_repair_op_recall": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_repair_op_f1": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_added_values_precision": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_added_values_recall": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_added_values_f1": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_removed_values_precision": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_removed_values_recall": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_removed_values_f1": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_value_delta_f1_when_applicable": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        }
+      }
+    },
+    "diagnostic": {
+      "count": 0,
+      "metrics": {
+        "tbox_patch_parse_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_contract_valid_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_parse_error_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_target_pid_match_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_primary_constraint_family_match_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_any_changed_family_hit_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_schema_decision_match_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_no_causal_schema_repair_match_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_unclear_schema_evidence_match_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_repair_op_exact_match_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_taxonomy_code_exact_match_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_qualifier_property_match_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_evidence_level_exact_match_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_value_delta_claimed_when_gold_absent_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_family_only_when_value_delta_gold_present_rate": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_family_level_success": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_decision_level_success": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_taxonomy_level_success": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_value_delta_success": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_constraint_family_precision": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_constraint_family_recall": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_constraint_family_f1": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_repair_op_precision": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_repair_op_recall": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_repair_op_f1": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_added_values_precision": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_added_values_recall": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_added_values_f1": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_removed_values_precision": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_removed_values_recall": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_removed_values_f1": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        },
+        "tbox_patch_value_delta_f1_when_applicable": {
+          "numerator": 0,
+          "applicable_denominator": 0,
+          "total_tbox_rows": 0,
+          "applicability_coverage": null,
+          "rate": null
+        }
+      }
+    }
+  },
+  "subset_label_audit": {
+    "taxonomy_gold_case_ids_count": 0,
+    "evaluator_main_score_subset_count": 0,
+    "evaluator_diagnostic_subset_count": 0,
+    "report_subset_labels": {
+      "main_score": "taxonomy_main_score",
+      "diagnostic": "taxonomy_diagnostic"
+    },
+    "interpretation": "The taxonomy evaluator subset named main_score contains T-box taxonomy gold rows whose manifest annotations mark them as main-score eligible; it is not the full manifest main_score_case_ids list when the manifest also contains A-box cases."
+  },
+  "diagnostic_reports": {
+    "confusion_matrices": {
+      "schema_decision": {
+        "alignment": "exact-overlap-first multiset alignment; unmatched gold labels use __MISSING__, unmatched predicted labels use __EXTRA__",
+        "labels": [],
+        "rows": [],
+        "total_aligned_items": 0,
+        "total_cases": 0
+      },
+      "taxonomy_code": {
+        "alignment": "exact-overlap-first multiset alignment; unmatched gold labels use __MISSING__, unmatched predicted labels use __EXTRA__",
+        "labels": [],
+        "rows": [],
+        "total_aligned_items": 0,
+        "total_cases": 0
+      },
+      "repair_operation": {
+        "alignment": "exact-overlap-first multiset alignment; unmatched gold labels use __MISSING__, unmatched predicted labels use __EXTRA__",
+        "labels": [],
+        "rows": [],
+        "total_aligned_items": 0,
+        "total_cases": 0
+      },
+      "qualifier_property": {
+        "alignment": "exact-overlap-first multiset alignment; unmatched gold labels use __MISSING__, unmatched predicted labels use __EXTRA__",
+        "labels": [],
+        "rows": [],
+        "total_aligned_items": 0,
+        "total_cases": 0
+      }
+    },
+    "out_of_current_gold_operation_false_positive_rates": {
+      "definition": "Predicted operations absent from the current gold operation set are counted as out-of-current-gold false positives.",
+      "current_gold_operation_set": [],
+      "gold_operation_counts": {},
+      "total_predicted_repairs": 0,
+      "rows": [],
+      "overall_out_of_current_gold_false_positive_rate": null
+    },
+    "value_delta_display_metrics": {
+      "all_core": {
+        "value_delta_f1_display_rate": null,
+        "value_delta_f1_display": "n/a",
+        "value_delta_f1_reason": "computed on applicable gold value-delta rows",
+        "value_delta_false_positive_rate": null,
+        "value_delta_under_specification_rate": null
+      },
+      "diagnostic": {
+        "value_delta_f1_display_rate": null,
+        "value_delta_f1_display": "n/a",
+        "value_delta_f1_reason": "computed on applicable gold value-delta rows",
+        "value_delta_false_positive_rate": null,
+        "value_delta_under_specification_rate": null
+      },
+      "main_score": {
+        "value_delta_f1_display_rate": null,
+        "value_delta_f1_display": "n/a",
+        "value_delta_f1_reason": "computed on applicable gold value-delta rows",
+        "value_delta_false_positive_rate": null,
+        "value_delta_under_specification_rate": null
+      }
+    },
+    "macro_averages": {
+      "by_property": {
+        "group_count": 0,
+        "row_count": 0,
+        "metrics": {},
+        "groups": {}
+      },
+      "by_tbox_revision": {
+        "group_count": 0,
+        "row_count": 0,
+        "metrics": {},
+        "groups": {}
+      }
+    }
+  }
+}

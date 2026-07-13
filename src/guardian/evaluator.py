@@ -12,11 +12,11 @@ from guardian.patch_parser import normalize_proposal as normalize_a_box_proposal
 from guardian.tbox_parser import normalize_proposal as normalize_t_box_proposal
 from guardian.tbox_parser import normalize_signature_after as normalize_t_box_signature_after
 from guardian.track_parser import normalize_diagnosis as normalize_track_diagnosis
-from guardian.tbox_taxonomy_patch_evaluator import (
-    evaluate_tbox_taxonomy_patch_files,
-    evaluate_tbox_taxonomy_patch_predictions,
+from lib.benchmark_selection import (
+    load_selection_manifest,
+    popularity_bucket_for_record,
+    resolve_case_id_filter,
 )
-from lib.benchmark_selection import resolve_case_id_filter
 from lib.repair_state import comparable_atom, normalize_value_list, reconstruct_properties_with_pre_repair_target
 from lib.utils import iter_jsonl, normalize_text
 
@@ -61,34 +61,6 @@ def write_json(path: str | Path, payload: dict[str, Any]) -> None:
         json.dump(payload, fh, ensure_ascii=False, indent=2, default=_json_default)
 
 
-def _derive_popularity_buckets(records: list[dict[str, Any]]) -> dict[str, str]:
-    scored: list[tuple[float, str]] = []
-    missing: list[str] = []
-    for record in records:
-        rid = record["id"]
-        popularity = record.get("popularity")
-        score = popularity.get("score") if isinstance(popularity, dict) else None
-        if isinstance(score, (int, float)):
-            scored.append((float(score), rid))
-        else:
-            missing.append(rid)
-    scored.sort(key=lambda item: (item[0], item[1]))
-    total = len(scored)
-    tail_cut = int(total * 0.2)
-    head_cut = int(total * 0.2)
-    buckets: dict[str, str] = {}
-    for idx, (_, rid) in enumerate(scored):
-        if idx < tail_cut:
-            buckets[rid] = "tail"
-        elif idx >= total - head_cut:
-            buckets[rid] = "head"
-        else:
-            buckets[rid] = "mid"
-    for rid in missing:
-        buckets[rid] = "unknown"
-    return buckets
-
-
 def _iter_records(classified_path: str | Path, case_ids: Optional[set[str]] = None) -> Iterable[dict[str, Any]]:
     for record in iter_jsonl(classified_path):
         if not isinstance(record, dict):
@@ -105,37 +77,6 @@ def _load_records(classified_path: str | Path, case_ids: Optional[set[str]] = No
     return list(_iter_records(classified_path, case_ids))
 
 
-def _derive_popularity_buckets_from_path(
-    classified_path: str | Path,
-    case_ids: Optional[set[str]] = None,
-) -> dict[str, str]:
-    scored: list[tuple[float, str]] = []
-    missing: list[str] = []
-    for record in _iter_records(classified_path, case_ids):
-        rid = record["id"]
-        popularity = record.get("popularity")
-        score = popularity.get("score") if isinstance(popularity, dict) else None
-        if isinstance(score, (int, float)):
-            scored.append((float(score), rid))
-        else:
-            missing.append(rid)
-    scored.sort(key=lambda item: (item[0], item[1]))
-    total = len(scored)
-    tail_cut = int(total * 0.2)
-    head_cut = int(total * 0.2)
-    buckets: dict[str, str] = {}
-    for idx, (_, rid) in enumerate(scored):
-        if idx < tail_cut:
-            buckets[rid] = "tail"
-        elif idx >= total - head_cut:
-            buckets[rid] = "head"
-        else:
-            buckets[rid] = "mid"
-    for rid in missing:
-        buckets[rid] = "unknown"
-    return buckets
-
-
 def _load_a_box_proposals(path: str | Path | None) -> dict[str, Any]:
     proposals = {}
     if not path:
@@ -145,6 +86,8 @@ def _load_a_box_proposals(path: str | Path | None) -> dict[str, Any]:
         return proposals
     for record in iter_jsonl(proposal_path):
         normalized = normalize_a_box_proposal(record)
+        if normalized.case_id in proposals:
+            raise ValueError(f"Duplicate A-box proposal for case_id={normalized.case_id}")
         proposals[normalized.case_id] = normalized
     return proposals
 
@@ -158,6 +101,8 @@ def _load_t_box_proposals(path: str | Path | None) -> dict[str, Any]:
         return proposals
     for record in iter_jsonl(proposal_path):
         normalized = normalize_t_box_proposal(record)
+        if normalized.case_id in proposals:
+            raise ValueError(f"Duplicate T-box proposal for case_id={normalized.case_id}")
         proposals[normalized.case_id] = normalized
     return proposals
 
@@ -360,7 +305,7 @@ def _derived_action(before_values: list[str], after_values: list[str]) -> str:
         return "DELETE"
     if not before_values and after_values:
         return "CREATE"
-    if before_values != after_values:
+    if Counter(before_values) != Counter(after_values):
         return "UPDATE"
     return "NOOP"
 
@@ -837,7 +782,7 @@ def evaluate_a_box_case(
         derived_action = _derived_action(before_target, after_target)
         historical_action = record.get("repair_target", {}).get("action")
         exact_action_match = derived_action == historical_action
-        exact_value_match = after_target == expected_target
+        exact_value_match = Counter(after_target) == Counter(expected_target)
         constraints = world_state_entry.get("L4_constraints", {}).get("constraints", [])
         if isinstance(constraints, list):
             supported_violations_before = _supported_constraint_violations(before_properties, target_pid, constraints)
@@ -1270,6 +1215,7 @@ def summarize_trace_iterable(
         "by_track": defaultdict(GroupAccumulator),
         "by_ablation_bundle": defaultdict(GroupAccumulator),
         "by_popularity_bucket": defaultdict(GroupAccumulator),
+        "by_evaluation_subset": defaultdict(GroupAccumulator),
     }
     counts = Counter()
     parse_errors = Counter()
@@ -1333,12 +1279,20 @@ def summarize_trace_iterable(
         groups["by_track"][trace.get("track")].add(trace)
         groups["by_ablation_bundle"][trace.get("ablation_bundle")].add(trace)
         groups["by_popularity_bucket"][trace.get("popularity_bucket")].add(trace)
+        groups["by_evaluation_subset"][trace.get("evaluation_subset", "all_selected")].add(trace)
+
+    subset_metrics = {
+        "all_selected": overall.as_dict(),
+        "main_score": groups["by_evaluation_subset"]["main_score"].as_dict(),
+        "diagnostic": groups["by_evaluation_subset"]["diagnostic"].as_dict(),
+    }
 
     summary = {
         "build_utc": _utc_now(),
         "inputs": inputs,
         "counts": dict(counts),
         "overall_metrics": overall.as_dict(),
+        "paper_subsets": subset_metrics,
         "parse_errors": {
             "proposal_parse_error_count": counts.get("proposal_parse_error", 0),
             "proposal_parse_error_rate": (
@@ -1365,6 +1319,9 @@ def summarize_trace_iterable(
         "by_track": {str(key): value.as_dict() for key, value in groups["by_track"].items()},
         "by_ablation_bundle": {str(key): value.as_dict() for key, value in groups["by_ablation_bundle"].items()},
         "by_popularity_bucket": {str(key): value.as_dict() for key, value in groups["by_popularity_bucket"].items()},
+        "by_evaluation_subset": {
+            str(key): value.as_dict() for key, value in groups["by_evaluation_subset"].items()
+        },
     }
     return summary
 
@@ -1387,11 +1344,15 @@ def evaluate_benchmark(
     classified_records: Optional[Iterable[dict[str, Any]]] = None,
     classified_input_path: str | Path | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    selection_manifest = load_selection_manifest(selection_manifest_path) if selection_manifest_path else None
     selected_case_ids = resolve_case_id_filter(
         case_ids=case_ids,
         selection_manifest_path=selection_manifest_path,
     )
     selected_case_id_set = set(selected_case_ids) if selected_case_ids is not None else None
+    main_score_ids = set(selection_manifest.get("main_score_case_ids", [])) if selection_manifest else set()
+    diagnostic_ids = set(selection_manifest.get("diagnostic_case_ids", [])) if selection_manifest else set()
+    case_annotations = selection_manifest.get("case_annotations", {}) if selection_manifest else {}
     if classified_records is not None:
         records = [
             record
@@ -1400,10 +1361,8 @@ def evaluate_benchmark(
             and isinstance(record.get("id"), str)
             and (selected_case_id_set is None or record["id"] in selected_case_id_set)
         ]
-        popularity_buckets = _derive_popularity_buckets(records)
         record_iterable: Iterable[dict[str, Any]] = records
     else:
-        popularity_buckets = _derive_popularity_buckets_from_path(classified_path, selected_case_id_set)
         record_iterable = _iter_records(classified_path, selected_case_id_set)
     a_box_proposals = _load_a_box_proposals(a_box_proposals_path)
     t_box_proposals = _load_t_box_proposals(t_box_proposals_path)
@@ -1411,6 +1370,7 @@ def evaluate_benchmark(
     run_manifest = _load_run_manifest(run_manifest_path)
 
     traces: list[dict[str, Any]] = []
+    observed_case_ids: set[str] = set()
     trace_writer = None
     world_state_store = WorldStateStore(Path(world_state_path), __import__("logging").getLogger("evaluator"))
     world_state_store.open()
@@ -1421,10 +1381,13 @@ def evaluate_benchmark(
             trace_writer = open(trace_path, "w", encoding="utf-8")
         for record in record_iterable:
             case_id = record["id"]
+            if case_id in observed_case_ids:
+                raise ValueError(f"Duplicate classified benchmark record for case_id={case_id}")
+            observed_case_ids.add(case_id)
             manifest_record = _manifest_record(run_manifest, case_id, ablation_bundle, "proposal")
             diagnosis_manifest_record = _manifest_record(run_manifest, case_id, ablation_bundle, "track_diagnosis")
             world_state_entry = world_state_store.get(case_id)
-            popularity_bucket = popularity_buckets.get(case_id, "unknown")
+            popularity_bucket = popularity_bucket_for_record(record)
             if record.get("track") == "T_BOX":
                 trace = evaluate_t_box_case(
                     record,
@@ -1450,6 +1413,19 @@ def evaluate_benchmark(
                 track_diagnoses.get(case_id),
                 diagnosis_manifest_record,
             )
+            if case_id in main_score_ids:
+                evaluation_subset = "main_score"
+            elif case_id in diagnostic_ids:
+                evaluation_subset = "diagnostic"
+            else:
+                evaluation_subset = "all_selected"
+            annotation = case_annotations.get(case_id, {}) if isinstance(case_annotations, dict) else {}
+            trace["evaluation_subset"] = evaluation_subset
+            trace["selection_stratum"] = annotation.get("selection_stratum")
+            trace["analysis_slice"] = annotation.get("analysis_slice")
+            trace["selection_confidence"] = annotation.get("confidence")
+            trace["selection_group_key"] = annotation.get("group_key")
+            trace["tbox_revision_key"] = annotation.get("tbox_revision_key")
             if progress_callback is not None:
                 progress_callback(trace)
             if collect_traces:
@@ -1460,6 +1436,14 @@ def evaluate_benchmark(
         if trace_writer is not None:
             trace_writer.close()
         world_state_store.close()
+
+    if selected_case_id_set is not None:
+        missing_case_ids = sorted(selected_case_id_set - observed_case_ids)
+        if missing_case_ids:
+            preview = ", ".join(missing_case_ids[:10])
+            raise ValueError(
+                f"Classified benchmark is missing {len(missing_case_ids)} selected case ids; first ids: {preview}"
+            )
 
     inputs = {
         "classified_benchmark": str(classified_input_path or classified_path),

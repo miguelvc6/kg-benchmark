@@ -2,7 +2,7 @@
 
 This document describes the artifacts produced by the current code. Conceptual benchmark categories live in [docs-conceptual/Benchmark_Taxonomy.md](../docs-conceptual/Benchmark_Taxonomy.md).
 
-When this document and a schema file disagree, the Python implementation is the source of truth.
+Schema files and the Python implementation must agree. A disagreement is a release-blocking defect; do not silently treat either side as authoritative.
 
 ## Naming Conventions
 
@@ -103,6 +103,8 @@ The LEAN Stage 4 artifact clones the Stage 2 repair record and adds:
 
 `context_ref` points back to the world-state entry in `03_world_state.json`.
 
+The current lean artifact contract is `schemas/04_classified_benchmark.schema.json` with schema ID `04_classified_benchmark.v2`. It uses the current 2026 persistence fields, the denormalized popularity-component layout, and track/class/repair-kind consistency checks. Detailed classifier diagnostics are intentionally extensible, while stable join keys and scientific outputs are validated.
+
 The canonical classification fields are:
 
 - `classification.class` in `{TypeA, TypeB, TypeC, T_BOX}`
@@ -149,11 +151,18 @@ The splitter reads Stage 4 JSONL and writes a deterministic summary containing:
 - overall counts
 - sorted `train`, `dev`, and `test` id lists
 
-Current stratification uses:
+Current stratification uses complete leakage groups as the assignment unit:
+
+- A-box: `(qid, property)`
+- T-box: `(property, property revision)`
+
+The deterministic greedy allocator balances:
 
 - `classification.class`
 - `track`
 - popularity bucket derived from the Stage 4 popularity score
+
+The output includes cross-split group-overlap and proportion diagnostics. A nonzero group overlap is a hard failure.
 
 ## Selection Manifest: `reports/benchmark_selection/*.json`
 

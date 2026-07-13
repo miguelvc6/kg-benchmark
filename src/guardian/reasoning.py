@@ -5,6 +5,8 @@ import json
 import os
 import re
 import shutil
+import subprocess
+import sys
 import time
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from contextlib import ExitStack
@@ -148,6 +150,59 @@ def _resolved_path_str(path_value: str | Path | None) -> str | None:
     return str(Path(path_value).resolve())
 
 
+def _file_fingerprint(path_value: str | Path | None) -> dict[str, Any] | None:
+    if path_value in (None, ""):
+        return None
+    path = Path(path_value).resolve()
+    if not path.is_file():
+        raise FileNotFoundError(f"Cannot fingerprint missing run input: {path}")
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return {
+        "path": str(path),
+        "size_bytes": path.stat().st_size,
+        "sha256": digest.hexdigest(),
+    }
+
+
+def _git_state() -> dict[str, Any]:
+    try:
+        commit = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        dirty = bool(
+            subprocess.run(
+                ["git", "status", "--porcelain"],
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return {"commit": None, "dirty": None}
+    return {"commit": commit or None, "dirty": dirty}
+
+
+def _resolved_inference_settings(provider: ModelProvider) -> dict[str, Any]:
+    fields = (
+        "base_url",
+        "timeout",
+        "context_length",
+        "max_output_tokens",
+        "temperature",
+        "top_p",
+        "seed",
+        "max_retries",
+        "reasoning_effort",
+    )
+    return {field: getattr(provider, field, None) for field in fields}
+
+
 def _load_optional_json(path: str | Path | None) -> dict[str, Any] | None:
     if not path:
         return None
@@ -210,9 +265,15 @@ def _build_run_config_payload(
         "expected_request_count": expected_request_count,
         "skipped_diagnosis_count": skipped_diagnosis_count,
         "generation_strategy": generation_strategy,
-        "tbox_task_version": TBOX_TASK_VERSION_TAXONOMY_PATCH if _uses_tbox_taxonomy_patch() else TBOX_TASK_VERSION_STRICT,
+        "tbox_task_version": (
+            TBOX_TASK_VERSION_TAXONOMY_PATCH if _uses_tbox_taxonomy_patch() else TBOX_TASK_VERSION_STRICT
+        ),
         "abox_task_version": "prompt_dev_v4_spec_only",
-        "prompt_version": "prompt_dev_v5_tbox_taxonomy_patch" if _uses_tbox_taxonomy_patch() else "reasoning_floor_v4_strict_tbox",
+        "prompt_version": (
+            "prompt_dev_v5_tbox_taxonomy_patch"
+            if _uses_tbox_taxonomy_patch()
+            else "reasoning_floor_v4_strict_tbox"
+        ),
         "strict_tbox_signature_diagnostic": "enabled" if _uses_tbox_taxonomy_patch() else "disabled",
         "selected_generation_records_path": (
             str(selected_generation_records_path.resolve())
@@ -248,6 +309,10 @@ def _validate_resume_run_config(
         "abox_task_version",
         "prompt_version",
         "strict_tbox_signature_diagnostic",
+        "artifact_fingerprints",
+        "inference_settings",
+        "model_digest",
+        "code",
     ):
         if key == "oracle_diagnosis_mode" and existing_config.get(key) is None and expected_config.get(key) == "run":
             continue
@@ -887,15 +952,14 @@ def _pruned_l1_ego_node(
     l1_node = world_state_entry.get("L1_ego_node")
     if not isinstance(l1_node, dict):
         return None
-    target_pid = record.get("property")
     sanitized = {
         "qid": l1_node.get("qid"),
         "label": l1_node.get("label"),
         "description": l1_node.get("description"),
     }
     properties = reconstruct_properties_with_pre_repair_target(record, l1_node.get("properties"))
-    if isinstance(target_pid, str) and target_pid in properties:
-        sanitized["properties"] = {target_pid: properties.get(target_pid)}
+    if properties:
+        sanitized["properties"] = properties
     return {key: value for key, value in sanitized.items() if value not in (None, {}, [])}
 
 
@@ -1031,7 +1095,11 @@ def _diagnosis_neutral_constraints_payload(
         constraints_payload = dict(world_state_entry["L4_constraints"])
 
     raw_constraints = constraints_payload.get("constraints")
-    valid_constraints = [constraint for constraint in raw_constraints if isinstance(constraint, dict)] if isinstance(raw_constraints, list) else []
+    valid_constraints = (
+        [constraint for constraint in raw_constraints if isinstance(constraint, dict)]
+        if isinstance(raw_constraints, list)
+        else []
+    )
     mapped_constraint_qid = _mapped_constraint_qid(record)
     referenced_tokens = set(_violation_values(record))
     kept_constraints: list[dict[str, Any]] = []
@@ -1547,11 +1615,17 @@ def _request_metadata(
     if t_box_constraint_type_qids is not None:
         payload["t_box_constraint_type_qids"] = list(t_box_constraint_type_qids)
     if proposal_track_used == "T_BOX":
-        payload["tbox_task_version"] = TBOX_TASK_VERSION_TAXONOMY_PATCH if _uses_tbox_taxonomy_patch() else TBOX_TASK_VERSION_STRICT
+        payload["tbox_task_version"] = (
+            TBOX_TASK_VERSION_TAXONOMY_PATCH if _uses_tbox_taxonomy_patch() else TBOX_TASK_VERSION_STRICT
+        )
         payload["strict_tbox_signature_diagnostic"] = "enabled" if _uses_tbox_taxonomy_patch() else "disabled"
     if proposal_track_used == "A_BOX":
         payload["abox_task_version"] = "prompt_dev_v4_spec_only"
-    payload["prompt_version"] = "prompt_dev_v5_tbox_taxonomy_patch" if _uses_tbox_taxonomy_patch() else "reasoning_floor_v4_strict_tbox"
+    payload["prompt_version"] = (
+        "prompt_dev_v5_tbox_taxonomy_patch"
+        if _uses_tbox_taxonomy_patch()
+        else "reasoning_floor_v4_strict_tbox"
+    )
     return payload
 
 
@@ -2024,6 +2098,28 @@ def run_reasoning_floor(
         selected_generation_records_path=generation_selection.records_path,
         started_at_utc=run_started_utc,
     )
+    expected_run_config["artifact_fingerprints"] = {
+        "classified_benchmark": _file_fingerprint(classified_path),
+        "world_state": _file_fingerprint(world_state_path),
+        "selection_manifest": _file_fingerprint(selection_manifest_path),
+        "a_box_schema": _file_fingerprint("schemas/verified_repair_proposal.schema.json"),
+        "t_box_schema": _file_fingerprint(
+            "schemas/tbox_taxonomy_patch_proposal.schema.json"
+            if _uses_tbox_taxonomy_patch()
+            else "schemas/tbox_reform_proposal.schema.json"
+        ),
+        "track_diagnosis_schema": _file_fingerprint("schemas/track_diagnosis.schema.json"),
+    }
+    expected_run_config["inference_settings"] = _resolved_inference_settings(provider)
+    expected_run_config["model_digest"] = (
+        getattr(provider, "model_digest", None)
+        or os.getenv("OLLAMA_MODEL_DIGEST")
+        or os.getenv("MODEL_DIGEST")
+    )
+    expected_run_config["code"] = {
+        **_git_state(),
+        "python": sys.version.split()[0],
+    }
     expected_run_config["prompt_visible_case_id_policy"] = "case_000001_ordered_by_generation_selection"
     expected_run_config["visible_case_id_map"] = dict(visible_case_id_by_raw)
     if resume_requested:
@@ -3557,6 +3653,10 @@ def run_reasoning_floor(
             "provider": selected_provider,
             "model": selected_model,
             "openai_reasoning_effort": openai_reasoning_effort,
+            "model_digest": expected_run_config["model_digest"],
+            "inference_settings": expected_run_config["inference_settings"],
+            "artifact_fingerprints": expected_run_config["artifact_fingerprints"],
+            "code": expected_run_config["code"],
             "output_dir": str(out_dir),
             "started_at_utc": run_started_utc,
             "finished_at_utc": run_finished_utc,

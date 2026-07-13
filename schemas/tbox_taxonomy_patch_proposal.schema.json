@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://wudata.example.org/schemas/tbox_taxonomy_patch_proposal.schema.json",
+  "$id": "https://kg-benchmark.local/schemas/tbox_taxonomy_patch_proposal.schema.json",
   "title": "TBoxTaxonomyPatchProposal",
   "type": "object",
   "additionalProperties": false,

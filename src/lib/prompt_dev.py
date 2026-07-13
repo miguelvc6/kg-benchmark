@@ -648,6 +648,11 @@ FORBIDDEN_EXAMPLE_KEYS = {
     "repair_target",
     "classification",
     "persistence_check",
+    "popularity",
+    "popularity_bucket",
+    "sitelinks_count",
+    "changed_constraint_types",
+    "target_constraint_is_changed",
     "truth_source",
     "truth_tokens",
     "selection_stratum",
@@ -659,7 +664,7 @@ FORBIDDEN_EXAMPLE_KEYS = {
 RAW_CASE_ID_RE = re.compile(r"\b(?:repair|reform)_(?!op\b)[A-Za-z0-9][A-Za-z0-9_.:-]*")
 CORE_DEV_LABEL_RE = re.compile(r"\b(?:DEV|CORE)_[A-Za-z0-9][A-Za-z0-9_.:-]*")
 FORBIDDEN_EXAMPLE_TEXT_TERMS = tuple(sorted(FORBIDDEN_EXAMPLE_KEYS))
-MODEL_VISIBLE_FORBIDDEN_TERMS = (
+MODEL_VISIBLE_STRUCTURED_FORBIDDEN_TERMS = (
     "repair_target",
     "classification",
     "persistence_check",
@@ -671,11 +676,28 @@ MODEL_VISIBLE_FORBIDDEN_TERMS = (
     "case_annotations",
     "sitelinks_count",
     "popularity",
+    "popularity_bucket",
+    "changed_constraint_types",
+    "target_constraint_is_changed",
     "historical_track",
     "TypeA",
     "TypeB",
     "TypeC",
 )
+MODEL_VISIBLE_FORBIDDEN_TERMS = MODEL_VISIBLE_STRUCTURED_FORBIDDEN_TERMS
+NATURAL_LANGUAGE_VALUE_KEYS = {
+    "description",
+    "label",
+    "report_text",
+    "report_violation_type",
+    "report_violation_type_normalized",
+    "report_violation_type_raw",
+    "snippet",
+    "value_description",
+    "value_descriptions_en",
+    "value_label",
+    "value_labels_en",
+}
 
 
 def _repo_root() -> Path:
@@ -782,25 +804,41 @@ def _raise_if_examples_leak(examples: list[dict[str, Any]]) -> dict[str, Any]:
 def _model_visible_text_scan(prompt_records: list[dict[str, Any]]) -> dict[str, Any]:
     rows: list[dict[str, Any]] = []
     hard_matches: list[dict[str, Any]] = []
-    benign_matches: list[dict[str, Any]] = []
+    soft_matches: list[dict[str, Any]] = []
     for record in prompt_records:
         text = f"{record.get('system_prompt') or ''}\n{record.get('user_prompt') or ''}"
         row_matches: list[dict[str, Any]] = []
+        row_soft_matches: list[dict[str, Any]] = []
         for term in MODEL_VISIBLE_FORBIDDEN_TERMS:
             if term not in text:
                 continue
-            match = {"kind": "term", "value": term}
-            if term == "classification" and f'"{term}"' not in text and f"{term}:" not in text:
-                benign_matches.append({"matrix_id": record["matrix_id"], "case_id": record["case_id"], **match})
-            else:
-                row_matches.append(match)
+            term_matches = _classify_model_visible_term_matches(text, term)
+            row_matches.extend(match for match in term_matches if match["severity"] == "hard")
+            row_soft_matches.extend(match for match in term_matches if match["severity"] == "soft")
         for raw_id in sorted(set(RAW_CASE_ID_RE.findall(text))):
-            row_matches.append({"kind": "raw_case_id", "value": raw_id})
+            row_matches.append(
+                {
+                    "kind": "raw_case_id",
+                    "value": raw_id,
+                    "severity": "hard",
+                    "reason": "raw benchmark case id is model-visible",
+                }
+            )
         for label in sorted(set(CORE_DEV_LABEL_RE.findall(text))):
-            row_matches.append({"kind": "core_dev_label", "value": label})
+            row_matches.append(
+                {
+                    "kind": "core_dev_label",
+                    "value": label,
+                    "severity": "hard",
+                    "reason": "DEV_/CORE_ benchmark label is model-visible",
+                }
+            )
         if row_matches:
             for match in row_matches:
                 hard_matches.append({"matrix_id": record["matrix_id"], "case_id": record["case_id"], **match})
+        if row_soft_matches:
+            for match in row_soft_matches:
+                soft_matches.append({"matrix_id": record["matrix_id"], "case_id": record["case_id"], **match})
         rows.append(
             {
                 "matrix_id": record["matrix_id"],
@@ -808,15 +846,104 @@ def _model_visible_text_scan(prompt_records: list[dict[str, Any]]) -> dict[str, 
                 "task": record["task"],
                 "example_policy": record["example_policy"],
                 "hard_match_count": len(row_matches),
+                "soft_match_count": len(row_soft_matches),
             }
         )
     return {
         "passed": not hard_matches,
         "prompt_count": len(prompt_records),
         "hard_matches": hard_matches,
-        "benign_text_matches": benign_matches,
+        "soft_visible_text_matches": soft_matches,
+        "benign_text_matches": soft_matches,
         "rows": rows,
     }
+
+
+def _classify_model_visible_term_matches(text: str, term: str) -> list[dict[str, Any]]:
+    matches: list[dict[str, Any]] = []
+    seen: set[tuple[str, int, str | None]] = set()
+    for match in re.finditer(re.escape(term), text):
+        line_start = text.rfind("\n", 0, match.start()) + 1
+        line_end = text.find("\n", match.end())
+        if line_end < 0:
+            line_end = len(text)
+        line = text[line_start:line_end]
+        line_offset = match.start() - line_start
+        field_path = _field_path_for_text_match(text, line_start, line_offset)
+        hard_reason = _structured_match_reason(line, line_offset, term)
+        if hard_reason is not None:
+            key = ("hard", match.start(), field_path)
+            if key in seen:
+                continue
+            seen.add(key)
+            matches.append(
+                {
+                    "kind": "term",
+                    "value": term,
+                    "severity": "hard",
+                    "field_path": field_path,
+                    "surrounding_text": _surrounding_text(text, match.start(), match.end()),
+                    "reason": hard_reason,
+                }
+            )
+            continue
+        key = ("soft", match.start(), field_path)
+        if key in seen:
+            continue
+        seen.add(key)
+        matches.append(
+            {
+                "kind": "term",
+                "value": term,
+                "severity": "soft",
+                "field_path": field_path,
+                "surrounding_text": _surrounding_text(text, match.start(), match.end()),
+                    "reason": (
+                        "non-blocking: term appears only inside visible natural-language text, "
+                        "not as a structured metadata key"
+                    ),
+            }
+        )
+    return matches
+
+
+def _structured_match_reason(line: str, line_offset: int, term: str) -> str | None:
+    before = line[:line_offset]
+    after = line[line_offset + len(term) :]
+    key_pattern = rf'(?<![A-Za-z0-9_])["\']?{re.escape(term)}["\']?\s*:'
+    if re.search(key_pattern, line):
+        return "forbidden term appears as a JSON key, field path, table path, or explicit metadata label"
+    if re.search(rf"(?:^|[.\[/]){re.escape(term)}(?:$|[.\]\[/])", line.strip()):
+        return "forbidden term appears in a structured field/table path"
+    if before.rstrip().endswith((".", "/", "[")) or after.lstrip().startswith((":", ".", "]", "/")):
+        return "forbidden term appears in a structured field/table path"
+    if term in {"TypeA", "TypeB", "TypeC"} and re.search(rf'(?<![A-Za-z0-9_])["\']?{term}["\']?(?![A-Za-z0-9_])', line):
+        return "hidden A-box class label is model-visible"
+    return None
+
+
+def _field_path_for_text_match(text: str, line_start: int, line_offset: int) -> str | None:
+    line_end = text.find("\n", line_start)
+    if line_end < 0:
+        line_end = len(text)
+    line = text[line_start:line_end]
+    key_matches = list(re.finditer(r'"([^"]+)"\s*:', line))
+    nearest_key = None
+    for key_match in key_matches:
+        if key_match.start() <= line_offset <= key_match.end() or key_match.end() <= line_offset:
+            nearest_key = key_match
+    if nearest_key:
+        return nearest_key.group(1)
+    for previous_line in reversed(text[:line_start].splitlines()[-8:]):
+        key_match = re.search(r'"([^"]+)"\s*:\s*(?:\[|\{)?\s*$', previous_line)
+        if key_match:
+            return key_match.group(1)
+    return None
+
+
+def _surrounding_text(text: str, start: int, end: int, *, radius: int = 80) -> str:
+    snippet = text[max(0, start - radius) : min(len(text), end + radius)]
+    return re.sub(r"\s+", " ", snippet).strip()
 
 
 def _tbox_revision_key_for_overlap(record: dict[str, Any] | None) -> str | None:

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://wudata.example.org/schemas/verified_repair_proposal.schema.json",
+  "$id": "https://kg-benchmark.local/schemas/verified_repair_proposal.schema.json",
   "title": "VerifiedRepairProposal",
   "type": "object",
   "additionalProperties": false,

@@ -229,7 +229,7 @@ def _truth_token_kind(record: dict[str, Any]) -> str:
     return next(iter(kinds)) if len(kinds) == 1 else "mixed"
 
 
-def _popularity_bucket(record: dict[str, Any]) -> str:
+def popularity_bucket_for_record(record: dict[str, Any]) -> str:
     pop = record.get("popularity")
     if not isinstance(pop, dict):
         return "unknown"
@@ -386,7 +386,7 @@ def derive_case_metadata(record: dict[str, Any], *, tier: str = "core") -> dict[
         "group_key": group_key,
         "tbox_revision_key": tbox_key,
         "weak_group_key": weak_group_key,
-        "popularity_bucket": _popularity_bucket(record),
+        "popularity_bucket": popularity_bucket_for_record(record),
         "constraint_family": _constraint_family(record),
         "decision_constraint_type_qid": classification.get("decision_constraint_type_qid") or "",
         "decision_constraint_type_label": classification.get("decision_constraint_type_label") or "",
@@ -485,6 +485,7 @@ def _validate_manifest(
     diagnostic_ids: list[str],
     tbox_cap: int,
     abox_cap: int,
+    target_size: int,
     exclude: dict[str, set[str]],
 ) -> dict[str, Any]:
     selected_ids = [c["case_id"] for c in selected]
@@ -510,7 +511,7 @@ def _validate_manifest(
     max_tbox = max(tbox_counts.values(), default=0)
     max_abox = max(abox_counts.values(), default=0)
     return {
-        "selected_case_count_matches": len(selected_ids) == len(selected_set),
+        "selected_case_count_matches": len(selected_ids) == target_size,
         "selected_case_ids_unique": len(selected_ids) == len(selected_set),
         "main_plus_diagnostic_equals_selected": main_set.isdisjoint(diagnostic_set)
         and main_set | diagnostic_set == selected_set,
@@ -522,9 +523,15 @@ def _validate_manifest(
         "unknown_or_low_confidence_in_main_score": unknown_or_low,
         "diagnostic_subtypes_in_main_score": diagnostic_in_main,
         "hard_validation_passed": (
-            dev_case_overlap == 0
+            len(selected_ids) == target_size
+            and len(selected_ids) == len(selected_set)
+            and main_set.isdisjoint(diagnostic_set)
+            and main_set | diagnostic_set == selected_set
+            and dev_case_overlap == 0
             and dev_tbox_overlap == 0
+            and dev_abox_overlap == 0
             and max_tbox <= tbox_cap
+            and max_abox <= abox_cap
             and unknown_or_low == 0
             and diagnostic_in_main == 0
         ),
@@ -625,24 +632,10 @@ def build_tier_manifest(options: SelectionOptions) -> dict[str, Any]:
         )
         selected.extend(backfill)
 
-    if options.tier == "core" and len(selected) < target_size:
-        warnings.append("Core quotas could not be satisfied with dev A-box group exclusion; retrying with A-box overlap allowed.")
-        pool = [c for rows in candidates_by_stratum.values() for c in rows if c["case_id"] not in selected_ids]
-        backfill = _select_from_stratum(
-            pool,
-            quota=target_size - len(selected),
-            seed=options.seed,
-            tier=options.tier,
-            tbox_cap=tbox_cap,
-            abox_cap=abox_cap,
-            selected_ids=selected_ids,
-            group_counts=group_counts,
-            excluded_case_ids=exclude["case_ids"],
-            excluded_tbox_keys=exclude["tbox_revision_keys"],
-            excluded_abox_keys=exclude["abox_group_keys"],
-            enforce_abox_exclusion=False,
+    if len(selected) < target_size:
+        warnings.append(
+            f"Selection underfilled by {target_size - len(selected)} cases while preserving group isolation and caps."
         )
-        selected.extend(backfill)
 
     annotations = {c["case_id"]: c for c in selected}
     selected_case_ids = sorted(
@@ -663,6 +656,7 @@ def build_tier_manifest(options: SelectionOptions) -> dict[str, Any]:
         diagnostic_ids=diagnostic_case_ids,
         tbox_cap=tbox_cap,
         abox_cap=abox_cap,
+        target_size=target_size,
         exclude=exclude,
     )
     if validation["dev_core_abox_group_overlap"]:
@@ -685,6 +679,7 @@ def build_tier_manifest(options: SelectionOptions) -> dict[str, Any]:
             "abox_cap_per_qid_property": abox_cap,
             "selected_case_order": options.selected_case_order,
             "stable_ordering": "sha1(seed|tier|selection_stratum|group_key|case_id)",
+            "popularity_bucket_policy": "explicit bucket, else score thresholds tail<=1/3 and head>=2/3",
             "typec_semantics": "EXTERNAL_BY_ELIMINATION is IC-E-elim/no-retrieval stress, not confirmed external evidence.",
         },
         "selected_case_ids": selected_case_ids,
@@ -800,6 +795,33 @@ def load_selection_manifest(path: str | Path) -> dict[str, Any]:
         seen.add(case_id)
         normalized_ids.append(case_id)
     manifest["selected_case_ids"] = normalized_ids
+    selected_set = set(normalized_ids)
+    subset_fields = ("main_score_case_ids", "diagnostic_case_ids")
+    if any(field in manifest for field in subset_fields):
+        if not all(isinstance(manifest.get(field), list) for field in subset_fields):
+            raise ValueError("Selection manifest must provide both main_score_case_ids and diagnostic_case_ids.")
+        normalized_subsets: dict[str, list[str]] = {}
+        for field in subset_fields:
+            subset_ids = manifest[field]
+            if any(not isinstance(case_id, str) or not case_id for case_id in subset_ids):
+                raise ValueError(f"Selection manifest contains an invalid id in {field}.")
+            if len(subset_ids) != len(set(subset_ids)):
+                raise ValueError(f"Selection manifest contains duplicate ids in {field}.")
+            normalized_subsets[field] = list(subset_ids)
+        main_set = set(normalized_subsets["main_score_case_ids"])
+        diagnostic_set = set(normalized_subsets["diagnostic_case_ids"])
+        if main_set & diagnostic_set:
+            raise ValueError("Selection manifest main-score and diagnostic subsets overlap.")
+        if main_set | diagnostic_set != selected_set:
+            raise ValueError("Selection manifest main-score and diagnostic subsets must partition selected_case_ids.")
+        manifest.update(normalized_subsets)
+
+    annotations = manifest.get("case_annotations")
+    if annotations is not None:
+        if not isinstance(annotations, dict) or not selected_set.issubset(annotations):
+            raise ValueError("Selection manifest case_annotations must cover every selected_case_id.")
+        if any(not isinstance(value, dict) for value in annotations.values()):
+            raise ValueError("Selection manifest case_annotations values must be JSON objects.")
     return manifest
 
 

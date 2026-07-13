@@ -840,8 +840,10 @@ def summarize_annotations(rows: list[dict[str, str]]) -> dict[str, Any]:
         if row.get("class") == "TypeC" and row.get("subtype") == "EXTERNAL_BY_ELIMINATION"
     ]
     typec_all = [row for row in rows if row.get("class") == "TypeC"]
-    typea_format = [row for row in rows if row.get("class") == "TypeA" and row.get("subtype") == "REJECTION_FORMAT_INVALID"]
     typea_delete = [row for row in rows if row.get("class") == "TypeA" and row.get("subtype") == "DELETE_AMBIGUOUS"]
+    typea_clean = [
+        row for row in rows if row.get("class") == "TypeA" and row.get("subtype") != "DELETE_AMBIGUOUS"
+    ]
     typeb = [row for row in rows if row.get("class") == "TypeB"]
     tbox_main = [
         row
@@ -892,7 +894,7 @@ def summarize_annotations(rows: list[dict[str, str]]) -> dict[str, Any]:
             typec_all, "typec_judgment", {"unknown_or_incomplete", "bad_target"}
         ),
         "TypeA_overclaim_rate": _metric_from_rows(
-            typea_format,
+            typea_clean,
             "typea_judgment",
             {"overclaimed", "needs_local_evidence", "needs_external_evidence"},
         ),

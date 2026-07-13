@@ -1,0 +1,73 @@
+{
+  "created_at_utc": "2026-06-22T08:22:50Z",
+  "evidence": {
+    "cross_context": {
+      "local_graph_only_fp_case_count": 7,
+      "local_graph_only_fp_cases": [
+        "reform_Q115179765_P2670_2370327892",
+        "reform_Q118428583_P2670_2370327892",
+        "reform_Q1430158_P175_2292837202",
+        "reform_Q19907031_P910_2444366220",
+        "reform_Q2383723_P31_2441005469",
+        "reform_Q3124778_P31_2441005469",
+        "reform_Q3209488_P31_2441005469"
+      ],
+      "logic_only_only_fp_case_count": 3,
+      "logic_only_only_fp_cases": [
+        "reform_Q115918462_P121_2442147265",
+        "reform_Q2128470_P31_2441005469",
+        "reform_Q2554356_P31_2441005469"
+      ],
+      "shared_fp_case_count": 7,
+      "shared_fp_cases": [
+        "reform_Q115902917_P121_2442147265",
+        "reform_Q137180735_P21_2439154480",
+        "reform_Q16476914_P131_2437507566",
+        "reform_Q1958622_P31_2441005469",
+        "reform_Q2248769_P31_2441005469",
+        "reform_Q3538487_P31_2442828050",
+        "reform_Q3695908_P2659_1488142524"
+      ]
+    },
+    "local_graph": {
+      "by_evidence_level": {
+        "VALUE_DELTA_VISIBLE": 14
+      },
+      "by_taxonomy_code": {
+        "CQ_PLUS": 14
+      },
+      "prompt_visibility": {
+        "not_visible_in_prompt": 1,
+        "visible_only_in_static_examples": 55
+      },
+      "support_example_pattern_matches": {
+        "tbox_taxonomy_cq_plus": 9
+      },
+      "value_delta_false_positive_cases": 14,
+      "value_delta_false_positive_rate": 0.2222222222222222
+    },
+    "logic_only": {
+      "by_evidence_level": {
+        "VALUE_DELTA_VISIBLE": 10
+      },
+      "by_taxonomy_code": {
+        "CQ_PLUS": 10
+      },
+      "prompt_visibility": {
+        "visible_only_in_static_examples": 61
+      },
+      "support_example_pattern_matches": {
+        "tbox_taxonomy_cq_plus": 6
+      },
+      "value_delta_false_positive_cases": 10,
+      "value_delta_false_positive_rate": 0.15873015873015872
+    }
+  },
+  "manifest_type": "tbox_static_v1_few_shot_decision",
+  "no_further_tbox_inference_run": true,
+  "reason": "value-delta false positives cluster around CQ_PLUS / VALUE_DELTA_VISIBLE and are mostly copied from static examples rather than held-out case evidence",
+  "source_analysis": "reports/prompt_dev/few_shot/evaluation_static_v1_core_tbox_canary/tbox_value_delta_fp_analysis.json",
+  "static_support_modified": false,
+  "verdict": "DO_NOT_USE_TBOX_FEW_SHOT_STATIC_V1",
+  "zero_shot_taxonomy_patch_paper_facing_result": true
+}

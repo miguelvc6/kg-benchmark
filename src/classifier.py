@@ -3850,7 +3850,9 @@ def main() -> int:
     out_full_path = args.out_full_path or (FOLDER_PATH / DEFAULT_OUT_FULL_PATH if DEFAULT_OUT_FULL_PATH else None)
     if args.no_full_output:
         out_full_path = None
-    stats_path = args.stats_path or Path(DEFAULT_STATS_PATH)
+    stats_path = args.stats_path or (
+        FOLDER_PATH / "classifier_stats.json" if args.sample else Path(DEFAULT_STATS_PATH)
+    )
     use_progress = (not args.no_progress) and sys.stderr.isatty()
     log.info("Starting classifier run")
     log.info("Inputs: repairs=%s world_state=%s", repairs_path, world_state_path)

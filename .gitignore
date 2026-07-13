@@ -1,5 +1,8 @@
 data/*
 data_sample/*
+!data_sample/README.md
+!data_sample/02_wikidata_repairs.json
+!data_sample/03_world_state.json
 __pycache__/
 .venv/
 .venv-wsl/
@@ -10,4 +13,5 @@ script_extractor.py
 src/*.egg-info
 reports/reasoning_floor
 reports/classifier_audit/baseline_full_before_phase_b.jsonl
+reports/prompt_dev/few_shot/evaluation_static_v1_core_abox_all/rendered_prompts/prompt_dev_rendered_prompts.jsonl
 temp/*

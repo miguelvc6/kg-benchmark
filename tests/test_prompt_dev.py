@@ -150,6 +150,84 @@ def _support_manifest(source_manifest: Path, blocked_manifest: Path) -> dict:
 
 
 class PromptDevTests(unittest.TestCase):
+    def _scan_model_visible_text(self, user_prompt: str) -> dict:
+        return prompt_dev_lib._model_visible_text_scan(
+            [
+                {
+                    "matrix_id": "matrix",
+                    "case_id": "case_000001",
+                    "task": "a_box_repair",
+                    "example_policy": "static_diverse_kshot",
+                    "system_prompt": "",
+                    "user_prompt": user_prompt,
+                }
+            ]
+        )
+
+    def test_leakage_scan_hard_fails_structured_popularity_key(self) -> None:
+        scan = self._scan_model_visible_text('{"id": "case_000001", "popularity": {"bucket": "head"}}')
+
+        self.assertFalse(scan["passed"])
+        self.assertEqual(scan["hard_matches"][0]["value"], "popularity")
+        self.assertEqual(scan["hard_matches"][0]["field_path"], "popularity")
+        self.assertEqual(scan["soft_visible_text_matches"], [])
+
+    def test_leakage_scan_soft_reports_visible_popularity_description(self) -> None:
+        scan = self._scan_model_visible_text(
+            '{"id": "case_000001", "description": "gained broad popularity amongst consumers"}'
+        )
+
+        self.assertTrue(scan["passed"])
+        self.assertEqual(scan["hard_matches"], [])
+        self.assertEqual(len(scan["soft_visible_text_matches"]), 1)
+        soft = scan["soft_visible_text_matches"][0]
+        self.assertEqual(soft["value"], "popularity")
+        self.assertEqual(soft["field_path"], "description")
+        self.assertIn("non-blocking", soft["reason"].replace("not as", "non-blocking; not as"))
+        self.assertIn("gained broad popularity", soft["surrounding_text"])
+
+    def test_leakage_scan_hard_fails_structured_classification_key(self) -> None:
+        scan = self._scan_model_visible_text('{"id": "case_000001", "classification": {"class": "TypeB"}}')
+
+        self.assertFalse(scan["passed"])
+        values = {match["value"] for match in scan["hard_matches"]}
+        self.assertIn("classification", values)
+        self.assertIn("TypeB", values)
+
+    def test_leakage_scan_soft_reports_visible_classification_description(self) -> None:
+        scan = self._scan_model_visible_text(
+            '{"id": "case_000001", "description": "classification of works by platform"}'
+        )
+
+        self.assertTrue(scan["passed"])
+        self.assertEqual(scan["hard_matches"], [])
+        self.assertEqual(len(scan["soft_visible_text_matches"]), 1)
+        self.assertEqual(scan["soft_visible_text_matches"][0]["value"], "classification")
+
+    def test_leakage_scan_hard_fails_raw_benchmark_ids(self) -> None:
+        scan = self._scan_model_visible_text(
+            '{"id": "case_000001", "description": "raw repair_Q123_P31_456 and reform_Q456_P279_789 ids"}'
+        )
+
+        self.assertFalse(scan["passed"])
+        raw_ids = {match["value"] for match in scan["hard_matches"] if match["kind"] == "raw_case_id"}
+        self.assertEqual(raw_ids, {"repair_Q123_P31_456", "reform_Q456_P279_789"})
+
+    def test_leakage_scan_structural_metadata_terms_still_hard_fail(self) -> None:
+        cases = {
+            "sitelinks_count": '{"sitelinks_count": 3}',
+            "repair_target": '{"repair_target": {"kind": "A_BOX"}}',
+            "selected_case_ids": '{"selected_case_ids": ["case_000001"]}',
+            "TypeA": '{"class": "TypeA"}',
+            "TypeB": '{"class": "TypeB"}',
+            "TypeC": '{"class": "TypeC"}',
+        }
+        for term, text in cases.items():
+            with self.subTest(term=term):
+                scan = self._scan_model_visible_text(text)
+                self.assertFalse(scan["passed"])
+                self.assertIn(term, {match["value"] for match in scan["hard_matches"]})
+
     def test_matrix_expands_axes_without_inference_fields(self) -> None:
         matrix = build_prompt_dev_matrix(
             PromptDevMatrixOptions(

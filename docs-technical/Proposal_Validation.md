@@ -18,7 +18,7 @@ The track-diagnosis parser is implemented separately in `guardian.track_parser`;
 
 ## A-box Contract
 
-The A-box contract is defined by [schemas/verified_repair_proposal.schema.json](/home/mvazquez/kg-benchmark/schemas/verified_repair_proposal.schema.json).
+The A-box contract is defined by [verified_repair_proposal.schema.json](../schemas/verified_repair_proposal.schema.json).
 
 Current runtime behavior:
 
@@ -32,7 +32,7 @@ Current runtime behavior:
 
 ## T-box Contract
 
-The T-box contract is defined by [schemas/tbox_reform_proposal.schema.json](/home/mvazquez/kg-benchmark/schemas/tbox_reform_proposal.schema.json).
+The T-box contract is defined by [tbox_reform_proposal.schema.json](../schemas/tbox_reform_proposal.schema.json).
 
 Current runtime behavior:
 
@@ -79,6 +79,6 @@ Legacy proposals that omit `rationale`, `provenance`, or `uncertainty` still nor
 
 Current parser coverage includes:
 
-- existing A-box parser tests in [tests/test_patch_parser.py](/home/mvazquez/kg-benchmark/tests/test_patch_parser.py)
-- T-box parser tests in [tests/test_tbox_parser.py](/home/mvazquez/kg-benchmark/tests/test_tbox_parser.py)
-- track-diagnosis parser tests in [tests/test_track_parser.py](/home/mvazquez/kg-benchmark/tests/test_track_parser.py)
+- existing A-box parser tests in [test_patch_parser.py](../tests/test_patch_parser.py)
+- T-box parser tests in [test_tbox_parser.py](../tests/test_tbox_parser.py)
+- track-diagnosis parser tests in [test_track_parser.py](../tests/test_track_parser.py)

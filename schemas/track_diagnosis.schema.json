@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://wudata.example.org/schemas/track_diagnosis.schema.json",
+  "$id": "https://kg-benchmark.local/schemas/track_diagnosis.schema.json",
   "title": "TrackDiagnosis",
   "type": "object",
   "additionalProperties": false,
