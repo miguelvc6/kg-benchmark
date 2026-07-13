@@ -89,7 +89,10 @@ class TBoxTaxonomyPatchEvaluatorTests(unittest.TestCase):
         )
         self.assertEqual(summary["metric_family"], "tbox_taxonomy_patch_v1")
         self.assertEqual(summary["gold_version"], "tbox_taxonomy_patch_gold_test_v1")
-        self.assertEqual(summary["strict_signature_metrics_role"], "diagnostic_only")
+        self.assertEqual(
+            summary["strict_signature_metrics_role"],
+            "legacy_exploratory_only_not_run",
+        )
         self.assertEqual(summary["subsets"]["all_core"]["count"], len(OPERATION_CODE_PAIRS))
         self.assertEqual(summary["subsets"]["main_score"]["count"], 5)
         self.assertEqual(summary["subsets"]["diagnostic"]["count"], 5)

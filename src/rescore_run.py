@@ -13,6 +13,10 @@ from pathlib import Path
 from typing import Any
 
 from guardian.evaluator import evaluate_benchmark
+from guardian.tbox_taxonomy_patch_run import (
+    evaluate_tbox_taxonomy_patch_bundle,
+    prepare_tbox_taxonomy_gold,
+)
 
 EVALUATION_REPLAY_MANIFEST_VERSION = 1
 EVALUATION_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
@@ -88,11 +92,7 @@ def rescore_run(
     source_run_dir = Path(run_dir).resolve()
     run_config_path = source_run_dir / "run_config.json"
     run_config = _read_object(run_config_path)
-    if run_config.get("tbox_task_version") == "tbox_taxonomy_patch_v1":
-        raise ValueError(
-            "The standard evaluator cannot rescore tbox_taxonomy_patch_v1 outputs; use the "
-            "taxonomy-patch evaluator for that task version."
-        )
+    taxonomy_mode = run_config.get("tbox_task_version") == "tbox_taxonomy_patch_v1"
 
     output_dir = source_run_dir / "evaluations" / evaluation_id
     if output_dir.exists():
@@ -124,6 +124,20 @@ def rescore_run(
     if not run_manifest_path.is_file():
         raise FileNotFoundError(run_manifest_path)
 
+    taxonomy_gold = None
+    standard_evaluation_case_ids = selected_case_ids
+    if taxonomy_mode:
+        taxonomy_gold = prepare_tbox_taxonomy_gold(
+            classified_path=benchmark,
+            selected_case_ids=selected_case_ids,
+            selection_manifest_path=selection,
+            require_complete=True,
+        )
+        tbox_case_ids = set(taxonomy_gold.tbox_case_ids)
+        standard_evaluation_case_ids = [
+            case_id for case_id in selected_case_ids if case_id not in tbox_case_ids
+        ]
+
     output_dir.mkdir(parents=True)
     bundle_summaries: dict[str, Any] = {}
     source_artifacts: dict[str, Any] = {
@@ -139,9 +153,11 @@ def rescore_run(
         a_box_path = source_bundle_dir / "a_box_proposals.jsonl"
         t_box_path = source_bundle_dir / "t_box_proposals.jsonl"
         diagnoses_path = source_bundle_dir / "track_diagnoses.jsonl"
+        taxonomy_path = source_bundle_dir / "t_box_taxonomy_patch_proposals.jsonl"
         source_artifacts["bundles"][bundle] = {
             "a_box_proposals": _optional_fingerprint(a_box_path),
             "t_box_proposals": _optional_fingerprint(t_box_path),
+            "t_box_taxonomy_patch_proposals": _optional_fingerprint(taxonomy_path),
             "track_diagnoses": _optional_fingerprint(diagnoses_path),
         }
         bundle_output = output_dir / bundle
@@ -154,15 +170,37 @@ def rescore_run(
             track_diagnoses_path=diagnoses_path if diagnoses_path.is_file() else None,
             run_manifest_path=run_manifest_path,
             ablation_bundle=bundle,
-            case_ids=selected_case_ids,
-            selection_manifest_path=selection,
+            case_ids=standard_evaluation_case_ids or None,
+            selection_manifest_path=selection if standard_evaluation_case_ids else None,
             out_traces_path=bundle_output / "evaluation_traces.jsonl",
             out_summary_path=bundle_output / "evaluation_summary.json",
             collect_traces=False,
+            classified_records=None if standard_evaluation_case_ids else [],
+            classified_input_path=benchmark,
         )
-        bundle_summaries[bundle] = summary
+        if taxonomy_gold is not None:
+            taxonomy_summary = evaluate_tbox_taxonomy_patch_bundle(
+                prepared_gold=taxonomy_gold,
+                predictions_path=taxonomy_path,
+                out_traces_path=bundle_output / "tbox_taxonomy_patch_evaluation_traces.jsonl",
+                out_summary_path=bundle_output / "tbox_taxonomy_patch_evaluation_summary.json",
+            )
+            bundle_summaries[bundle] = {
+                "a_box": summary,
+                "tbox_taxonomy_patch": taxonomy_summary,
+                "combined_repair_success_score": None,
+            }
+        else:
+            bundle_summaries[bundle] = summary
 
     evaluator_path = Path(__file__).resolve().parent / "guardian" / "evaluator.py"
+    taxonomy_evaluator_path = (
+        Path(__file__).resolve().parent / "guardian" / "tbox_taxonomy_patch_evaluator.py"
+    )
+    taxonomy_gold_path = Path(__file__).resolve().parent / "lib" / "tbox_taxonomy_patch_gold.py"
+    taxonomy_run_path = (
+        Path(__file__).resolve().parent / "guardian" / "tbox_taxonomy_patch_run.py"
+    )
     replay_path = Path(__file__).resolve()
     manifest = {
         "manifest_type": "evaluation_replay",
@@ -173,10 +211,23 @@ def rescore_run(
         "provider_calls": 0,
         "selected_case_count": len(selected_case_ids),
         "ablation_bundles": bundles,
+        "metric_families": (
+            ["a_box_repair_v1", "tbox_taxonomy_patch_v1"]
+            if taxonomy_mode
+            else ["a_box_repair_v1", "strict_signature_after_v1"]
+        ),
+        "combined_repair_success_score": False if taxonomy_mode else None,
         "source_artifacts": source_artifacts,
         "evaluation_code": {
             "git": _git_state(),
             "evaluator": _fingerprint(evaluator_path),
+            "tbox_taxonomy_patch_evaluator": (
+                _fingerprint(taxonomy_evaluator_path) if taxonomy_mode else None
+            ),
+            "tbox_taxonomy_patch_gold_extractor": (
+                _fingerprint(taxonomy_gold_path) if taxonomy_mode else None
+            ),
+            "tbox_taxonomy_patch_run": _fingerprint(taxonomy_run_path) if taxonomy_mode else None,
             "replay_driver": _fingerprint(replay_path),
         },
         "outputs": {},
@@ -189,6 +240,16 @@ def rescore_run(
         manifest["outputs"][bundle] = {
             "traces": _fingerprint(bundle_output / "evaluation_traces.jsonl"),
             "summary": _fingerprint(bundle_output / "evaluation_summary.json"),
+            "tbox_taxonomy_patch_traces": (
+                _fingerprint(bundle_output / "tbox_taxonomy_patch_evaluation_traces.jsonl")
+                if taxonomy_mode
+                else None
+            ),
+            "tbox_taxonomy_patch_summary": (
+                _fingerprint(bundle_output / "tbox_taxonomy_patch_evaluation_summary.json")
+                if taxonomy_mode
+                else None
+            ),
         }
     manifest_path = output_dir / "evaluation_manifest.json"
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")

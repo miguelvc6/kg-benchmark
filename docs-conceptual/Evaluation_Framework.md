@@ -86,20 +86,24 @@ Important metrics:
 
 ### T-box Metrics
 
-T-box evaluation compares the proposed post-reform constraint signature with the historical post-reform signature.
+Confirmatory T-box evaluation compares a bounded taxonomy patch with mechanically extracted historical gold. It does not
+require a complete post-reform constraint signature.
 
 Important metrics:
 
 - target property match;
 - target constraint-family match;
-- proposed action match;
-- exact post-signature match;
-- semantic-family match;
-- signature overlap;
-- whether the proposed schema would admit relevant current values;
+- causal/no-causal/unclear schema-decision match;
+- exact taxonomy operation match;
+- repair-operation precision, recall, and F1;
+- qualifier-property match;
+- added/removed value F1 where the historical delta makes values applicable;
 - case-level and property-revision cluster-macro averages.
 
-Exact T-box signature match should remain strict, but semantic-family metrics are necessary because a proposal may be directionally correct without exactly reproducing the historical signature.
+Constraint-family localization, schema decision, taxonomy operation, and value recovery are reported as separate layers.
+They are not collapsed into one T-box success number, and A-box and T-box results are not collapsed into a combined
+repair-success score. Strict signature reconstruction remains a legacy exploratory diagnostic and is not queried in the
+confirmatory workload.
 
 ### Track-Diagnosis Metrics
 

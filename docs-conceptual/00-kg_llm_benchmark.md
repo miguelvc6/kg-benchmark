@@ -107,7 +107,8 @@ This avoids the reviewer objection that the A-box/T-box taxonomy is already know
 
 **H3.1.** Valid JSON will overestimate repair success. Many proposals will parse but fail executability, target alignment, exact historical agreement, information preservation, or auditability.
 
-**H3.2.** For T-box reforms, exact signature match will be strict and often low, but semantic-family success will reveal whether the model at least identified the correct reform direction or constraint family.
+**H3.2.** For T-box reforms, constraint-family localization will exceed exact taxonomy-operation and value-delta
+recovery, revealing whether models identify the schema locus even when they miss the precise historical edit.
 
 **H3.3.** Models will sometimes satisfy constraints destructively, for example by deleting a problematic value while losing useful surviving information.
 
@@ -121,7 +122,8 @@ This avoids the reviewer objection that the A-box/T-box taxonomy is already know
 
 **H4.2.** Few-shot examples will primarily improve contract compliance, operation shape, and T-box constraint-family targeting. They should not substantially solve external-evidence cases unless they become an implicit retrieval mechanism.
 
-**H4.3.** Matched few-shot examples will help T-box more than A-box because T-box repair contracts and constraint signatures are less familiar to generic instruction models.
+**H4.3.** Matched few-shot examples will help T-box more than A-box because schema-decision and taxonomy-patch contracts
+are less familiar to generic instruction models.
 
 ---
 
@@ -210,7 +212,7 @@ The paper should distinguish **repair locus** from **information condition**.
 | Label | Meaning | Main evaluation question |
 |---|---|---|
 | **A-box repair** | An entity statement should be edited. | Can the model edit the correct entity/property/value without losing useful information? |
-| **T-box repair** | A property constraint/schema statement should be edited. | Can the model reform the correct constraint family and signature? |
+| **T-box repair** | A property constraint/schema statement should be edited. | Can the model identify the correct constraint family and evidence-supported taxonomy patch? |
 | **Ambiguous** | Evidence supports more than one locus or the historical route is not uniquely determined. | Can the model identify uncertainty or avoid overconfident repair? |
 
 This axis should follow the nomenclature of the existing Wikidata repair-taxonomy work.
@@ -278,7 +280,7 @@ This measures repair-locus selection independently from repair generation.
 The model receives the correct historical track and proposes a structured repair in the corresponding contract:
 
 - A-box proposal: edit entity values.
-- T-box proposal: reform property constraint signature.
+- T-box proposal: emit a bounded schema decision and taxonomy patch.
 
 This measures repair ability when locus selection is not the bottleneck.
 
@@ -400,7 +402,7 @@ Important metrics:
 
 ### 10.3 T-box metrics
 
-T-box evaluation should compare the proposed post-reform constraint signature to the historical post-reform signature.
+Confirmatory T-box evaluation should compare the proposed taxonomy patch to mechanically extracted historical gold.
 
 Important metrics:
 
@@ -413,7 +415,9 @@ Important metrics:
 - provenance completeness;
 - auditability completeness.
 
-For T-box, exact match should remain strict, but semantic-family metrics are necessary because a proposed reform may be directionally correct even if it does not exactly reproduce the historical signature.
+For T-box, constraint-family, schema-decision, taxonomy-operation, and value-delta metrics should remain separate. The
+paper must not imply exact repair success from family localization, and it must not aggregate A-box and T-box into one
+repair-success score.
 
 ### 10.4 Track-diagnosis metrics
 

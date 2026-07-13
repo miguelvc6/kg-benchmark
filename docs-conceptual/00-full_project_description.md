@@ -197,7 +197,9 @@ The evaluator compares model proposals against benchmark cases. It checks parse 
 
 For A-box repairs, the evaluator reconstructs the pre-repair target-property state, applies proposed operations, and compares the resulting state to the historical repaired state.
 
-For T-box repairs, the evaluator compares the proposed post-reform constraint signature to the historical post-reform signature and also records semantic-family fields.
+For confirmatory T-box repairs, the evaluator compares a bounded taxonomy patch to mechanically extracted historical
+gold and reports schema-decision, constraint-family, repair-operation, and applicable value-delta metrics separately.
+Complete post-reform signature reconstruction is a legacy exploratory diagnostic only.
 
 ---
 
@@ -246,7 +248,8 @@ A T-box repair edits the schema or constraint layer. Examples include:
 - updating constraint metadata;
 - changing property-scope or allowed-entity-type metadata.
 
-T-box evaluation asks whether the proposed constraint signature matches or semantically aligns with the historical post-reform signature.
+T-box evaluation asks whether the model identifies the affected constraint family and an evidence-supported taxonomy
+patch. It does not treat exact reconstruction of the complete historical post-reform signature as the confirmatory task.
 
 ### Ambiguous repair
 
@@ -547,7 +550,8 @@ The reasoning floor should evaluate models without retrieval, external tools, me
 - target property match;
 - target constraint-family match;
 - proposed action match;
-- exact post-signature match;
+- exact taxonomy-operation match;
+- value-delta F1 when applicable;
 - semantic-family match;
 - signature overlap;
 - whether current values would be admitted by proposed schema;

@@ -324,7 +324,7 @@ When `--selection-manifest` and `--max-cases` are combined without a track filte
 
 To make A-box evaluation easier to debug, grouped and overall summaries now also expose `a_box_exact_action_match_rate`, `a_box_exact_value_match_rate`, and `a_box_regression_pass_rate` instead of forcing all A-box diagnosis through `accepted` or `exact_historical_agreement` alone.
 
-`T_BOX` evaluation now separates exact, family-level semantic, and proxy signals:
+Legacy strict-signature `T_BOX` evaluation separates exact, family-level semantic, and proxy signals:
 
 - `accepted`, `functional_success`, and `exact_historical_agreement` require both exact action match and exact normalized `signature_after` match
 - `semantic_success` now reports family-level compatibility, not literal action-label equality
@@ -347,19 +347,20 @@ show pre-reform constraints when a `signature_before` exists; otherwise they sho
 and visible violation context. Internal audit metadata records which policy was used, but model-visible prompt payloads
 do not expose policy labels such as `compact_inventory_no_pre_change_signature`.
 
-The template registry also includes `reasoning_floor_t_box_taxonomy_patch_zero_shot` for the Ferranti-style T-box
-taxonomy patch task. Set `TBOX_TASK_VERSION=tbox_taxonomy_patch_v1` before starting the process to select it. The
+The template registry includes `reasoning_floor_t_box_taxonomy_patch_zero_shot` for the confirmatory T-box taxonomy
+patch task. Pass `--tbox-task-version tbox_taxonomy_patch_v1` to pin it. The
 runner then records `prompt_dev_v5_tbox_taxonomy_patch`, writes `t_box_taxonomy_patch_proposals.jsonl`, and fingerprints
-the taxonomy-patch schema. Without that setting, the runtime default remains the legacy strict-signature task for
-backward compatibility. A release protocol must pin the task version explicitly; strict-signature and taxonomy-patch
-scores are not interchangeable.
+the taxonomy-patch schema, gold extractor, and evaluator. It automatically writes separate taxonomy traces and summaries;
+the ordinary bundle summary contains A-box metrics only. Without the explicit setting, the runtime default remains the
+legacy strict-signature task for artifact compatibility. The paper execution matrix always supplies the taxonomy version.
+Strict-signature and taxonomy-patch scores are not interchangeable.
 
 `prompt_dev_v3_scaffolded` remains a Phase F diagnostic ablation only. It must not be used as the Phase G main prompt
 solely because it scores higher on dev or holdout.
 
-Grouped and overall summaries now expose metric applicability counts so T-box-only metrics can be interpreted with their true denominator.
-
-This prevents summaries from collapsing plausible narrower T-box reforms to zero when the historical label is coarse `SCHEMA_UPDATE`, while still keeping exact historical agreement strict and avoiding credit for editing the wrong changed constraint family.
+Taxonomy summaries expose explicit applicability counts so family, decision, operation, and value-delta metrics use their
+correct denominators. Legacy strict summaries retain their historical exact and semantic fields only for compatible old
+runs.
 
 ## Test Coverage
 

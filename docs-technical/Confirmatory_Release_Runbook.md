@@ -93,7 +93,9 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-select-untouched-test reserve \
   --public-output releases/reserve_v3_public.json
 ```
 
-The reserve is capped at 276 TypeA, 450 TypeB, 354 TypeC, and 360 T-box independent events. Render every reserve prompt,
+The reserve is capped at 276 TypeA, 450 TypeB, 354 TypeC, and 360 T-box independent events. T-box reserve eligibility
+also requires complete mechanically supported `tbox_taxonomy_patch_v1` gold; cases requiring unmined class-hierarchy or
+exception operations are excluded before ranking. Render every reserve prompt,
 run the deterministic scan, and complete the fixed 50-case temporal error-discovery sample. Record rejected cases in the
 prompt-review artifact and finalize without changing reserve order:
 

@@ -40,6 +40,10 @@ def validate_execution_matrix(matrix: dict[str, Any], *, require_frozen: bool = 
                 raise ValueError("Azure reference models must use batch execution.")
             if model["batch_sync_retry_fallback"]:
                 raise ValueError("Azure reference models must disable synchronous retry fallback.")
+    if matrix["tbox_task_version"] != "tbox_taxonomy_patch_v1":
+        raise ValueError("Paper execution requires the tbox_taxonomy_patch_v1 T-box task.")
+    if matrix["reporting_policy"]["combined_abox_tbox_score"]:
+        raise ValueError("A-box and T-box metric families must not be collapsed into one score.")
     frozen_required = require_frozen or matrix["status"] == "frozen"
     if not frozen_required:
         return
@@ -80,6 +84,8 @@ def build_execution_plan(matrix: dict[str, Any]) -> dict[str, Any]:
             model["provider"],
             "--model",
             model["model"],
+            "--tbox-task-version",
+            matrix["tbox_task_version"],
             "--model-digest",
             model_digest,
             "--generation-cache",
@@ -116,6 +122,8 @@ def build_execution_plan(matrix: dict[str, Any]) -> dict[str, Any]:
         "matrix_id": matrix["matrix_id"],
         "status": matrix["status"],
         "prompt_configuration": matrix["prompt_configuration"],
+        "tbox_task_version": matrix["tbox_task_version"],
+        "reporting_policy": matrix["reporting_policy"],
         "runs": runs,
         "expected_request_count": sum(run["expected_request_count"] for run in runs),
     }

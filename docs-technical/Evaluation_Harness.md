@@ -47,9 +47,9 @@ The first-wave regression check uses currently supported local constraint famili
 
 Stored Wikidata format regexes that are not valid Python `re` patterns are treated as non-matching during regression checks instead of aborting evaluation. This keeps benchmark scoring deterministic when Wikidata regex syntax uses features outside Python's regex engine.
 
-## T-box Evaluation
+## Legacy Strict-Signature T-box Evaluation
 
-Current T-box scoring:
+Legacy strict-signature scoring remains available for exploratory artifact compatibility:
 
 - compares normalized `signature_after` against the historical `constraint_delta.signature_after`
 - keeps exact historical agreement strict: exact action match plus exact normalized `signature_after` match
@@ -78,18 +78,22 @@ Family-level T-box compatibility requires:
 - the proposal action maps to the same semantic family as the historical reform
 - the proposed `signature_after` is directionally compatible with that family when the historical `signature_before` makes direction inferable
 
-## Taxonomy-Patch T-box Evaluation
+## Confirmatory Taxonomy-Patch T-box Evaluation
 
 The taxonomy-patch task is a separate metric family implemented in
 `guardian.tbox_taxonomy_patch_evaluator`. It compares normalized taxonomy-patch proposals against a versioned gold
 JSONL and reports schema-decision, constraint-family, taxonomy-code, repair-operation, and value-delta metrics with
 explicit applicability denominators.
 
-Prompt-development runs invoke this evaluator and write `tbox_taxonomy_patch_evaluation_summary.json`. The
-reasoning-floor runner can currently generate and normalize taxonomy-patch proposals when
-`TBOX_TASK_VERSION=tbox_taxonomy_patch_v1`, but its generic per-bundle `evaluation_summary.json` remains the strict
-evaluator output. Do not interpret missing strict T-box proposals as taxonomy-patch failures; run the taxonomy-patch
-evaluator against the versioned gold artifact before reporting those results.
+The reasoning-floor runner and `kg-rescore-run` invoke this evaluator automatically when the run records
+`tbox_task_version=tbox_taxonomy_patch_v1`. Each bundle writes
+`tbox_taxonomy_patch_evaluation_traces.jsonl` and `tbox_taxonomy_patch_evaluation_summary.json`. The ordinary
+`evaluation_summary.json` is A-box-only for these runs, so missing strict T-box proposals never become false failures.
+The top-level run summary exposes the two task families separately and sets `combined_repair_success_score=false`.
+
+Confirmatory scoring requires complete mechanically supported taxonomy gold for every selected T-box case. Selection
+excludes unextractable cases and operations whose required deltas are not mined, currently `CLASS_HIERARCHY_ADD` and
+`EXCEPTION_ADD`.
 
 Strict-signature and taxonomy-patch scores measure different tasks and must remain separate in tables and registry
 metadata.

@@ -45,6 +45,10 @@ Main-score cases include:
 - `T_BOX / RESTRICTION_SET_CONTRACTION`
 - `T_BOX / SCHEMA_UPDATE`, reported separately from directional reforms
 
+Confirmatory T-box cases must additionally have complete mechanically extractable taxonomy-patch gold. Cases requiring
+unmined class-hierarchy or exception operations, or lacking an extractable target constraint family, are not eligible for
+the main 1,200-case selection even if their historical subtype would otherwise be main-score eligible.
+
 ### Diagnostic-only cases
 
 Diagnostic-only cases include:

@@ -514,9 +514,21 @@ class ReasoningFloorTests(unittest.TestCase):
         strict_rows = self._read_jsonl(run_dir / "minimal_case" / "t_box_proposals.jsonl")
         self.assertEqual(run_config["tbox_task_version"], "tbox_taxonomy_patch_v1")
         self.assertEqual(run_config["prompt_version"], "prompt_dev_v5_tbox_taxonomy_patch")
-        self.assertEqual(run_config["strict_tbox_signature_diagnostic"], "enabled")
+        self.assertEqual(run_config["strict_tbox_signature_diagnostic"], "not_run")
         self.assertEqual(taxonomy_rows[0]["case_id"], "reform_case")
         self.assertEqual(strict_rows, [])
+        self.assertEqual(summary["metric_scope"], "a_box_only_with_separate_tbox_taxonomy_patch")
+        self.assertEqual(
+            summary["task_counts"],
+            {"selected_cases": 1, "a_box_cases": 0, "tbox_taxonomy_patch_cases": 1},
+        )
+        self.assertFalse(summary["run_info"]["evaluation"]["combined_repair_success_score"])
+        taxonomy_summary = summary["task_summaries"]["tbox_taxonomy_patch"]["minimal_case"]
+        self.assertEqual(taxonomy_summary["metric_family"], "tbox_taxonomy_patch_v1")
+        self.assertEqual(taxonomy_summary["total_tbox_rows"], 1)
+        self.assertTrue(
+            (run_dir / "minimal_case" / "tbox_taxonomy_patch_evaluation_summary.json").is_file()
+        )
         proposal_manifest = next(row for row in manifest_rows if row.get("task_type") == "proposal")
         self.assertEqual(proposal_manifest["prompt_name"], "reasoning_floor_t_box_taxonomy_patch_zero_shot")
         self.assertEqual(proposal_manifest["tbox_task_version"], "tbox_taxonomy_patch_v1")

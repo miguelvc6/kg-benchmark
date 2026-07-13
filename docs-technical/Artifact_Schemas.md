@@ -325,6 +325,11 @@ Normalized track-diagnosis JSONL records contain:
 
 It also accepts an optional selection manifest so evaluation can be restricted to a frozen subset without rewriting Stage 4.
 
+For `tbox_taxonomy_patch_v1` reasoning runs, each bundle additionally writes
+`tbox_taxonomy_patch_evaluation_traces.jsonl` and `tbox_taxonomy_patch_evaluation_summary.json`. Its ordinary
+`evaluation_summary.json` contains A-box metrics only. The top-level summary names both metric families and explicitly
+disables a combined A-box/T-box repair-success score.
+
 Each trace includes:
 
 - case identity and benchmark labels

@@ -15,6 +15,10 @@ from typing import Any, Iterable
 from jsonschema import Draft202012Validator
 
 from artifact_release import sha256_file
+from guardian.tbox_taxonomy_patch_run import (
+    UNSUPPORTED_CONFIRMATORY_REPAIR_OPS,
+    taxonomy_gold_eligibility,
+)
 from lib.benchmark_selection import derive_case_metadata, group_key_for_record, load_selection_manifest
 from lib.utils import iter_jsonl
 from protocol_freeze import verify_protocol_manifest
@@ -136,6 +140,14 @@ def _ranked_eligible_groups(
             or not metadata.get("main_score")
         ):
             continue
+        taxonomy_gold = None
+        if broad == "TBOX":
+            taxonomy_gold, _taxonomy_exclusion_reason = taxonomy_gold_eligibility(
+                record,
+                annotation=metadata,
+            )
+            if taxonomy_gold is None:
+                continue
         annotation = {
             **metadata,
             "case_id": case_id,
@@ -143,9 +155,23 @@ def _ranked_eligible_groups(
             "broad_stratum": broad,
             "tbox_subtype": record.get("classification", {}).get("subtype") if broad == "TBOX" else None,
         }
-        annotation["eligibility_sha256"] = _canonical_hash(
-            {"case_id": case_id, "group_key": group_key, "disposition": "include", **audit_hashes}
-        )
+        if taxonomy_gold is not None:
+            annotation["tbox_taxonomy_gold"] = {
+                "schema_decision": taxonomy_gold["schema_decision"],
+                "constraint_type_qid": taxonomy_gold["target"]["constraint_type_qid"],
+                "repair_ops": [repair["repair_op"] for repair in taxonomy_gold["repairs"]],
+                "taxonomy_codes": [repair["taxonomy_code"] for repair in taxonomy_gold["repairs"]],
+                "evidence_levels": [repair["evidence_level"] for repair in taxonomy_gold["repairs"]],
+            }
+        eligibility_payload = {
+            "case_id": case_id,
+            "group_key": group_key,
+            "disposition": "include",
+            **audit_hashes,
+        }
+        if taxonomy_gold is not None:
+            eligibility_payload["tbox_taxonomy_gold"] = taxonomy_gold
+        annotation["eligibility_sha256"] = _canonical_hash(eligibility_payload)
         current = by_group.get(group_key)
         if current is None or (_rank(seed, case_id), case_id) < (
             _rank(seed, current["case_id"]), current["case_id"]
@@ -239,6 +265,9 @@ def build_reserve_manifest(
             "one_case_per_event_group": True,
             "property_holdout": False,
             "ranking": "sha256(seed|untouched_test_v2|group_key)",
+            "tbox_task_version": "tbox_taxonomy_patch_v1",
+            "tbox_gold_requirement": "complete_mechanically_supported_gold",
+            "unsupported_tbox_repair_ops": sorted(UNSUPPORTED_CONFIRMATORY_REPAIR_OPS),
         },
         "selected_case_ids": [row["case_id"] for row in selected],
         "case_annotations": {row["case_id"]: {key: value for key, value in row.items() if key != "case_id"} for row in selected},
@@ -346,6 +375,9 @@ def finalize_reserve_manifest(
             "selection_eligible_disposition": "include",
             "one_case_per_event_group": True,
             "property_holdout": False,
+            "tbox_task_version": "tbox_taxonomy_patch_v1",
+            "tbox_gold_requirement": "complete_mechanically_supported_gold",
+            "unsupported_tbox_repair_ops": sorted(UNSUPPORTED_CONFIRMATORY_REPAIR_OPS),
         },
         "selected_case_ids": [row["case_id"] for row in selected],
         "api_subset_case_ids": api_ids,

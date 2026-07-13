@@ -18,8 +18,11 @@ class ExperimentPlanTests(unittest.TestCase):
         self.assertEqual(counts["ollama_llama3_3_70b"], 2400)
         self.assertEqual(counts["ollama_gpt_oss_120b"], 2400)
         self.assertEqual(counts["azure_gpt_5_6_sol_high"], 1200)
+        self.assertEqual(plan["tbox_task_version"], "tbox_taxonomy_patch_v1")
+        self.assertFalse(plan["reporting_policy"]["combined_abox_tbox_score"])
         azure = next(run for run in plan["runs"] if run["model_id"] == "azure_gpt_5_6_sol_high")
         self.assertIn("high", azure["argv"])
+        self.assertIn("tbox_taxonomy_patch_v1", azure["argv"])
         self.assertIn("--no-batch-sync-retry-fallback", azure["argv"])
 
     def test_added_model_inherits_population_without_code_changes(self) -> None:

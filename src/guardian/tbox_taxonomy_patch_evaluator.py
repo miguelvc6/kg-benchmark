@@ -102,7 +102,7 @@ def evaluate_tbox_taxonomy_patch_predictions(
     return {
         "metric_family": "tbox_taxonomy_patch_v1",
         "gold_version": gold_version,
-        "strict_signature_metrics_role": "diagnostic_only",
+        "strict_signature_metrics_role": "legacy_exploratory_only_not_run",
         "total_tbox_rows": len(traces),
         "traces": traces,
         "subsets": subsets,

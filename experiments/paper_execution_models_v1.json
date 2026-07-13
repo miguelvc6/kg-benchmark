@@ -4,6 +4,13 @@
   "matrix_id": "paper_execution_models_v1",
   "status": "draft",
   "prompt_configuration": null,
+  "tbox_task_version": "tbox_taxonomy_patch_v1",
+  "reporting_policy": {
+    "combined_abox_tbox_score": false,
+    "strict_signature_role": "legacy_exploratory_only",
+    "tbox_gold_requirement": "complete_mechanically_supported_gold",
+    "unsupported_tbox_repair_ops": ["CLASS_HIERARCHY_ADD", "EXCEPTION_ADD"]
+  },
   "generation_cache_root": ".cache/model_generations",
   "populations": [
     {

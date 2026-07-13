@@ -248,9 +248,10 @@ Current behavior:
   `logic_only,local_graph`
 - uses historical-track oracle routing by default and skips the diagnosis request unless explicitly enabled
 - optionally runs `diagnosis_routed`, which diagnoses first and routes or skips the proposal from that prediction
-- supports strict-signature T-box proposals by default and taxonomy-patch T-box proposals when
-  `TBOX_TASK_VERSION=tbox_taxonomy_patch_v1`
+- retains strict-signature T-box proposals for legacy artifact compatibility and pins confirmatory runs to taxonomy-patch
+  proposals with `--tbox-task-version tbox_taxonomy_patch_v1`
 - records raw model responses, parse status, normalized proposals, evaluation traces, and aggregate summaries
+- evaluates A-box and taxonomy-patch T-box outputs as separate metric families and emits no combined repair-success score
 - fingerprints benchmark, world-state, manifest, schema, and prompt inputs and records code/model provenance
 - uses a provider adapter boundary with concrete OpenAI, Ollama, Azure, university Responses API, and static test providers
 

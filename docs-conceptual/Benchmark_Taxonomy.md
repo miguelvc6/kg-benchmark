@@ -16,7 +16,7 @@ The repair-locus axis follows existing Wikidata repair-taxonomy work.
 | Label | Meaning | Evaluation question |
 |---|---|---|
 | `A_BOX` | The repair edits entity-level instance data. | Can the model edit the correct entity/property/value while preserving useful information? |
-| `T_BOX` | The repair edits the property constraint or schema layer. | Can the model reform the correct constraint family and signature? |
+| `T_BOX` | The repair edits the property constraint or schema layer. | Can the model identify the correct constraint family and evidence-supported schema patch? |
 | `AMBIGUOUS` | Evidence overlaps or the historical repair locus is unclear. | Can the model represent uncertainty instead of forcing an overconfident edit? |
 
 ### A-box Entity Repairs
@@ -25,7 +25,10 @@ A-box repairs include deleting invalid values, replacing values, adding missing 
 
 ### T-box Schema Reforms
 
-T-box repairs include range changes, allowed-set or allowed-class changes, constraint metadata updates, and other property-level schema reforms. Evaluation compares the proposed post-reform constraint signature with the historical post-reform signature and also reports semantic-family metrics.
+T-box repairs include range changes, allowed-set or allowed-class changes, constraint metadata updates, and other
+property-level schema reforms. Confirmatory evaluation uses a bounded taxonomy-patch task: it separately measures the
+schema decision, affected constraint family, mechanically supported repair operation, and visible value delta. Full
+post-reform signature reconstruction is retained only as a legacy exploratory diagnostic.
 
 Repeated T-box manifestations should be controlled in paper-facing subsets because a single property revision can explain many apparent violation rows.
 

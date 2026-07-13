@@ -30,6 +30,10 @@ from guardian.tbox_parser import KNOWN_CONSTRAINT_TYPE_QIDS
 from guardian.tbox_parser import load_schema as load_t_box_schema
 from guardian.tbox_parser import normalize_proposal as normalize_t_box_proposal
 from guardian.tbox_taxonomy_patch_parser import normalize_tbox_taxonomy_patch
+from guardian.tbox_taxonomy_patch_run import (
+    evaluate_tbox_taxonomy_patch_bundle,
+    prepare_tbox_taxonomy_gold,
+)
 from guardian.track_parser import load_schema as load_track_schema
 from guardian.track_parser import normalize_diagnosis
 from lib.benchmark_selection import resolve_case_id_filter
@@ -62,6 +66,14 @@ RUN_CONFIG_FILENAME = "run_config.json"
 TBOX_TASK_VERSION_STRICT = "strict_signature_after_v1"
 TBOX_TASK_VERSION_TAXONOMY_PATCH = "tbox_taxonomy_patch_v1"
 TBOX_TASK_VERSION = os.environ.get("TBOX_TASK_VERSION", TBOX_TASK_VERSION_STRICT)
+
+
+def configure_tbox_task_version(task_version: str) -> None:
+    """Set the process-wide task contract before starting a reasoning run."""
+    if task_version not in {TBOX_TASK_VERSION_STRICT, TBOX_TASK_VERSION_TAXONOMY_PATCH}:
+        raise ValueError(f"Unsupported T-box task version: {task_version!r}")
+    global TBOX_TASK_VERSION
+    TBOX_TASK_VERSION = task_version
 
 
 def _uses_tbox_taxonomy_patch() -> bool:
@@ -278,7 +290,7 @@ def _build_run_config_payload(
             if _uses_tbox_taxonomy_patch()
             else "reasoning_floor_v4_strict_tbox"
         ),
-        "strict_tbox_signature_diagnostic": "enabled" if _uses_tbox_taxonomy_patch() else "disabled",
+        "strict_tbox_signature_diagnostic": "not_run" if _uses_tbox_taxonomy_patch() else "legacy_task_output",
         "selected_generation_records_path": (
             str(selected_generation_records_path.resolve())
             if isinstance(selected_generation_records_path, Path)
@@ -1719,7 +1731,9 @@ def _request_metadata(
         payload["tbox_task_version"] = (
             TBOX_TASK_VERSION_TAXONOMY_PATCH if _uses_tbox_taxonomy_patch() else TBOX_TASK_VERSION_STRICT
         )
-        payload["strict_tbox_signature_diagnostic"] = "enabled" if _uses_tbox_taxonomy_patch() else "disabled"
+        payload["strict_tbox_signature_diagnostic"] = (
+            "not_run" if _uses_tbox_taxonomy_patch() else "legacy_task_output"
+        )
     if proposal_track_used == "A_BOX":
         payload["abox_task_version"] = "prompt_dev_v4_spec_only"
     payload["prompt_version"] = (
@@ -2240,6 +2254,16 @@ def run_reasoning_floor(
         ),
         "track_diagnosis_schema": _file_fingerprint("schemas/track_diagnosis.schema.json"),
         "prompt_definitions": _file_fingerprint("src/guardian/prompts.py"),
+        "tbox_taxonomy_patch_evaluator": (
+            _file_fingerprint("src/guardian/tbox_taxonomy_patch_evaluator.py")
+            if _uses_tbox_taxonomy_patch()
+            else None
+        ),
+        "tbox_taxonomy_patch_gold_extractor": (
+            _file_fingerprint("src/lib/tbox_taxonomy_patch_gold.py")
+            if _uses_tbox_taxonomy_patch()
+            else None
+        ),
     }
     expected_run_config["reasoning_effort"] = resolved_reasoning_effort
     expected_run_config["inference_settings"] = base_inference_settings
@@ -3732,6 +3756,21 @@ def run_reasoning_floor(
             )
             evaluation_classified_path = evaluation_filtered_path
 
+        taxonomy_gold = None
+        standard_evaluation_case_ids = selected_case_ids
+        taxonomy_summaries: dict[str, Any] = {}
+        if _uses_tbox_taxonomy_patch():
+            taxonomy_gold = prepare_tbox_taxonomy_gold(
+                classified_path=classified_path,
+                selected_case_ids=selected_case_ids,
+                selection_manifest_path=selection_manifest_path,
+                require_complete=True,
+            )
+            tbox_case_id_set = set(taxonomy_gold.tbox_case_ids)
+            standard_evaluation_case_ids = [
+                case_id for case_id in selected_case_ids if case_id not in tbox_case_id_set
+            ]
+
         _emit_runtime_status(
             progress,
             "Generation phase complete. Starting evaluation for "
@@ -3761,15 +3800,28 @@ def run_reasoning_floor(
                     track_diagnoses_path=bundle_dir / "track_diagnoses.jsonl",
                     run_manifest_path=manifest_path,
                     ablation_bundle=bundle,
-                    case_ids=selected_case_ids,
-                    selection_manifest_path=selection_manifest_path,
+                    case_ids=standard_evaluation_case_ids or None,
+                    selection_manifest_path=(
+                        selection_manifest_path if standard_evaluation_case_ids else None
+                    ),
                     out_traces_path=bundle_dir / "evaluation_traces.jsonl",
                     out_summary_path=bundle_dir / "evaluation_summary.json",
                     collect_traces=False,
                     progress_callback=lambda _trace: evaluation_progress.update(1),
-                    classified_records=evaluation_classified_records,
+                    classified_records=(
+                        evaluation_classified_records if standard_evaluation_case_ids else []
+                    ),
                     classified_input_path=classified_path,
                 )
+                if taxonomy_gold is not None:
+                    taxonomy_summary = evaluate_tbox_taxonomy_patch_bundle(
+                        prepared_gold=taxonomy_gold,
+                        predictions_path=bundle_dir / "t_box_taxonomy_patch_proposals.jsonl",
+                        out_traces_path=bundle_dir / "tbox_taxonomy_patch_evaluation_traces.jsonl",
+                        out_summary_path=bundle_dir / "tbox_taxonomy_patch_evaluation_summary.json",
+                    )
+                    taxonomy_summaries[bundle] = taxonomy_summary
+                    evaluation_progress.update(len(taxonomy_gold.tbox_case_ids))
                 _emit_runtime_status(
                     progress,
                     f"Finished evaluating bundle '{bundle}'.",
@@ -3794,6 +3846,24 @@ def run_reasoning_floor(
             },
         )
         failure_taxonomy = _failure_taxonomy_from_traces(_iter_bundle_traces(out_dir, bundle_list))
+        summary["metric_scope"] = (
+            "a_box_only_with_separate_tbox_taxonomy_patch"
+            if taxonomy_gold is not None
+            else "a_box_and_legacy_strict_tbox"
+        )
+        summary["task_counts"] = {
+            "selected_cases": len(selected_case_ids),
+            "a_box_cases": len(standard_evaluation_case_ids),
+            "tbox_taxonomy_patch_cases": len(taxonomy_gold.tbox_case_ids) if taxonomy_gold is not None else 0,
+        }
+        summary["task_summaries"] = {
+            "a_box": {
+                "by_class": summary.get("by_class"),
+                "by_ablation_bundle": summary.get("by_ablation_bundle"),
+                "by_popularity_bucket": summary.get("by_popularity_bucket"),
+            },
+            "tbox_taxonomy_patch": taxonomy_summaries if taxonomy_gold is not None else None,
+        }
         run_elapsed_seconds = time.perf_counter() - run_started_at
         run_finished_utc = _utc_now()
         run_usage = _aggregate_run_usage(usage_manifest)
@@ -3844,6 +3914,12 @@ def run_reasoning_floor(
                 "memory_cache_case_threshold": EVALUATION_IN_MEMORY_CASE_THRESHOLD,
                 "filtered_classified_path": str(evaluation_filtered_path) if evaluation_filtered_path else None,
                 "filtered_record_count": evaluation_filtered_record_count,
+                "metric_families": (
+                    ["a_box_repair_v1", "tbox_taxonomy_patch_v1"]
+                    if taxonomy_gold is not None
+                    else ["a_box_repair_v1", "strict_signature_after_v1"]
+                ),
+                "combined_repair_success_score": False,
             },
             "generation": {
                 "classified_record_strategy": generation_selection.strategy,
@@ -3898,14 +3974,15 @@ def run_reasoning_floor(
             ),
         }
         summary["paper_summary"] = {
-            "overall_success_by_class": summary.get("by_class"),
-            "success_by_ablation_bundle": summary.get("by_ablation_bundle"),
-            "success_by_track": summary.get("by_track"),
-            "success_by_popularity_bucket": summary.get("by_popularity_bucket"),
+            "combined_repair_success_score": None,
+            "a_box_success_by_class": summary.get("by_class"),
+            "a_box_success_by_ablation_bundle": summary.get("by_ablation_bundle"),
+            "a_box_success_by_popularity_bucket": summary.get("by_popularity_bucket"),
+            "tbox_taxonomy_patch_by_ablation_bundle": taxonomy_summaries if taxonomy_gold is not None else None,
             "track_diagnosis_by_class": {
                 key: value.get("track_diagnosis_accuracy") for key, value in summary.get("by_class", {}).items()
             },
-            "failure_taxonomy": failure_taxonomy,
+            "a_box_failure_taxonomy": failure_taxonomy,
         }
         write_json(out_dir / "reasoning_floor_summary.json", summary)
         _emit_runtime_status(progress, f"Run complete. Summary written to {out_dir / 'reasoning_floor_summary.json'}.")

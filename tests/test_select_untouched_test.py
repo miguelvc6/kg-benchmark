@@ -184,8 +184,16 @@ class UntouchedTestSelectionTests(unittest.TestCase):
                     if cls == "T_BOX":
                         row = {
                             "id": f"case_{index}", "qid": f"Q{index}", "property": f"P{index}",
-                            "track": "T_BOX", "repair_target": {"kind": "T_BOX", "property_revision_id": index},
-                            "classification": {"class": cls, "subtype": subtype, "confidence": "high"},
+                            "track": "T_BOX",
+                            "repair_target": {"kind": "T_BOX", "property_revision_id": index},
+                            "classification": {
+                                "class": cls,
+                                "subtype": subtype,
+                                "confidence": "high",
+                                "diagnostics": {
+                                    "tbox_diff_summary": {"target_constraint_qid": "Q21510859"}
+                                },
+                            },
                         }
                     else:
                         row = {
@@ -223,6 +231,14 @@ class UntouchedTestSelectionTests(unittest.TestCase):
             self.assertEqual(final["counts"]["selected"], 1200)
             self.assertEqual(final["counts"]["api_subset"], 600)
             self.assertEqual(final["counts"]["by_stratum"], {"TBOX": 300, "TypeA": 230, "TypeB": 375, "TypeC": 295})
+            self.assertEqual(final["policy"]["tbox_task_version"], "tbox_taxonomy_patch_v1")
+            self.assertTrue(
+                all(
+                    "tbox_taxonomy_gold" in annotation
+                    for case_id, annotation in final["case_annotations"].items()
+                    if annotation["broad_stratum"] == "TBOX"
+                )
+            )
             self.assertTrue(set(final["api_subset_case_ids"]).issubset(final["selected_case_ids"]))
             self.assertEqual(
                 final,

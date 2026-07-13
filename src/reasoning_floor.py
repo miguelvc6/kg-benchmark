@@ -2,7 +2,13 @@
 
 import argparse
 
-from guardian.reasoning import ABLATION_BUNDLES, run_reasoning_floor
+from guardian.reasoning import (
+    ABLATION_BUNDLES,
+    TBOX_TASK_VERSION_STRICT,
+    TBOX_TASK_VERSION_TAXONOMY_PATCH,
+    configure_tbox_task_version,
+    run_reasoning_floor,
+)
 
 DEFAULT_ABLATION_BUNDLES = tuple(bundle for bundle in ABLATION_BUNDLES if bundle != "minimal_case")
 
@@ -42,6 +48,12 @@ def main() -> int:
             "Choose the model endpoint configuration to use. "
             "Defaults to MODEL_ENDPOINT or MODEL_PROVIDER from .env when omitted."
         ),
+    )
+    parser.add_argument(
+        "--tbox-task-version",
+        choices=(TBOX_TASK_VERSION_TAXONOMY_PATCH, TBOX_TASK_VERSION_STRICT),
+        default=None,
+        help="Pin the T-box answer contract. Confirmatory paper runs use tbox_taxonomy_patch_v1.",
     )
     parser.add_argument(
         "--execution-mode",
@@ -106,6 +118,9 @@ def main() -> int:
         ),
     )
     args = parser.parse_args()
+
+    if args.tbox_task_version is not None:
+        configure_tbox_task_version(args.tbox_task_version)
 
     run_reasoning_floor(
         classified_path=args.classified_benchmark,

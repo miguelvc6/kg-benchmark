@@ -45,9 +45,9 @@ Sample statistics are written under `data_sample/`, not into canonical reports.
 - `schemas/04_classified_benchmark.schema.json` is the current Stage 4 v2 contract.
 - all repository schemas are checked by `tests/test_json_schemas.py`.
 
-The reasoning-floor taxonomy-patch generation path does not yet add taxonomy metrics to its generic strict-evaluator
-summary. Taxonomy-patch paper results require the separate versioned-gold evaluator described in
-[Evaluation Harness](./Evaluation_Harness.md).
+Taxonomy-patch reasoning runs automatically score versioned, content-bound gold with the separate evaluator described in
+[Evaluation Harness](./Evaluation_Harness.md). Their ordinary bundle evaluation is A-box-only, taxonomy metrics are
+written separately, and no combined A-box/T-box repair-success score is emitted.
 
 Before building a release, write a snapshot manifest that names the data sources, retrieval time, temporal-context
 policy, and SHA-256 digests for Stage 2, Stage 3, and Stage 4. It must validate against

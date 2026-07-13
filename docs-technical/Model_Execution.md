@@ -20,6 +20,11 @@ condition disables synchronous fallback: a failed batch item remains a recorded 
 reissued through a different execution mode. The OpenAI-compatible request adapter sends `tool_choice: "none"` for both
 synchronous and batch payloads.
 
+All four conditions pin `tbox_task_version=tbox_taxonomy_patch_v1`. T-box scoring requires complete mechanically
+supported gold and excludes cases requiring unmined class-hierarchy or exception operations. A-box and T-box use separate
+metric families and are never collapsed into one repair-success score. Strict-signature reconstruction is not queried by
+the confirmatory matrix.
+
 Validate or render the plan with:
 
 ```bash
@@ -62,5 +67,6 @@ and writes a manifest containing source-output hashes, evaluator code hashes, Gi
 `provider_calls: 0`. If data artifacts have moved, pass explicit benchmark, world-state, and selection-manifest paths;
 their content is fingerprinted in the replay manifest.
 
-The generic replay command covers the strict A-box/T-box evaluator. Taxonomy-patch T-box output remains governed by its
-separate versioned-gold evaluator.
+For taxonomy-patch runs, replay writes separate A-box and T-box taxonomy summaries using a newly derived, content-bound
+gold version. It refuses incomplete mechanically supported T-box gold and never routes missing strict-signature proposals
+through the legacy evaluator.

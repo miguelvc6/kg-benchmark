@@ -1928,7 +1928,7 @@ def _prompt_record_metadata(
         metadata["t_box_constraint_type_qids"] = _t_box_constraint_type_qids(record, world_state_entry)
         if PROMPT_DEV_VERSION == PROMPT_DEV_TBOX_TAXONOMY_PATCH_VERSION:
             metadata["tbox_task_version"] = "tbox_taxonomy_patch_v1"
-            metadata["strict_tbox_signature_diagnostic"] = "enabled"
+            metadata["strict_tbox_signature_diagnostic"] = "not_run"
         else:
             metadata["tbox_task_version"] = "strict_signature_after_v1"
             metadata["strict_tbox_signature_diagnostic"] = "headline"

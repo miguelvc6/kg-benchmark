@@ -134,6 +134,10 @@ If the property or constraint family is visible, the target should be copied int
 
 For all unsupported-but-theoretically-valid operations, the schema may accept the operation, but deterministic gold extraction may emit it only when the required evidence is actually present in the selected record.
 
+For the confirmatory 1,200-case release, schema acceptance is not sufficient for case eligibility. Every selected T-box
+case must yield complete mechanically supported gold. `CLASS_HIERARCHY_ADD` and `EXCEPTION_ADD` remain available for
+future schema evolution but are excluded from confirmatory selection until their required historical deltas are mined.
+
 ## Difference From Strict Signature Reconstruction
 
 The old T-box proposal asked for a full `signature_after` that exactly reconstructed the historical post-repair constraint signature. That target remains available for strict historical diagnostics such as exact signature agreement or signature Jaccard. It is intentionally demoted because many causal schema repairs are easier to identify at the operation or value-delta level than as a complete post-edit signature.

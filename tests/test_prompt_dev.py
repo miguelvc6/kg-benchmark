@@ -1709,7 +1709,7 @@ class PromptDevTests(unittest.TestCase):
                 "context_audit": {},
                 "t_box_constraint_type_qids": ["Q21510859"],
                 "tbox_task_version": "tbox_taxonomy_patch_v1",
-                "strict_tbox_signature_diagnostic": "enabled",
+                "strict_tbox_signature_diagnostic": "not_run",
                 "prompt_version": "prompt_dev_v5_tbox_taxonomy_patch",
             }
             parsed_payload = {

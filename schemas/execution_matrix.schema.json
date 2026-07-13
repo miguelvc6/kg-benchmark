@@ -10,6 +10,8 @@
     "matrix_id",
     "status",
     "prompt_configuration",
+    "tbox_task_version",
+    "reporting_policy",
     "generation_cache_root",
     "populations",
     "models"
@@ -20,6 +22,26 @@
     "matrix_id": {"type": "string", "minLength": 1},
     "status": {"enum": ["draft", "frozen"]},
     "prompt_configuration": {"type": ["string", "null"]},
+    "tbox_task_version": {"const": "tbox_taxonomy_patch_v1"},
+    "reporting_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "combined_abox_tbox_score",
+        "strict_signature_role",
+        "tbox_gold_requirement",
+        "unsupported_tbox_repair_ops"
+      ],
+      "properties": {
+        "combined_abox_tbox_score": {"const": false},
+        "strict_signature_role": {"const": "legacy_exploratory_only"},
+        "tbox_gold_requirement": {"const": "complete_mechanically_supported_gold"},
+        "unsupported_tbox_repair_ops": {
+          "type": "array",
+          "const": ["CLASS_HIERARCHY_ADD", "EXCEPTION_ADD"]
+        }
+      }
+    },
     "generation_cache_root": {"type": "string", "minLength": 1},
     "populations": {
       "type": "array",

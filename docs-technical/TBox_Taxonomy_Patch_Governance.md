@@ -45,7 +45,8 @@ Each taxonomy-patch matrix writes:
 tbox_taxonomy_patch_evaluation_summary.json
 ```
 
-That summary records `metric_family`, `gold_version`, and `strict_signature_metrics_role = diagnostic_only`.
+That summary records `metric_family`, `gold_version`, and
+`strict_signature_metrics_role = legacy_exploratory_only_not_run` for new confirmatory-compatible evaluations.
 
 ## Metric Interpretation
 
@@ -55,6 +56,9 @@ Do not compare strict-signature and taxonomy-patch scores as if they are the sam
 - Taxonomy-patch metrics ask whether a model identified the repair family, schema decision, taxonomy operation, and visible value deltas.
 
 Strict-signature metrics remain useful diagnostics, but they are not headline scores for taxonomy-patch runs.
+
+Confirmatory execution does not issue strict-signature prompts alongside taxonomy-patch prompts. Historical strict
+results remain exploratory context only.
 
 ## A-Box Separation
 
