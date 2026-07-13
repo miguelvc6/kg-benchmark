@@ -1,5 +1,15 @@
 # Artifact Schemas
 
+Confirmatory releases additionally use two v2 contracts:
+
+- `schemas/artifact_lineage.schema.json` binds Stage 0--4 file hashes, sizes, counts, Stage 2 JSON/JSONL canonical
+  equivalence, Stage 0/1 provenance, and Stage 2/3/4 identity/projection results.
+- `schemas/final_disposition.schema.json` defines the per-case final audit disposition. Confirmatory selection requires
+  exactly one valid row for every Stage 4 case and admits only `include` rows.
+
+`schemas/snapshot_manifest.schema.json` preserves v1 readers and adds v2 post-freeze bindings for Stage 0, Stage 1,
+Stage 2, the source dump, Stage 3, Stage 4, the freeze manifest, acquisition configuration, and cache provenance.
+
 This document describes the artifacts produced by the current code. Conceptual benchmark categories live in [docs-conceptual/Benchmark_Taxonomy.md](../docs-conceptual/Benchmark_Taxonomy.md).
 
 Schema files and the Python implementation must agree. A disagreement is a release-blocking defect; do not silently treat either side as authoritative.

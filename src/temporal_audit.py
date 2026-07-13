@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
+import html
 import json
 import re
 import unicodedata
@@ -11,6 +13,7 @@ from collections import Counter, defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Iterable
+from urllib.parse import quote, quote_plus, unquote, unquote_plus
 
 from artifact_release import sha256_file
 from lib.utils import iter_jsonl
@@ -70,24 +73,49 @@ def _normalized_text(value: str) -> str:
     return " ".join(unicodedata.normalize("NFKC", value).casefold().split())
 
 
-def _occurrence(text: str, token: str) -> tuple[int, str | None]:
+def _decoded_surfaces(text: str) -> list[tuple[str, str]]:
+    surfaces = [("exact", text)]
+    candidates = [html.unescape(text), unquote(text), unquote_plus(text)]
+    for candidate in candidates:
+        if candidate != text and all(candidate != value for _, value in surfaces):
+            surfaces.append(("decoded", candidate))
+    return surfaces
+
+
+def _occurrence_literal(text: str, token: str) -> int:
     if token and token[0].isalnum() and token[-1].isalnum():
         pattern = rf"(?<![A-Za-z0-9]){re.escape(token)}(?![A-Za-z0-9])"
-        count = len(re.findall(pattern, text))
-    else:
-        count = text.count(token)
-    if count:
-        return count, "exact"
-    normalized_text = _normalized_text(text)
-    normalized_token = _normalized_text(token)
-    if not normalized_token or normalized_token == token:
+        return len(re.findall(pattern, text))
+    return text.count(token)
+
+
+def _occurrence(text: str, token: str) -> tuple[int, str | None]:
+    for mode, surface in _decoded_surfaces(text):
+        count = _occurrence_literal(surface, token)
+        if count:
+            return count, mode
+    normalized_text = _normalized_text(html.unescape(unquote_plus(text)))
+    normalized_token = _normalized_text(html.unescape(unquote_plus(token)))
+    if not normalized_token:
         return 0, None
     if normalized_token[0].isalnum() and normalized_token[-1].isalnum():
         pattern = rf"(?<![a-z0-9]){re.escape(normalized_token)}(?![a-z0-9])"
         count = len(re.findall(pattern, normalized_text))
     else:
         count = normalized_text.count(normalized_token)
-    return (count, "normalized") if count else (0, None)
+    if count:
+        return count, "semantic_normalized"
+    encoded_variants = {
+        quote(token, safe=""),
+        quote_plus(token, safe=""),
+        token.encode("utf-8").hex(),
+        base64.b64encode(token.encode("utf-8")).decode("ascii"),
+        base64.urlsafe_b64encode(token.encode("utf-8")).decode("ascii").rstrip("="),
+    }
+    for encoded in encoded_variants:
+        if encoded and encoded != token and encoded in text:
+            return text.count(encoded), "encoded_value"
+    return 0, None
 
 
 def _occurrence_count(text: str, token: str) -> int:
@@ -101,6 +129,9 @@ def mutation_sensitivity_checks() -> dict[str, bool]:
         "normalized_label": _occurrence_count("NEW   TARGET LABEL", "New target label") == 1,
         "serialized_identifier": _occurrence_count('{"value":"Q999"}', "Q999") == 1,
         "substring_boundary": _occurrence_count("SCHEMBL54432", "54432") == 0,
+        "url_encoded_label": _occurrence("target=Hidden%20Value", "Hidden Value")[1] == "decoded",
+        "base64_value": _occurrence("payload=UTk5OQ==", "Q999")[1] == "encoded_value",
+        "unicode_semantic_alias": _occurrence("ＣＡＦÉ", "café")[1] == "semantic_normalized",
     }
     return checks
 
@@ -292,7 +323,7 @@ def audit_rendered_prompts(
     mutation_checks = mutation_sensitivity_checks()
     return {
         "report_type": "temporal_prompt_leakage_audit",
-        "report_version": 1,
+        "report_version": 2,
         "created_at_utc": datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
         "inputs": {
             "rendered_prompts": str(prompt_path),
@@ -301,7 +332,7 @@ def audit_rendered_prompts(
             "classified_benchmark_sha256": benchmark_digest.hexdigest(),
         },
         "scope": {
-            "automated_check": "exact hidden-field token occurrence in model-visible prompt text",
+            "automated_check": "exact, embedded, decoded, encoded, and semantic-normalized hidden-field occurrence in model-visible prompt text",
             "ai_error_discovery_required": True,
             "ai_review_is_ground_truth": False,
             "temporal_claim": "later frozen context with historical target-property reconstruction",

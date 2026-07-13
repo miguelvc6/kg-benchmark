@@ -1,0 +1,131 @@
+{
+  "manifest_type": "kg_artifact_lineage",
+  "manifest_version": 2,
+  "created_at_utc": "2026-07-13T16:21:43Z",
+  "git_revision": "afce4b20ac228d4499cdfed3f487fc53ee70b27f",
+  "artifacts": {
+    "stage0": {
+      "path": "/home/wucloud/kg-benchmark/data/00_entity_popularity.json",
+      "size_bytes": 272797007,
+      "sha256": "704fba361c9701bd19433a9fe163892aa753d7665c1580497dc0045f79c1c965",
+      "record_count": 495849
+    },
+    "stage1": {
+      "path": "/home/wucloud/kg-benchmark/data/01_repair_candidates.json",
+      "size_bytes": 408404336,
+      "sha256": "0ae540c6589cb5aea808b2b95623b8f67d60644e01690470ae2ed59fad66a2e1",
+      "record_count": 1770757
+    },
+    "stage2_json": {
+      "path": "/home/wucloud/kg-benchmark/data/02_wikidata_repairs.json",
+      "size_bytes": 34516220272,
+      "sha256": "7d7777358e27f7c8e8fa8df881192a600dc4c879c91a60b83c5161ad61259a3a",
+      "record_count": 535570
+    },
+    "stage2_jsonl": {
+      "path": "/home/wucloud/kg-benchmark/data/02_wikidata_repairs.jsonl",
+      "size_bytes": 21549328765,
+      "sha256": "5119840b548ace231b716603957a4a413b6fd2e13f5e1353200f708c988252b3",
+      "record_count": 544178
+    },
+    "stage3": {
+      "path": "/home/wucloud/kg-benchmark/data/03_world_state.json",
+      "size_bytes": 20523499701,
+      "sha256": "7e3591a9bfc7289c698d1cc87339604b3c796a042d8ce96bb0d67f435bfa21bf",
+      "record_count": 535570
+    },
+    "stage4": {
+      "path": "/home/wucloud/kg-benchmark/data/04_classified_benchmark.jsonl",
+      "size_bytes": 4766019365,
+      "sha256": "dfbdc9286cc54e10dfe7092ecdf78f95e9852b9271c564b3dfa2447b4487f344",
+      "record_count": 535570
+    }
+  },
+  "source_provenance": [],
+  "validation": {
+    "passed": false,
+    "stage2_representation_equivalence": {
+      "passed": false,
+      "checks": {
+        "counts_equal": false,
+        "ids_complete": true,
+        "ids_unique": true,
+        "id_sets_equal": false,
+        "ordering_equal": false,
+        "canonical_record_digests_equal": false,
+        "jsonl_one_record_per_line": false
+      },
+      "counts": {
+        "json": 535570,
+        "jsonl": 544178,
+        "jsonl_physical_lines": 544177,
+        "positions_compared": 535570
+      },
+      "differences": [
+        {
+          "position": 0,
+          "json_id": "reform_Q18065630_P645_722137891",
+          "jsonl_id": "reform_Q18065630_P645_722137891",
+          "json_digest": "965b7afee5367fa53d65a8bed25790901498dd80f8f5bf5fb3de1acaf3e7bd70",
+          "jsonl_digest": "660a6de4bf3b5121eb2a06d957c91ebcf7e2bf39cb495a72322382ff472371e0"
+        }
+      ],
+      "duplicate_ids": {
+        "json": [],
+        "jsonl": []
+      }
+    },
+    "stage0_stage1_provenance": {
+      "passed": false,
+      "checks": {
+        "stage0_nonempty": true,
+        "stage1_nonempty": true,
+        "stage2_popularity_provenance_complete": false,
+        "stage2_candidate_provenance_complete": true
+      },
+      "counts": {
+        "stage0": 495849,
+        "stage1": 1770757,
+        "stage2": 544178
+      },
+      "missing_popularity_qids": [
+        "Q118970431",
+        "Q11952019"
+      ],
+      "missing_candidate_case_ids": []
+    },
+    "stage234_identity_and_projection": {
+      "passed": true,
+      "checks": {
+        "ids_complete": true,
+        "ids_unique": true,
+        "stage2_stage3_ids_equal": true,
+        "stage2_stage4_ids_equal": true,
+        "stage2_stage4_order_equal": true,
+        "stage2_stage4_projection_equal": true
+      },
+      "counts": {
+        "stage2": 535570,
+        "stage3": 535570,
+        "stage4": 535570
+      },
+      "missing_id_counts": {
+        "stage2": 0,
+        "stage4": 0
+      },
+      "duplicate_ids": {
+        "stage2": [],
+        "stage3": [],
+        "stage4": []
+      },
+      "differences": {
+        "stage2_only_vs_stage3": [],
+        "stage3_only_vs_stage2": [],
+        "stage2_only_vs_stage4": [],
+        "stage4_only_vs_stage2": [],
+        "ordering": [],
+        "stage2_projection": []
+      }
+    }
+  }
+}

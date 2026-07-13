@@ -8,12 +8,14 @@ import shutil
 import subprocess
 import sys
 import time
+import unicodedata
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from contextlib import ExitStack
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Callable, Iterable, Optional
+from urllib.parse import unquote_plus
 
 from tqdm import tqdm
 
@@ -732,14 +734,33 @@ def _post_repair_only_target_tokens(record: dict[str, Any]) -> set[str]:
     post_repair = (
         set(_iter_leaf_strings(repair_target.get("new_value")))
         | set(_iter_leaf_strings(repair_target.get("value")))
+        | set(_iter_leaf_strings(repair_target.get("new_value_labels_en")))
+        | set(_iter_leaf_strings(repair_target.get("new_value_descriptions_en")))
+        | set(_iter_leaf_strings(repair_target.get("value_labels_en")))
+        | set(_iter_leaf_strings(repair_target.get("value_descriptions_en")))
         | set(_iter_leaf_strings(persistence.get("current_value_2026")))
+        | set(_iter_leaf_strings(persistence.get("current_value_2026_labels_en")))
+        | set(_iter_leaf_strings(persistence.get("current_value_2026_descriptions_en")))
         | set(_iter_leaf_strings(violation_context.get("value_current_2026")))
     )
     return {token for token in post_repair - pre_repair if token}
 
 
+def _normalized_secret_text(value: str) -> str:
+    return " ".join(unicodedata.normalize("NFKC", unquote_plus(value)).casefold().split())
+
+
+def _string_exposes_forbidden(value: str, tokens: set[str]) -> bool:
+    normalized_value = _normalized_secret_text(value)
+    return any(
+        normalized_token and normalized_token in normalized_value
+        for token in tokens
+        for normalized_token in [_normalized_secret_text(token)]
+    )
+
+
 def _contains_post_repair_only_token(value: Any, tokens: set[str]) -> bool:
-    return bool(tokens and any(leaf in tokens for leaf in _iter_leaf_strings(value)))
+    return bool(tokens and any(_string_exposes_forbidden(leaf, tokens) for leaf in _iter_leaf_strings(value)))
 
 
 def _remove_post_repair_only_atoms(value: Any, tokens: set[str]) -> Any:
@@ -747,7 +768,7 @@ def _remove_post_repair_only_atoms(value: Any, tokens: set[str]) -> Any:
         return {
             key: cleaned
             for key, item in value.items()
-            if key not in tokens
+            if not _string_exposes_forbidden(str(key), tokens)
             for cleaned in [_remove_post_repair_only_atoms(item, tokens)]
             if cleaned not in (None, [], {})
         }
@@ -758,7 +779,7 @@ def _remove_post_repair_only_atoms(value: Any, tokens: set[str]) -> Any:
             for cleaned in [_remove_post_repair_only_atoms(item, tokens)]
             if cleaned not in (None, [], {})
         ]
-    if value is not None and str(value).strip() in tokens:
+    if value is not None and _string_exposes_forbidden(str(value).strip(), tokens):
         return None
     return value
 
@@ -930,11 +951,11 @@ def _t_box_pre_reform_constraints_payload(
         return pruned_payload, audit
 
     compact_payload = {
-        "constraint_family_inventory": _constraint_family_inventory(valid_constraints),
+        "historical_constraint_context": "unavailable: signature_before was not captured",
         "violation_context": _sanitized_violation_context(record),
     }
-    audit["constraint_count_after"] = len(compact_payload["constraint_family_inventory"])
-    audit["temporal_policy"] = "compact_inventory_no_pre_change_signature"
+    audit["constraint_count_after"] = 0
+    audit["temporal_policy"] = "missing_pre_change_signature_no_later_inventory"
     return compact_payload, audit
 
 

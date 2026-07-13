@@ -3,6 +3,9 @@
 This document is the authoritative engineering runbook for converting the current exploratory repository state into a
 reproducible paper artifact. Research rationale remains in `docs-conceptual/`; this file covers executable controls.
 The older [Paper Execution Plan](./Paper_Execution_Plan.md) is historical and superseded.
+The concrete v2 lineage, post-freeze acquisition, reserve, and 1,200/600 finalization commands are in the
+[Confirmatory Release Runbook](./Confirmatory_Release_Runbook.md); where older allocation examples below differ, that
+runbook governs confirmatory releases.
 
 ## Current Status
 
@@ -12,9 +15,9 @@ evaluation is unavailable; the accepted fallback is exhaustive automated consist
 Codex-assisted error discovery with narrower claims. A post-freeze snapshot, untouched-test execution, and final release
 materials still require execution.
 
-The `full_v1` fallback audit completed on 2026-07-13. It covered all 535,570 Stage 4/3 cases and 384 supplied prompts,
+The historical `full_v1` fallback audit completed on 2026-07-13. It covered all 535,570 Stage 4/3 cases and 384 supplied prompts,
 then conservatively marked four cases `exclude_pending_rerender` after model-assisted temporal error discovery. Those cases
-must be rerendered and the audit rerun before the current prompt set can enter a release candidate. See
+must be rerendered and the v2 audit rerun against restored Stage 2 content before the current prompt set can enter a release candidate. See
 [Automated Consistency Audit](./Automated_Consistency_Audit.md) for measured results.
 
 The governance workflow uses two immutable freezes to avoid a selection/release dependency cycle. An **allocation
@@ -115,8 +118,8 @@ commands, outputs, and disposition policy are in
 
 This workflow combines deterministic checks with Codex-assisted error discovery. It is the accepted replacement for an
 unavailable human study, but it does not establish human construct validity or semantic ground truth. Missing inputs remain
-explicitly unavailable; in particular, the current full-data checkout has no Stage 2 artifact and must not receive an
-inferred Stage 2 pass.
+explicitly unavailable. A supplied Stage 2 path receives a pass only after Stage 2/3/4 identity, ordering, and lean-projection
+content validation; file presence is never sufficient.
 
 ## Run Provenance
 

@@ -7,6 +7,7 @@ import sys
 import threading
 import time
 from datetime import UTC, datetime
+from pathlib import Path
 
 from tqdm import tqdm
 
@@ -82,6 +83,49 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
+
+_RUNTIME_LABEL_CACHE_DB = Path("data/cache/labels_en.sqlite")
+
+
+def configure_runtime_paths(*, data_dir=None, cache_dir=None, dump_path=None):
+    """Bind one fetch run to explicit artifact/cache roots without touching another snapshot."""
+    from lib import caching, config
+
+    global REPAIR_CANDIDATES_FILE, WIKIDATA_REPAIRS, WIKIDATA_REPAIRS_JSONL
+    global WORLD_STATE_FILE, POPULARITY_FILE, LATEST_DUMP_PATH, SNAPSHOT_FETCHER
+    global REVISION_HISTORY_CACHE, _RUNTIME_LABEL_CACHE_DB
+
+    root = Path(data_dir or config.DATA_DIR)
+    cache = Path(cache_dir or (root / "cache"))
+    dump = Path(dump_path or (root / "latest-all.json.gz"))
+    root.mkdir(parents=True, exist_ok=True)
+    cache.mkdir(parents=True, exist_ok=True)
+    config.DATA_DIR = root
+    config.CACHE_DIR = cache
+    config.REPAIR_CANDIDATES_FILE = root / "01_repair_candidates.json"
+    config.WIKIDATA_REPAIRS = root / "02_wikidata_repairs.json"
+    config.WIKIDATA_REPAIRS_JSONL = root / "02_wikidata_repairs.jsonl"
+    config.WORLD_STATE_FILE = root / "03_world_state.json"
+    config.POPULARITY_FILE = root / "00_entity_popularity.json"
+    config.LATEST_DUMP_PATH = dump
+    config.PAGEVIEWS_CACHE_FILE = cache / "pageviews_enwiki_365d.json"
+    config.LABEL_CACHE_DB = cache / "labels_en.sqlite"
+    config.ENTITY_SNAPSHOT_DB = cache / "entity_snapshots.sqlite"
+    config.ENTITY_SNAPSHOT_CACHE_DIR = cache / "entity_snapshots"
+    REPAIR_CANDIDATES_FILE = config.REPAIR_CANDIDATES_FILE
+    WIKIDATA_REPAIRS = config.WIKIDATA_REPAIRS
+    WIKIDATA_REPAIRS_JSONL = config.WIKIDATA_REPAIRS_JSONL
+    WORLD_STATE_FILE = config.WORLD_STATE_FILE
+    POPULARITY_FILE = config.POPULARITY_FILE
+    LATEST_DUMP_PATH = config.LATEST_DUMP_PATH
+    _RUNTIME_LABEL_CACHE_DB = config.LABEL_CACHE_DB
+    caching.SNAPSHOT_FETCHER = caching.SnapshotFetcher(cache_db=config.ENTITY_SNAPSHOT_DB)
+    caching.REVISION_HISTORY_CACHE = (
+        caching.RevisionHistoryCache() if config.ENABLE_HISTORY_CACHE else None
+    )
+    SNAPSHOT_FETCHER = caching.SNAPSHOT_FETCHER
+    REVISION_HISTORY_CACHE = caching.REVISION_HISTORY_CACHE
+    return {"data_dir": root, "cache_dir": cache, "dump_path": dump}
 
 
 def _format_elapsed(seconds):
@@ -348,11 +392,12 @@ def process_pipeline(
     resume_stats=None,
     resume_checkpoint=None,
     reuse_popularity_artifact=False,
+    refresh_candidates=False,
 ):
     """Main entry point: reads candidates, finds repairs, and builds context."""
     # Step 1: Load candidates and de-duplicate
     input_file = REPAIR_CANDIDATES_FILE
-    candidates = ensure_repair_candidates_file(input_file)
+    candidates = ensure_repair_candidates_file(input_file, force_refresh=refresh_candidates)
     if not candidates:
         logger.warning("[!] Unable to proceed without %s.", input_file)
         return
@@ -367,7 +412,7 @@ def process_pipeline(
             dedup_stats["violation_type_merges"],
         )
 
-    label_resolver = LabelResolver()
+    label_resolver = LabelResolver(cache_path=_RUNTIME_LABEL_CACHE_DB)
     dataset = load_cached_repairs(WIKIDATA_REPAIRS)
     if dataset is None and WIKIDATA_REPAIRS_JSONL.exists():
         logger.warning(
@@ -1056,6 +1101,14 @@ def parse_args():
         action="store_true",
         help="Validate the generated world state file against Stage-2 repairs and exit.",
     )
+    parser.add_argument("--data-dir", help="Isolated Stage 0--4 output directory for this snapshot.")
+    parser.add_argument("--cache-dir", help="Isolated cache directory for this snapshot.")
+    parser.add_argument("--dump-path", help="Explicit Wikidata dump used to build Stage 3.")
+    parser.add_argument(
+        "--refresh-candidates",
+        action="store_true",
+        help="Mine a new Stage 1 candidate list even when the target file already exists.",
+    )
     parser.add_argument(
         "--max-candidates",
         type=int,
@@ -1084,6 +1137,7 @@ def parse_args():
 
 def main():
     args = parse_args()
+    configure_runtime_paths(data_dir=args.data_dir, cache_dir=args.cache_dir, dump_path=args.dump_path)
     if args.validate_only:
         logger.info("[*] Validate-only mode: validating %s against %s.", WORLD_STATE_FILE, WIKIDATA_REPAIRS)
         _run_with_heartbeat(
@@ -1099,6 +1153,7 @@ def main():
         resume_stats=args.resume_stats,
         resume_checkpoint=args.resume_checkpoint,
         reuse_popularity_artifact=args.reuse_popularity_artifact,
+        refresh_candidates=args.refresh_candidates,
     )
 
 

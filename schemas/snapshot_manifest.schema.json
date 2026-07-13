@@ -16,7 +16,7 @@
   ],
   "properties": {
     "manifest_type": {"const": "kg_benchmark_snapshot"},
-    "manifest_version": {"const": 1},
+    "manifest_version": {"enum": [1, 2]},
     "snapshot_id": {"type": "string", "minLength": 1},
     "created_at_utc": {"type": "string", "format": "date-time"},
     "context_policy": {"const": "later_frozen_context_with_historical_target_reconstruction"},
@@ -34,7 +34,8 @@
           "retrieved_at_utc": {"type": "string", "format": "date-time"},
           "immutable": {"type": "boolean"},
           "url": {"type": "string", "minLength": 1},
-          "notes": {"type": "string"}
+          "notes": {"type": "string"},
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
         }
       }
     },
@@ -49,13 +50,45 @@
       "properties": {
         "stage2_repairs_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
         "world_state_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-        "classified_benchmark_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+        "classified_benchmark_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "stage0_popularity_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "stage1_candidates_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "wikidata_dump_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
       }
     },
     "limitations": {
       "type": "array",
       "items": {"type": "string", "minLength": 1}
+    },
+    "freeze": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manifest_sha256", "git_revision"],
+      "properties": {
+        "manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "git_revision": {"type": ["string", "null"]}
+      }
+    },
+    "configuration": {"type": "object"},
+    "cache_provenance": {"type": "array", "items": {"type": "object"}}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"manifest_version": {"const": 2}}},
+      "then": {
+        "required": ["freeze", "configuration", "cache_provenance"],
+        "properties": {
+          "artifacts": {
+            "required": ["stage0_popularity_sha256", "stage1_candidates_sha256", "stage2_repairs_sha256", "wikidata_dump_sha256", "world_state_sha256", "classified_benchmark_sha256"]
+          },
+          "sources": {
+            "items": {"required": ["name", "source_id", "retrieved_at_utc", "sha256"]}
+          },
+          "freeze": {
+            "properties": {"git_revision": {"type": "string", "minLength": 1}}
+          }
+        }
+      }
     }
-  }
+  ]
 }
-

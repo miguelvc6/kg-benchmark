@@ -163,12 +163,12 @@ def mine_repairs(property_id, max_items=100):
     return candidates
 
 
-def ensure_repair_candidates_file(filename, history_limit=config.REPORT_HISTORY_DEPTH):
+def ensure_repair_candidates_file(filename, history_limit=config.REPORT_HISTORY_DEPTH, *, force_refresh=False):
     """Load cached repair candidates or rebuild the file."""
 
     # Load from disk if available
     path = Path(filename)
-    if path.exists():
+    if path.exists() and not force_refresh:
         with open(path, "r", encoding="utf-8") as fh:
             cached = json.load(fh)
         if isinstance(cached, list) and cached:
@@ -186,12 +186,13 @@ def ensure_repair_candidates_file(filename, history_limit=config.REPORT_HISTORY_
         return []
 
     # Rebuild candidate list
-    print(f"[!] {filename} missing. Mining fresh candidate list...")
+    print(f"[!] {'Refreshing' if force_refresh else 'Missing'} {filename}. Mining fresh candidate list...")
     fresh_candidates = []
     for prop in config.TARGET_PROPERTIES:
         fresh_candidates.extend(mine_repairs(prop, max_items=history_limit))
 
     # Save to disk
+    path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", encoding="utf-8") as fh:
         json.dump(fresh_candidates, fh, indent=2)
     print(f"[+] Done. Found {len(fresh_candidates)} candidates. Saved to {filename}.")

@@ -18,7 +18,7 @@
   ],
   "properties": {
     "manifest_type": {"const": "automated_consistency_audit"},
-    "manifest_version": {"const": 1},
+    "manifest_version": {"enum": [1, 2]},
     "created_at_utc": {"type": "string", "format": "date-time"},
     "output_dir": {"type": "string", "minLength": 1},
     "inputs": {
@@ -51,7 +51,10 @@
         "rendered_prompts_sha256": {"$ref": "#/$defs/sha256"},
         "render_summary": {"type": "string", "minLength": 1},
         "render_summary_sha256": {"$ref": "#/$defs/sha256"},
-        "stage2": {"type": ["string", "null"]}
+        "stage2": {"type": ["string", "null"]},
+        "stage2_sha256": {"anyOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+        "lineage_manifest": {"type": ["string", "null"]},
+        "lineage_manifest_sha256": {"anyOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]}
       }
     },
     "parameters": {
@@ -85,8 +88,29 @@
       "type": "object",
       "minProperties": 1,
       "additionalProperties": {"$ref": "#/$defs/artifact"}
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["passed", "lineage_passed", "temporal_gate_passed", "render_coverage_passed", "integrity_gate_passed"],
+      "properties": {
+        "passed": {"type": "boolean"},
+        "lineage_passed": {"type": "boolean"},
+        "temporal_gate_passed": {"type": "boolean"},
+        "render_coverage_passed": {"type": "boolean"},
+        "integrity_gate_passed": {"type": "boolean"}
+      }
     }
   },
+  "allOf": [
+    {
+      "if": {"properties": {"manifest_version": {"const": 2}}},
+      "then": {
+        "required": ["validation"],
+        "properties": {"inputs": {"required": ["stage2_sha256", "lineage_manifest", "lineage_manifest_sha256"]}}
+      }
+    }
+  ],
   "$defs": {
     "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "artifact": {

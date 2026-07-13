@@ -124,11 +124,14 @@ def validate_release_inputs(
     snapshot_schema = json.loads(snapshot_schema_path.read_text(encoding="utf-8"))
     snapshot_errors = list(Draft202012Validator(snapshot_schema).iter_errors(snapshot_manifest))
     snapshot_artifacts = snapshot_manifest.get("artifacts", {})
-    snapshot_hashes_match = not snapshot_errors and snapshot_artifacts == {
+    released_artifact_hashes = {
         "stage2_repairs_sha256": sha256_file(stage2_path),
         "world_state_sha256": sha256_file(world_state_path),
         "classified_benchmark_sha256": sha256_file(stage4_path),
     }
+    snapshot_hashes_match = not snapshot_errors and all(
+        snapshot_artifacts.get(key) == value for key, value in released_artifact_hashes.items()
+    )
 
     selection_path = Path(selection_manifest_path) if selection_manifest_path is not None else None
     selection = load_selection_manifest(selection_path) if selection_path is not None else None

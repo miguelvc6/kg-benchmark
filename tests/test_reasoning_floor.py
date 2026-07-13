@@ -13,6 +13,7 @@ from guardian.reasoning import (
     _collect_selected_records_in_order,
     _disable_generation_progress,
     _prepare_payload_for_case_id,
+    _remove_post_repair_only_atoms,
     build_prompt_bundle,
     build_track_diagnosis_prompt_bundle,
     run_reasoning_floor,
@@ -56,6 +57,17 @@ class ReasoningFloorHelperTests(unittest.TestCase):
         self.assertTrue(_disable_generation_progress(execution_mode="batch", total_requests=1))
         self.assertFalse(_disable_generation_progress(execution_mode="sync", total_requests=1))
         self.assertTrue(_disable_generation_progress(execution_mode="parallel", total_requests=0))
+
+    def test_hidden_target_is_removed_from_url_and_alias_payload(self) -> None:
+        payload = {
+            "url": "https://example.test/entity/Q999?label=Hidden%20Target",
+            "entities": {"Q100": {"aliases": ["Hidden Target"]}, "Q200": {"label": "Safe"}},
+        }
+        cleaned = _remove_post_repair_only_atoms(payload, {"Q999", "Hidden Target"})
+        rendered = json.dumps(cleaned)
+        self.assertNotIn("Q999", rendered)
+        self.assertNotIn("Hidden Target", rendered)
+        self.assertIn("Safe", rendered)
 
 
 class RetryableBatchFailureOpenAIProvider(CostedStaticOpenAIProvider):

@@ -142,6 +142,26 @@ class TemporalAuditTests(unittest.TestCase):
     def test_mutation_sensitivity_checks_cover_normalized_and_boundary_cases(self) -> None:
         self.assertTrue(all(mutation_sensitivity_checks().values()))
 
+    def test_encoded_target_value_is_detected(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            benchmark = root / "stage4.jsonl"
+            prompts = root / "prompts.jsonl"
+            self._write_jsonl(benchmark, [{
+                "id": "repair_encoded", "track": "A_BOX", "repair_target": {"new_value": ["Q999"]},
+                "classification": {"class": "TypeB", "subtype": "LOCAL_TEXT_CONFIRMED"},
+            }])
+            self._write_jsonl(prompts, [{
+                "matrix_id": "encoded", "case_id": "repair_encoded", "task": "a_box_repair",
+                "context_bundle": "local_graph", "historical_track": "A_BOX", "system_prompt": "neutral",
+                "user_prompt": "payload=UTk5OQ==",
+            }])
+            report = audit_rendered_prompts(
+                rendered_prompts_path=prompts, classified_benchmark_path=benchmark, sample_size=1
+            )
+            self.assertFalse(report["passed_automated_gate"])
+            self.assertEqual(report["hits"][0]["match_mode"], "encoded_value")
+
     def test_audit_passes_sanitized_prompts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)

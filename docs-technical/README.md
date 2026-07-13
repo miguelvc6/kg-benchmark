@@ -8,6 +8,8 @@ contracts, and developer operations. Research rationale and paper claims live in
 
 - [Research Release Protocol](./Research_Release_Protocol.md): authoritative engineering protocol for building,
   freezing, registering, verifying, and releasing paper-eligible artifacts.
+- [Confirmatory Release Runbook](./Confirmatory_Release_Runbook.md): Stage 0--4 lineage, isolated post-freeze acquisition,
+  v2 audits, reserve/final selection, API subset construction, and failure recovery.
 - [Automated Consistency Audit](./Automated_Consistency_Audit.md): deterministic and Codex-assisted error
   discovery workflow for full-data and rendered-prompt artifacts.
 - [Pipeline Implementation](./Pipeline_Implementation.md): current stage-by-stage code paths and outputs.

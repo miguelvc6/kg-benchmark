@@ -21,13 +21,13 @@ class PageviewClient:
 
     def __init__(
         self,
-        cache_path=config.PAGEVIEWS_CACHE_FILE,
+        cache_path=None,
         project=config.PAGEVIEWS_PROJECT,
         access=config.PAGEVIEWS_ACCESS,
         agent=config.PAGEVIEWS_AGENT,
         granularity=config.PAGEVIEWS_GRANULARITY,
     ):
-        self.cache_path = Path(cache_path)
+        self.cache_path = Path(cache_path or config.PAGEVIEWS_CACHE_FILE)
         self.project = project
         self.access = access
         self.agent = agent
@@ -269,9 +269,9 @@ class PopularityCalculator:
         return total
 
 
-def load_popularity_artifact(path=config.POPULARITY_FILE):
+def load_popularity_artifact(path=None):
     """Return on-disk popularity map if available."""
-    artifact_path = Path(path)
+    artifact_path = Path(path or config.POPULARITY_FILE)
     if not artifact_path.exists():
         return None
     try:
@@ -286,9 +286,9 @@ def load_popularity_artifact(path=config.POPULARITY_FILE):
     return None
 
 
-def persist_popularity_artifact(popularity_map, path=config.POPULARITY_FILE):
+def persist_popularity_artifact(popularity_map, path=None):
     """Persist QID -> popularity dictionary using deterministic ordering."""
-    artifact_path = Path(path)
+    artifact_path = Path(path or config.POPULARITY_FILE)
     ordered = {qid: popularity_map[qid] for qid in sorted(popularity_map.keys())}
     with open(artifact_path, "w", encoding="utf-8") as fh:
         json.dump(ordered, fh, ensure_ascii=True, indent=2)

@@ -62,6 +62,7 @@ kg-select-untouched-test = "select_untouched_test:main"
 kg-analyze-results = "analyze_results:main"
 kg-experiment-registry = "experiment_registry:main"
 kg-protocol-freeze = "protocol_freeze:main"
+kg-artifact-lineage = "artifact_lineage:main"
 
 [tool.setuptools]
 package-dir = {"" = "src", "scripts" = "scripts"}
@@ -79,6 +80,7 @@ py-modules = [
     "analyze_results",
     "experiment_registry",
     "protocol_freeze",
+    "artifact_lineage",
     "evaluate",
     "fetcher",
     "non_llm_baselines",

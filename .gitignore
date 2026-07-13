@@ -14,5 +14,10 @@ src/*.egg-info
 reports/reasoning_floor
 reports/classifier_audit/baseline_full_before_phase_b.jsonl
 reports/prompt_dev/few_shot/evaluation_static_v1_core_abox_all/rendered_prompts/prompt_dev_rendered_prompts.jsonl
+reports/automated_audit/full_v2*/deterministic_findings.jsonl
+reports/automated_audit/full_v2*/deterministic_case_status.jsonl
+reports/automated_audit/full_v2*/construct_review_packets.jsonl
+reports/automated_audit/full_v2*/temporal_review_packets.jsonl
+reports/automated_audit/full_v2*/private_packet_map.json
 temp/*
 .cache/

@@ -70,6 +70,7 @@ Command convention: prefer `uv run python ...` for repository commands. Bare
 commands outside the project's `uv` environment.
 
 The project metadata also installs console entry points such as `kg-fetcher`,
+`kg-artifact-lineage`, `kg-automated-audit`, `kg-select-untouched-test`,
 `kg-classifier`, `kg-evaluate`, and `kg-reasoning-floor`, and it packages the
 top-level modules so `uv run python -m fetcher`-style execution works in
 editable installs and built artifacts.
@@ -103,6 +104,8 @@ uv run python src/fetcher.py --resume-stats logs/fetcher_stats_YYYYMMDDTHHMMSS.j
 uv run python src/fetcher.py --resume-checkpoint logs/resume_checkpoint_YYYYMMDDTHHMMSS.json
 uv run python src/fetcher.py --reuse-popularity-artifact
 uv run python src/fetcher.py --validate-only
+uv run kg-artifact-lineage --help
+uv run kg-select-untouched-test reserve --help
 ```
 
 Run the benchmark classifier and split generation on sample artifacts:

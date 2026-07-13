@@ -18,10 +18,11 @@ import fastjsonschema
 import ijson
 from jsonschema import Draft202012Validator
 
+from artifact_lineage import _validate_stage234, verify_bound_lineage_manifest
 from artifact_release import sha256_file
 from temporal_audit import audit_rendered_prompts
 
-AUDIT_VERSION = 1
+AUDIT_VERSION = 2
 CASE_STATUS_PRIORITY = {"pass": 0, "unsupported": 1, "disagreement": 2, "error": 3}
 INTEGRITY_CODES = {
     "duplicate_case_id",
@@ -277,6 +278,23 @@ def _format_regexes(world_state: dict[str, Any]) -> list[str]:
     return _constraint_values(world_state, "Q21502404", "P1793")
 
 
+def _has_constraint(world_state: dict[str, Any], constraint_qid: str) -> bool:
+    constraints = _field(world_state, "L4_constraints.constraints")
+    return isinstance(constraints, list) and any(
+        _field(constraint, "constraint_type.qid") == constraint_qid for constraint in constraints
+    )
+
+
+def _regex_match_profile(values: Iterable[str], patterns: Iterable[str]) -> list[bool]:
+    compiled = []
+    for pattern in patterns:
+        try:
+            compiled.append(re.compile(pattern))
+        except re.error:
+            continue
+    return [all(regex.fullmatch(value) is not None for value in values) for regex in compiled]
+
+
 def _matches_any_regex(values: Iterable[str], patterns: Iterable[str]) -> bool | None:
     compiled = []
     for pattern in patterns:
@@ -366,7 +384,6 @@ def _masked_local_evidence(record: dict[str, Any], world_state: dict[str, Any]) 
         "l1_other_properties": other_properties,
         "l2_labels": masked_l2,
         "l3_neighborhood": masked_l3,
-        "l4_constraints": world_state.get("L4_constraints"),
     }
 
 
@@ -424,6 +441,26 @@ def _changed_constraint_types(before: Any, after: Any) -> set[str]:
     return present_types(before) ^ present_types(after)
 
 
+def _changed_constraint_entries(before: Any, after: Any) -> set[str]:
+    def by_qid(value: Any) -> dict[str, list[str]]:
+        result: dict[str, list[str]] = {}
+        if not isinstance(value, dict) or not isinstance(value.get("signature"), list):
+            return result
+        for constraint in value["signature"]:
+            if isinstance(constraint, dict) and isinstance(constraint.get("constraint_qid"), str):
+                result.setdefault(constraint["constraint_qid"], []).append(
+                    json.dumps(
+                        constraint, ensure_ascii=True, sort_keys=True, separators=(",", ":")
+                    )
+                )
+        for entries in result.values():
+            entries.sort()
+        return result
+
+    left, right = by_qid(before), by_qid(after)
+    return {qid for qid in left.keys() | right.keys() if left.get(qid) != right.get(qid)}
+
+
 def _case_findings(record: dict[str, Any], world_state: dict[str, Any]) -> list[dict[str, Any]]:
     findings: list[dict[str, Any]] = []
 
@@ -451,18 +488,39 @@ def _case_findings(record: dict[str, Any], world_state: dict[str, Any]) -> list[
             add("error", "missing_tbox_signatures")
             return findings
         before, after = signatures.get("before"), signatures.get("after")
-        if not _signature_hash_valid(before) or not _signature_hash_valid(after):
-            add("error", "invalid_tbox_signature_hash")
+        before_valid = _signature_hash_valid(before)
+        after_valid = _signature_hash_valid(after)
+        if not before_valid:
+            add("unsupported", "missing_tbox_history_signature_before")
+        if not after_valid:
+            add("error", "invalid_tbox_signature_hash_after")
+            return findings
         changed = _changed_constraint_types(before, after)
+        changed_entries = _changed_constraint_entries(before, after)
         declared = set(_values(_field(record, "repair_target.constraint_delta.changed_constraint_types")))
         if changed != declared:
             add("disagreement", "tbox_changed_constraint_disagreement", {"declared": sorted(declared), "reconstructed": sorted(changed)})
         for side, signature in (("before", before), ("after", after)):
+            if side == "before" and not before_valid:
+                continue
             expected = _field(record, f"repair_target.constraint_delta.hash_{side}")
             observed = signature.get("hash") if isinstance(signature, dict) else None
             if expected != observed:
                 add("disagreement", "tbox_signature_binding_disagreement", {"side": side})
         subtype = str(_field(record, "classification.subtype") or "")
+        mapped_constraint = _field(record, "classification.decision_constraint_type_qid")
+        if (
+            isinstance(mapped_constraint, str)
+            and mapped_constraint
+            and mapped_constraint not in changed_entries
+            and not bool(_field(record, "classification.diagnostics.tbox_diff_summary.target_constraint_is_related_family"))
+            and subtype not in {"COINCIDENTAL_SCHEMA_CHANGE", "UNKNOWN_TBOX_CAUSALITY"}
+        ):
+            add(
+                "disagreement",
+                "tbox_violation_constraint_disagreement",
+                {"mapped_violation_constraint": mapped_constraint, "changed_constraint_types": sorted(declared)},
+            )
         if subtype == "COINCIDENTAL_SCHEMA_CHANGE" and declared:
             add("unsupported", "tbox_causality_requires_policy_replay")
         before_hash = before.get("hash") if isinstance(before, dict) else None
@@ -494,6 +552,22 @@ def _case_findings(record: dict[str, Any], world_state: dict[str, Any]) -> list[
             add("unsupported", "unknown_type_c_remains_diagnostic")
     else:
         add("error", "unknown_classification_class", classification_class)
+    target = record.get("repair_target") if isinstance(record.get("repair_target"), dict) else {}
+    final_values = _values(target.get("new_value") if target.get("new_value") is not None else target.get("value"))
+    if _has_constraint(world_state, "Q19474404") and len(set(final_values)) > 1:
+        add(
+            "disagreement",
+            "cardinality_constraint_conflict",
+            {"constraint": "Q19474404", "unique_final_values": len(set(final_values))},
+        )
+    patterns = _format_regexes(world_state)
+    profile = _regex_match_profile(final_values, patterns)
+    if len(profile) > 1 and any(profile) and not all(profile):
+        add(
+            "disagreement",
+            "format_rule_contradiction",
+            {"matching_rules": sum(profile), "format_rules": len(profile)},
+        )
     return findings
 
 
@@ -615,6 +689,7 @@ def run_audit(
     temporal_review_size: int = 50,
     seed: int = 13,
     stage2_path: str | Path | None = None,
+    lineage_manifest_path: str | Path | None = None,
     cache_dir: str | Path = ".cache/automated_audit",
 ) -> dict[str, Any]:
     starting_git_state = _git_state()
@@ -660,6 +735,8 @@ def run_audit(
     missing_id_rows = 0
     findings_path = output / "deterministic_findings.jsonl"
     statuses_path = output / "deterministic_case_status.jsonl"
+    stage2_sha256: str | None = None
+    world_state_sha256: str | None = None
 
     with WorldStateLookup(world_path, Path(cache_dir)) as world_lookup:
         with findings_path.open("w", encoding="utf-8") as findings_handle, statuses_path.open(
@@ -816,6 +893,33 @@ def run_audit(
                 f"Rendered prompt count does not match summary: {temporal_report['counts']['prompt_rows']} != {expected_prompt_rows}"
             )
 
+        lineage_validation = None
+        if stage2_path is not None:
+            stage2_sha256 = sha256_file(stage2_path)
+            if lineage_manifest_path is not None:
+                world_state_sha256 = sha256_file(world_path)
+                bound = verify_bound_lineage_manifest(
+                    lineage_manifest_path,
+                    stage2_path=stage2_path,
+                    stage3_path=world_path,
+                    stage4_path=stage4_path,
+                    stage2_sha256=stage2_sha256,
+                    stage3_sha256=world_state_sha256,
+                    stage4_sha256=stage4_digest.hexdigest(),
+                )
+                lineage_validation = bound.get("identity")
+                if isinstance(lineage_validation, dict):
+                    lineage_validation = {
+                        **lineage_validation,
+                        "identity_passed": lineage_validation.get("passed"),
+                        "passed": bound["passed"],
+                        "bound_manifest": bound,
+                    }
+                else:
+                    lineage_validation = {"passed": False, "bound_manifest": bound}
+            else:
+                lineage_validation = _validate_stage234(Path(stage2_path), world_path, stage4_path)
+
         deterministic_summary = {
             "report_type": "automated_consistency_audit",
             "report_version": AUDIT_VERSION,
@@ -825,6 +929,7 @@ def run_audit(
                 "stage4_unique_case_ids": len(seen_ids),
                 "world_state_entries": world_lookup.count(),
                 "stage2_reconstruction": "available" if stage2_path is not None else "unavailable",
+                "stage2_content_validated": lineage_validation is not None and lineage_validation["passed"],
                 "stage2_limitation": None
                 if stage2_path is not None
                 else "Stage 2 is absent; the audit cannot independently reconstruct raw historical repair extraction.",
@@ -838,6 +943,7 @@ def run_audit(
             "subtype_counts": dict(sorted(subtype_counts.items())),
             "missing_id_rows": missing_id_rows,
             "automated_temporal_gate_passed": temporal_report["passed_automated_gate"],
+            "lineage_validation": lineage_validation,
             "note": "Unsupported checks are coverage gaps, not agreement. Codex review is error discovery, not ground truth.",
         }
         summary_path = output / "deterministic_summary.json"
@@ -865,7 +971,7 @@ def run_audit(
                 "classified_benchmark": str(stage4_path.resolve()),
                 "classified_benchmark_sha256": stage4_digest.hexdigest(),
                 "world_state": str(world_path.resolve()),
-                "world_state_sha256": sha256_file(world_path),
+                "world_state_sha256": world_state_sha256 or sha256_file(world_path),
                 "stage4_schema": str(schema_path.resolve()),
                 "stage4_schema_sha256": sha256_file(schema_path),
                 "construct_sample": str(construct_path.resolve()),
@@ -875,6 +981,9 @@ def run_audit(
                 "render_summary": str(render_path.resolve()),
                 "render_summary_sha256": sha256_file(render_path),
                 "stage2": str(Path(stage2_path).resolve()) if stage2_path is not None else None,
+                "stage2_sha256": stage2_sha256,
+                "lineage_manifest": str(Path(lineage_manifest_path).resolve()) if lineage_manifest_path else None,
+                "lineage_manifest_sha256": sha256_file(lineage_manifest_path) if lineage_manifest_path else None,
             },
             "parameters": {
                 "construct_review_size": construct_review_size,
@@ -887,6 +996,18 @@ def run_audit(
                 "stage4_rows": rows_total,
                 "construct_review_packets": len(construct_packets),
                 "temporal_review_packets": len(temporal_packets),
+            },
+            "validation": {
+                "passed": (
+                    (lineage_validation is None or lineage_validation["passed"])
+                    and temporal_report["passed_automated_gate"]
+                    and prompt_coverage_matches
+                    and not any(code in finding_counts for code in INTEGRITY_CODES)
+                ),
+                "lineage_passed": lineage_validation is None or lineage_validation["passed"],
+                "temporal_gate_passed": temporal_report["passed_automated_gate"],
+                "render_coverage_passed": prompt_coverage_matches,
+                "integrity_gate_passed": not any(code in finding_counts for code in INTEGRITY_CODES),
             },
             "artifacts": artifacts,
         }
@@ -918,6 +1039,7 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--temporal-review-size", type=int, default=50)
     run.add_argument("--seed", type=int, default=13)
     run.add_argument("--stage2")
+    run.add_argument("--lineage-manifest", help="Optional hash-bound v2 lineage result to reuse.")
     run.add_argument("--cache-dir", default=".cache/automated_audit")
 
     review = subparsers.add_parser("review-codex", help="Review blinded packet shards with Codex.")
@@ -948,10 +1070,11 @@ def main() -> int:
             temporal_review_size=args.temporal_review_size,
             seed=args.seed,
             stage2_path=args.stage2,
+            lineage_manifest_path=args.lineage_manifest,
             cache_dir=args.cache_dir,
         )
         print(json.dumps(manifest["counts"], sort_keys=True))
-        return 0
+        return 0 if manifest["validation"]["passed"] else 1
     from automated_audit_codex import finalize_audit, run_codex_reviews
 
     if args.command == "review-codex":

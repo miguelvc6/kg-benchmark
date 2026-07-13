@@ -34,7 +34,8 @@ The repository does not currently provide Guardian multi-turn intervention loops
 - `src/annotation_protocol.py`: blinded multi-reviewer annotation assignment and adjudication.
 - `src/artifact_release.py`: release validation, hashing, and manifest verification.
 - `src/protocol_freeze.py`: protocol manifest construction and verification.
-- `src/select_untouched_test.py`: protocol-bound allocation of a post-freeze test manifest.
+- `src/artifact_lineage.py`: streaming Stage 0--4 provenance, equivalence, identity, and projection validation.
+- `src/select_untouched_test.py`: protocol-bound legacy allocation plus quality-gated confirmatory reserve/finalization.
 - `src/analyze_results.py`: paired cluster-bootstrap and exact paired-binary analysis.
 - `src/experiment_registry.py`: immutable exploratory/confirmatory run registration.
 
@@ -118,7 +119,8 @@ Stage 2 fetches the live 2026 state after the repair type is known.
 - Stage 2 writes append-only JSONL during execution, then compiles to JSON.
 - Resume support exists through `--resume-stats` and `--resume-checkpoint`.
 - Per-candidate diagnostics are buffered into `logs/fetcher_stats_<run>.jsonl`.
-- Caches live under `data/cache/`, including `labels_en.sqlite` and `entity_snapshots.sqlite`.
+- Caches default to `data/cache/`, including `labels_en.sqlite` and `entity_snapshots.sqlite`. Post-freeze acquisition must
+  use explicit `--data-dir`, `--cache-dir`, and `--dump-path` so no restored baseline or cache is reused accidentally.
 - A per-run summary is written to `logs/run_summary_<run>.json`.
 - `src/fetcher.py --validate-only` validates only `data/03_world_state.json` against `data/02_wikidata_repairs.json`.
 
@@ -273,6 +275,8 @@ uv run python src/fetcher.py --max-candidates 100
 uv run python src/fetcher.py --resume-stats logs/fetcher_stats_YYYYMMDDTHHMMSS.jsonl
 uv run python src/fetcher.py --resume-checkpoint logs/resume_checkpoint_YYYYMMDDTHHMMSS.json
 uv run python src/fetcher.py --reuse-popularity-artifact
+uv run python src/fetcher.py --data-dir data_post_freeze/SNAPSHOT_ID --cache-dir data_post_freeze/SNAPSHOT_ID/cache --dump-path data_post_freeze/SNAPSHOT_ID/latest-all.json.gz --refresh-candidates
+uv run kg-artifact-lineage --help
 uv run python src/select_benchmark_cases.py --tier dev --output reports/benchmark_selection/dev_prompt_v1_seed_13.json
 uv run python src/select_benchmark_cases.py --tier core --exclude-manifest reports/benchmark_selection/dev_prompt_v1_seed_13.json --output reports/benchmark_selection/core_v1_seed_13.json
 uv run python src/fetcher.py --validate-only

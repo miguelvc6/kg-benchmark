@@ -513,7 +513,7 @@ def run_codex_reviews(
     _write_jsonl(output_dir / REVIEWS_FILENAME, reviews)
     report = {
         "report_type": "codex_assisted_automated_audit",
-        "report_version": 1,
+        "report_version": 2,
         "created_at_utc": _utc_now(),
         "status": "complete",
         "git": git_state,
@@ -760,7 +760,7 @@ def finalize_audit(
     counts = Counter(row["disposition"] for row in dispositions)
     report = {
         "report_type": "automated_audit_final",
-        "report_version": 1,
+        "report_version": 2,
         "created_at_utc": _utc_now(),
         "policy": {
             "relabeling_allowed": False,
@@ -783,6 +783,10 @@ def finalize_audit(
             "reviews": len(review_rows),
             "disagreements": len(disagreements),
             "by_disposition": dict(sorted(counts.items())),
+        },
+        "validation": {
+            "complete_unique_disposition_coverage": len(dispositions) == len(deterministic_by_case),
+            "selection_eligible_disposition": "include",
         },
         "outputs": {
             "reviews": {

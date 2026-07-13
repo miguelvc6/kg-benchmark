@@ -1,5 +1,11 @@
 # Benchmark Selection
 
+For confirmatory paper selection, the `reserve` and `finalize` modes of `kg-select-untouched-test` supersede the exploratory
+core/dev allocator. They require complete v2 audit dispositions, allow only final disposition `include`, enforce one case per
+A-box QID/property or T-box property/revision event, rank with SHA-256 seed 13, and fail unless finalization yields exactly
+1,200 cases plus a nested 600-case API subset. See the
+[Confirmatory Release Runbook](./Confirmatory_Release_Runbook.md).
+
 This document describes the Phase C deterministic case-selection manifests used when paper-facing runs should evaluate fixed core/dev tiers without duplicating the full Stage 4 JSONL artifact.
 
 The canonical benchmark artifact remains `data/04_classified_benchmark.jsonl`.

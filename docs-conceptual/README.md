@@ -13,5 +13,7 @@ The remaining conceptual docs are shorter navigational slices that should agree 
 - [Benchmark Taxonomy](./Benchmark_Taxonomy.md): repair-locus and information-access labels.
 - [Evaluation Framework](./Evaluation_Framework.md): evaluation goals, reasoning-floor design, and metric families.
 - [Temporal Validity](./Temporal_Validity.md): leakage risks, persistence checks, and the target-property rule.
+- [Confirmatory Evaluation Design](./Confirmatory_Evaluation_Design.md): post-freeze acquisition, quality-first eligibility,
+  independent event sampling, the T-box cap, and external-API calibration scope.
 
 If a change is driven by repository implementation, CLI behavior, artifact layout, or engineering procedure, it belongs in [docs-technical](../docs-technical/README.md), not here.

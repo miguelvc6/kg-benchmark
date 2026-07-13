@@ -1,5 +1,11 @@
 # Automated Consistency Audit
 
+Version 2 validates Stage 2 content when `--stage2` is supplied: exact Stage 2/3/4 identity, ordering, and Stage 2-to-lean-
+Stage 4 field projection must pass. It also checks format-rule contradictions, cardinality conflicts, unsupported independent
+local evidence, missing T-box history, and report/constraint disagreement. The temporal scanner covers embedded, decoded,
+encoded, and semantic-normalized values in addition to exact tokens. See the
+[Confirmatory Release Runbook](./Confirmatory_Release_Runbook.md) for the release-gated sequence.
+
 ## Status And Scope
 
 The `kg-automated-audit` command implements the repository's no-human validation fallback. It is an exploratory
@@ -20,18 +26,24 @@ Run the audit against these current artifacts:
 
 | Role | Path |
 | --- | --- |
+| Stage 0 popularity | `data/00_entity_popularity.json` |
+| Stage 1 candidates | `data/01_repair_candidates.json` |
+| Stage 2 compiled JSON | `data/02_wikidata_repairs.json` |
+| Stage 2 recovered JSONL | `data/02_wikidata_repairs.jsonl` |
 | Stage 4 classified benchmark | `data/04_classified_benchmark.jsonl` |
 | Stage 3 world state | `data/03_world_state.json` |
+| Stage 0--4 lineage manifest | `reports/lineage/restored_v2.json` |
 | Stage 4 schema | `schemas/04_classified_benchmark.schema.json` |
 | Current construct sample | `reports/manual_audit/audit_phase_d_v1_seed_13.csv` |
 | Current rendered prompts | `reports/temporal_audit/current_holdout96_v4_rendered/prompt_dev_rendered_prompts.jsonl` |
 | Current render summary | `reports/temporal_audit/current_holdout96_v4_rendered/prompt_dev_render_summary.json` |
 
-The current full-data checkout has no Stage 2 artifact. The audit must record Stage 2 as unavailable and must not use
-the synthetic `data_sample/` or release sample as a substitute. Checks requiring Stage 2 therefore remain not run or
-unresolved, never passed by inference.
+The restored baseline contains two Stage 2 representations. They are validation inputs, not interchangeable sources:
+`kg-artifact-lineage validate` must compare them and the audit must bind that result. A representation, provenance, or
+Stage 2/3/4 projection failure makes the dataset audit fail even when the compiled Stage 2/3/4 chain itself is exact. Never
+rewrite a recovered artifact to make the gate pass, and never substitute `data_sample/` or the release sample.
 
-All generated material belongs under `reports/automated_audit/full_v1/`. Treat that directory as one audit unit: retain
+Use a new versioned directory for every audit iteration. Treat each directory as one audit unit: retain
 the input manifest, deterministic findings, review shards, Codex responses, consolidated dispositions, errors and
 retry records, and final machine-readable and human-readable summaries together. Do not mix artifacts from another
 input set or audit version into this directory.
@@ -75,6 +87,14 @@ discovery, not a population estimate: notably, 148 concerns occurred among deter
 occurred among deterministic disagreements. This disagreement in both directions is evidence for follow-up, not model
 adjudication.
 
+## Recorded Restored-Baseline `full_v2c` Result
+
+The v2c deterministic rerun covered all 535,570 compiled Stage 2/3/4 cases and bound the corrected restored-lineage
+manifest. It reported 472,790 pass, 56,761 unsupported, 6,019 disagreement, and zero error cases. The temporal gate passed
+for 384 supplied prompts, but the audit manifest failed because the recovered Stage 2 JSON and JSONL representations and
+Stage 0 provenance do not pass complete lineage. No v2 dispositions or confirmatory selection were certified from this
+run. The full population flow, finding counts, and residual limits are recorded in [`audit.md`](../audit.md).
+
 ## WSL Commands
 
 Verify the installed interface before starting:
@@ -96,10 +116,14 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-automated-audit run \
   --construct-sample reports/manual_audit/audit_phase_d_v1_seed_13.csv \
   --rendered-prompts reports/temporal_audit/current_holdout96_v4_rendered/prompt_dev_rendered_prompts.jsonl \
   --render-summary reports/temporal_audit/current_holdout96_v4_rendered/prompt_dev_render_summary.json \
-  --output-dir reports/automated_audit/full_v1
+  --output-dir reports/automated_audit/full_v2c \
+  --stage2 data/02_wikidata_repairs.json \
+  --lineage-manifest reports/lineage/restored_v2.json
 ```
 
-Stage 2 is intentionally omitted because the full artifact is absent. The `run` output must preserve that limitation.
+This restored-baseline command is expected to exit nonzero while its complete lineage manifest fails. It still writes the
+full deterministic result for remediation evidence. A confirmatory post-freeze run must use its own passing v2 lineage and
+snapshot manifests, not this restored manifest.
 
 Use the approved Codex review configuration. A shard contains at most 10 review cases, three workers may run in
 parallel, and a failed request receives at most two retries:
