@@ -264,6 +264,28 @@ def _reconstruct_pre_repair_properties(
     return reconstruct_properties_with_pre_repair_target(record, properties)
 
 
+def _evaluation_visible_evidence(
+    record: dict[str, Any], world_state_entry: Optional[dict[str, Any]], ablation_bundle: Optional[str]
+) -> dict[str, Any]:
+    case_evidence = {
+        key: value
+        for key, value in record.items()
+        if key not in {"classification", "build", "repair_target", "persistence_check"}
+    }
+    visible: dict[str, Any] = {"benchmark_case": case_evidence}
+    if not isinstance(world_state_entry, dict):
+        return visible
+    if ablation_bundle == "local_graph":
+        local_graph = copy.deepcopy(world_state_entry)
+        l1 = local_graph.get("L1_ego_node")
+        if isinstance(l1, dict):
+            l1["properties"] = _reconstruct_pre_repair_properties(record, world_state_entry)
+        visible["local_graph"] = local_graph
+    elif ablation_bundle == "logic_only":
+        visible["constraints"] = world_state_entry.get("L4_constraints", {})
+    return visible
+
+
 def _apply_ops(properties: dict[str, list[str]], ops: list[Any]) -> tuple[dict[str, list[str]], bool, Optional[str]]:
     state = copy.deepcopy(properties)
     try:
@@ -356,25 +378,86 @@ def _provenance_completeness(payload: Any) -> float:
     return complete / len(payload)
 
 
-def _auditability_status(proposal: Any) -> dict[str, Any]:
+def _visible_evidence_atoms(value: Any) -> tuple[set[str], str]:
+    atoms: set[str] = set()
+
+    def visit(item: Any) -> None:
+        if isinstance(item, dict):
+            for key, nested in item.items():
+                atoms.add(str(key))
+                visit(nested)
+        elif isinstance(item, list):
+            for nested in item:
+                visit(nested)
+        elif item is not None:
+            atoms.add(str(item))
+
+    visit(value)
+    return atoms, normalize_text(json.dumps(value, ensure_ascii=False, sort_keys=True, default=str))
+
+
+def _provenance_support(payload: Any, visible_evidence: Any) -> dict[str, Any]:
+    if not isinstance(payload, list) or not payload:
+        return {"supported_count": 0, "claim_count": 0, "support_rate": 0.0, "unsupported_indices": []}
+    atoms, normalized_evidence = _visible_evidence_atoms(visible_evidence)
+    supported = 0
+    unsupported_indices = []
+    for index, item in enumerate(payload):
+        if not isinstance(item, dict):
+            unsupported_indices.append(index)
+            continue
+        kind = item.get("kind")
+        identifier_supported = False
+        if kind == "KG":
+            identifier_supported = str(item.get("node_id")) in atoms
+        elif kind == "HISTORY":
+            identifier_supported = str(item.get("revision_id")) in atoms
+        elif kind == "WEB":
+            identifier_supported = str(item.get("url")) in atoms
+        snippet = item.get("snippet")
+        snippet_supported = bool(
+            isinstance(snippet, str)
+            and len(normalize_text(snippet)) >= 4
+            and normalize_text(snippet) in normalized_evidence
+        )
+        if identifier_supported or snippet_supported:
+            supported += 1
+        else:
+            unsupported_indices.append(index)
+    return {
+        "supported_count": supported,
+        "claim_count": len(payload),
+        "support_rate": supported / len(payload),
+        "unsupported_indices": unsupported_indices,
+    }
+
+
+def _auditability_status(proposal: Any, visible_evidence: Any) -> dict[str, Any]:
     rationale = getattr(proposal, "rationale", None)
     rationale_present = isinstance(rationale, str) and bool(rationale.strip())
     provenance = getattr(proposal, "provenance", None)
     provenance_present = isinstance(provenance, list) and bool(provenance)
     provenance_completeness = _provenance_completeness(provenance)
+    provenance_support = _provenance_support(provenance, visible_evidence)
     uncertainty = getattr(proposal, "uncertainty", None)
     uncertainty_present = (
         isinstance(uncertainty, dict)
         and isinstance(uncertainty.get("confidence"), (int, float))
     )
+    structural_complete = bool(
+        rationale_present and provenance_present and provenance_completeness > 0.0 and uncertainty_present
+    )
     return {
         "rationale_present": rationale_present,
         "provenance_present": provenance_present,
         "provenance_completeness": provenance_completeness,
-        "uncertainty_present": uncertainty_present,
-        "auditability_complete": bool(
-            rationale_present and provenance_present and provenance_completeness > 0.0 and uncertainty_present
+        "provenance_support": provenance_support,
+        "provenance_supported": bool(
+            provenance_support["claim_count"] > 0 and provenance_support["support_rate"] == 1.0
         ),
+        "uncertainty_present": uncertainty_present,
+        "auditability_structural_complete": structural_complete,
+        "auditability_complete": structural_complete,
     }
 
 
@@ -796,7 +879,9 @@ def evaluate_a_box_case(
         elif historical_action != "DELETE" and not after_target:
             info_preservation = -0.5
     functional_success = bool(executable and exact_value_match)
-    auditability = _auditability_status(proposal)
+    auditability = _auditability_status(
+        proposal, _evaluation_visible_evidence(record, world_state_entry, ablation_bundle)
+    )
     accepted = bool(functional_success and regression_pass and auditability["auditability_complete"])
     proposal_usage = _token_usage_from_sources(manifest_record, proposal)
     diagnosis_usage = _token_usage(diagnosis_manifest_record)
@@ -807,6 +892,8 @@ def evaluate_a_box_case(
         "semantic_success": None,
         "information_preservation": info_preservation,
         "provenance_completeness": auditability["provenance_completeness"],
+        "provenance_support_rate": auditability["provenance_support"]["support_rate"],
+        "provenance_supported": 1.0 if auditability["provenance_supported"] else 0.0,
         "auditability_complete": 1.0 if auditability["auditability_complete"] else 0.0,
         "token_usage": proposal_usage,
         "conversion_rate": (1.0 if accepted else 0.0) if conversion_attempted else None,
@@ -848,6 +935,8 @@ def evaluate_a_box_case(
             "expected_target_values": _expected_target_values(record),
             "rationale_present": auditability["rationale_present"],
             "provenance_present": auditability["provenance_present"],
+            "provenance_support": auditability["provenance_support"],
+            "auditability_semantics": "structural completeness; factual provenance support is reported separately",
             "uncertainty_present": auditability["uncertainty_present"],
             "proposal_token_usage": proposal_usage,
             "diagnosis_token_usage": diagnosis_usage,
@@ -948,7 +1037,9 @@ def evaluate_t_box_case(
             proposal=proposal,
             current_values=_world_state_target_values(world_state_entry, target_pid),
         )
-    auditability = _auditability_status(proposal)
+    auditability = _auditability_status(
+        proposal, _evaluation_visible_evidence(record, world_state_entry, ablation_bundle)
+    )
     proposal_usage = _token_usage_from_sources(manifest_record, proposal)
     diagnosis_usage = _token_usage(diagnosis_manifest_record)
     parse_status = _proposal_parse_status(manifest_record, proposal_missing)
@@ -961,6 +1052,8 @@ def evaluate_t_box_case(
         "semantic_family_success": 1.0 if semantic_family_success else 0.0,
         "information_preservation": None,
         "provenance_completeness": auditability["provenance_completeness"],
+        "provenance_support_rate": auditability["provenance_support"]["support_rate"],
+        "provenance_supported": 1.0 if auditability["provenance_supported"] else 0.0,
         "auditability_complete": 1.0 if auditability["auditability_complete"] else 0.0,
         "token_usage": proposal_usage,
         "conversion_rate": (1.0 if accepted else 0.0) if conversion_attempted else None,
@@ -1016,6 +1109,8 @@ def evaluate_t_box_case(
             "historical_target_constraint_qid": target_constraint_qid,
             "rationale_present": auditability["rationale_present"],
             "provenance_present": auditability["provenance_present"],
+            "provenance_support": auditability["provenance_support"],
+            "auditability_semantics": "structural completeness; factual provenance support is reported separately",
             "uncertainty_present": auditability["uncertainty_present"],
             "proposal_token_usage": proposal_usage,
             "diagnosis_token_usage": diagnosis_usage,
@@ -1219,6 +1314,8 @@ def summarize_trace_iterable(
     }
     counts = Counter()
     parse_errors = Counter()
+    diagnosis_confusion: Counter[tuple[str, str]] = Counter()
+    diagnosis_attribution = Counter()
     overall = GroupAccumulator()
     for trace in traces:
         counts["cases"] += 1
@@ -1273,6 +1370,28 @@ def summarize_trace_iterable(
                     counts["track_diagnosis_exact_match"] += 1
                 if diagnosis.get("ambiguous_prediction"):
                     counts["track_diagnosis_ambiguous"] += 1
+                historical_track = diagnosis.get("historical_track") or trace.get("track")
+                predicted_track = diagnosis.get("predicted_track")
+                if historical_track in {"A_BOX", "T_BOX"} and predicted_track in {
+                    "A_BOX",
+                    "T_BOX",
+                    "AMBIGUOUS",
+                }:
+                    diagnosis_confusion[(historical_track, predicted_track)] += 1
+                    if predicted_track == "AMBIGUOUS":
+                        diagnosis_attribution["ambiguous_route"] += 1
+                    elif predicted_track != historical_track:
+                        diagnosis_attribution["wrong_route"] += 1
+                        diagnosis_attribution[
+                            "wrong_route_proposal_accepted" if trace.get("accepted") else "wrong_route_proposal_failed"
+                        ] += 1
+                    else:
+                        diagnosis_attribution["correct_route"] += 1
+                        diagnosis_attribution[
+                            "correct_route_proposal_accepted"
+                            if trace.get("accepted")
+                            else "correct_route_proposal_failed"
+                        ] += 1
         overall.add(trace)
         groups["by_class"][trace.get("classification_class")].add(trace)
         groups["by_subtype"][trace.get("classification_subtype")].add(trace)
@@ -1287,12 +1406,64 @@ def summarize_trace_iterable(
         "diagnostic": groups["by_evaluation_subset"]["diagnostic"].as_dict(),
     }
 
+    diagnosis_labels = ("A_BOX", "T_BOX")
+    diagnosis_total = sum(diagnosis_confusion.values())
+    per_locus: dict[str, dict[str, Any]] = {}
+    f1_values = []
+    recall_values = []
+    for label in diagnosis_labels:
+        true_count = sum(count for (truth, _), count in diagnosis_confusion.items() if truth == label)
+        predicted_count = sum(count for (_, prediction), count in diagnosis_confusion.items() if prediction == label)
+        true_positive = diagnosis_confusion[(label, label)]
+        recall = true_positive / true_count if true_count else None
+        precision = true_positive / predicted_count if predicted_count else None
+        f1_denominator = (2 * true_positive) + (predicted_count - true_positive) + (true_count - true_positive)
+        f1 = (2 * true_positive / f1_denominator) if f1_denominator else None
+        if recall is not None:
+            recall_values.append(recall)
+        if f1 is not None:
+            f1_values.append(f1)
+        per_locus[label] = {
+            "support": true_count,
+            "precision": precision,
+            "recall": recall,
+            "f1": f1,
+        }
+    track_diagnosis_summary = {
+        "evaluated_count": diagnosis_total,
+        "confusion_matrix": {
+            truth: {
+                prediction: diagnosis_confusion[(truth, prediction)]
+                for prediction in ("A_BOX", "T_BOX", "AMBIGUOUS")
+            }
+            for truth in diagnosis_labels
+        },
+        "per_locus": per_locus,
+        "balanced_accuracy": sum(recall_values) / len(recall_values) if recall_values else None,
+        "macro_f1": sum(f1_values) / len(f1_values) if f1_values else None,
+        "ambiguous_count": sum(
+            count for (_, prediction), count in diagnosis_confusion.items() if prediction == "AMBIGUOUS"
+        ),
+        "ambiguous_rate": (
+            sum(count for (_, prediction), count in diagnosis_confusion.items() if prediction == "AMBIGUOUS")
+            / diagnosis_total
+            if diagnosis_total
+            else None
+        ),
+        "wrong_route_count": diagnosis_attribution.get("wrong_route", 0),
+        "wrong_route_rate": (
+            diagnosis_attribution.get("wrong_route", 0) / diagnosis_total if diagnosis_total else None
+        ),
+        "downstream_attribution": dict(sorted(diagnosis_attribution.items())),
+    }
+
     summary = {
         "build_utc": _utc_now(),
         "inputs": inputs,
         "counts": dict(counts),
         "overall_metrics": overall.as_dict(),
         "paper_subsets": subset_metrics,
+        "track_diagnosis": track_diagnosis_summary,
         "parse_errors": {
             "proposal_parse_error_count": counts.get("proposal_parse_error", 0),
             "proposal_parse_error_rate": (

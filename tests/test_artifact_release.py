@@ -2,14 +2,15 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
-from artifact_release import build_release_manifest, validate_release_inputs
+from artifact_release import build_release_manifest, validate_release_inputs, verify_release_manifest
 
 
 class ArtifactReleaseTests(unittest.TestCase):
-    def _record(self) -> dict:
+    def _record(self, case_id: str = "repair_case") -> dict:
         return {
-            "id": "repair_case",
+            "id": case_id,
             "qid": "Q1",
             "property": "P1",
             "track": "A_BOX",
@@ -47,7 +48,7 @@ class ArtifactReleaseTests(unittest.TestCase):
                     "sitelinks_norm": 0.5,
                 },
             },
-            "context_ref": {"world_state_id": "repair_case", "world_state_path": "world.json"},
+            "context_ref": {"world_state_id": case_id, "world_state_path": "world.json"},
             "classification": {
                 "class": "TypeB",
                 "subtype": "LOCAL_TEXT_CONFIRMED",
@@ -59,65 +60,115 @@ class ArtifactReleaseTests(unittest.TestCase):
             "build": {"version": "test"},
         }
 
-    def test_build_release_manifest_validates_and_hashes_inputs(self) -> None:
+    def _world_entry(self) -> dict:
+        return {
+            "L1_ego_node": {"qid": "Q1", "label": "entity", "description": None, "properties": {}},
+            "L2_labels": {},
+            "L3_neighborhood": {"outgoing_edges": []},
+            "L4_constraints": {},
+        }
+
+    def _fixture(self, root: Path) -> dict[str, Path]:
+        stage2 = root / "stage2.json"
+        stage2.write_text(json.dumps([self._record()]), encoding="utf-8")
+        world = root / "world.json"
+        world.write_text(json.dumps({"repair_case": self._world_entry()}), encoding="utf-8")
+        stage4 = root / "stage4.jsonl"
+        stage4.write_text(json.dumps(self._record()) + "\n", encoding="utf-8")
+        selection = root / "selection.json"
+        selection.write_text(
+            json.dumps(
+                {
+                    "selected_case_ids": ["repair_case"],
+                    "main_score_case_ids": ["repair_case"],
+                    "diagnostic_case_ids": [],
+                    "policy": {
+                        "tbox_cap_per_property_revision": 1,
+                        "abox_cap_per_qid_property": 1,
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        schema = root / "stage4.schema.json"
+        source_schema = Path(__file__).resolve().parents[1] / "schemas" / "04_classified_benchmark.schema.json"
+        schema.write_bytes(source_schema.read_bytes())
+        return {"stage2": stage2, "world": world, "stage4": stage4, "selection": selection, "schema": schema}
+
+    def test_build_and_verify_evaluation_release(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)
-            stage4 = root / "stage4.jsonl"
-            stage4.write_text(json.dumps(self._record()) + "\n", encoding="utf-8")
-            selection = root / "selection.json"
-            selection.write_text(
-                json.dumps(
-                    {
-                        "selected_case_ids": ["repair_case"],
-                        "main_score_case_ids": ["repair_case"],
-                        "diagnostic_case_ids": [],
-                        "policy": {
-                            "tbox_cap_per_property_revision": 1,
-                            "abox_cap_per_qid_property": 1,
-                        },
-                    }
-                ),
-                encoding="utf-8",
-            )
-            schema = Path(__file__).resolve().parents[1] / "schemas" / "04_classified_benchmark.schema.json"
-
+            paths = self._fixture(root)
             manifest = build_release_manifest(
-                stage4_path=stage4,
-                schema_path=schema,
-                selection_manifest_path=selection,
+                release_root=root,
+                stage2_path=paths["stage2"],
+                world_state_path=paths["world"],
+                stage4_path=paths["stage4"],
+                schema_path=paths["schema"],
+                selection_manifest_path=paths["selection"],
+                release_kind="evaluation",
             )
-
             self.assertTrue(manifest["validation"]["passed"])
-            self.assertTrue(all(len(file["sha256"]) == 64 for file in manifest["files"]))
+            self.assertTrue(all(not Path(item["path"]).is_absolute() for item in manifest["files"]))
+            manifest_path = root / "release.json"
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+            verification = verify_release_manifest(manifest_path, release_root=root)
+            self.assertTrue(verification["passed"])
 
-    def test_release_validation_requires_main_diagnostic_partition(self) -> None:
+    def test_unselected_invalid_stage4_record_fails_full_release_validation(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)
-            stage4 = root / "stage4.jsonl"
-            stage4.write_text(json.dumps(self._record()) + "\n", encoding="utf-8")
-            selection = root / "selection.json"
-            selection.write_text(
-                json.dumps(
-                    {
-                        "selected_case_ids": ["repair_case"],
-                        "policy": {
-                            "tbox_cap_per_property_revision": 1,
-                            "abox_cap_per_qid_property": 1,
-                        },
-                    }
-                ),
-                encoding="utf-8",
-            )
-            schema = Path(__file__).resolve().parents[1] / "schemas" / "04_classified_benchmark.schema.json"
-
+            paths = self._fixture(root)
+            with paths["stage4"].open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps({"id": "invalid_unselected"}) + "\n")
             validation = validate_release_inputs(
-                stage4_path=stage4,
-                schema_path=schema,
-                selection_manifest_path=selection,
+                stage2_path=paths["stage2"],
+                world_state_path=paths["world"],
+                stage4_path=paths["stage4"],
+                schema_path=paths["schema"],
+                selection_manifest_path=paths["selection"],
+                release_kind="evaluation",
             )
-
-            self.assertFalse(validation["checks"]["subset_partition_present"])
+            self.assertFalse(validation["checks"]["full_stage4_schema_valid"])
+            self.assertFalse(validation["checks"]["stage2_stage4_ids_match"])
             self.assertFalse(validation["passed"])
+
+    def test_verifier_detects_file_tampering(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            paths = self._fixture(root)
+            manifest = build_release_manifest(
+                release_root=root,
+                stage2_path=paths["stage2"],
+                world_state_path=paths["world"],
+                stage4_path=paths["stage4"],
+                schema_path=paths["schema"],
+                selection_manifest_path=paths["selection"],
+                release_kind="evaluation",
+            )
+            manifest_path = root / "release.json"
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+            paths["world"].write_text("{}", encoding="utf-8")
+            verification = verify_release_manifest(manifest_path, release_root=root)
+            self.assertFalse(verification["checks"]["all_files_match"])
+            self.assertFalse(verification["passed"])
+
+    def test_confirmatory_release_requires_clean_git(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            paths = self._fixture(root)
+            with patch("artifact_release._git_state", return_value={"commit": "abc", "dirty": True}):
+                with self.assertRaisesRegex(ValueError, "clean Git commit"):
+                    build_release_manifest(
+                        release_root=root,
+                        stage2_path=paths["stage2"],
+                        world_state_path=paths["world"],
+                        stage4_path=paths["stage4"],
+                        schema_path=paths["schema"],
+                        selection_manifest_path=paths["selection"],
+                        release_kind="evaluation",
+                        release_status="confirmatory",
+                    )
 
 
 if __name__ == "__main__":

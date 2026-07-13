@@ -2109,6 +2109,7 @@ def run_reasoning_floor(
             else "schemas/tbox_reform_proposal.schema.json"
         ),
         "track_diagnosis_schema": _file_fingerprint("schemas/track_diagnosis.schema.json"),
+        "prompt_definitions": _file_fingerprint("src/guardian/prompts.py"),
     }
     expected_run_config["inference_settings"] = _resolved_inference_settings(provider)
     expected_run_config["model_digest"] = (

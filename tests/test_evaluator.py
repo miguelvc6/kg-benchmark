@@ -873,7 +873,9 @@ class EvaluatorTests(unittest.TestCase):
                             "action": "RELAXATION_SET_EXPANSION",
                             "signature_after": [],
                         },
-                        "rationale": "The exact target constraint family is not available, but the reform family matches.",
+                        "rationale": (
+                            "The exact target constraint family is not available, but the reform family matches."
+                        ),
                         "provenance": [{"kind": "KG", "node_id": "Q21510859"}],
                         "uncertainty": {"confidence": 0.3},
                     }
@@ -1232,6 +1234,49 @@ class EvaluatorTests(unittest.TestCase):
             self.assertEqual(trace["metrics"]["tokens_to_fix"], 22)
             self.assertEqual(summary["overall_metrics"]["conversion_rate"], 1.0)
             self.assertEqual(summary["overall_metrics"]["tokens_to_fix_mean"], 22.0)
+
+    def test_track_diagnosis_summary_reports_confusion_macro_metrics_and_routing_attribution(self) -> None:
+        traces = []
+        for index, (historical, predicted, accepted) in enumerate(
+            (
+                ("A_BOX", "A_BOX", True),
+                ("A_BOX", "T_BOX", False),
+                ("T_BOX", "T_BOX", False),
+                ("T_BOX", "AMBIGUOUS", False),
+            )
+        ):
+            traces.append(
+                {
+                    "case_id": f"case_{index}",
+                    "accepted": accepted,
+                    "proposal_present": True,
+                    "proposal_executable": True,
+                    "parse_status": "normalized",
+                    "classification_class": "TypeA" if historical == "A_BOX" else "T_BOX",
+                    "classification_subtype": "test",
+                    "track": historical,
+                    "ablation_bundle": "logic_only",
+                    "popularity_bucket": "mid",
+                    "metrics": {},
+                    "track_diagnosis": {
+                        "present": True,
+                        "parse_status": "normalized",
+                        "historical_track": historical,
+                        "predicted_track": predicted,
+                        "exact_track_match": historical == predicted,
+                        "ambiguous_prediction": predicted == "AMBIGUOUS",
+                    },
+                }
+            )
+        summary = summarize_trace_iterable(traces, {"classified_benchmark": "stub"})
+        diagnosis = summary["track_diagnosis"]
+        self.assertEqual(diagnosis["confusion_matrix"]["A_BOX"], {"A_BOX": 1, "T_BOX": 1, "AMBIGUOUS": 0})
+        self.assertEqual(diagnosis["confusion_matrix"]["T_BOX"], {"A_BOX": 0, "T_BOX": 1, "AMBIGUOUS": 1})
+        self.assertAlmostEqual(diagnosis["balanced_accuracy"], 0.5)
+        self.assertAlmostEqual(diagnosis["macro_f1"], (2 / 3 + 1 / 2) / 2)
+        self.assertEqual(diagnosis["wrong_route_count"], 1)
+        self.assertEqual(diagnosis["ambiguous_count"], 1)
+        self.assertEqual(diagnosis["downstream_attribution"]["wrong_route_proposal_failed"], 1)
 
 
 if __name__ == "__main__":

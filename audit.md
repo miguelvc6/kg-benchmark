@@ -29,22 +29,22 @@ The appropriate current status is **a strong exploratory benchmark implementatio
 
 ## Readiness Summary
 
-| Area | Current state | Re-audit assessment |
-|---|---|---|
-| Research framing | Coherent A/T locus and evidence-access taxonomy | Strong, provided claims remain operational and extractor-relative. |
-| Stage 4 artifact | 535,570 records; current v2 schema | Fully schema-valid in this audit. |
-| Grouped splitter | Implemented and full-artifact tested | Passes with zero cross-split groups and acceptable proportions. |
-| Core/dev manifests | 4,800 core; 600 dev | Current manifests pass selected-row schema, caps, partition, and overlap checks. |
-| Evidence bundles | `logic_only` and corrected `local_graph` | Contract is improved, but effects must be rerun on an untouched population. |
-| Evaluator | Main/diagnostic metadata and stricter identity checks implemented | New semantics are tested; historical result files were not regenerated. |
-| Few-shot study | Full A-box run exists | Current delta report is invalid because comparator populations are disjoint. |
-| Diagnosis-routed study | Runner support exists | No confirmatory routed-vs-oracle evidence exists. |
-| T-box task | Taxonomy-patch task and full core reports exist | Gold remains extractor-derived and core-developed. |
-| Independent annotation | Assignment generator exists | Blinding is incomplete; no second annotations, agreement, or adjudication exist. |
-| Statistical inference | Initial paired cluster analysis tool exists | Not yet adequate as a general paper analysis layer. |
-| Reproducibility | Hash capture, release, registry, CI tools exist | Release/registry guarantees are incomplete and no actual release is present. |
-| Public artifact | Public docs exist | No deposited benchmark, DOI, license, citation file, checksums, or complete dataset card. |
-| Paper claim readiness | Exploratory only | Confirmatory claims should not be made from current outputs. |
+| Area                   | Current state                                                     | Re-audit assessment                                                                       |
+| ---------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Research framing       | Coherent A/T locus and evidence-access taxonomy                   | Strong, provided claims remain operational and extractor-relative.                        |
+| Stage 4 artifact       | 535,570 records; current v2 schema                                | Fully schema-valid in this audit.                                                         |
+| Grouped splitter       | Implemented and full-artifact tested                              | Passes with zero cross-split groups and acceptable proportions.                           |
+| Core/dev manifests     | 4,800 core; 600 dev                                               | Current manifests pass selected-row schema, caps, partition, and overlap checks.          |
+| Evidence bundles       | `logic_only` and corrected `local_graph`                          | Contract is improved, but effects must be rerun on an untouched population.               |
+| Evaluator              | Main/diagnostic metadata and stricter identity checks implemented | New semantics are tested; historical result files were not regenerated.                   |
+| Few-shot study         | Full A-box run exists                                             | Current delta report is invalid because comparator populations are disjoint.              |
+| Diagnosis-routed study | Runner support exists                                             | No confirmatory routed-vs-oracle evidence exists.                                         |
+| T-box task             | Taxonomy-patch task and full core reports exist                   | Gold remains extractor-derived and core-developed.                                        |
+| Independent annotation | Assignment generator exists                                       | Blinding is incomplete; no second annotations, agreement, or adjudication exist.          |
+| Statistical inference  | Initial paired cluster analysis tool exists                       | Not yet adequate as a general paper analysis layer.                                       |
+| Reproducibility        | Hash capture, release, registry, CI tools exist                   | Release/registry guarantees are incomplete and no actual release is present.              |
+| Public artifact        | Public docs exist                                                 | No deposited benchmark, DOI, license, citation file, checksums, or complete dataset card. |
+| Paper claim readiness  | Exploratory only                                                  | Confirmatory claims should not be made from current outputs.                              |
 
 ## Scope And Method
 
@@ -288,18 +288,18 @@ Local `data/` contains Stage 3, its SQLite sidecar, and lean Stage 4, but not St
 
 ## Scientific Claim Matrix
 
-| Candidate claim | Current support | Decision |
-|---|---|---|
-| Historical repairs can be represented as structured A/T repair cases | Pipeline, schemas, and artifacts support this | Defensible with extraction and temporal limitations. |
-| Group-aware partitioning prevents event-group leakage | Full 535,570-row split passed | Defensible for the implemented group keys; document key semantics. |
-| `local_graph` supplies the intended independent L1 evidence | Source/tests support the new contract | Defensible as an implementation claim, not yet as a model-effect claim. |
-| Local context improves repair | No untouched rerun under corrected context | Unsupported. |
-| Static few-shot improves repair | Current comparison has zero shared cases | Invalid current evidence. |
-| Diagnosis-routed repair is competitive with oracle routing | No confirmatory paired run | Unsupported. |
-| T-box taxonomy patches measure semantically valid schema repair | Gold is extractor-derived | Exploratory until independent validation. |
-| Type C requires external evidence | Negative local/rule search only | Do not claim; retain `EXTERNAL_BY_ELIMINATION`. |
-| Popularity effects demonstrate memorization | Strong property/class/context confounding remains | Unsupported causal interpretation. |
-| Released results are reproducible from immutable artifacts | No release, empty registry, weak eligibility gate | Unsupported. |
+| Candidate claim                                                      | Current support                                   | Decision                                                                |
+| -------------------------------------------------------------------- | ------------------------------------------------- | ----------------------------------------------------------------------- |
+| Historical repairs can be represented as structured A/T repair cases | Pipeline, schemas, and artifacts support this     | Defensible with extraction and temporal limitations.                    |
+| Group-aware partitioning prevents event-group leakage                | Full 535,570-row split passed                     | Defensible for the implemented group keys; document key semantics.      |
+| `local_graph` supplies the intended independent L1 evidence          | Source/tests support the new contract             | Defensible as an implementation claim, not yet as a model-effect claim. |
+| Local context improves repair                                        | No untouched rerun under corrected context        | Unsupported.                                                            |
+| Static few-shot improves repair                                      | Current comparison has zero shared cases          | Invalid current evidence.                                               |
+| Diagnosis-routed repair is competitive with oracle routing           | No confirmatory paired run                        | Unsupported.                                                            |
+| T-box taxonomy patches measure semantically valid schema repair      | Gold is extractor-derived                         | Exploratory until independent validation.                               |
+| Type C requires external evidence                                    | Negative local/rule search only                   | Do not claim; retain `EXTERNAL_BY_ELIMINATION`.                         |
+| Popularity effects demonstrate memorization                          | Strong property/class/context confounding remains | Unsupported causal interpretation.                                      |
+| Released results are reproducible from immutable artifacts           | No release, empty registry, weak eligibility gate | Unsupported.                                                            |
 
 ## Recommendations For Scientific Value
 

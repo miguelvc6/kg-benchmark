@@ -56,6 +56,7 @@ kg-annotation-protocol = "annotation_protocol:main"
 kg-select-untouched-test = "select_untouched_test:main"
 kg-analyze-results = "analyze_results:main"
 kg-experiment-registry = "experiment_registry:main"
+kg-protocol-freeze = "protocol_freeze:main"
 
 [tool.setuptools]
 package-dir = {"" = "src", "scripts" = "scripts"}
@@ -67,6 +68,7 @@ py-modules = [
     "select_untouched_test",
     "analyze_results",
     "experiment_registry",
+    "protocol_freeze",
     "evaluate",
     "fetcher",
     "non_llm_baselines",
