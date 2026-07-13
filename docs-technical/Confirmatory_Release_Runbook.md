@@ -29,16 +29,18 @@ it no longer records Stage 2 presence as if that were validation.
 
 The model/population portion of the methodology freeze is defined by
 [Model Execution Matrix](./Model_Execution.md) and `experiments/paper_execution_models_v1.json`. Validate it before the
-allocation freeze. The current matrix remains a draft until prompt configuration is decided, selection hashes exist, and
-all four immutable model/deployment revisions are bound; do not acquire the post-freeze snapshot while those fields are
-unresolved.
+allocation freeze. The current matrix remains a draft until selection hashes exist and all four immutable
+model/deployment revisions are bound. The prompt-only freeze is
+`experiments/paper_prompt_profile_v1.json`; validate it separately and do not acquire the post-freeze snapshot while any
+matrix fields remain unresolved.
 
 ```bash
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-experiment-plan validate
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-paper-prompt-profile
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-experiment-plan validate --require-frozen
 ```
 
-The second command is the confirmatory gate and must pass immediately before the freeze commit.
+The final command is the confirmatory gate and must pass immediately before the freeze commit.
 
 Create and commit the allocation freeze before mining. Use an unused snapshot directory and an isolated cache. Candidate
 refresh is explicit; resume statistics and checkpoints remain supported.
@@ -116,8 +118,10 @@ without case IDs.
 
 ## 5. Execution accounting and recovery
 
-Each Ollama model makes 2,400 calls for two bundles across 1,200 cases; both routing modes require 4,800. An external API
-reference model makes 1,200 calls for two bundles across the nested 600, or 2,400 with both routing modes. Resume only from
+Each Ollama model makes 2,400 oracle-routed calls for two bundles across 1,200 cases. The external API reference model
+makes 1,200 oracle-routed calls for two bundles across the nested 600. Few-shot or diagnosis-routed extensions require a
+separate frozen matrix expansion and reuse the existing generation cache rather than changing these headline counts.
+Resume only from
 hash-matching manifests and model identities. A shortage, lineage failure, incomplete disposition partition, repeated or
 previously used event, prompt leak, dirty freeze, or changed model identifier fails the release rather than triggering an
 ad hoc fallback.

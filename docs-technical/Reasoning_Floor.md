@@ -193,6 +193,12 @@ Named prompt templates for the reasoning floor now live in [src/guardian/prompts
 keeps prompt text out of the runner itself and gives each prompt a stable descriptive name that can be reused across
 callers.
 
+Paper execution passes `--prompt-profile experiments/paper_prompt_profile_v1.json`. The runner validates the profile's
+content, template, schema, and implementation hashes, enforces its oracle/diagnosis/context/T-box contract, and binds
+the profile identity into `run_config.json`. The CLI also accepts explicit `--context-length`, `--max-output-tokens`,
+`--temperature`, `--top-p`, `--seed`, `--ollama-think`, and `--max-retries` controls so confirmatory runs do not inherit
+mutable environment defaults. Ollama thinking traces are redacted and never scored.
+
 Those prompts now spell out the exact normalized JSON contract expected by the proposal and diagnosis parsers. The runner still requests JSON objects from providers, but prompt text now explicitly forbids wrapper shapes such as `proposal_id`, `summary`, `actions`, or `proposed_changes` in place of the canonical benchmark schema.
 
 The proposal prompts now require `rationale`, `provenance`, and a proposal-level `uncertainty` object. `provenance` must be a JSON array of canonical provenance objects, and `uncertainty.confidence` must normalize to a numeric `0.0-1.0` score.

@@ -178,8 +178,9 @@ The reasoning floor is the zero-shot pre-intervention baseline. It evaluates mod
 
 For each case and ablation bundle, the runner performs:
 
-1. track diagnosis: predict `A_BOX`, `T_BOX`, or `AMBIGUOUS`;
-2. repair proposal generation, using either historical track (`oracle`) or diagnosed track (`diagnosis_routed`).
+1. optional track diagnosis: predict `A_BOX`, `T_BOX`, or `AMBIGUOUS` for gated routing studies;
+2. repair proposal generation using the historical track (`oracle`) for confirmatory execution, with diagnosed-track
+   routing (`diagnosis_routed`) retained as a separately gated extension.
 
 The main ablation bundles are:
 
@@ -501,15 +502,15 @@ The reasoning floor should evaluate models without retrieval, external tools, me
 | Axis | Values |
 |---|---|
 | Context bundle | `logic_only`, `local_graph`; optionally `minimal_case` for diagnostics. |
-| Proposal-track mode | `oracle`, `diagnosis_routed`. |
-| Prompt regime | zero-shot contract; few-shot ablation separately. |
+| Proposal-track mode | `oracle`; `diagnosis_routed` remains a later gated ablation. |
+| Prompt regime | zero-shot hybrid JSON plus controlled natural language; few-shot ablation separately. |
 | Model | 2-3 local models plus small API reference subset. |
 | Dataset | dev/pilot for prompt selection; core for final. |
 
 ### Key comparisons
 
 1. `local_graph - logic_only` by information condition.
-2. `diagnosis_routed - oracle` by repair locus.
+2. Optional `diagnosis_routed - oracle` by repair locus after a separate routing gate.
 3. T-box exact match vs semantic-family success.
 4. Head vs tail entity performance.
 5. Zero-shot vs few-shot contract compliance.

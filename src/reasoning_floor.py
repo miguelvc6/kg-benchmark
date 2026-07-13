@@ -30,10 +30,37 @@ def main() -> int:
         default=None,
         help="Explicit reasoning effort for OpenAI-compatible providers.",
     )
+    parser.add_argument("--context-length", type=int, default=None, help="Explicit Ollama context window.")
+    parser.add_argument(
+        "--max-output-tokens",
+        type=int,
+        default=None,
+        help="Explicit completion-token limit (Ollama num_predict or OpenAI max_completion_tokens).",
+    )
+    parser.add_argument("--temperature", type=float, default=None, help="Explicit Ollama sampling temperature.")
+    parser.add_argument("--top-p", type=float, default=None, help="Explicit Ollama nucleus-sampling threshold.")
+    parser.add_argument("--seed", type=int, default=None, help="Explicit Ollama sampling seed.")
+    parser.add_argument(
+        "--ollama-think",
+        choices=("enabled", "disabled", "low", "medium", "high", "max"),
+        default=None,
+        help="Pin Ollama's native hidden-reasoning mode; traces are redacted from saved responses.",
+    )
+    parser.add_argument(
+        "--max-retries",
+        type=int,
+        default=None,
+        help="Maximum exact-request transport retries for providers that support them.",
+    )
     parser.add_argument(
         "--model-digest",
         default=None,
         help="Immutable model/deployment revision digest used in provenance and cache identity.",
+    )
+    parser.add_argument(
+        "--prompt-profile",
+        default=None,
+        help="Content-addressed paper prompt profile to validate and bind to the run.",
     )
     parser.add_argument(
         "--generation-cache",
@@ -130,6 +157,14 @@ def main() -> int:
         model_name=args.model,
         model_endpoint=args.model_endpoint,
         reasoning_effort=args.reasoning_effort,
+        context_length=args.context_length,
+        max_output_tokens=args.max_output_tokens,
+        temperature=args.temperature,
+        top_p=args.top_p,
+        seed=args.seed,
+        ollama_think=args.ollama_think,
+        max_retries=args.max_retries,
+        prompt_profile_path=args.prompt_profile,
         model_digest=args.model_digest,
         generation_cache_path=args.generation_cache,
         execution_mode=args.execution_mode,

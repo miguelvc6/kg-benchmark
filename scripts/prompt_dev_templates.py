@@ -295,11 +295,9 @@ V5_T_BOX_TAXONOMY_PATCH_CONTRACT = """Return exactly one JSON object:
         | "CONSTRAINT_QUALIFIER_ADD"
         | "CONSTRAINT_QUALIFIER_REMOVE"
         | "CONSTRAINT_QUALIFIER_REPLACE"
-        | "CLASS_HIERARCHY_ADD"
-        | "EXCEPTION_ADD"
         | "OTHER_TBOX_UPDATE",
       "taxonomy_code": "C_MINUS" | "C_D" | "C_PLUS" | "C_REPLACE" | "CQ_PLUS" | "CQ_MINUS"
-        | "CQ_REPLACE" | "SUBCLASS_PLUS" | "E_PLUS" | "OTHER",
+        | "CQ_REPLACE" | "OTHER",
       "constraint_type_qid": "Q...",
       "qualifier_property_id": "P... or null",
       "added_values": ["Q..." | "P..." | "<literal>" | 123],
@@ -342,10 +340,10 @@ Operation definitions:
 - CONSTRAINT_QUALIFIER_ADD / CQ_PLUS adds a qualifier value to a constraint definition.
 - CONSTRAINT_QUALIFIER_REMOVE / CQ_MINUS removes a qualifier value from a constraint definition.
 - CONSTRAINT_QUALIFIER_REPLACE / CQ_REPLACE replaces a qualifier value on the same qualifier property.
-- CLASS_HIERARCHY_ADD / SUBCLASS_PLUS adds a subclass relation that resolves the violation through class hierarchy.
-- EXCEPTION_ADD / E_PLUS adds an exception value to the constraint.
 - OTHER_TBOX_UPDATE / OTHER is a schema-level update not covered by the listed operations.
 Evidence boundary:
+- Use only the repair operations listed in this contract; class-hierarchy and exception repairs are outside this
+  confirmatory task because their historical deltas are not mined.
 - Use only visible prompt evidence.
 - Keep constraint-family QIDs separate from ordinary item/type values.
 - Do not use an empty string or placeholder for target.constraint_type_qid.

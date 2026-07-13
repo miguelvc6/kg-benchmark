@@ -366,7 +366,19 @@ constraint payload. Local graph prompts follow the same L4 temporal policy and d
 
 ## Freeze Final Prompt Configuration
 
-After dev results are reviewed, freeze the chosen prompt settings before main-core inference:
+The legacy `kg-prompt-dev freeze` artifact remains useful for Phase F comparisons, but it is not the paper execution
+freeze because it identifies a single development version and does not hash the actual mixed execution templates. The
+paper uses the content-addressed `experiments/paper_prompt_profile_v1.json` instead. Validate it with:
+
+```bash
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-paper-prompt-profile
+```
+
+That profile fixes A-box v4 plus T-box taxonomy-patch v5, `hybrid_json_nl`, zero-shot, `logic_only` plus `local_graph`,
+oracle routing with diagnosis skipped, no abstention, JSON-only output, and the supported-only confirmatory T-box
+operation vocabulary. Its hashes refer to the templates actually used by `kg-reasoning-floor`.
+
+For historical Phase F comparisons, the older axis-only marker can still be written with:
 
 ```bash
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-prompt-dev freeze \
@@ -374,11 +386,12 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-prompt-dev freeze \
   --representation hybrid_json_nl \
   --example-policy zero_shot \
   --context-bundles logic_only,local_graph \
-  --proposal-track-modes oracle,diagnosis_routed \
-  --notes "Frozen after dev prompt comparison."
+  --proposal-track-modes oracle \
+  --notes "Legacy Phase F axis marker; not the paper prompt profile."
 ```
 
-This writes JSON and Markdown config artifacts. Freezing records the prompt version and selected axes; it does not run inference.
+This writes JSON and Markdown config artifacts. It records development axes, does not run inference, and must not be
+used as the paper's `prompt_configuration`.
 
 ## Relationship To Reasoning Floor
 

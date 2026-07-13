@@ -26,9 +26,11 @@ The main reasoning-floor setup uses:
 - sanitized benchmark inputs only;
 - `logic_only` and `local_graph` context bundles as primary conditions;
 - `minimal_case` as an optional diagnostic condition;
-- oracle-track and diagnosis-routed proposal modes.
+- oracle-track proposal generation with track diagnosis skipped;
+- one provider-neutral logical prompt contract with model-native hidden reasoning allowed only when explicitly pinned.
 
-Few-shot prompting is an ablation, not the main baseline. It tests precedent adaptation and contract compliance rather than the pure reasoning floor.
+Few-shot and diagnosis-routed prompting are later ablations, not part of the confirmatory reasoning-floor workload. They
+test precedent adaptation and routing cost rather than the pure repair baseline.
 
 ## Prediction Tasks
 
@@ -43,6 +45,8 @@ The model receives the historical repair locus and proposes a repair using the c
 ### Diagnosis-Routed Repair
 
 The model first predicts the repair locus and then generates a proposal using that predicted route. The gap between oracle-track and diagnosis-routed performance measures the cost of repair-locus errors.
+The current diagnosis gate did not justify confirmatory routing, so this remains exploratory unless a later frozen
+protocol adds it.
 
 ## Context Ablations
 

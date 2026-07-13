@@ -31,10 +31,11 @@ Exhaustive deterministic checks replace unavailable human evaluation for release
 is used only to discover error mechanisms that can then become deterministic rules. It cannot certify semantic truth, causal
 necessity, uniqueness, or external-evidence dependence. These remain explicit limitations of the paper.
 
-Every local Ollama model evaluates all 1,200 cases in both `logic_only` and `local_graph`, or 2,400 calls per model. Running
-both oracle-track and diagnosis-routed modes doubles this to 4,800. External API reference models evaluate a deterministic,
-nested 600-case subset in both context bundles: 1,200 calls, or 2,400 with both routing modes. Local results are the headline
-analysis; API results are paired calibration evidence rather than a substitute population.
+Every local Ollama model evaluates all 1,200 cases with oracle routing in both `logic_only` and `local_graph`, or 2,400
+calls per model. External API reference models evaluate a deterministic, nested 600-case subset in both context bundles,
+or 1,200 calls. Diagnosis-routed and few-shot runs are not part of this confirmatory workload; the extensible execution
+layer may add them later as separately frozen ablations without repeating the existing generations. Local results are the
+headline analysis; API results are paired calibration evidence rather than a substitute population.
 
 Implementation commands and artifact contracts are in the
 [Confirmatory Release Runbook](../docs-technical/Confirmatory_Release_Runbook.md).

@@ -10,6 +10,7 @@
     "matrix_id",
     "status",
     "prompt_configuration",
+    "prompt_configuration_sha256",
     "tbox_task_version",
     "reporting_policy",
     "generation_cache_root",
@@ -22,6 +23,12 @@
     "matrix_id": {"type": "string", "minLength": 1},
     "status": {"enum": ["draft", "frozen"]},
     "prompt_configuration": {"type": ["string", "null"]},
+    "prompt_configuration_sha256": {
+      "anyOf": [
+        {"type": "null"},
+        {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      ]
+    },
     "tbox_task_version": {"const": "tbox_taxonomy_patch_v1"},
     "reporting_policy": {
       "type": "object",
@@ -96,6 +103,13 @@
           "execution_mode",
           "parallel_workers",
           "reasoning_effort",
+          "context_length",
+          "max_output_tokens",
+          "temperature",
+          "top_p",
+          "seed",
+          "ollama_think",
+          "transport_max_retries",
           "tools_disabled",
           "batch_sync_retry_fallback",
           "enabled"
@@ -112,6 +126,16 @@
             "type": ["string", "null"],
             "enum": [null, "none", "minimal", "low", "medium", "high", "xhigh"]
           },
+          "context_length": {"type": ["integer", "null"], "minimum": 1},
+          "max_output_tokens": {"type": "integer", "minimum": 1},
+          "temperature": {"type": ["number", "null"], "minimum": 0},
+          "top_p": {"type": ["number", "null"], "exclusiveMinimum": 0, "maximum": 1},
+          "seed": {"type": ["integer", "null"]},
+          "ollama_think": {
+            "type": ["string", "null"],
+            "enum": [null, "enabled", "disabled", "low", "medium", "high", "max"]
+          },
+          "transport_max_retries": {"type": "integer", "minimum": 0},
           "tools_disabled": {"const": true},
           "batch_sync_retry_fallback": {"type": "boolean"},
           "enabled": {"type": "boolean"}

@@ -206,6 +206,25 @@ def _ollama_keep_alive_value(value: Any) -> str | int | None:
     return normalized
 
 
+def _ollama_think_value(value: Any) -> bool | str | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+    normalized = str(value).strip().lower()
+    if not normalized:
+        return None
+    if normalized in {"true", "enabled"}:
+        return True
+    if normalized in {"false", "disabled"}:
+        return False
+    if normalized in {"low", "medium", "high", "max"}:
+        return normalized
+    raise ValueError(
+        "OLLAMA_THINK must be enabled, disabled, low, medium, high, or max."
+    )
+
+
 def _normalize_api_key(env_name: str, value: str | None) -> str | None:
     if value is None:
         return None
@@ -303,6 +322,7 @@ def _openai_chat_payload(
     response_format: dict[str, Any],
     reasoning_effort: str | None = None,
     tools_disabled: bool = True,
+    max_output_tokens: int | None = None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "model": model,
@@ -317,6 +337,8 @@ def _openai_chat_payload(
         payload["reasoning"] = {"effort": reasoning_effort}
     if tools_disabled:
         payload["tool_choice"] = "none"
+    if isinstance(max_output_tokens, int) and max_output_tokens > 0:
+        payload["max_completion_tokens"] = max_output_tokens
     if response_format:
         payload["response_format"] = response_format
     return payload
@@ -530,6 +552,8 @@ class OpenAIChatProvider:
     reasoning_effort: str | None = None
     tools_disabled: bool = True
     timeout: int = 120
+    max_output_tokens: int | None = None
+    max_retries: int = 0
     provider_name: str = "openai"
     provider_env_prefix: str = "OPENAI"
     api_key_env_name: str = "OPENAI_API_KEY"
@@ -542,6 +566,9 @@ class OpenAIChatProvider:
         self.model = self.model or os.getenv(self.model_env_name)
         default_base_url = "https://api.openai.com/v1" if self.provider_name == "openai" else ""
         self.base_url = (self.base_url or os.getenv(self.base_url_env_name) or default_base_url).rstrip("/")
+        self.max_output_tokens = self.max_output_tokens or _env_int(
+            f"{self.provider_env_prefix}_MAX_OUTPUT_TOKENS"
+        )
         reasoning_setting = f"{self.provider_env_prefix}_REASONING_EFFORT"
         self.reasoning_effort = _normalize_openai_reasoning_effort(
             self.reasoning_effort or os.getenv(reasoning_setting), setting_name=reasoning_setting
@@ -616,6 +643,7 @@ class OpenAIChatProvider:
             response_format=response_format,
             reasoning_effort=self.reasoning_effort,
             tools_disabled=self.tools_disabled,
+            max_output_tokens=self.max_output_tokens,
         )
         request_body = _encode_json_body(payload, metadata=metadata, provider_name="OpenAI")
         response = requests.post(
@@ -655,6 +683,7 @@ class OpenAIChatProvider:
             response_format=response_format,
             reasoning_effort=self.reasoning_effort,
             tools_disabled=self.tools_disabled,
+            max_output_tokens=self.max_output_tokens,
         )
         request_record = {
             "custom_id": custom_id,
@@ -868,6 +897,7 @@ class OllamaChatProvider:
     temperature: float | None = None
     top_p: float | None = None
     seed: int | None = None
+    think: bool | str | None = None
     max_retries: int = 2
     retry_base_seconds: float = 2.0
     retry_max_seconds: float = 20.0
@@ -885,6 +915,9 @@ class OllamaChatProvider:
         self.temperature = self.temperature if self.temperature is not None else _env_float("OLLAMA_TEMPERATURE")
         self.top_p = self.top_p if self.top_p is not None else _env_float("OLLAMA_TOP_P")
         self.seed = self.seed or _env_int("OLLAMA_SEED")
+        self.think = _ollama_think_value(
+            self.think if self.think is not None else os.getenv("OLLAMA_THINK")
+        )
         env_max_retries = _env_retry_count("OLLAMA_MAX_RETRIES")
         self.max_retries = env_max_retries if env_max_retries is not None else self.max_retries
         self.retry_base_seconds = _env_float("OLLAMA_RETRY_BASE_SECONDS") or self.retry_base_seconds
@@ -950,6 +983,8 @@ class OllamaChatProvider:
             payload["format"] = ollama_format
         if self.keep_alive is not None:
             payload["keep_alive"] = self.keep_alive
+        if self.think is not None:
+            payload["think"] = self.think
         options: dict[str, Any] = {}
         if isinstance(self.context_length, int) and self.context_length > 0:
             options["num_ctx"] = self.context_length
@@ -1146,15 +1181,37 @@ def create_model_provider(
     model_name: str | None = None,
     model_endpoint: str | None = None,
     reasoning_effort: str | None = None,
+    *,
+    context_length: int | None = None,
+    max_output_tokens: int | None = None,
+    temperature: float | None = None,
+    top_p: float | None = None,
+    seed: int | None = None,
+    ollama_think: bool | str | None = None,
+    max_retries: int | None = None,
 ) -> ModelProvider:
     load_dotenv()
     provider_name = (
         model_endpoint or os.getenv("MODEL_ENDPOINT") or os.getenv("MODEL_PROVIDER") or "openai"
     ).strip().lower()
     if provider_name == "openai":
-        return OpenAIChatProvider(model=model_name, reasoning_effort=reasoning_effort)
+        return OpenAIChatProvider(
+            model=model_name,
+            reasoning_effort=reasoning_effort,
+            max_output_tokens=max_output_tokens,
+            max_retries=max_retries if max_retries is not None else 0,
+        )
     if provider_name == "ollama":
-        return OllamaChatProvider(model=model_name)
+        return OllamaChatProvider(
+            model=model_name,
+            context_length=context_length,
+            max_output_tokens=max_output_tokens,
+            temperature=temperature,
+            top_p=top_p,
+            seed=seed,
+            think=ollama_think,
+            max_retries=max_retries if max_retries is not None else 2,
+        )
     if provider_name == "azure":
         return OpenAIChatProvider(
             api_key=os.getenv("AZURE_OPENAI_API_KEY"),
@@ -1166,6 +1223,8 @@ def create_model_provider(
             model_env_name="AZURE_OPENAI_DEPLOYMENT",
             base_url_env_name="AZURE_OPENAI_ENDPOINT",
             reasoning_effort=reasoning_effort,
+            max_output_tokens=max_output_tokens,
+            max_retries=max_retries if max_retries is not None else 0,
         )
     if provider_name == "university":
         return OpenAIResponsesProvider(model=model_name)

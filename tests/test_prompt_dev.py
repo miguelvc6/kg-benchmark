@@ -1630,8 +1630,6 @@ class PromptDevTests(unittest.TestCase):
             "CONSTRAINT_QUALIFIER_ADD",
             "CONSTRAINT_QUALIFIER_REMOVE",
             "CONSTRAINT_QUALIFIER_REPLACE",
-            "CLASS_HIERARCHY_ADD",
-            "EXCEPTION_ADD",
             "OTHER_TBOX_UPDATE",
         )
         self.assertIn("Prompt version: prompt_dev_v5_tbox_taxonomy_patch", prompt.user_prompt)
@@ -1639,6 +1637,8 @@ class PromptDevTests(unittest.TestCase):
             self.assertIn(field, prompt.user_prompt)
         for operation in operations:
             self.assertIn(operation, prompt.user_prompt)
+        self.assertNotIn('"CLASS_HIERARCHY_ADD"', prompt.user_prompt)
+        self.assertNotIn('"EXCEPTION_ADD"', prompt.user_prompt)
         self.assertIn("Do not construct a full post-repair signature_after", prompt.user_prompt)
         for forbidden in (
             "TypeA",

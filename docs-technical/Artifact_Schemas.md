@@ -428,6 +428,8 @@ The repository schema set covers:
 - `release_manifest.schema.json`: validated content-addressed releases
 - `research_protocol.schema.json`: frozen experiment protocols
 - `experiment_registry.schema.json`: exploratory, confirmatory, and superseded run registry
+- `paper_prompt_profile.schema.json`: content-addressed mixed-task prompt, routing, response, and inference policy
+- `execution_matrix.schema.json`: model/population plan plus explicit per-model inference controls
 - `automated_consistency_audit.schema.json`: full-data audit inputs, coverage, packet counts, and hash-bound artifacts
 - `automated_audit_review.schema.json`: schema-constrained Codex error-discovery review batches
 

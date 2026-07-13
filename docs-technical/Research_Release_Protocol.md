@@ -49,6 +49,11 @@ Taxonomy-patch reasoning runs automatically score versioned, content-bound gold 
 [Evaluation Harness](./Evaluation_Harness.md). Their ordinary bundle evaluation is A-box-only, taxonomy metrics are
 written separately, and no combined A-box/T-box repair-success score is emitted.
 
+Paper runs additionally require the content-addressed prompt profile. It freezes the actual A-box and T-box execution
+templates, supported T-box operation vocabulary, zero-shot representation, context bundles, oracle routing, response
+policy, and implementation hashes. `kg-experiment-plan` verifies its file digest, and `kg-reasoning-floor` revalidates
+and records it before inference. Parse failures receive no semantic repair retry.
+
 Before building a release, write a snapshot manifest that names the data sources, retrieval time, temporal-context
 policy, and SHA-256 digests for Stage 2, Stage 3, and Stage 4. It must validate against
 `schemas/snapshot_manifest.schema.json`. The release builder verifies those digests rather than trusting the snapshot

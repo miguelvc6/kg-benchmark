@@ -288,7 +288,9 @@ This measures repair ability when locus selection is not the bottleneck.
 
 The model first predicts the track and then generates the proposal using the predicted track. This measures the full end-to-end repair behavior.
 
-The gap between oracle-track and diagnosis-routed performance is central: it quantifies how much repair quality is lost to locus-selection errors.
+The oracle-track repair condition is the confirmatory paper baseline. A later diagnosis-routed ablation can quantify how
+much repair quality is lost to locus-selection errors, but it enters the paper only under a separately frozen protocol
+after its routing gate passes.
 
 ---
 
@@ -659,7 +661,7 @@ The paper's discussion should emphasize that these patterns support the benchmar
 
 ## 17. One-paragraph abstract draft
 
-Knowledge-graph repair requires more than predicting missing triples: a system must decide whether an error lies in an entity statement or a schema constraint, determine what information is needed to justify the edit, and produce an auditable transaction that can be checked symbolically. We introduce WikidataRepairEval, a benchmark of historical Wikidata repair events with frozen world-state context and temporal leakage controls. Building on existing Wikidata repair taxonomy, the benchmark separates A-box entity repairs from T-box schema reforms and labels A-box cases by information condition: rule-implied, locally grounded, or requiring non-local evidence. We evaluate language models on track diagnosis, oracle-track repair, and diagnosis-routed repair under logic-only and local-graph context ablations. Our evaluation checks parse validity, executability, exact historical agreement, semantic schema-family match, auditability, and cost telemetry. The resulting failure map shows whether models repair the right layer, use local context when appropriate, abstain or guess when evidence is insufficient, and produce transactions that survive symbolic verification.
+Knowledge-graph repair requires more than predicting missing triples: a system must decide whether an error lies in an entity statement or a schema constraint, determine what information is needed to justify the edit, and produce an auditable transaction that can be checked symbolically. We introduce WikidataRepairEval, a benchmark of historical Wikidata repair events with frozen world-state context and temporal leakage controls. Building on existing Wikidata repair taxonomy, the benchmark separates A-box entity repairs from T-box schema reforms and labels A-box cases by information condition: rule-implied, locally grounded, or requiring non-local evidence. We evaluate language models on oracle-track A-box repair and T-box taxonomy patches under logic-only and local-graph context ablations, with track diagnosis and diagnosis-routed repair reserved for gated follow-up analysis. Our evaluation checks parse validity, executability, exact historical agreement, semantic schema-family match, auditability, and cost telemetry. The resulting failure map shows whether models use local context when appropriate, express uncertainty when evidence is insufficient, and produce transactions that survive symbolic verification.
 
 ---
 

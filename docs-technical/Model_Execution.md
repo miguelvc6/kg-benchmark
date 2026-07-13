@@ -2,7 +2,9 @@
 
 The paper model and population plan is tracked in
 [`experiments/paper_execution_models_v1.json`](../experiments/paper_execution_models_v1.json). It is intentionally
-`draft` until the prompt configuration, final selection hashes, and all immutable model revisions are available.
+`draft` until final selection hashes and all immutable model revisions are available. The prompt-only configuration is
+already frozen in
+[`experiments/paper_prompt_profile_v1.json`](../experiments/paper_prompt_profile_v1.json) and bound by SHA-256.
 `kg-experiment-plan` validates the matrix and derives workloads and runner arguments; adding a model or population is a
 data-only change when it uses an existing provider contract.
 
@@ -20,6 +22,17 @@ condition disables synchronous fallback: a failed batch item remains a recorded 
 reissued through a different execution mode. The OpenAI-compatible request adapter sends `tool_choice: "none"` for both
 synchronous and batch payloads.
 
+All models receive the same logical zero-shot, hybrid JSON/NL contract. A-box uses `prompt_dev_v4_spec_only`; T-box uses
+`prompt_dev_v5_tbox_taxonomy_patch`. The prompt profile disables abstention and semantic retries, requires JSON plus
+short rationale/provenance/uncertainty fields, redacts reasoning traces, and exposes only confirmatory-supported T-box
+operations. Class-hierarchy and exception operations remain in the extensible schema but are absent from the paper
+prompt.
+
+Local inference is explicit: 32,768 context tokens, 8,192 output tokens, temperature 0, top-p 1, seed 13, and two
+exact-request transport retries. Qwen 3 thinking is enabled, Llama 3.3 thinking is disabled, and GPT-OSS uses high
+thinking. Azure uses 8,192 maximum completion tokens, high reasoning effort, zero client item retries, batch execution,
+and no synchronous fallback. Reasoning levels are provider-native conditions and are not claimed to be equivalent.
+
 All four conditions pin `tbox_task_version=tbox_taxonomy_patch_v1`. T-box scoring requires complete mechanically
 supported gold and excludes cases requiring unmined class-hierarchy or exception operations. A-box and T-box use separate
 metric families and are never collapsed into one repair-success score. Strict-signature reconstruction is not queried by
@@ -29,14 +42,19 @@ Validate or render the plan with:
 
 ```bash
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-experiment-plan validate
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-paper-prompt-profile
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-experiment-plan plan --output reports/execution_plan.json
 ```
 
 `--require-frozen` deliberately fails the current draft. Before changing the matrix to `frozen`, resolve the two missing
-Ollama manifest digests, bind an immutable Azure deployment revision, replace the snapshot selection placeholders and
-their SHA-256 hashes, and set `prompt_configuration` to the prompt freeze chosen in the next methodology step. The
+Ollama manifest digests, bind an immutable Azure deployment revision, and replace the snapshot selection placeholders
+and their SHA-256 hashes. The
 installed `gpt-oss:120b` manifest digest is already recorded. Large missing Ollama models are not pulled as part of
 validation.
+
+`kg-paper-prompt-profile` verifies the profile's own canonical digest, the exact system/user template digests, output
+schema digests, and prompt registry, renderer, context-policy, prompt-development, and provider-adapter file hashes.
+Every planned runner command receives `--prompt-profile`; the runner revalidates it and records it in `run_config.json`.
 
 ## Cross-run generation reuse
 

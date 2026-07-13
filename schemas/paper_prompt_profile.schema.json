@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kg-benchmark.local/schemas/paper_prompt_profile.schema.json",
+  "title": "Content-addressed paper prompt profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest_type",
+    "manifest_version",
+    "profile_id",
+    "status",
+    "freeze_scope",
+    "profile_sha256",
+    "tasks",
+    "representation",
+    "example_policy",
+    "context_bundles",
+    "routing_policy",
+    "abstention_enabled",
+    "answer_policy",
+    "tbox_operation_profile",
+    "inference_policy",
+    "implementation_artifacts"
+  ],
+  "properties": {
+    "manifest_type": {"const": "paper_prompt_profile"},
+    "manifest_version": {"const": 1},
+    "profile_id": {"const": "paper_prompt_profile_v1"},
+    "status": {"const": "frozen"},
+    "freeze_scope": {"const": "prompt_configuration_only"},
+    "profile_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "tasks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["a_box_repair", "t_box_repair"],
+      "properties": {
+        "a_box_repair": {"$ref": "#/$defs/task"},
+        "t_box_repair": {"$ref": "#/$defs/task"}
+      }
+    },
+    "representation": {"const": "hybrid_json_nl"},
+    "example_policy": {"const": "zero_shot"},
+    "context_bundles": {
+      "type": "array",
+      "const": ["logic_only", "local_graph"]
+    },
+    "routing_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["proposal_track_mode", "oracle_diagnosis_mode"],
+      "properties": {
+        "proposal_track_mode": {"const": "oracle"},
+        "oracle_diagnosis_mode": {"const": "skip"}
+      }
+    },
+    "abstention_enabled": {"const": false},
+    "answer_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["json_only", "visible_chain_of_thought", "required_audit_fields"],
+      "properties": {
+        "json_only": {"const": true},
+        "visible_chain_of_thought": {"const": false},
+        "required_audit_fields": {
+          "type": "array",
+          "const": ["rationale", "provenance", "uncertainty"]
+        }
+      }
+    },
+    "tbox_operation_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allowed_repair_ops", "excluded_repair_ops"],
+      "properties": {
+        "allowed_repair_ops": {
+          "type": "array",
+          "const": [
+            "CONSTRAINT_REMOVE",
+            "CONSTRAINT_DEPRECATE",
+            "CONSTRAINT_ADD",
+            "CONSTRAINT_TYPE_REPLACE",
+            "CONSTRAINT_QUALIFIER_ADD",
+            "CONSTRAINT_QUALIFIER_REMOVE",
+            "CONSTRAINT_QUALIFIER_REPLACE",
+            "OTHER_TBOX_UPDATE"
+          ]
+        },
+        "excluded_repair_ops": {
+          "type": "array",
+          "const": ["CLASS_HIERARCHY_ADD", "EXCEPTION_ADD"]
+        }
+      }
+    },
+    "inference_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "same_logical_prompt_across_models",
+        "response_format",
+        "semantic_retry_count",
+        "transport_retry_policy",
+        "reasoning_trace_policy",
+        "tools_disabled"
+      ],
+      "properties": {
+        "same_logical_prompt_across_models": {"const": true},
+        "response_format": {"const": "json_object"},
+        "semantic_retry_count": {"const": 0},
+        "transport_retry_policy": {"const": "exact_request_only"},
+        "reasoning_trace_policy": {"const": "redacted_not_scored"},
+        "tools_disabled": {"const": true}
+      }
+    },
+    "implementation_artifacts": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {"$ref": "#/$defs/artifact"}
+    }
+  },
+  "$defs": {
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["task_version", "template_name", "template_sha256", "output_schema"],
+      "properties": {
+        "task_version": {"type": "string", "minLength": 1},
+        "template_name": {"type": "string", "minLength": 1},
+        "template_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "output_schema": {"$ref": "#/$defs/artifact"}
+      }
+    }
+  }
+}

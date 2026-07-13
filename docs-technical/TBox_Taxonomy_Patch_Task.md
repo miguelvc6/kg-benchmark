@@ -137,6 +137,9 @@ For all unsupported-but-theoretically-valid operations, the schema may accept th
 For the confirmatory 1,200-case release, schema acceptance is not sufficient for case eligibility. Every selected T-box
 case must yield complete mechanically supported gold. `CLASS_HIERARCHY_ADD` and `EXCEPTION_ADD` remain available for
 future schema evolution but are excluded from confirmatory selection until their required historical deltas are mined.
+They are also omitted from the confirmatory model-visible operation list, so the paper task does not offer labels that
+cannot be correct in its selected population. The master schema retains them for backward compatibility and future
+extensions.
 
 ## Difference From Strict Signature Reconstruction
 

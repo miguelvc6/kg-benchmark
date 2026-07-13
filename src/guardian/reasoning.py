@@ -39,6 +39,7 @@ from guardian.track_parser import normalize_diagnosis
 from lib.benchmark_selection import resolve_case_id_filter
 from lib.repair_state import pre_repair_target_state, reconstruct_properties_with_pre_repair_target
 from lib.utils import iter_jsonl, normalize_text
+from paper_prompt_profile import load_prompt_profile
 
 
 def _utc_now() -> str:
@@ -212,6 +213,7 @@ def _resolved_inference_settings(provider: ModelProvider) -> dict[str, Any]:
         "temperature",
         "top_p",
         "seed",
+        "think",
         "max_retries",
         "reasoning_effort",
         "tools_disabled",
@@ -325,6 +327,7 @@ def _validate_resume_run_config(
         "abox_task_version",
         "prompt_version",
         "strict_tbox_signature_diagnostic",
+        "paper_prompt_profile",
         "artifact_fingerprints",
         "inference_settings",
         "model_digest",
@@ -2047,6 +2050,14 @@ def run_reasoning_floor(
     model_name: str | None = None,
     model_endpoint: str | None = None,
     reasoning_effort: str | None = None,
+    context_length: int | None = None,
+    max_output_tokens: int | None = None,
+    temperature: float | None = None,
+    top_p: float | None = None,
+    seed: int | None = None,
+    ollama_think: bool | str | None = None,
+    max_retries: int | None = None,
+    prompt_profile_path: str | Path | None = None,
     model_digest: str | None = None,
     generation_cache_path: str | Path | None = None,
     ablation_bundles: Iterable[str] = ABLATION_BUNDLES,
@@ -2064,11 +2075,19 @@ def run_reasoning_floor(
 ) -> dict[str, Any]:
     run_started_utc = _utc_now()
     run_started_at = time.perf_counter()
+    prompt_profile = load_prompt_profile(prompt_profile_path) if prompt_profile_path is not None else None
     if provider is None:
         provider = create_model_provider(
             model_name,
             model_endpoint=model_endpoint,
             reasoning_effort=reasoning_effort,
+            context_length=context_length,
+            max_output_tokens=max_output_tokens,
+            temperature=temperature,
+            top_p=top_p,
+            seed=seed,
+            ollama_think=ollama_think,
+            max_retries=max_retries,
         )
     base_provider = provider
     selected_model = getattr(provider, "model", None) or model_name or "unknown-model"
@@ -2210,6 +2229,19 @@ def run_reasoning_floor(
     bundle_list = [bundle for bundle in ablation_bundles if bundle in ABLATION_BUNDLES]
     if not bundle_list:
         raise ValueError("At least one supported ablation bundle is required.")
+    if prompt_profile is not None:
+        expected_routing = prompt_profile["routing_policy"]
+        if normalized_proposal_track_mode != expected_routing["proposal_track_mode"]:
+            raise ValueError("The paper prompt profile requires oracle proposal routing.")
+        if normalized_oracle_diagnosis_mode != expected_routing["oracle_diagnosis_mode"]:
+            raise ValueError("The paper prompt profile requires track diagnosis to be skipped.")
+        if bundle_list != prompt_profile["context_bundles"]:
+            raise ValueError(
+                "The requested context bundles do not match the paper prompt profile: "
+                f"requested={bundle_list}, frozen={prompt_profile['context_bundles']}."
+            )
+        if not _uses_tbox_taxonomy_patch():
+            raise ValueError("The paper prompt profile requires tbox_taxonomy_patch_v1.")
     total_instances = len(selected_case_ids) * len(bundle_list)
     planned_diagnosis_request_count = total_instances if should_run_track_diagnosis else 0
     planned_proposal_request_count = total_instances
@@ -2265,6 +2297,16 @@ def run_reasoning_floor(
             else None
         ),
     }
+    expected_run_config["paper_prompt_profile"] = (
+        {
+            "path": str(Path(prompt_profile_path).resolve()),
+            "profile_id": prompt_profile["profile_id"],
+            "profile_sha256": prompt_profile["profile_sha256"],
+            "file": _file_fingerprint(prompt_profile_path),
+        }
+        if prompt_profile is not None
+        else None
+    )
     expected_run_config["reasoning_effort"] = resolved_reasoning_effort
     expected_run_config["inference_settings"] = base_inference_settings
     expected_run_config["model_digest"] = resolved_model_digest

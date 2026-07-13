@@ -20,10 +20,16 @@ class ExperimentPlanTests(unittest.TestCase):
         self.assertEqual(counts["azure_gpt_5_6_sol_high"], 1200)
         self.assertEqual(plan["tbox_task_version"], "tbox_taxonomy_patch_v1")
         self.assertFalse(plan["reporting_policy"]["combined_abox_tbox_score"])
+        self.assertEqual(plan["prompt_configuration"], "experiments/paper_prompt_profile_v1.json")
         azure = next(run for run in plan["runs"] if run["model_id"] == "azure_gpt_5_6_sol_high")
         self.assertIn("high", azure["argv"])
         self.assertIn("tbox_taxonomy_patch_v1", azure["argv"])
         self.assertIn("--no-batch-sync-retry-fallback", azure["argv"])
+        self.assertIn("--prompt-profile", azure["argv"])
+        self.assertIn("--max-output-tokens", azure["argv"])
+        qwen = next(run for run in plan["runs"] if run["model_id"] == "ollama_qwen3_30b")
+        self.assertEqual(qwen["argv"][qwen["argv"].index("--ollama-think") + 1], "enabled")
+        self.assertEqual(qwen["argv"][qwen["argv"].index("--temperature") + 1], "0")
 
     def test_added_model_inherits_population_without_code_changes(self) -> None:
         extended = copy.deepcopy(self.matrix)

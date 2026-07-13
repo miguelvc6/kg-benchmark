@@ -165,9 +165,9 @@ Input case:
     {
       "repair_op": "CONSTRAINT_REMOVE" | "CONSTRAINT_DEPRECATE" | "CONSTRAINT_ADD"
         | "CONSTRAINT_TYPE_REPLACE" | "CONSTRAINT_QUALIFIER_ADD" | "CONSTRAINT_QUALIFIER_REMOVE"
-        | "CONSTRAINT_QUALIFIER_REPLACE" | "CLASS_HIERARCHY_ADD" | "EXCEPTION_ADD" | "OTHER_TBOX_UPDATE",
+        | "CONSTRAINT_QUALIFIER_REPLACE" | "OTHER_TBOX_UPDATE",
       "taxonomy_code": "C_MINUS" | "C_D" | "C_PLUS" | "C_REPLACE" | "CQ_PLUS" | "CQ_MINUS"
-        | "CQ_REPLACE" | "SUBCLASS_PLUS" | "E_PLUS" | "OTHER",
+        | "CQ_REPLACE" | "OTHER",
       "constraint_type_qid": "Q...",
       "qualifier_property_id": "P... or null",
       "added_values": ["Q..." | "P..." | "<literal>" | 123],
@@ -192,8 +192,6 @@ Operation definitions:
 - CONSTRAINT_QUALIFIER_ADD / CQ_PLUS adds a qualifier value to a constraint definition.
 - CONSTRAINT_QUALIFIER_REMOVE / CQ_MINUS removes a qualifier value from a constraint definition.
 - CONSTRAINT_QUALIFIER_REPLACE / CQ_REPLACE replaces a qualifier value on the same qualifier property.
-- CLASS_HIERARCHY_ADD / SUBCLASS_PLUS adds a subclass relation that resolves the violation through class hierarchy.
-- EXCEPTION_ADD / E_PLUS adds an exception value to the constraint.
 - OTHER_TBOX_UPDATE / OTHER is a schema-level update not covered by the listed operations.
 
 Rules:
@@ -207,6 +205,8 @@ Rules:
 - Use NO_CAUSAL_SCHEMA_REPAIR only when a visible constraint family can be named but visible evidence does not support a
   causal schema edit for it. If no constraint family can be named from visible evidence, use UNCLEAR_SCHEMA_EVIDENCE.
 - taxonomy_code must match repair_op.
+- Use only the repair operations listed in this contract; class-hierarchy and exception repairs are outside this
+  confirmatory task because their historical deltas are not mined.
 - qualifier_property_id is the edited qualifier property or null.
 - added_values and removed_values are concrete changed values only when visible; otherwise use empty lists.
 - old_value and new_value summarize a replacement when visible; otherwise use null.

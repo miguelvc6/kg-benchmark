@@ -1,0 +1,84 @@
+{
+  "manifest_type": "paper_prompt_profile",
+  "manifest_version": 1,
+  "profile_id": "paper_prompt_profile_v1",
+  "status": "frozen",
+  "freeze_scope": "prompt_configuration_only",
+  "profile_sha256": "cbc44f1bf6f94ffab6fbb155e6b9bce544cfdf3e7a15aca1d7c7f4009d243d41",
+  "tasks": {
+    "a_box_repair": {
+      "task_version": "prompt_dev_v4_spec_only",
+      "template_name": "reasoning_floor_a_box_zero_shot",
+      "template_sha256": "970dcf6ba4b6ed90112525d2f7ff2670f479d76dd8a9058dd0d204f05e6d05e6",
+      "output_schema": {
+        "path": "schemas/verified_repair_proposal.schema.json",
+        "sha256": "08a46d35255a0fc6399380d52b52ec5cdcb17c8d36ebfd66e6b5e0a79b15bab1"
+      }
+    },
+    "t_box_repair": {
+      "task_version": "prompt_dev_v5_tbox_taxonomy_patch",
+      "template_name": "reasoning_floor_t_box_taxonomy_patch_zero_shot",
+      "template_sha256": "b29656799563c4e53af4c4ab444efcea1133f38cdfe724e657fcea851e4dcf8c",
+      "output_schema": {
+        "path": "schemas/tbox_taxonomy_patch_proposal.schema.json",
+        "sha256": "4aef5b8068945c700248eaf3b79610774862700f3ac8f8422576ebc044271d13"
+      }
+    }
+  },
+  "representation": "hybrid_json_nl",
+  "example_policy": "zero_shot",
+  "context_bundles": ["logic_only", "local_graph"],
+  "routing_policy": {
+    "proposal_track_mode": "oracle",
+    "oracle_diagnosis_mode": "skip"
+  },
+  "abstention_enabled": false,
+  "answer_policy": {
+    "json_only": true,
+    "visible_chain_of_thought": false,
+    "required_audit_fields": ["rationale", "provenance", "uncertainty"]
+  },
+  "tbox_operation_profile": {
+    "allowed_repair_ops": [
+      "CONSTRAINT_REMOVE",
+      "CONSTRAINT_DEPRECATE",
+      "CONSTRAINT_ADD",
+      "CONSTRAINT_TYPE_REPLACE",
+      "CONSTRAINT_QUALIFIER_ADD",
+      "CONSTRAINT_QUALIFIER_REMOVE",
+      "CONSTRAINT_QUALIFIER_REPLACE",
+      "OTHER_TBOX_UPDATE"
+    ],
+    "excluded_repair_ops": ["CLASS_HIERARCHY_ADD", "EXCEPTION_ADD"]
+  },
+  "inference_policy": {
+    "same_logical_prompt_across_models": true,
+    "response_format": "json_object",
+    "semantic_retry_count": 0,
+    "transport_retry_policy": "exact_request_only",
+    "reasoning_trace_policy": "redacted_not_scored",
+    "tools_disabled": true
+  },
+  "implementation_artifacts": {
+    "execution_prompt_registry": {
+      "path": "src/guardian/prompts.py",
+      "sha256": "f5fb6600eab61fca31b6d8424adb82413d6f54baacedf04a612b78c7b5a2440a"
+    },
+    "execution_renderer_and_context_policy": {
+      "path": "src/guardian/reasoning.py",
+      "sha256": "741e24c283303fbb6a9d0f402f4c0e2b4e640574518034af860d19f168c4d29a"
+    },
+    "prompt_development_renderer": {
+      "path": "scripts/prompt_dev_templates.py",
+      "sha256": "d2e8d65decb2482e0462960b6c14beec2fa136e6a15e5949cd95310b5506aea2"
+    },
+    "provider_adapter": {
+      "path": "src/guardian/model_provider.py",
+      "sha256": "03efa89150fa55b8c9a449c2d8356ffef67e353af3061f390d5e32a1beffd58e"
+    },
+    "profile_schema": {
+      "path": "schemas/paper_prompt_profile.schema.json",
+      "sha256": "0bcbba90814337a13a076d586def211a507b7562d69c1a94f39946f690c4f90e"
+    }
+  }
+}

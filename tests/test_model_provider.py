@@ -234,7 +234,11 @@ class OpenAIChatProviderTests(unittest.TestCase):
         }
 
         with patch("guardian.model_provider.requests.post", return_value=response) as post:
-            provider = OpenAIChatProvider(api_key="test-key", model="gpt-5-mini-2025-08-07")
+            provider = OpenAIChatProvider(
+                api_key="test-key",
+                model="gpt-5-mini-2025-08-07",
+                max_output_tokens=8192,
+            )
             raw, parsed, usage = provider.generate(
                 prompt="{}",
                 system_prompt="Return JSON only.",
@@ -248,6 +252,7 @@ class OpenAIChatProviderTests(unittest.TestCase):
         request_payload = json.loads(post.call_args.kwargs["data"].decode("utf-8"))
         self.assertNotIn("temperature", request_payload)
         self.assertEqual(request_payload["tool_choice"], "none")
+        self.assertEqual(request_payload["max_completion_tokens"], 8192)
 
     def test_includes_reasoning_effort_in_generate_payload_when_configured(self) -> None:
         response = MagicMock()
@@ -434,6 +439,24 @@ class OllamaChatProviderTests(unittest.TestCase):
         self.assertTrue(raw["thinking_redacted"])
         self.assertEqual(raw["message"]["thinking"], "[redacted]")
         self.assertTrue(raw["message"]["thinking_redacted"])
+
+    def test_pins_ollama_thinking_mode_in_request(self) -> None:
+        response = MagicMock()
+        response.json.return_value = {
+            "model": "gpt-oss:120b",
+            "message": {"role": "assistant", "content": "{\"case_id\": \"c1\"}"},
+        }
+
+        with patch("guardian.model_provider.requests.post", return_value=response) as post:
+            provider = OllamaChatProvider(model="gpt-oss:120b", think="high")
+            provider.generate(
+                prompt="{}",
+                system_prompt="Return JSON only.",
+                response_format={"type": "json_object"},
+                metadata={"case_id": "c1"},
+            )
+
+        self.assertEqual(post.call_args.kwargs["json"]["think"], "high")
 
     def test_applies_ollama_keep_alive_and_context_length(self) -> None:
         response = MagicMock()

@@ -10,6 +10,8 @@ from typing import Any
 
 from jsonschema import Draft202012Validator
 
+from paper_prompt_profile import REPO_ROOT, load_prompt_profile, sha256_file
+
 
 def load_execution_matrix(path: str | Path) -> dict[str, Any]:
     matrix_path = Path(path)
@@ -17,6 +19,16 @@ def load_execution_matrix(path: str | Path) -> dict[str, Any]:
     schema_path = Path(__file__).resolve().parents[1] / "schemas" / "execution_matrix.schema.json"
     schema = json.loads(schema_path.read_text(encoding="utf-8"))
     Draft202012Validator(schema).validate(matrix)
+    prompt_configuration = matrix.get("prompt_configuration")
+    if prompt_configuration:
+        prompt_path = (REPO_ROOT / prompt_configuration).resolve()
+        load_prompt_profile(prompt_path)
+        actual_prompt_sha = sha256_file(prompt_path)
+        if matrix.get("prompt_configuration_sha256") != actual_prompt_sha:
+            raise ValueError(
+                "Execution matrix prompt_configuration_sha256 does not match the prompt profile: "
+                f"expected {matrix.get('prompt_configuration_sha256')}, computed {actual_prompt_sha}."
+            )
     validate_execution_matrix(matrix)
     return matrix
 
@@ -40,6 +52,16 @@ def validate_execution_matrix(matrix: dict[str, Any], *, require_frozen: bool = 
                 raise ValueError("Azure reference models must use batch execution.")
             if model["batch_sync_retry_fallback"]:
                 raise ValueError("Azure reference models must disable synchronous retry fallback.")
+            if any(
+                model[field] is not None
+                for field in ("context_length", "temperature", "top_p", "seed", "ollama_think")
+            ):
+                raise ValueError("Azure inference must omit Ollama-only controls.")
+        if model["provider"] == "ollama":
+            if model["reasoning_effort"] is not None:
+                raise ValueError("Ollama models use ollama_think, not OpenAI reasoning_effort.")
+            if any(model[field] is None for field in ("context_length", "temperature", "top_p", "seed", "ollama_think")):
+                raise ValueError("Ollama paper models require explicit context, sampling, seed, and thinking controls.")
     if matrix["tbox_task_version"] != "tbox_taxonomy_patch_v1":
         raise ValueError("Paper execution requires the tbox_taxonomy_patch_v1 T-box task.")
     if matrix["reporting_policy"]["combined_abox_tbox_score"]:
@@ -57,6 +79,8 @@ def validate_execution_matrix(matrix: dict[str, Any], *, require_frozen: bool = 
         raise ValueError("Confirmatory planning requires matrix status=frozen.")
     if not matrix["prompt_configuration"]:
         raise ValueError("A frozen matrix requires a prompt_configuration reference.")
+    if not matrix["prompt_configuration_sha256"]:
+        raise ValueError("A frozen matrix requires a prompt_configuration_sha256.")
     if missing_revisions:
         raise ValueError(f"Frozen matrix models lack immutable revisions: {', '.join(missing_revisions)}.")
     if missing_selections:
@@ -84,6 +108,8 @@ def build_execution_plan(matrix: dict[str, Any]) -> dict[str, Any]:
             model["provider"],
             "--model",
             model["model"],
+            "--prompt-profile",
+            matrix["prompt_configuration"],
             "--tbox-task-version",
             matrix["tbox_task_version"],
             "--model-digest",
@@ -100,11 +126,30 @@ def build_execution_plan(matrix: dict[str, Any]) -> dict[str, Any]:
             population["oracle_diagnosis_mode"],
             "--execution-mode",
             model["execution_mode"],
+            "--max-output-tokens",
+            str(model["max_output_tokens"]),
+            "--max-retries",
+            str(model["transport_max_retries"]),
         ]
         if model["parallel_workers"] is not None:
             argv.extend(["--parallel-workers", str(model["parallel_workers"])])
         if model["reasoning_effort"] is not None:
             argv.extend(["--reasoning-effort", model["reasoning_effort"]])
+        if model["provider"] == "ollama":
+            argv.extend(
+                [
+                    "--context-length",
+                    str(model["context_length"]),
+                    "--temperature",
+                    str(model["temperature"]),
+                    "--top-p",
+                    str(model["top_p"]),
+                    "--seed",
+                    str(model["seed"]),
+                    "--ollama-think",
+                    model["ollama_think"],
+                ]
+            )
         if not model["batch_sync_retry_fallback"]:
             argv.append("--no-batch-sync-retry-fallback")
         runs.append(
@@ -122,6 +167,7 @@ def build_execution_plan(matrix: dict[str, Any]) -> dict[str, Any]:
         "matrix_id": matrix["matrix_id"],
         "status": matrix["status"],
         "prompt_configuration": matrix["prompt_configuration"],
+        "prompt_configuration_sha256": matrix["prompt_configuration_sha256"],
         "tbox_task_version": matrix["tbox_task_version"],
         "reporting_policy": matrix["reporting_policy"],
         "runs": runs,
