@@ -14,6 +14,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Iterable, Iterator
 
+import fastjsonschema
 import ijson
 from jsonschema import Draft202012Validator
 
@@ -220,6 +221,29 @@ class WorldStateLookup:
             return None
         value = json.loads(row[0])
         return value if isinstance(value, dict) else None
+
+    def get_fields(self, case_id: str, fields: tuple[str, ...]) -> dict[str, Any] | None:
+        """Use SQLite JSON1 to avoid decoding irrelevant multi-level context in Python."""
+        assert self.connection is not None
+        expressions = ", ".join(f"json_extract(payload, '$.{field}')" for field in fields)
+        row = self.connection.execute(
+            f"SELECT {expressions} FROM world_state WHERE id = ?",  # noqa: S608 - fields are internal constants
+            (case_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        result: dict[str, Any] = {}
+        for field, raw_value in zip(fields, row, strict=True):
+            if raw_value is None:
+                continue
+            if isinstance(raw_value, str):
+                try:
+                    result[field] = json.loads(raw_value)
+                except json.JSONDecodeError:
+                    result[field] = raw_value
+            else:
+                result[field] = raw_value
+        return result
 
     def count(self) -> int:
         assert self.connection is not None
@@ -600,11 +624,12 @@ def run_audit(
 
     schema = json.loads(schema_path.read_text(encoding="utf-8"))
     Draft202012Validator.check_schema(schema)
-    validator = Draft202012Validator(schema)
+    fast_validator = fastjsonschema.compile(schema)
     stage4_digest = hashlib.sha256()
     seen_ids: set[str] = set()
     selected_records: dict[str, dict[str, Any]] = {}
     selected_world: dict[str, dict[str, Any]] = {}
+    tbox_world_cache: dict[str, dict[str, Any]] = {}
     finding_counts: Counter[str] = Counter()
     status_counts: Counter[str] = Counter()
     class_counts: Counter[str] = Counter()
@@ -645,15 +670,17 @@ def run_audit(
                         case_findings.append({"status": "error", "code": "duplicate_case_id"})
                         case_id = f"{case_id}#duplicate#line_{line_number}"
                     seen_ids.add(case_id)
-                schema_errors = list(validator.iter_errors(record))
-                if schema_errors:
+                schema_error: fastjsonschema.JsonSchemaException | None = None
+                try:
+                    fast_validator(record)
+                except fastjsonschema.JsonSchemaException as exc:
+                    schema_error = exc
+                if schema_error is not None:
                     case_findings.append(
                         {
                             "status": "error",
                             "code": "schema_invalid",
-                            "detail": [
-                                {"path": list(error.path), "message": error.message} for error in schema_errors[:10]
-                            ],
+                            "detail": [{"path": schema_error.path, "message": schema_error.message}],
                         }
                     )
                 context_id = _field(record, "context_ref.world_state_id")
@@ -665,7 +692,25 @@ def run_audit(
                             "detail": {"context_id": context_id},
                         }
                     )
-                world_state = world_lookup.get(str(record.get("id") or ""))
+                raw_case_id = str(record.get("id") or "")
+                target = record.get("repair_target")
+                target = target if isinstance(target, dict) else {}
+                tbox_hint = any(
+                    key in target for key in ("property_revision_id", "property_revision_prev", "constraint_delta")
+                )
+                capture_full = raw_case_id in capture_ids
+                if tbox_hint and not capture_full:
+                    revision = target.get("property_revision_id")
+                    cache_key = f"{record.get('property')}|{revision}"
+                    world_state = tbox_world_cache.get(cache_key)
+                    if world_state is None:
+                        world_state = world_lookup.get_fields(raw_case_id, ("constraint_change_context",))
+                        if world_state is not None:
+                            tbox_world_cache[cache_key] = world_state
+                elif _field(record, "classification.class") == "TypeA" and not capture_full:
+                    world_state = world_lookup.get_fields(raw_case_id, ("L4_constraints",))
+                else:
+                    world_state = world_lookup.get(raw_case_id)
                 if world_state is None:
                     case_findings.append({"status": "error", "code": "missing_world_state"})
                 else:

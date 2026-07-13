@@ -1222,6 +1222,7 @@ name = "kg-benchmark"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "fastjsonschema" },
     { name = "ijson" },
     { name = "jsonschema" },
     { name = "mwclient" },
@@ -1252,6 +1253,7 @@ ui = [
 
 [package.metadata]
 requires-dist = [
+    { name = "fastjsonschema", specifier = ">=2.21" },
     { name = "ijson", specifier = ">=3.2" },
     { name = "ipykernel", marker = "extra == 'notebook'", specifier = ">=6.29" },
     { name = "jsonschema", specifier = ">=4.18" },
