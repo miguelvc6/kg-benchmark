@@ -6,7 +6,9 @@ from pathlib import Path
 
 from automated_consistency_audit import (
     _case_findings,
+    _changed_constraint_types,
     _construct_packet,
+    _local_support,
     run_audit,
 )
 
@@ -46,6 +48,18 @@ class AutomatedConsistencyAuditTests(unittest.TestCase):
         record["track"] = "T_BOX"
         findings = _case_findings(record, _abox_world())
         self.assertIn("locus_disagreement", {finding["code"] for finding in findings})
+
+    def test_tbox_changed_types_use_presence_not_qualifier_changes(self) -> None:
+        before = {"signature": [{"constraint_qid": "Q1", "qualifiers": [{"values": ["old"]}]}]}
+        after = {"signature": [{"constraint_qid": "Q1", "qualifiers": [{"values": ["new"]}]}]}
+        self.assertEqual(_changed_constraint_types(before, after), set())
+
+    def test_target_only_l2_label_is_not_counted_as_independent_local_support(self) -> None:
+        record = _abox_record()
+        record["classification"] = {"class": "TypeC", "subtype": "EXTERNAL_BY_ELIMINATION"}
+        world = _abox_world()
+        world["L2_labels"] = {"entities": {"Q2": {"label": "Target label"}}}
+        self.assertEqual(_local_support(record, world), (False, []))
 
     def test_construct_packet_omits_gold_labels_and_target_from_locus_view(self) -> None:
         packet = _construct_packet("repair_Q1_100001", "construct_000001", _abox_record(), _abox_world())

@@ -74,11 +74,6 @@ def _git_state() -> dict[str, Any]:
     return {"commit": commit or None, "dirty": dirty}
 
 
-def _json_hash(value: Any) -> str:
-    payload = json.dumps(value, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(payload.encode()).hexdigest()
-
-
 def _write_json(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
@@ -337,16 +332,40 @@ def _normalized_text_tokens(value: Any) -> set[str]:
 
 def _masked_local_evidence(record: dict[str, Any], world_state: dict[str, Any]) -> dict[str, Any]:
     target_property = str(record.get("property") or "")
+    target = record.get("repair_target")
+    target = target if isinstance(target, dict) else {}
+    target_ids = set(
+        _values(target.get("new_value") if target.get("new_value") is not None else target.get("value"))
+    )
     l1 = _field(world_state, "L1_ego_node.properties")
     other_properties = {
         key: value
         for key, value in (l1.items() if isinstance(l1, dict) else [])
         if str(key) != target_property
     }
+    l2 = world_state.get("L2_labels")
+    l2 = l2 if isinstance(l2, dict) else {}
+    l2_entities = l2.get("entities")
+    masked_l2 = dict(l2)
+    if isinstance(l2_entities, dict):
+        masked_l2["entities"] = {key: value for key, value in l2_entities.items() if key not in target_ids}
+    l3 = world_state.get("L3_neighborhood")
+    l3 = l3 if isinstance(l3, dict) else {}
+    masked_l3 = {}
+    for key, value in l3.items():
+        if isinstance(value, list):
+            masked_l3[key] = [
+                item
+                for item in value
+                if not isinstance(item, dict)
+                or str(item.get("target_qid") or item.get("source_qid") or "") not in target_ids
+            ]
+        else:
+            masked_l3[key] = value
     return {
         "l1_other_properties": other_properties,
-        "l2_labels": world_state.get("L2_labels"),
-        "l3_neighborhood": world_state.get("L3_neighborhood"),
+        "l2_labels": masked_l2,
+        "l3_neighborhood": masked_l3,
         "l4_constraints": world_state.get("L4_constraints"),
     }
 
@@ -393,17 +412,16 @@ def _signature_hash_valid(signature: Any) -> bool:
 
 
 def _changed_constraint_types(before: Any, after: Any) -> set[str]:
-    def index(value: Any) -> dict[str, str]:
-        result: dict[str, str] = {}
+    def present_types(value: Any) -> set[str]:
+        result: set[str] = set()
         if not isinstance(value, dict) or not isinstance(value.get("signature"), list):
             return result
         for constraint in value["signature"]:
             if isinstance(constraint, dict) and isinstance(constraint.get("constraint_qid"), str):
-                result[constraint["constraint_qid"]] = _json_hash(constraint)
+                result.add(constraint["constraint_qid"])
         return result
 
-    left, right = index(before), index(after)
-    return {qid for qid in left.keys() | right.keys() if left.get(qid) != right.get(qid)}
+    return present_types(before) ^ present_types(after)
 
 
 def _case_findings(record: dict[str, Any], world_state: dict[str, Any]) -> list[dict[str, Any]]:
@@ -447,7 +465,9 @@ def _case_findings(record: dict[str, Any], world_state: dict[str, Any]) -> list[
         subtype = str(_field(record, "classification.subtype") or "")
         if subtype == "COINCIDENTAL_SCHEMA_CHANGE" and declared:
             add("unsupported", "tbox_causality_requires_policy_replay")
-        elif not changed:
+        before_hash = before.get("hash") if isinstance(before, dict) else None
+        after_hash = after.get("hash") if isinstance(after, dict) else None
+        if before_hash == after_hash:
             add("disagreement", "tbox_has_no_semantic_constraint_change")
         return findings
 
@@ -597,6 +617,7 @@ def run_audit(
     stage2_path: str | Path | None = None,
     cache_dir: str | Path = ".cache/automated_audit",
 ) -> dict[str, Any]:
+    starting_git_state = _git_state()
     output = Path(output_dir)
     if output.exists() and any(output.iterdir()):
         raise ValueError(f"Audit output directory is not empty: {output}")
@@ -860,7 +881,7 @@ def run_audit(
                 "temporal_review_size": temporal_review_size,
                 "seed": seed,
             },
-            "git": _git_state(),
+            "git": starting_git_state,
             "world_state_index": {"source": world_lookup.index_source, "path": str(world_lookup.index_path)},
             "counts": {
                 "stage4_rows": rows_total,

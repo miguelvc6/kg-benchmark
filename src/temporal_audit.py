@@ -113,8 +113,11 @@ def _expected_rule_derived_visibility(record: dict[str, Any], field: str, token:
     if classification.get("class") != "TypeA":
         return False
     subtype = classification.get("subtype")
-    if subtype == "TARGET_REQUIRED_CLAIM" and token == record.get("qid"):
-        return True
+    if subtype == "TARGET_REQUIRED_CLAIM":
+        expected = {str(record.get("qid") or "")}
+        expected.update(_scalars(_field(record, "repair_target.new_value_labels_en")))
+        expected.update(_scalars(_field(record, "repair_target.new_value_descriptions_en")))
+        return token in expected
     if subtype == "FORMAT_NORMALIZATION":
         old_values = list(_scalars(_field(record, "repair_target.old_value")))
         return any(token != old and token in old for old in old_values)
@@ -127,7 +130,11 @@ def forbidden_claims(record: dict[str, Any]) -> list[dict[str, str]]:
         token.strip()
         for value in (
             _field(record, "repair_target.old_value"),
+            _field(record, "repair_target.old_value_labels_en"),
+            _field(record, "repair_target.old_value_descriptions_en"),
             _field(record, "violation_context.value"),
+            _field(record, "violation_context.value_labels_en"),
+            _field(record, "violation_context.value_descriptions_en"),
         )
         for token in _scalars(value)
         if token.strip()

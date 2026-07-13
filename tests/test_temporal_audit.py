@@ -43,6 +43,43 @@ class TemporalAuditTests(unittest.TestCase):
         target_claim = next(claim for claim in claims if claim["field"] == "repair_target.new_value")
         self.assertEqual(target_claim["severity"], "expected_rule_derived")
 
+    def test_target_required_focus_label_is_expected_rule_visibility(self) -> None:
+        claims = forbidden_claims(
+            {
+                "id": "repair_Q9_123456",
+                "qid": "Q9",
+                "track": "A_BOX",
+                "repair_target": {
+                    "old_value": ["MISSING"],
+                    "new_value": ["Q9"],
+                    "new_value_labels_en": ["Focus label"],
+                },
+                "classification": {"class": "TypeA", "subtype": "TARGET_REQUIRED_CLAIM"},
+            }
+        )
+        label_claim = next(claim for claim in claims if claim["field"] == "repair_target.new_value_labels_en")
+        self.assertEqual(label_claim["severity"], "expected_rule_derived")
+
+    def test_retained_target_label_is_not_a_post_repair_claim(self) -> None:
+        claims = forbidden_claims(
+            {
+                "id": "repair_Q9_123456",
+                "track": "A_BOX",
+                "violation_context": {"value_labels_en": ["Retained label"]},
+                "repair_target": {
+                    "old_value": ["Q1", "Q2"],
+                    "old_value_labels_en": ["Removed label", "Retained label"],
+                    "new_value": ["Q2"],
+                    "new_value_labels_en": ["Retained label"],
+                },
+                "classification": {"class": "TypeA", "subtype": "SET_MEMBERSHIP_REJECTION"},
+            }
+        )
+        self.assertNotIn(
+            ("repair_target.new_value_labels_en", "Retained label"),
+            {(claim["field"], claim["token"]) for claim in claims},
+        )
+
     def test_audit_fails_high_risk_leak_and_emits_stratified_manual_sample(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)
