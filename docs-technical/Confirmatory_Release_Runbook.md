@@ -27,6 +27,19 @@ it no longer records Stage 2 presence as if that were validation.
 
 ## 2. Freeze and acquire an isolated snapshot
 
+The model/population portion of the methodology freeze is defined by
+[Model Execution Matrix](./Model_Execution.md) and `experiments/paper_execution_models_v1.json`. Validate it before the
+allocation freeze. The current matrix remains a draft until prompt configuration is decided, selection hashes exist, and
+all four immutable model/deployment revisions are bound; do not acquire the post-freeze snapshot while those fields are
+unresolved.
+
+```bash
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-experiment-plan validate
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-experiment-plan validate --require-frozen
+```
+
+The second command is the confirmatory gate and must pass immediately before the freeze commit.
+
 Create and commit the allocation freeze before mining. Use an unused snapshot directory and an isolated cache. Candidate
 refresh is explicit; resume statistics and checkpoints remain supported.
 
@@ -106,3 +119,8 @@ reference model makes 1,200 calls for two bundles across the nested 600, or 2,40
 hash-matching manifests and model identities. A shortage, lineage failure, incomplete disposition partition, repeated or
 previously used event, prompt leak, dirty freeze, or changed model identifier fails the release rather than triggering an
 ad hoc fallback.
+
+Materialize the frozen execution plan with `kg-experiment-plan plan`. Each model uses a persistent, model-specific
+generation cache, so a later population extension submits only new prompt identities. Azure runs are batch-only with high
+reasoning effort and tool calls disabled. Updated metrics use `kg-rescore-run` against stored generations and do not issue
+provider requests.

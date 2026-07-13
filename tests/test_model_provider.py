@@ -177,6 +177,7 @@ class OpenAIChatProviderTests(unittest.TestCase):
                 "AZURE_OPENAI_API_KEY": "azure-key",
                 "AZURE_OPENAI_DEPLOYMENT": "gpt-5.4-nano",
                 "AZURE_OPENAI_ENDPOINT": "https://example.azure.com/openai/v1",
+                "AZURE_OPENAI_REASONING_EFFORT": "high",
                 "OPENAI_API_KEY": "wrong-openai-key",
             },
             clear=True,
@@ -188,6 +189,7 @@ class OpenAIChatProviderTests(unittest.TestCase):
         self.assertEqual(provider.api_key, "azure-key")
         self.assertEqual(provider.model, "gpt-5.4-nano")
         self.assertEqual(provider.base_url, "https://example.azure.com/openai/v1")
+        self.assertEqual(provider.reasoning_effort, "high")
 
     def test_factory_can_select_university_endpoint(self) -> None:
         with patch.dict(
@@ -245,7 +247,7 @@ class OpenAIChatProviderTests(unittest.TestCase):
         self.assertEqual(raw["usage"]["total_tokens"], 18)
         request_payload = json.loads(post.call_args.kwargs["data"].decode("utf-8"))
         self.assertNotIn("temperature", request_payload)
-        self.assertNotIn("tool_choice", request_payload)
+        self.assertEqual(request_payload["tool_choice"], "none")
 
     def test_includes_reasoning_effort_in_generate_payload_when_configured(self) -> None:
         response = MagicMock()
@@ -269,6 +271,7 @@ class OpenAIChatProviderTests(unittest.TestCase):
 
         request_payload = json.loads(post.call_args.kwargs["data"].decode("utf-8"))
         self.assertEqual(request_payload["reasoning"], {"effort": "low"})
+        self.assertEqual(request_payload["tool_choice"], "none")
 
     def test_includes_reasoning_effort_in_batch_payload_when_configured(self) -> None:
         provider = OpenAIChatProvider(
@@ -292,6 +295,24 @@ class OpenAIChatProviderTests(unittest.TestCase):
             batch_record = json.loads(output_path.read_text(encoding="utf-8").strip())
 
         self.assertEqual(batch_record["body"]["reasoning"], {"effort": "low"})
+        self.assertEqual(batch_record["body"]["tool_choice"], "none")
+
+    def test_factory_allows_azure_reasoning_effort_override(self) -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "AZURE_OPENAI_API_KEY": "azure-key",
+                "AZURE_OPENAI_DEPLOYMENT": "gpt-5.6-sol",
+                "AZURE_OPENAI_ENDPOINT": "https://example.azure.com/openai/v1",
+            },
+            clear=True,
+        ):
+            provider = create_model_provider(
+                model_endpoint="azure", reasoning_effort="high"
+            )
+
+        self.assertEqual(provider.reasoning_effort, "high")
+        self.assertTrue(provider.tools_disabled)
 
     def test_rejects_invalid_reasoning_effort(self) -> None:
         with self.assertRaisesRegex(RuntimeError, "OPENAI_REASONING_EFFORT"):

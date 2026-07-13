@@ -133,6 +133,11 @@ New reasoning-floor runs store in `run_config.json` and the final summary:
 
 A missing model digest or dirty worktree makes a run ineligible for confirmatory registration.
 
+The extensible model/population configuration, generation-cache identity, and evaluation replay procedure are specified
+in [Model Execution Matrix](./Model_Execution.md). Its `--require-frozen` validation is an execution-freeze gate. The
+tracked matrix remains draft while prompt configuration, final selection hashes, and unresolved model revisions are
+pending.
+
 ## Construct-Validity Boundary
 
 The repository retains annotation tooling for possible future work, but human annotation is not a gate for the current

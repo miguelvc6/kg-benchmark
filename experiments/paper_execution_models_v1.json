@@ -1,0 +1,84 @@
+{
+  "manifest_type": "paper_execution_matrix",
+  "manifest_version": 1,
+  "matrix_id": "paper_execution_models_v1",
+  "status": "draft",
+  "prompt_configuration": null,
+  "generation_cache_root": ".cache/model_generations",
+  "populations": [
+    {
+      "population_id": "main_1200",
+      "role": "main_score",
+      "selection_manifest": "releases/<snapshot_id>/selection_main_1200.json",
+      "selection_sha256": null,
+      "expected_case_count": 1200,
+      "ablation_bundles": ["logic_only", "local_graph"],
+      "proposal_track_mode": "oracle",
+      "oracle_diagnosis_mode": "skip"
+    },
+    {
+      "population_id": "api_nested_600",
+      "role": "nested_api_calibration",
+      "selection_manifest": "releases/<snapshot_id>/selection_api_nested_600.json",
+      "selection_sha256": null,
+      "expected_case_count": 600,
+      "ablation_bundles": ["logic_only", "local_graph"],
+      "proposal_track_mode": "oracle",
+      "oracle_diagnosis_mode": "skip"
+    }
+  ],
+  "models": [
+    {
+      "model_id": "ollama_qwen3_30b",
+      "provider": "ollama",
+      "model": "qwen3:30b",
+      "model_digest": null,
+      "population_id": "main_1200",
+      "execution_mode": "parallel",
+      "parallel_workers": 1,
+      "reasoning_effort": null,
+      "tools_disabled": true,
+      "batch_sync_retry_fallback": false,
+      "enabled": true
+    },
+    {
+      "model_id": "ollama_llama3_3_70b",
+      "provider": "ollama",
+      "model": "llama3.3:70b",
+      "model_digest": null,
+      "population_id": "main_1200",
+      "execution_mode": "parallel",
+      "parallel_workers": 1,
+      "reasoning_effort": null,
+      "tools_disabled": true,
+      "batch_sync_retry_fallback": false,
+      "enabled": true
+    },
+    {
+      "model_id": "ollama_gpt_oss_120b",
+      "provider": "ollama",
+      "model": "gpt-oss:120b",
+      "model_digest": "sha256:a951a23b46a1f6093dafee2ea481d634b4e31ac720a8a16f3f91e04f5a40ecd9",
+      "population_id": "main_1200",
+      "execution_mode": "parallel",
+      "parallel_workers": 1,
+      "reasoning_effort": null,
+      "tools_disabled": true,
+      "batch_sync_retry_fallback": false,
+      "enabled": true
+    },
+    {
+      "model_id": "azure_gpt_5_6_sol_high",
+      "provider": "azure",
+      "model": "gpt-5.6-sol",
+      "model_digest": null,
+      "population_id": "api_nested_600",
+      "execution_mode": "batch",
+      "parallel_workers": null,
+      "reasoning_effort": "high",
+      "tools_disabled": true,
+      "batch_sync_retry_fallback": false,
+      "enabled": true
+    }
+  ]
+}

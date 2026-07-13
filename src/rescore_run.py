@@ -1,0 +1,220 @@
+#!/usr/bin/env python3
+"""Replay evaluation from immutable generation artifacts without provider calls."""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import re
+import subprocess
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
+
+from guardian.evaluator import evaluate_benchmark
+
+EVALUATION_REPLAY_MANIFEST_VERSION = 1
+EVALUATION_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _fingerprint(path: Path) -> dict[str, Any]:
+    if not path.is_file():
+        raise FileNotFoundError(path)
+    return {
+        "path": str(path.resolve()),
+        "size_bytes": path.stat().st_size,
+        "sha256": _sha256_file(path),
+    }
+
+
+def _optional_fingerprint(path: Path) -> dict[str, Any] | None:
+    return _fingerprint(path) if path.is_file() else None
+
+
+def _git_state() -> dict[str, Any]:
+    try:
+        commit = subprocess.run(
+            ["git", "rev-parse", "HEAD"], check=True, capture_output=True, text=True
+        ).stdout.strip()
+        dirty = bool(
+            subprocess.run(
+                ["git", "status", "--porcelain"], check=True, capture_output=True, text=True
+            ).stdout.strip()
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return {"commit": None, "dirty": None}
+    return {"commit": commit or None, "dirty": dirty}
+
+
+def _read_object(path: Path) -> dict[str, Any]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError(f"Expected a JSON object in {path}.")
+    return payload
+
+
+def _resolve_input_path(override: str | Path | None, recorded: Any, *, field: str) -> Path:
+    candidate = Path(override if override is not None else str(recorded or "")).resolve()
+    if not candidate.is_file():
+        raise FileNotFoundError(
+            f"Cannot replay evaluation because {field} is unavailable at {candidate}. "
+            f"Provide an explicit --{field.replace('_', '-')} override."
+        )
+    return candidate
+
+
+def rescore_run(
+    *,
+    run_dir: str | Path,
+    evaluation_id: str,
+    classified_path: str | Path | None = None,
+    world_state_path: str | Path | None = None,
+    selection_manifest_path: str | Path | None = None,
+) -> dict[str, Any]:
+    if not EVALUATION_ID_PATTERN.fullmatch(evaluation_id):
+        raise ValueError(
+            "evaluation_id must start with an alphanumeric character and contain only "
+            "letters, digits, dots, underscores, and hyphens."
+        )
+    source_run_dir = Path(run_dir).resolve()
+    run_config_path = source_run_dir / "run_config.json"
+    run_config = _read_object(run_config_path)
+    if run_config.get("tbox_task_version") == "tbox_taxonomy_patch_v1":
+        raise ValueError(
+            "The standard evaluator cannot rescore tbox_taxonomy_patch_v1 outputs; use the "
+            "taxonomy-patch evaluator for that task version."
+        )
+
+    output_dir = source_run_dir / "evaluations" / evaluation_id
+    if output_dir.exists():
+        raise FileExistsError(
+            f"Evaluation {evaluation_id!r} already exists at {output_dir}; choose a new version id."
+        )
+    benchmark = _resolve_input_path(
+        classified_path, run_config.get("classified_benchmark"), field="classified_benchmark"
+    )
+    world_state = _resolve_input_path(
+        world_state_path, run_config.get("world_state"), field="world_state"
+    )
+    recorded_selection = run_config.get("selection_manifest")
+    selection = None
+    if selection_manifest_path is not None or recorded_selection:
+        selection = _resolve_input_path(
+            selection_manifest_path, recorded_selection, field="selection_manifest"
+        )
+
+    bundles = run_config.get("ablation_bundles")
+    if not isinstance(bundles, list) or not bundles or not all(isinstance(item, str) for item in bundles):
+        raise ValueError("run_config.json does not contain a valid ablation_bundles list.")
+    selected_case_ids = run_config.get("selected_case_ids")
+    if not isinstance(selected_case_ids, list) or not all(
+        isinstance(case_id, str) and case_id for case_id in selected_case_ids
+    ):
+        raise ValueError("run_config.json does not contain valid selected_case_ids.")
+    run_manifest_path = source_run_dir / "run_manifest.jsonl"
+    if not run_manifest_path.is_file():
+        raise FileNotFoundError(run_manifest_path)
+
+    output_dir.mkdir(parents=True)
+    bundle_summaries: dict[str, Any] = {}
+    source_artifacts: dict[str, Any] = {
+        "run_config": _fingerprint(run_config_path),
+        "run_manifest": _fingerprint(run_manifest_path),
+        "classified_benchmark": _fingerprint(benchmark),
+        "world_state": _fingerprint(world_state),
+        "selection_manifest": _fingerprint(selection) if selection is not None else None,
+        "bundles": {},
+    }
+    for bundle in bundles:
+        source_bundle_dir = source_run_dir / bundle
+        a_box_path = source_bundle_dir / "a_box_proposals.jsonl"
+        t_box_path = source_bundle_dir / "t_box_proposals.jsonl"
+        diagnoses_path = source_bundle_dir / "track_diagnoses.jsonl"
+        source_artifacts["bundles"][bundle] = {
+            "a_box_proposals": _optional_fingerprint(a_box_path),
+            "t_box_proposals": _optional_fingerprint(t_box_path),
+            "track_diagnoses": _optional_fingerprint(diagnoses_path),
+        }
+        bundle_output = output_dir / bundle
+        bundle_output.mkdir()
+        _traces, summary = evaluate_benchmark(
+            classified_path=benchmark,
+            world_state_path=world_state,
+            a_box_proposals_path=a_box_path if a_box_path.is_file() else None,
+            t_box_proposals_path=t_box_path if t_box_path.is_file() else None,
+            track_diagnoses_path=diagnoses_path if diagnoses_path.is_file() else None,
+            run_manifest_path=run_manifest_path,
+            ablation_bundle=bundle,
+            case_ids=selected_case_ids,
+            selection_manifest_path=selection,
+            out_traces_path=bundle_output / "evaluation_traces.jsonl",
+            out_summary_path=bundle_output / "evaluation_summary.json",
+            collect_traces=False,
+        )
+        bundle_summaries[bundle] = summary
+
+    evaluator_path = Path(__file__).resolve().parent / "guardian" / "evaluator.py"
+    replay_path = Path(__file__).resolve()
+    manifest = {
+        "manifest_type": "evaluation_replay",
+        "manifest_version": EVALUATION_REPLAY_MANIFEST_VERSION,
+        "evaluation_id": evaluation_id,
+        "created_at_utc": datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        "source_run_dir": str(source_run_dir),
+        "provider_calls": 0,
+        "selected_case_count": len(selected_case_ids),
+        "ablation_bundles": bundles,
+        "source_artifacts": source_artifacts,
+        "evaluation_code": {
+            "git": _git_state(),
+            "evaluator": _fingerprint(evaluator_path),
+            "replay_driver": _fingerprint(replay_path),
+        },
+        "outputs": {},
+    }
+    summary_path = output_dir / "evaluation_summary.json"
+    summary_path.write_text(json.dumps(bundle_summaries, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
+    manifest["outputs"]["combined_summary"] = _fingerprint(summary_path)
+    for bundle in bundles:
+        bundle_output = output_dir / bundle
+        manifest["outputs"][bundle] = {
+            "traces": _fingerprint(bundle_output / "evaluation_traces.jsonl"),
+            "summary": _fingerprint(bundle_output / "evaluation_summary.json"),
+        }
+    manifest_path = output_dir / "evaluation_manifest.json"
+    manifest_path.write_text(json.dumps(manifest, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
+    return manifest
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Re-evaluate an existing generation run without issuing model requests."
+    )
+    parser.add_argument("--run-dir", required=True)
+    parser.add_argument("--evaluation-id", required=True)
+    parser.add_argument("--classified-benchmark", default=None)
+    parser.add_argument("--world-state", default=None)
+    parser.add_argument("--selection-manifest", default=None)
+    args = parser.parse_args()
+    manifest = rescore_run(
+        run_dir=args.run_dir,
+        evaluation_id=args.evaluation_id,
+        classified_path=args.classified_benchmark,
+        world_state_path=args.world_state,
+        selection_manifest_path=args.selection_manifest,
+    )
+    print(json.dumps(manifest, ensure_ascii=True, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

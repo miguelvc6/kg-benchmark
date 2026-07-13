@@ -16,6 +16,7 @@ from guardian.reasoning import (
     _remove_post_repair_only_atoms,
     build_prompt_bundle,
     build_track_diagnosis_prompt_bundle,
+    prompt_visible_case_id,
     run_reasoning_floor,
 )
 
@@ -446,13 +447,14 @@ class ReasoningFloorTests(unittest.TestCase):
         manifest_rows = self._read_jsonl(run_dir / "run_manifest.jsonl")
         raw_rows = self._read_jsonl(run_dir / "raw_model_responses.jsonl")
         t_box_rows = self._read_jsonl(run_dir / "minimal_case" / "t_box_proposals.jsonl")
-        self.assertEqual(run_config["visible_case_id_map"], {"reform_case": "case_000001"})
+        visible_case_id = prompt_visible_case_id("reform_case")
+        self.assertEqual(run_config["visible_case_id_map"], {"reform_case": visible_case_id})
         self.assertEqual(len(run_config["artifact_fingerprints"]["classified_benchmark"]["sha256"]), 64)
         self.assertEqual(len(run_config["artifact_fingerprints"]["world_state"]["sha256"]), 64)
         self.assertIn("temperature", run_config["inference_settings"])
         self.assertIn("commit", run_config["code"])
-        self.assertTrue(all(row.get("visible_case_id") == "case_000001" for row in manifest_rows))
-        self.assertTrue(all(row.get("parsed_payload", {}).get("case_id") == "case_000001" for row in raw_rows))
+        self.assertTrue(all(row.get("visible_case_id") == visible_case_id for row in manifest_rows))
+        self.assertTrue(all(row.get("parsed_payload", {}).get("case_id") == visible_case_id for row in raw_rows))
         self.assertEqual(t_box_rows[0]["case_id"], "reform_case")
         self.assertEqual(summary["run_info"]["evaluation"]["classified_record_strategy"], "memory_cache")
         self.assertIsNone(summary["run_info"]["evaluation"]["filtered_classified_path"])
@@ -619,19 +621,20 @@ class ReasoningFloorTests(unittest.TestCase):
         self.assertEqual(summary["usage"]["prompt_tokens"], 0)
         self.assertEqual(summary["usage"]["completion_tokens"], 0)
 
-    def test_reasoning_floor_rejects_batch_for_non_openai_runtime_endpoint(self) -> None:
+    def test_reasoning_floor_supports_azure_batch_runtime_endpoint(self) -> None:
         root, classified_path, world_state_path, selection_manifest_path, resolver = self._make_stub_fixture()
-        with self.assertRaisesRegex(RuntimeError, "standard OpenAI provider"):
-            run_reasoning_floor(
-                classified_path=classified_path,
-                world_state_path=world_state_path,
-                output_dir=root / "outputs",
-                provider=StaticResponseProvider(resolver, provider_name="azure", model="stub-model"),
-                ablation_bundles=["minimal_case"],
-                selection_manifest_path=selection_manifest_path,
-                execution_mode="batch",
-                batch_poll_interval_seconds=0.0,
-            )
+        summary = run_reasoning_floor(
+            classified_path=classified_path,
+            world_state_path=world_state_path,
+            output_dir=root / "outputs",
+            provider=StaticResponseProvider(resolver, provider_name="azure", model="stub-model"),
+            ablation_bundles=["minimal_case"],
+            selection_manifest_path=selection_manifest_path,
+            execution_mode="batch",
+            batch_poll_interval_seconds=0.0,
+        )
+        self.assertEqual(summary["run_info"]["execution_mode"], "batch")
+        self.assertEqual(summary["run_info"]["provider"], "azure")
 
     def test_reasoning_floor_parallel_stub_run(self) -> None:
         root, classified_path, world_state_path, selection_manifest_path, resolver = self._make_stub_fixture()
@@ -757,6 +760,69 @@ class ReasoningFloorTests(unittest.TestCase):
         )
         self.assertEqual(summary["usage"]["per_call_cost_estimation_multipliers"], [0.5, 1.0])
         self.assertIsNone(summary["usage"]["cost_estimation_multiplier"])
+
+    def test_reasoning_floor_batch_only_mode_does_not_retry_synchronously(self) -> None:
+        root, classified_path, world_state_path, selection_manifest_path, resolver = self._make_stub_fixture()
+        summary = run_reasoning_floor(
+            classified_path=classified_path,
+            world_state_path=world_state_path,
+            output_dir=root / "outputs",
+            provider=RetryableBatchFailureOpenAIProvider(
+                resolver, provider_name="azure", model="gpt-5.6-sol"
+            ),
+            ablation_bundles=["minimal_case"],
+            selection_manifest_path=selection_manifest_path,
+            execution_mode="batch",
+            batch_poll_interval_seconds=0.0,
+            batch_sync_retry_fallback=False,
+        )
+        run_dir = Path(summary["run_info"]["output_dir"])
+        manifest_rows = self._read_jsonl(run_dir / "run_manifest.jsonl")
+        proposal_row = next(row for row in manifest_rows if row.get("task_type") == "proposal")
+
+        self.assertFalse(summary["run_info"]["batch_sync_retry_fallback"])
+        self.assertEqual(summary["run_info"]["batch"]["sync_retry_fallback"]["eligible"], 1)
+        self.assertEqual(summary["run_info"]["batch"]["sync_retry_fallback"]["attempted"], 0)
+        self.assertEqual(summary["run_info"]["batch"]["sync_retry_fallback"]["unrecoverable"], 1)
+        self.assertEqual(proposal_row["parse_status"], "request_error")
+        self.assertEqual(proposal_row["recovery"]["type"], "batch_error_no_sync_retry")
+        self.assertFalse(proposal_row["recovery"]["attempted"])
+
+    def test_generation_cache_reuses_prior_population_requests(self) -> None:
+        root, classified_path, world_state_path, selection_manifest_path, resolver = self._make_stub_fixture()
+        cache_path = root / "cache" / "generations.sqlite"
+        provider = CountingStaticResponseProvider(resolver, model="stable-model")
+
+        first_summary = run_reasoning_floor(
+            classified_path=classified_path,
+            world_state_path=world_state_path,
+            output_dir=root / "first_outputs",
+            provider=provider,
+            ablation_bundles=["minimal_case"],
+            selection_manifest_path=selection_manifest_path,
+            generation_cache_path=cache_path,
+            model_digest="sha256:stable-model-v1",
+        )
+        expanded_selection = root / "expanded_selection.json"
+        expanded_selection.write_text(
+            json.dumps({"selected_case_ids": ["repair_case", "reform_case"]}),
+            encoding="utf-8",
+        )
+        second_summary = run_reasoning_floor(
+            classified_path=classified_path,
+            world_state_path=world_state_path,
+            output_dir=root / "second_outputs",
+            provider=provider,
+            ablation_bundles=["minimal_case"],
+            selection_manifest_path=expanded_selection,
+            generation_cache_path=cache_path,
+            model_digest="sha256:stable-model-v1",
+        )
+
+        self.assertEqual(provider.generate_call_count, 2)
+        self.assertEqual(first_summary["run_info"]["generation_cache"]["stats"]["stores"], 1)
+        self.assertEqual(second_summary["run_info"]["generation_cache"]["stats"]["hits"], 1)
+        self.assertEqual(second_summary["run_info"]["generation_cache"]["stats"]["misses"], 1)
 
     def test_reasoning_floor_sync_provider_errors_are_manifest_request_errors(self) -> None:
         root, classified_path, world_state_path, _selection_manifest_path, resolver = self._make_stub_fixture()

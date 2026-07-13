@@ -21,6 +21,7 @@ from tqdm import tqdm
 
 from classifier import VIOLATION_TO_CONSTRAINT_MAP, WorldStateStore
 from guardian.evaluator import evaluate_benchmark, summarize_trace_iterable, write_json
+from guardian.generation_cache import CACHE_SCHEMA_VERSION, CachedModelProvider
 from guardian.model_provider import BatchModelProvider, ModelProvider, create_model_provider
 from guardian.patch_parser import load_schema as load_a_box_schema
 from guardian.patch_parser import normalize_proposal as normalize_a_box_proposal
@@ -201,6 +202,7 @@ def _resolved_inference_settings(provider: ModelProvider) -> dict[str, Any]:
         "seed",
         "max_retries",
         "reasoning_effort",
+        "tools_disabled",
     )
     return {field: getattr(provider, field, None) for field in fields}
 
@@ -314,6 +316,8 @@ def _validate_resume_run_config(
         "artifact_fingerprints",
         "inference_settings",
         "model_digest",
+        "generation_cache",
+        "batch_sync_retry_fallback",
         "code",
     ):
         if key == "oracle_diagnosis_mode" and existing_config.get(key) is None and expected_config.get(key) == "run":
@@ -2028,6 +2032,9 @@ def run_reasoning_floor(
     provider: Optional[ModelProvider] = None,
     model_name: str | None = None,
     model_endpoint: str | None = None,
+    reasoning_effort: str | None = None,
+    model_digest: str | None = None,
+    generation_cache_path: str | Path | None = None,
     ablation_bundles: Iterable[str] = ABLATION_BUNDLES,
     case_ids: Optional[Iterable[str]] = None,
     selection_manifest_path: str | Path | None = None,
@@ -2037,22 +2044,51 @@ def run_reasoning_floor(
     parallel_workers: int | None = None,
     batch_completion_window: str = "24h",
     batch_poll_interval_seconds: float = 60.0,
+    batch_sync_retry_fallback: bool = True,
     proposal_track_mode: str = "oracle",
     oracle_diagnosis_mode: str | None = None,
 ) -> dict[str, Any]:
     run_started_utc = _utc_now()
     run_started_at = time.perf_counter()
     if provider is None:
-        provider = create_model_provider(model_name, model_endpoint=model_endpoint)
+        provider = create_model_provider(
+            model_name,
+            model_endpoint=model_endpoint,
+            reasoning_effort=reasoning_effort,
+        )
+    base_provider = provider
     selected_model = getattr(provider, "model", None) or model_name or "unknown-model"
     selected_provider = (
         getattr(provider, "provider_name", None) or provider.__class__.__name__.replace("ChatProvider", "").lower()
     )
-    openai_reasoning_effort = getattr(provider, "reasoning_effort", None) if selected_provider == "openai" else None
+    resolved_reasoning_effort = (
+        getattr(provider, "reasoning_effort", None)
+        if selected_provider in {"openai", "azure"}
+        else None
+    )
+    resolved_model_digest = (
+        model_digest
+        or getattr(provider, "model_digest", None)
+        or os.getenv("OLLAMA_MODEL_DIGEST")
+        or os.getenv("MODEL_DIGEST")
+    )
+    base_inference_settings = _resolved_inference_settings(provider)
+    if generation_cache_path is not None:
+        if not isinstance(resolved_model_digest, str) or not resolved_model_digest.strip():
+            raise ValueError(
+                "--model-digest is required when --generation-cache is enabled so cached "
+                "responses cannot cross model revisions."
+            )
+        provider = CachedModelProvider(
+            provider,
+            cache_path=generation_cache_path,
+            model_digest=resolved_model_digest,
+            inference_settings=base_inference_settings,
+        )
 
     normalized_execution_mode = (execution_mode or "").strip().lower()
     if not normalized_execution_mode:
-        normalized_execution_mode = "batch" if selected_provider == "openai" else "sync"
+        normalized_execution_mode = "batch" if selected_provider in {"openai", "azure"} else "sync"
     if normalized_execution_mode not in {"sync", "parallel", "batch"}:
         raise ValueError(f"Unsupported execution mode: {execution_mode!r}")
     normalized_proposal_track_mode = (proposal_track_mode or "oracle").strip().lower()
@@ -2068,13 +2104,13 @@ def run_reasoning_floor(
     should_run_track_diagnosis = (
         normalized_proposal_track_mode == "diagnosis_routed" or normalized_oracle_diagnosis_mode == "run"
     )
-    if normalized_execution_mode == "batch" and not isinstance(provider, BatchModelProvider):
+    if normalized_execution_mode == "batch" and not isinstance(base_provider, BatchModelProvider):
         raise RuntimeError(
             f"Execution mode 'batch' is not supported by provider {provider.__class__.__name__}."
         )
-    if normalized_execution_mode == "batch" and selected_provider not in {"openai", "static"}:
+    if normalized_execution_mode == "batch" and selected_provider not in {"openai", "azure", "static"}:
         raise RuntimeError(
-            "Execution mode 'batch' is currently supported only for the standard OpenAI provider. "
+            "Execution mode 'batch' is currently supported only for OpenAI-compatible batch providers. "
             f"Use --execution-mode sync or --execution-mode parallel for endpoint {selected_provider!r}."
         )
     if parallel_workers is not None and parallel_workers < 1:
@@ -2156,10 +2192,7 @@ def run_reasoning_floor(
         output_dir=out_dir,
     )
     selected_case_ids = generation_selection.case_ids
-    visible_case_id_by_raw = {
-        case_id: prompt_visible_case_id(case_id, index)
-        for index, case_id in enumerate(selected_case_ids, start=1)
-    }
+    visible_case_id_by_raw = {case_id: prompt_visible_case_id(case_id) for case_id in selected_case_ids}
     bundle_list = [bundle for bundle in ablation_bundles if bundle in ABLATION_BUNDLES]
     if not bundle_list:
         raise ValueError("At least one supported ablation bundle is required.")
@@ -2178,7 +2211,7 @@ def run_reasoning_floor(
         out_dir=out_dir,
         provider_name=selected_provider,
         model_name=selected_model,
-        openai_reasoning_effort=openai_reasoning_effort,
+        openai_reasoning_effort=resolved_reasoning_effort,
         execution_mode=normalized_execution_mode,
         proposal_track_mode=normalized_proposal_track_mode,
         oracle_diagnosis_mode=normalized_oracle_diagnosis_mode,
@@ -2208,17 +2241,20 @@ def run_reasoning_floor(
         "track_diagnosis_schema": _file_fingerprint("schemas/track_diagnosis.schema.json"),
         "prompt_definitions": _file_fingerprint("src/guardian/prompts.py"),
     }
-    expected_run_config["inference_settings"] = _resolved_inference_settings(provider)
-    expected_run_config["model_digest"] = (
-        getattr(provider, "model_digest", None)
-        or os.getenv("OLLAMA_MODEL_DIGEST")
-        or os.getenv("MODEL_DIGEST")
-    )
+    expected_run_config["reasoning_effort"] = resolved_reasoning_effort
+    expected_run_config["inference_settings"] = base_inference_settings
+    expected_run_config["model_digest"] = resolved_model_digest
+    expected_run_config["generation_cache"] = {
+        "enabled": generation_cache_path is not None,
+        "path": _resolved_path_str(generation_cache_path),
+        "schema_version": CACHE_SCHEMA_VERSION if generation_cache_path is not None else None,
+    }
+    expected_run_config["batch_sync_retry_fallback"] = batch_sync_retry_fallback
     expected_run_config["code"] = {
         **_git_state(),
         "python": sys.version.split()[0],
     }
-    expected_run_config["prompt_visible_case_id_policy"] = "case_000001_ordered_by_generation_selection"
+    expected_run_config["prompt_visible_case_id_policy"] = "case_sha1_12_stable_by_raw_case_id"
     expected_run_config["visible_case_id_map"] = dict(visible_case_id_by_raw)
     if resume_requested:
         _validate_resume_run_config(existing_run_config, expected_run_config)
@@ -2929,6 +2965,40 @@ def run_reasoning_floor(
                 "failed": 0,
                 "unrecoverable": 0,
             }
+            if pending_retries and not batch_sync_retry_fallback:
+                _emit_runtime_status(
+                    progress,
+                    f"Recording {len(pending_retries)} {phase_label} batch failure(s) without synchronous retry.",
+                )
+                for custom_id in sorted(pending_retries):
+                    retry_entry = pending_retries[custom_id]
+                    request_info = retry_entry["request_info"]
+                    original_error = retry_entry.get("error_message")
+                    retry_summary["unrecoverable"] += 1
+                    usage = _apply_cost_estimation_policy(
+                        _empty_usage_payload(selected_provider, selected_model, request_info),
+                        provider_name=selected_provider,
+                        execution_mode=normalized_execution_mode,
+                    )
+                    finalize_result(
+                        request_info=request_info,
+                        raw_response=None,
+                        parsed_payload=None,
+                        usage=usage,
+                        error_message=original_error or "Batch request failed without a provider result.",
+                        elapsed_seconds=None,
+                        recovery_details={
+                            "type": "batch_error_no_sync_retry",
+                            "phase": phase_label,
+                            "batch_status_code": retry_entry.get("status_code"),
+                            "batch_error": original_error,
+                            "attempted": False,
+                            "succeeded": False,
+                        },
+                    )
+                    finalized_custom_ids.add(custom_id)
+                    mark_completed()
+                return retry_summary
             if pending_retries:
                 _emit_runtime_status(
                     progress,
@@ -3718,7 +3788,7 @@ def run_reasoning_floor(
                 "ablation_bundles": bundle_list,
                 "provider": selected_provider,
                 "model": selected_model,
-                "openai_reasoning_effort": openai_reasoning_effort,
+                "openai_reasoning_effort": resolved_reasoning_effort,
                 "output_dir": str(out_dir),
                 "selection_manifest": str(selection_manifest_path) if selection_manifest_path else None,
             },
@@ -3750,7 +3820,8 @@ def run_reasoning_floor(
             "run_id": run_id,
             "provider": selected_provider,
             "model": selected_model,
-            "openai_reasoning_effort": openai_reasoning_effort,
+            "openai_reasoning_effort": resolved_reasoning_effort,
+            "reasoning_effort": resolved_reasoning_effort,
             "model_digest": expected_run_config["model_digest"],
             "inference_settings": expected_run_config["inference_settings"],
             "artifact_fingerprints": expected_run_config["artifact_fingerprints"],
@@ -3762,6 +3833,11 @@ def run_reasoning_floor(
             "generation_elapsed_seconds": run_usage["generation_elapsed_seconds"],
             "execution_mode": normalized_execution_mode,
             "batch_mode_used": normalized_execution_mode == "batch",
+            "batch_sync_retry_fallback": batch_sync_retry_fallback,
+            "generation_cache": {
+                **expected_run_config["generation_cache"],
+                "stats": dict(provider.stats) if isinstance(provider, CachedModelProvider) else None,
+            },
             "evaluation": {
                 "classified_record_strategy": evaluation_strategy,
                 "selected_case_count": evaluation_case_count,

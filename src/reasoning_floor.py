@@ -19,6 +19,22 @@ def main() -> int:
     )
     parser.add_argument("--model", default=None, help="Override the model name configured in .env.")
     parser.add_argument(
+        "--reasoning-effort",
+        choices=("none", "minimal", "low", "medium", "high", "xhigh"),
+        default=None,
+        help="Explicit reasoning effort for OpenAI-compatible providers.",
+    )
+    parser.add_argument(
+        "--model-digest",
+        default=None,
+        help="Immutable model/deployment revision digest used in provenance and cache identity.",
+    )
+    parser.add_argument(
+        "--generation-cache",
+        default=None,
+        help="Append-only SQLite cache for exact response reuse across runs and populations.",
+    )
+    parser.add_argument(
         "--model-endpoint",
         choices=("ollama", "azure", "university", "openai"),
         default=None,
@@ -49,6 +65,14 @@ def main() -> int:
         type=float,
         default=60.0,
         help="Polling interval in seconds while waiting for a batch job to finish.",
+    )
+    parser.add_argument(
+        "--batch-sync-retry-fallback",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Retry eligible failed batch requests synchronously. Disable for strict batch-only execution."
+        ),
     )
     parser.add_argument(
         "--proposal-track-mode",
@@ -90,12 +114,16 @@ def main() -> int:
         resume_run_dir=args.resume_run_dir,
         model_name=args.model,
         model_endpoint=args.model_endpoint,
+        reasoning_effort=args.reasoning_effort,
+        model_digest=args.model_digest,
+        generation_cache_path=args.generation_cache,
         execution_mode=args.execution_mode,
         proposal_track_mode=args.proposal_track_mode,
         oracle_diagnosis_mode=args.oracle_diagnosis_mode,
         parallel_workers=args.parallel_workers,
         batch_completion_window=args.batch_completion_window,
         batch_poll_interval_seconds=args.batch_poll_interval_seconds,
+        batch_sync_retry_fallback=args.batch_sync_retry_fallback,
         case_ids=[item.strip() for item in args.case_ids.split(",")] if args.case_ids else None,
         selection_manifest_path=args.selection_manifest,
         tracks=[item.strip() for item in args.tracks.split(",")] if args.tracks else None,

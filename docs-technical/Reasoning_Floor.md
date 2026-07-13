@@ -19,7 +19,8 @@ When diagnosis is enabled, the track-diagnosis call asks the model to classify e
 
 The runner also accepts `--selection-manifest` so paper runs can target a deterministic benchmark subset without creating a second Stage 4 JSONL artifact.
 
-The default execution mode is provider-aware. OpenAI runs default to batch mode, while other providers default to synchronous execution. You can still override this with `--execution-mode`.
+The default execution mode is provider-aware. OpenAI and Azure runs default to batch mode, while other providers default
+to synchronous execution. You can still override this with `--execution-mode`.
 
 Terminology:
 
@@ -112,6 +113,7 @@ Supported runtime settings:
 - `AZURE_OPENAI_API_KEY`
 - optional `AZURE_OPENAI_INPUT_COST_PER_1M_TOKENS`
 - optional `AZURE_OPENAI_OUTPUT_COST_PER_1M_TOKENS`
+- optional `AZURE_OPENAI_REASONING_EFFORT`; the paper matrix sets this explicitly to `high`
 - `MODEL_ENDPOINT=university`
 - `UNIVERSITY_OPENAI_BASE_URL`
 - `UNIVERSITY_OPENAI_MODEL`
@@ -143,15 +145,18 @@ Execution CLI settings:
 - `--batch-completion-window` (defaults to `24h`)
 - `--batch-poll-interval-seconds` (defaults to `60`)
 - `--resume-run-dir` to continue an interrupted run from an existing run directory
+- `--model-digest` to bind an immutable model or deployment revision
+- `--generation-cache` for exact response reuse across runs and expanded populations
+- `--reasoning-effort` for OpenAI-compatible reasoning models
+- `--no-batch-sync-retry-fallback` for strict batch-only execution
 
 If `--execution-mode` is omitted:
 
-- the OpenAI endpoint defaults to batch execution
+- OpenAI and Azure endpoints default to batch execution
 - other providers default to synchronous execution
 
-Azure and university endpoint modes default to synchronous execution. Use `--execution-mode parallel` for concurrent
-case-level requests if the endpoint allows it. Batch mode remains intended for the standard OpenAI chat-completions
-provider.
+The university endpoint defaults to synchronous execution. Azure uses its OpenAI-compatible batch contract. Use
+`--execution-mode parallel` for concurrent case-level requests only when a non-batch endpoint allows it.
 
 `parallel` mode keeps the existing per-case request pattern but overlaps multiple cases with a bounded thread pool. This is the recommended throughput mode for Ollama because Ollama does not expose a provider batch API for text generation in this repository.
 
@@ -231,6 +236,10 @@ SHA-256 fingerprints for benchmark, world state, selection manifest, active sche
 model digests or a dirty worktree do not stop exploratory execution, but they make a run ineligible for confirmatory
 registration.
 
+With `--generation-cache`, the runner requires a model digest and records cache path, schema version, hits, misses, and
+stores. The content key covers the complete generation request, and prompt-visible case IDs are stable across population
+order changes. See [Model Execution Matrix](./Model_Execution.md) for the paper configuration and metric replay workflow.
+
 Batch runs also write provider batch artifacts at the top level of the run directory:
 
 - `batch_input.jsonl`
@@ -293,7 +302,10 @@ The two-stage flow writes:
 - `proposal_batch_request_manifest.jsonl`
 - provider batch artifacts renamed with `diagnosis_` and `proposal_` prefixes
 
-When a provider batch artifact contains retryable `408`, `409`, `429`, or `5xx` request failures, the runner reconstructs the original prompt from the batch input artifact and retries that request synchronously. Each batch phase summary records the fallback outcome under `run_info.batch.phases[*].sync_retry_fallback`, and the top-level batch summary also carries an aggregated `sync_retry_fallback` block.
+When a provider batch artifact contains retryable `408`, `409`, `429`, or `5xx` request failures, the default runner
+behavior reconstructs the original prompt and retries synchronously. `--no-batch-sync-retry-fallback` instead records the
+failure without changing execution mode; this is required by the Azure paper condition. Each batch phase and top-level
+batch summary records the policy and outcome under `sync_retry_fallback`.
 
 When `diagnosis_routed` predicts `AMBIGUOUS`, the runner does not submit a proposal request. It still writes synthetic raw/manifest proposal rows with `parse_status="skipped_ambiguous_track"` and `proposal_track_used="AMBIGUOUS"`.
 

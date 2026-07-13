@@ -18,6 +18,8 @@ contracts, and developer operations. Research rationale and paper claims live in
 - [Benchmark Selection](./Benchmark_Selection.md): deterministic dev/core selection and leakage controls.
 - [Evaluation Harness](./Evaluation_Harness.md): scoring workflow, output subsets, and metric semantics.
 - [Reasoning Floor](./Reasoning_Floor.md): model runner, prompt/task selection, provenance capture, and resume behavior.
+- [Model Execution Matrix](./Model_Execution.md): registered Ollama/Azure conditions, content-addressed generation
+  reuse, extensible population planning, and versioned metric replay.
 
 The [Paper Execution Plan](./Paper_Execution_Plan.md) is a historical pre-release runbook. It is retained to explain
 legacy exploratory artifacts and must not be used to produce confirmatory or release-candidate results.

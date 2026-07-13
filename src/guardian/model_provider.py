@@ -221,7 +221,9 @@ def _normalize_api_key(env_name: str, value: str | None) -> str | None:
 OPENAI_REASONING_EFFORT_VALUES = frozenset({"none", "minimal", "low", "medium", "high", "xhigh"})
 
 
-def _normalize_openai_reasoning_effort(value: str | None) -> str | None:
+def _normalize_openai_reasoning_effort(
+    value: str | None, *, setting_name: str = "OPENAI_REASONING_EFFORT"
+) -> str | None:
     if value is None:
         return None
     normalized = value.strip().lower()
@@ -229,7 +231,7 @@ def _normalize_openai_reasoning_effort(value: str | None) -> str | None:
         return None
     if normalized not in OPENAI_REASONING_EFFORT_VALUES:
         allowed_values = ", ".join(sorted(OPENAI_REASONING_EFFORT_VALUES))
-        raise RuntimeError(f"OPENAI_REASONING_EFFORT must be one of: {allowed_values}.")
+        raise RuntimeError(f"{setting_name} must be one of: {allowed_values}.")
     return normalized
 
 
@@ -300,6 +302,7 @@ def _openai_chat_payload(
     system_prompt: str,
     response_format: dict[str, Any],
     reasoning_effort: str | None = None,
+    tools_disabled: bool = True,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "model": model,
@@ -312,6 +315,8 @@ def _openai_chat_payload(
         payload["temperature"] = 0
     if reasoning_effort is not None:
         payload["reasoning"] = {"effort": reasoning_effort}
+    if tools_disabled:
+        payload["tool_choice"] = "none"
     if response_format:
         payload["response_format"] = response_format
     return payload
@@ -523,6 +528,7 @@ class OpenAIChatProvider:
     model: str | None = None
     base_url: str | None = None
     reasoning_effort: str | None = None
+    tools_disabled: bool = True
     timeout: int = 120
     provider_name: str = "openai"
     provider_env_prefix: str = "OPENAI"
@@ -536,8 +542,9 @@ class OpenAIChatProvider:
         self.model = self.model or os.getenv(self.model_env_name)
         default_base_url = "https://api.openai.com/v1" if self.provider_name == "openai" else ""
         self.base_url = (self.base_url or os.getenv(self.base_url_env_name) or default_base_url).rstrip("/")
+        reasoning_setting = f"{self.provider_env_prefix}_REASONING_EFFORT"
         self.reasoning_effort = _normalize_openai_reasoning_effort(
-            self.reasoning_effort or (os.getenv("OPENAI_REASONING_EFFORT") if self.provider_name == "openai" else None)
+            self.reasoning_effort or os.getenv(reasoning_setting), setting_name=reasoning_setting
         )
         if not self.api_key:
             raise RuntimeError(f"{self.api_key_env_name} is required for the {self.provider_name} provider.")
@@ -608,6 +615,7 @@ class OpenAIChatProvider:
             system_prompt=system_prompt,
             response_format=response_format,
             reasoning_effort=self.reasoning_effort,
+            tools_disabled=self.tools_disabled,
         )
         request_body = _encode_json_body(payload, metadata=metadata, provider_name="OpenAI")
         response = requests.post(
@@ -646,6 +654,7 @@ class OpenAIChatProvider:
             system_prompt=system_prompt,
             response_format=response_format,
             reasoning_effort=self.reasoning_effort,
+            tools_disabled=self.tools_disabled,
         )
         request_record = {
             "custom_id": custom_id,
@@ -684,7 +693,7 @@ class OpenAIChatProvider:
         except HTTPError as exc:
             self._handle_http_error(upload_response, exc, action="batch input upload")
         uploaded_file = upload_response.json()
-        _write_json_file(output_dir / "openai_batch_input_file.json", uploaded_file)
+        _write_json_file(output_dir / f"{self.provider_name}_batch_input_file.json", uploaded_file)
         if status_callback is not None:
             status_callback(
                 f"Uploaded batch input as {uploaded_file.get('id', 'unknown-file-id')}; creating batch job."
@@ -744,7 +753,7 @@ class OpenAIChatProvider:
             last_status = batch.get("status")
             last_request_counts = dict(request_counts) if isinstance(request_counts, dict) else request_counts
 
-        _write_json_file(output_dir / "openai_batch_job.json", batch)
+        _write_json_file(output_dir / f"{self.provider_name}_batch_job.json", batch)
         if status_callback is not None:
             status_callback(
                 f"Batch {batch.get('id', batch_id)} finished with status {batch.get('status')!r}; "
@@ -754,12 +763,16 @@ class OpenAIChatProvider:
         output_path = None
         output_file_id = batch.get("output_file_id")
         if isinstance(output_file_id, str) and output_file_id:
-            output_path = self._download_file(output_file_id, output_dir / "openai_batch_output.jsonl")
+            output_path = self._download_file(
+                output_file_id, output_dir / f"{self.provider_name}_batch_output.jsonl"
+            )
 
         error_path = None
         error_file_id = batch.get("error_file_id")
         if isinstance(error_file_id, str) and error_file_id:
-            error_path = self._download_file(error_file_id, output_dir / "openai_batch_errors.jsonl")
+            error_path = self._download_file(
+                error_file_id, output_dir / f"{self.provider_name}_batch_errors.jsonl"
+            )
         if status_callback is not None:
             status_callback(
                 "Downloaded batch artifacts: "
@@ -1129,13 +1142,17 @@ class OpenAIResponsesProvider:
         return raw_response, parsed_payload if parsed_payload is not None else text, usage_payload
 
 
-def create_model_provider(model_name: str | None = None, model_endpoint: str | None = None) -> ModelProvider:
+def create_model_provider(
+    model_name: str | None = None,
+    model_endpoint: str | None = None,
+    reasoning_effort: str | None = None,
+) -> ModelProvider:
     load_dotenv()
     provider_name = (
         model_endpoint or os.getenv("MODEL_ENDPOINT") or os.getenv("MODEL_PROVIDER") or "openai"
     ).strip().lower()
     if provider_name == "openai":
-        return OpenAIChatProvider(model=model_name)
+        return OpenAIChatProvider(model=model_name, reasoning_effort=reasoning_effort)
     if provider_name == "ollama":
         return OllamaChatProvider(model=model_name)
     if provider_name == "azure":
@@ -1148,6 +1165,7 @@ def create_model_provider(model_name: str | None = None, model_endpoint: str | N
             api_key_env_name="AZURE_OPENAI_API_KEY",
             model_env_name="AZURE_OPENAI_DEPLOYMENT",
             base_url_env_name="AZURE_OPENAI_ENDPOINT",
+            reasoning_effort=reasoning_effort,
         )
     if provider_name == "university":
         return OpenAIResponsesProvider(model=model_name)
