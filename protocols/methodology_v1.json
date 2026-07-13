@@ -4,9 +4,9 @@
   "protocol_id": "methodology_v1",
   "protocol_phase": "methodology",
   "status": "frozen",
-  "created_at_utc": "2026-07-13T19:09:08Z",
+  "created_at_utc": "2026-07-13T19:41:13Z",
   "code": {
-    "commit": "5a2e6eaae0ed8cb72bf517d931fb7764a810066a",
+    "commit": "d79b782814c2e2f358b96a13a9ae6193250d4155",
     "dirty": false
   },
   "release": null,
@@ -154,8 +154,8 @@
     {
       "role": "methodology_008",
       "path": "src/automated_audit_codex.py",
-      "size_bytes": 38204,
-      "sha256": "50e0ce8f52bd4a58e2b3766c6c439b342bfdc8b654fc22f37c765e03e8ae34f3"
+      "size_bytes": 39380,
+      "sha256": "07704afb37abccf49f612d41f86780d57b55b5befcb6254801980530a0c5af5b"
     },
     {
       "role": "methodology_009",
@@ -166,8 +166,8 @@
     {
       "role": "methodology_010",
       "path": "src/temporal_audit.py",
-      "size_bytes": 15306,
-      "sha256": "c1d3583a754f636bf26007134b28a1a32c370177f722a2b90a1ebd02545f5462"
+      "size_bytes": 17147,
+      "sha256": "483b05bef6bf73961924b42f3b4e7cacf8d5ad91373f1b50a58f5818704e72fe"
     },
     {
       "role": "methodology_011",
