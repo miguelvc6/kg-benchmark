@@ -8,7 +8,8 @@ Git. Run repository commands from WSL with `UV_PROJECT_ENVIRONMENT=.venv-wsl`.
 Do not rewrite the recovered files. The compiled JSON array is the authoritative Stage 2 consumed by Stages 3 and 4; the
 larger JSONL is a recovered pre-popularity precursor. The lineage command proves the checksum-bound declared relationship:
 every compiled row must be an ordered precursor row with only `popularity` added, while precursor-only rows and the known
-multi-value physical line remain recorded. It validates Stage 0/1 provenance against authoritative Stage 2 and requires
+multi-value physical line remain recorded. It validates Stage 0 popularity payload equality and Stage 1 event provenance
+against authoritative Stage 2 and requires
 exact Stage 2/3/4 IDs plus field equality between Stage 2 and the lean Stage 4 projection.
 
 ```bash
@@ -29,6 +30,11 @@ missing provenance, identity gap, or projection mutation. The v3 manifest record
 provenance, Git revision, strict-equivalence diagnostics, and the authoritative reconciliation result.
 `kg-automated-audit run --stage2 ...` now repeats the Stage 2/3/4 content gate;
 it no longer records Stage 2 presence as if that were validation.
+
+If only a lineage validator rule is strengthened after an exhaustive pass, `kg-artifact-lineage refresh-provenance`
+may recompute Stage 0/1 provenance while retaining the prior relationship and identity results. It first rehashes every
+Stage 0--4 artifact and refuses changed bytes, failed prior subchecks, or an invalid prior manifest. The new manifest
+records exactly which checks were reused and recomputed; this is not an artifact-repair mechanism.
 
 ## 2. Freeze and acquire an isolated snapshot
 

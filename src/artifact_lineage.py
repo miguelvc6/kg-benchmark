@@ -454,7 +454,7 @@ def _validate_stage0_stage1(stage0_path: Path, stage1_path: Path, stage2_path: P
         with sqlite3.connect(database) as connection:
             connection.executescript(
                 """
-                CREATE TABLE popularity (qid TEXT PRIMARY KEY);
+                CREATE TABLE popularity (qid TEXT PRIMARY KEY, payload_hash TEXT NOT NULL);
                 CREATE TABLE candidates (key TEXT PRIMARY KEY);
                 """
             )
@@ -462,7 +462,10 @@ def _validate_stage0_stage1(stage0_path: Path, stage1_path: Path, stage2_path: P
             with stage0_path.open("rb") as handle:
                 for qid, payload in ijson.kvitems(handle, ""):
                     if isinstance(qid, str) and isinstance(payload, dict):
-                        connection.execute("INSERT OR IGNORE INTO popularity VALUES (?)", (qid,))
+                        connection.execute(
+                            "INSERT OR IGNORE INTO popularity VALUES (?, ?)",
+                            (qid, canonical_record_sha256(payload)),
+                        )
                         popularity_count += 1
             candidate_count = 0
             with stage1_path.open("rb") as handle:
@@ -473,6 +476,7 @@ def _validate_stage0_stage1(stage0_path: Path, stage1_path: Path, stage2_path: P
                     connection.execute("INSERT OR IGNORE INTO candidates VALUES (?)", (key,))
                     candidate_count += 1
             missing_popularity: list[str] = []
+            popularity_mismatches: list[str] = []
             missing_candidate: list[str] = []
             stage2_count = 0
             if stage2_path.suffix == ".jsonl":
@@ -486,11 +490,19 @@ def _validate_stage0_stage1(stage0_path: Path, stage1_path: Path, stage2_path: P
             for record in stage2_records:
                 stage2_count += 1
                 qid = record.get("qid")
-                if not isinstance(qid, str) or connection.execute(
-                    "SELECT 1 FROM popularity WHERE qid = ?", (qid,)
-                ).fetchone() is None:
+                popularity_source = (
+                    connection.execute(
+                        "SELECT payload_hash FROM popularity WHERE qid = ?", (qid,)
+                    ).fetchone()
+                    if isinstance(qid, str)
+                    else None
+                )
+                if popularity_source is None:
                     if len(missing_popularity) < 100:
                         missing_popularity.append(str(qid))
+                elif popularity_source[0] != canonical_record_sha256(record.get("popularity")):
+                    if len(popularity_mismatches) < 100:
+                        popularity_mismatches.append(str(record.get("id")))
                 key = canonical_record_sha256(_candidate_key(record))
                 if connection.execute("SELECT 1 FROM candidates WHERE key = ?", (key,)).fetchone() is None:
                     if len(missing_candidate) < 100:
@@ -501,6 +513,7 @@ def _validate_stage0_stage1(stage0_path: Path, stage1_path: Path, stage2_path: P
         "stage0_nonempty": popularity_count > 0,
         "stage1_nonempty": candidate_count > 0,
         "stage2_popularity_provenance_complete": not missing_popularity,
+        "stage2_popularity_payloads_equal": not popularity_mismatches,
         "stage2_candidate_provenance_complete": not missing_candidate,
     }
     return {
@@ -508,6 +521,7 @@ def _validate_stage0_stage1(stage0_path: Path, stage1_path: Path, stage2_path: P
         "checks": checks,
         "counts": {"stage0": popularity_count, "stage1": candidate_count, "stage2": stage2_count},
         "missing_popularity_qids": missing_popularity,
+        "popularity_payload_mismatch_case_ids": popularity_mismatches,
         "missing_candidate_case_ids": missing_candidate,
     }
 
@@ -821,6 +835,85 @@ def validate_lineage(
     return manifest
 
 
+def refresh_lineage_provenance(
+    *,
+    prior_manifest_path: str | Path,
+    stage0_path: str | Path,
+    stage1_path: str | Path,
+    stage2_json_path: str | Path,
+) -> dict[str, Any]:
+    """Recompute Stage 0/1 provenance while retaining hash-bound exhaustive checks.
+
+    This is intended for a validator-only provenance rule upgrade. It refuses to
+    reuse relationship or identity results unless every artifact still has the
+    exact size and SHA-256 recorded by the prior passing subchecks.
+    """
+    prior_path = Path(prior_manifest_path)
+    prior = json.loads(prior_path.read_text(encoding="utf-8"))
+    schema_path = Path(__file__).resolve().parents[1] / "schemas" / "artifact_lineage.schema.json"
+    errors = list(
+        Draft202012Validator(json.loads(schema_path.read_text(encoding="utf-8"))).iter_errors(prior)
+    )
+    if errors:
+        raise ValueError(f"Prior lineage manifest is invalid: {errors[0].message}")
+    validation = prior.get("validation", {})
+    relationship = validation.get("stage2_relationship")
+    identity = validation.get("stage234_identity_and_projection")
+    if not isinstance(relationship, dict) or relationship.get("passed") is not True:
+        raise ValueError("Prior lineage manifest lacks a passing Stage 2 relationship check.")
+    if not isinstance(identity, dict) or identity.get("passed") is not True:
+        raise ValueError("Prior lineage manifest lacks a passing Stage 2/3/4 identity check.")
+
+    artifacts = prior.get("artifacts", {})
+    paths = {
+        "stage0": Path(stage0_path),
+        "stage1": Path(stage1_path),
+        "stage2_json": Path(stage2_json_path),
+    }
+    for role, path in paths.items():
+        entry = artifacts.get(role, {})
+        if not path.is_file() or path.stat().st_size != entry.get("size_bytes"):
+            raise ValueError(f"{role} no longer matches the prior lineage artifact size.")
+    with ProcessPoolExecutor(max_workers=4) as executor:
+        hash_futures = {role: executor.submit(sha256_file, path) for role, path in paths.items()}
+        provenance_future = executor.submit(
+            _validate_stage0_stage1, paths["stage0"], paths["stage1"], paths["stage2_json"]
+        )
+        observed_hashes = {role: future.result() for role, future in hash_futures.items()}
+        provenance = provenance_future.result()
+    mismatches = [
+        role for role, digest in observed_hashes.items() if artifacts.get(role, {}).get("sha256") != digest
+    ]
+    if mismatches:
+        raise ValueError(f"Artifacts changed since the prior lineage check: {', '.join(mismatches)}")
+    for role in ("stage2_jsonl", "stage3", "stage4"):
+        entry = artifacts.get(role, {})
+        path_value = entry.get("path")
+        path = Path(path_value) if isinstance(path_value, str) else Path("missing")
+        if (
+            not path.is_file()
+            or path.stat().st_size != entry.get("size_bytes")
+            or sha256_file(path) != entry.get("sha256")
+        ):
+            raise ValueError(f"{role} changed since the prior exhaustive lineage check.")
+
+    manifest = json.loads(json.dumps(prior))
+    manifest["created_at_utc"] = datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    manifest["git_revision"] = _git_revision()
+    manifest["validation"]["stage0_stage1_provenance"] = provenance
+    manifest["validation"]["passed"] = relationship["passed"] and provenance["passed"] and identity["passed"]
+    manifest["validation_reuse"] = {
+        "mode": "content_bound_subcheck_reuse",
+        "prior_manifest_path": str(prior_path.resolve()),
+        "prior_manifest_sha256": sha256_file(prior_path),
+        "reused_subchecks": ["stage2_relationship", "stage234_identity_and_projection"],
+        "recomputed_subchecks": ["stage0_stage1_provenance"],
+        "all_artifact_hashes_reverified": True,
+    }
+    Draft202012Validator(json.loads(schema_path.read_text(encoding="utf-8"))).validate(manifest)
+    return manifest
+
+
 def verify_bound_lineage_manifest(
     manifest_path: str | Path,
     *,
@@ -891,7 +984,28 @@ def main() -> int:
         help="Explicit JSON transform declaration for a restored Stage 2 precursor.",
     )
     validate.add_argument("--output", required=True)
+    refresh = subparsers.add_parser(
+        "refresh-provenance",
+        help="Recompute upgraded Stage 0/1 checks and reuse only hash-bound passing subchecks.",
+    )
+    refresh.add_argument("--prior-manifest", required=True)
+    refresh.add_argument("--stage0", required=True)
+    refresh.add_argument("--stage1", required=True)
+    refresh.add_argument("--stage2-json", required=True)
+    refresh.add_argument("--output", required=True)
     args = parser.parse_args()
+    if args.command == "refresh-provenance":
+        manifest = refresh_lineage_provenance(
+            prior_manifest_path=args.prior_manifest,
+            stage0_path=args.stage0,
+            stage1_path=args.stage1,
+            stage2_json_path=args.stage2_json,
+        )
+        output = Path(args.output)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(json.dumps(manifest, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
+        print(json.dumps(manifest["validation"], sort_keys=True))
+        return 0 if manifest["validation"]["passed"] else 1
     provenance = []
     if args.source_provenance:
         provenance = json.loads(Path(args.source_provenance).read_text(encoding="utf-8"))

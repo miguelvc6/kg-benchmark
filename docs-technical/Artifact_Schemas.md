@@ -5,6 +5,7 @@ Confirmatory releases additionally use versioned lineage and disposition contrac
 - `schemas/artifact_lineage.schema.json` v3 binds Stage 0--4 file hashes, sizes, counts, the authoritative Stage 2 role,
   Stage 0/1 provenance, and Stage 2/3/4 identity/projection results. Exact JSON/JSONL equality is the default. A restored
   historical precursor may differ only under a checksum-bound, explicitly declared and exhaustively verified transform.
+  Stage 0 provenance includes canonical equality of every attached popularity payload, not merely QID membership.
 - `schemas/final_disposition.schema.json` defines the per-case final audit disposition. Confirmatory selection requires
   exactly one valid row for every Stage 4 case and admits only `include` rows.
 

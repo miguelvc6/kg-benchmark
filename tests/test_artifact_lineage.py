@@ -6,6 +6,7 @@ from pathlib import Path
 
 from artifact_lineage import (
     canonical_record_sha256,
+    refresh_lineage_provenance,
     stage2_projection,
     validate_lineage,
     verify_bound_lineage_manifest,
@@ -26,6 +27,7 @@ def _stage2(case_id: str = "repair_Q1_2") -> dict:
         },
         "repair_target": {"kind": "A_BOX", "action": "UPDATE", "old_value": ["x"], "new_value": ["y"]},
         "persistence_check": {"status": "passed"},
+        "popularity": {"score": 1.0},
         "qid_label_en": "ignored by lean Stage 4",
     }
 
@@ -85,6 +87,44 @@ class ArtifactLineageTests(unittest.TestCase):
             self.assertFalse(result["validation"]["stage2_representation_equivalence"]["passed"])
             self.assertFalse(result["validation"]["stage234_identity_and_projection"]["passed"])
 
+    def test_stage0_popularity_payload_mismatch_fails_provenance(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            p = self._files(Path(temporary), [_stage2()])
+            p["s0.json"].write_text(json.dumps({"Q1": {"score": 2.0}}), encoding="utf-8")
+            result = validate_lineage(
+                stage0_path=p["s0.json"], stage1_path=p["s1.json"],
+                stage2_json_path=p["s2.json"], stage2_jsonl_path=p["s2.jsonl"],
+                stage3_path=p["s3.json"], stage4_path=p["s4.jsonl"],
+            )
+            provenance = result["validation"]["stage0_stage1_provenance"]
+            self.assertFalse(provenance["checks"]["stage2_popularity_payloads_equal"])
+            self.assertEqual(provenance["popularity_payload_mismatch_case_ids"], ["repair_Q1_2"])
+            self.assertFalse(result["validation"]["passed"])
+
+    def test_provenance_refresh_reuses_only_hash_bound_passing_subchecks(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            p = self._files(Path(temporary), [_stage2()])
+            prior = validate_lineage(
+                stage0_path=p["s0.json"], stage1_path=p["s1.json"],
+                stage2_json_path=p["s2.json"], stage2_jsonl_path=p["s2.jsonl"],
+                stage3_path=p["s3.json"], stage4_path=p["s4.jsonl"],
+            )
+            prior_path = Path(temporary) / "prior.json"
+            prior_path.write_text(json.dumps(prior), encoding="utf-8")
+            refreshed = refresh_lineage_provenance(
+                prior_manifest_path=prior_path,
+                stage0_path=p["s0.json"], stage1_path=p["s1.json"], stage2_json_path=p["s2.json"],
+            )
+            self.assertTrue(refreshed["validation"]["passed"])
+            self.assertTrue(refreshed["validation_reuse"]["all_artifact_hashes_reverified"])
+            p["s4.jsonl"].write_text("{}\n", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "stage4 changed"):
+                refresh_lineage_provenance(
+                    prior_manifest_path=prior_path,
+                    stage0_path=p["s0.json"], stage1_path=p["s1.json"],
+                    stage2_json_path=p["s2.json"],
+                )
+
     def test_concatenated_jsonl_values_are_counted_and_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             p = self._files(Path(temporary), [_stage2()])
@@ -110,6 +150,8 @@ class ArtifactLineageTests(unittest.TestCase):
             authoritative["popularity"] = {"score": 1.0}
             p = self._files(root, [authoritative])
             precursor_rows = [_stage2(), _stage2("repair_Q1_extra")]
+            for row in precursor_rows:
+                row.pop("popularity")
             p["s2.jsonl"].write_text(
                 "".join(json.dumps(row) + "\n" for row in precursor_rows), encoding="utf-8"
             )
@@ -154,6 +196,7 @@ class ArtifactLineageTests(unittest.TestCase):
             p = self._files(root, [second, first])
             mutated = _stage2("repair_Q1_second")
             mutated["repair_target"]["new_value"] = ["unexpected"]
+            mutated.pop("popularity")
             p["s2.jsonl"].write_text(
                 json.dumps(first | {"popularity": None}) + "\n" + json.dumps(mutated) + "\n",
                 encoding="utf-8",
