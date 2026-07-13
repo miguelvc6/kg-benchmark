@@ -19,6 +19,11 @@ reports/automated_audit/full_v2*/deterministic_case_status.jsonl
 reports/automated_audit/full_v2*/construct_review_packets.jsonl
 reports/automated_audit/full_v2*/temporal_review_packets.jsonl
 reports/automated_audit/full_v2*/private_packet_map.json
+reports/automated_audit/full_v2*/codex_reviews.jsonl
+reports/automated_audit/full_v2*/codex_review_run.json
+reports/automated_audit/full_v2*/audit_dispositions.jsonl
+reports/automated_audit/full_v2*/audit_disagreements.jsonl
+reports/automated_audit/full_v2*/.codex_review_output.schema.json
 reports/automated_audit/full_v3*/deterministic_findings.jsonl
 reports/automated_audit/full_v3*/deterministic_case_status.jsonl
 reports/automated_audit/full_v3*/construct_review_packets.jsonl
@@ -28,5 +33,6 @@ reports/automated_audit/full_v3*/codex_reviews.jsonl
 reports/automated_audit/full_v3*/codex_review_run.json
 reports/automated_audit/full_v3*/audit_dispositions.jsonl
 reports/automated_audit/full_v3*/audit_disagreements.jsonl
+reports/automated_audit/full_v3*/.codex_review_output.schema.json
 temp/*
 .cache/

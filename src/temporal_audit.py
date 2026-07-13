@@ -25,6 +25,10 @@ COMMON_HIGH_RISK_FIELDS = {
     "repair_target.property_revision_prev",
     "repair_target.constraint_delta.hash_after",
     "repair_target.constraint_delta.signature_after",
+    "persistence_check.current_value_2026",
+    "persistence_check.current_value_2026_descriptions_en",
+    "persistence_check.current_value_2026_labels_en",
+    "violation_context.value_current_2026",
 }
 A_BOX_TARGET_FIELDS = {
     "repair_target.new_value",
@@ -94,6 +98,11 @@ def _occurrence(text: str, token: str) -> tuple[int, str | None]:
         count = _occurrence_literal(surface, token)
         if count:
             return count, mode
+    # Long identifiers embedded in URLs, paths, query values, or prefixed
+    # literals are distinctive enough to scan without the short-token false
+    # positives guarded by _occurrence_literal.
+    if len(token) >= 8 and token in text:
+        return text.count(token), "embedded_token"
     normalized_text = _normalized_text(html.unescape(unquote_plus(text)))
     normalized_token = _normalized_text(html.unescape(unquote_plus(token)))
     if not normalized_token:
@@ -105,6 +114,12 @@ def _occurrence(text: str, token: str) -> tuple[int, str | None]:
         count = normalized_text.count(normalized_token)
     if count:
         return count, "semantic_normalized"
+    version_alias = re.fullmatch(r"(.{8,}?)[._-]\d+", token)
+    if version_alias:
+        base = version_alias.group(1)
+        count = _occurrence_literal(text, base) or text.count(base)
+        if count:
+            return count, "semantic_alias"
     encoded_variants = {
         quote(token, safe=""),
         quote_plus(token, safe=""),
@@ -132,6 +147,10 @@ def mutation_sensitivity_checks() -> dict[str, bool]:
         "url_encoded_label": _occurrence("target=Hidden%20Value", "Hidden Value")[1] == "decoded",
         "base64_value": _occurrence("payload=UTk5OQ==", "Q999")[1] == "encoded_value",
         "unicode_semantic_alias": _occurrence("ＣＡＦÉ", "café")[1] == "semantic_normalized",
+        "long_embedded_identifier": _occurrence("url:CELEX:32013L0012", "32013L0012")[1]
+        in {"exact", "embedded_token"},
+        "version_suffix_alias": _occurrence("encoded by PocGH01_00229100", "PocGH01_00229100.1")[1]
+        == "semantic_alias",
     }
     return checks
 
@@ -171,6 +190,23 @@ def forbidden_claims(record: dict[str, Any]) -> list[dict[str, str]]:
         if token.strip()
     }
     post_repair_value_fields = set(A_BOX_TARGET_FIELDS)
+    pre_repair_ids = {
+        token.strip()
+        for value in (_field(record, "repair_target.old_value"), _field(record, "violation_context.value"))
+        for token in _scalars(value)
+        if re.fullmatch(r"Q\d+", token.strip())
+    }
+    post_repair_ids = {
+        token.strip()
+        for value in (
+            _field(record, "repair_target.new_value"),
+            _field(record, "repair_target.value"),
+            _field(record, "persistence_check.current_value_2026"),
+        )
+        for token in _scalars(value)
+        if re.fullmatch(r"Q\d+", token.strip())
+    }
+    replacement_qid_present = bool(post_repair_ids - pre_repair_ids)
     high_risk_fields = set(COMMON_HIGH_RISK_FIELDS)
     if record.get("track") == "A_BOX":
         high_risk_fields.update(A_BOX_TARGET_FIELDS)
@@ -190,7 +226,9 @@ def forbidden_claims(record: dict[str, Any]) -> list[dict[str, str]]:
         for token in _scalars(value):
             token = token.strip()
             if field in post_repair_value_fields and token in pre_repair_tokens:
-                continue
+                alias_field = field.endswith(("_label_en", "_labels_en", "_description_en", "_descriptions_en"))
+                if not (alias_field and replacement_qid_present):
+                    continue
             key = (field, token)
             if _eligible_token(token) and key not in seen:
                 seen.add(key)

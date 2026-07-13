@@ -555,7 +555,7 @@ def _bool_or_nonempty(value: Any) -> bool:
     return False
 
 
-def _deterministic_flags(row: dict[str, Any]) -> tuple[bool, bool]:
+def _deterministic_flags(row: dict[str, Any]) -> tuple[bool, bool, bool]:
     integrity = (
         row.get("status") == "error"
         or _bool_or_nonempty(row.get("integrity_error"))
@@ -565,7 +565,8 @@ def _deterministic_flags(row: dict[str, Any]) -> tuple[bool, bool]:
         row.get("deterministic_label_disagreement")
     )
     disagreement = disagreement or row.get("status") == "disagreement"
-    return integrity, disagreement
+    temporal_leakage = _bool_or_nonempty(row.get("deterministic_temporal_leakage"))
+    return integrity, disagreement, temporal_leakage
 
 
 def _base_disposition(row: dict[str, Any]) -> str:
@@ -614,7 +615,7 @@ def _validate_stored_review(review: dict[str, Any], row_number: int, source: Pat
 def _disposition(
     deterministic: dict[str, Any], reviews: Sequence[dict[str, Any]]
 ) -> tuple[str, list[str], dict[str, bool]]:
-    integrity, disagreement = _deterministic_flags(deterministic)
+    integrity, disagreement, deterministic_temporal_leakage = _deterministic_flags(deterministic)
     base = _base_disposition(deterministic)
     temporal_leakage = any(review.get("verdict") == "suspected_temporal_leakage" for review in reviews)
     ai_construct_concern = any(
@@ -627,6 +628,7 @@ def _disposition(
     flags = {
         "deterministic_integrity_error": integrity,
         "deterministic_label_disagreement": disagreement,
+        "deterministic_temporal_leakage": deterministic_temporal_leakage,
         "ai_construct_concern_or_uncertainty": ai_construct_concern,
         "ai_temporal_uncertainty": ai_temporal_uncertainty,
         "suspected_temporal_leakage": temporal_leakage,
@@ -635,8 +637,14 @@ def _disposition(
         return "exclude", ["deterministic_integrity_error"], flags
     if base == "exclude":
         return "exclude", ["deterministic_exclude"], flags
-    if temporal_leakage or base == "exclude_pending_rerender":
-        reasons = ["suspected_temporal_leakage"] if temporal_leakage else ["deterministic_pending_rerender"]
+    if deterministic_temporal_leakage or temporal_leakage or base == "exclude_pending_rerender":
+        reasons = []
+        if deterministic_temporal_leakage:
+            reasons.append("deterministic_temporal_leakage")
+        if temporal_leakage:
+            reasons.append("suspected_temporal_leakage")
+        if not reasons:
+            reasons.append("deterministic_pending_rerender")
         return "exclude_pending_rerender", reasons, flags
     reasons: list[str] = []
     if disagreement:
@@ -696,6 +704,19 @@ def finalize_audit(
     review_rows = _load_jsonl(review_file)
     input_review_sha256 = _sha256_file(review_file)
     deterministic_by_case = _index_unique(deterministic_rows, "case_id", str(deterministic_file))
+    if isinstance(artifacts, dict) and "temporal_audit" in artifacts:
+        temporal_audit = _load_json(_manifest_artifact(manifest_file, manifest, "temporal_audit"))
+        deterministic_temporal_case_ids = {
+            hit.get("case_id")
+            for hit in temporal_audit.get("hits", [])
+            if isinstance(hit, dict) and hit.get("severity") == "high"
+        }
+        for case_id in deterministic_temporal_case_ids:
+            if case_id in deterministic_by_case:
+                deterministic_by_case[case_id] = {
+                    **deterministic_by_case[case_id],
+                    "deterministic_temporal_leakage": True,
+                }
     review_by_packet = _index_unique(review_rows, "packet_id", str(review_file))
     if isinstance(artifacts, dict):
         packet_roles = {"construct_review_packets", "temporal_review_packets"}
@@ -767,6 +788,7 @@ def finalize_audit(
             "external_confirmed_allowed": False,
             "deterministic_integrity_error": "exclude",
             "deterministic_label_disagreement": "diagnostic",
+            "deterministic_temporal_leakage": "exclude_pending_rerender",
             "ai_construct_concern_or_uncertainty": "diagnostic",
             "suspected_temporal_leakage": "exclude_pending_rerender",
         },

@@ -162,6 +162,69 @@ class TemporalAuditTests(unittest.TestCase):
             self.assertFalse(report["passed_automated_gate"])
             self.assertEqual(report["hits"][0]["match_mode"], "encoded_value")
 
+    def test_tbox_current_value_embedded_in_url_is_high_risk(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            benchmark = root / "stage4.jsonl"
+            prompts = root / "prompts.jsonl"
+            self._write_jsonl(benchmark, [{
+                "id": "reform_url", "track": "T_BOX",
+                "repair_target": {"property_revision_id": 123456},
+                "persistence_check": {"current_value_2026": ["32013L0012"]},
+                "classification": {"class": "T_BOX", "subtype": "SCHEMA_UPDATE"},
+            }])
+            self._write_jsonl(prompts, [{
+                "matrix_id": "url", "case_id": "reform_url", "task": "t_box_repair",
+                "context_bundle": "local_graph", "historical_track": "T_BOX", "system_prompt": "neutral",
+                "user_prompt": "source=https://example.test/?uri=CELEX:32013L0012",
+            }])
+            report = audit_rendered_prompts(
+                rendered_prompts_path=prompts, classified_benchmark_path=benchmark, sample_size=1
+            )
+            self.assertFalse(report["passed_automated_gate"])
+            self.assertEqual(report["counts"]["high_risk_hits"], 1)
+
+    def test_version_suffix_and_cross_qid_label_aliases_are_detected(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            benchmark = root / "stage4.jsonl"
+            prompts = root / "prompts.jsonl"
+            self._write_jsonl(benchmark, [
+                {
+                    "id": "repair_alias", "track": "A_BOX",
+                    "violation_context": {"value": ["Q1"], "value_labels_en": ["Replacement office"]},
+                    "repair_target": {
+                        "old_value": ["Q1"], "old_value_labels_en": ["Replacement office"],
+                        "new_value": ["Q2"], "new_value_labels_en": ["Replacement office"],
+                    },
+                    "classification": {"class": "TypeB", "subtype": "LOCAL_TEXT_CONFIRMED"},
+                },
+                {
+                    "id": "repair_version", "track": "A_BOX",
+                    "repair_target": {"new_value": ["PocGH01_00229100.1"]},
+                    "classification": {"class": "TypeB", "subtype": "LOCAL_TEXT_CONFIRMED"},
+                },
+            ])
+            self._write_jsonl(prompts, [
+                {
+                    "matrix_id": "alias", "case_id": "repair_alias", "task": "a_box_repair",
+                    "context_bundle": "local_graph", "historical_track": "A_BOX", "system_prompt": "neutral",
+                    "user_prompt": "Visible Q1 is labeled Replacement office.",
+                },
+                {
+                    "matrix_id": "version", "case_id": "repair_version", "task": "a_box_repair",
+                    "context_bundle": "local_graph", "historical_track": "A_BOX", "system_prompt": "neutral",
+                    "user_prompt": "encoded by PocGH01_00229100",
+                },
+            ])
+            report = audit_rendered_prompts(
+                rendered_prompts_path=prompts, classified_benchmark_path=benchmark, sample_size=2
+            )
+            self.assertFalse(report["passed_automated_gate"])
+            modes = {hit["match_mode"] for hit in report["hits"] if hit["severity"] == "high"}
+            self.assertIn("semantic_alias", modes)
+            self.assertGreaterEqual(report["counts"]["high_risk_hits"], 2)
+
     def test_audit_passes_sanitized_prompts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)

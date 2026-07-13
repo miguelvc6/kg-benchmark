@@ -3,7 +3,9 @@
 Version 2 validates Stage 2 content when `--stage2` is supplied: exact Stage 2/3/4 identity, ordering, and Stage 2-to-lean-
 Stage 4 field projection must pass. It also checks format-rule contradictions, cardinality conflicts, unsupported independent
 local evidence, missing T-box history, and report/constraint disagreement. The temporal scanner covers embedded, decoded,
-encoded, and semantic-normalized values in addition to exact tokens. See the
+encoded, semantic-normalized, long prefixed identifiers, version-suffix aliases, cross-QID label/description aliases, and
+current target values for both A-box and T-box records. Deterministic high-risk temporal hits receive
+`exclude_pending_rerender` even without an AI verdict. See the
 [Confirmatory Release Runbook](./Confirmatory_Release_Runbook.md) for the release-gated sequence.
 
 ## Status And Scope

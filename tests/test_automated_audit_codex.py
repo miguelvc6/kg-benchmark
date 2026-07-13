@@ -161,6 +161,7 @@ class AutomatedAuditCodexTest(unittest.TestCase):
                 {"case_id": "case-label", "label_disagreement": True, "disposition": "include"},
                 {"case_id": "case-construct", "disposition": "include"},
                 {"case_id": "case-temporal", "disposition": "include"},
+                {"case_id": "case-deterministic-temporal", "disposition": "include", "deterministic_temporal_leakage": True},
                 {"case_id": "case-pass", "disposition": "include", "original_label": "TypeC"},
             ]
             deterministic.write_text("".join(json.dumps(row) + "\n" for row in rows))
@@ -183,11 +184,14 @@ class AutomatedAuditCodexTest(unittest.TestCase):
             self.assertEqual(dispositions["case-label"]["disposition"], "diagnostic")
             self.assertEqual(dispositions["case-construct"]["disposition"], "diagnostic")
             self.assertEqual(dispositions["case-temporal"]["disposition"], "exclude_pending_rerender")
+            self.assertEqual(
+                dispositions["case-deterministic-temporal"]["disposition"], "exclude_pending_rerender"
+            )
             self.assertEqual(dispositions["case-pass"]["disposition"], "include")
             serialized = json.dumps(dispositions)
             self.assertNotIn("final_label", serialized)
             self.assertNotIn("EXTERNAL_CONFIRMED", serialized)
-            self.assertEqual(report["counts"]["cases"], 5)
+            self.assertEqual(report["counts"]["cases"], 6)
             for filename in (DISAGREEMENTS_FILENAME, DISPOSITIONS_FILENAME, FINAL_JSON_FILENAME, FINAL_MD_FILENAME):
                 self.assertTrue((output / filename).is_file())
 
