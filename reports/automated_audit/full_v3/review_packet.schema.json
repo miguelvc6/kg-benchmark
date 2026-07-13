@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "review_id",
+    "review_type",
+    "blinded_case_id",
+    "instructions"
+  ],
+  "properties": {
+    "review_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "review_type": {
+      "enum": [
+        "construct",
+        "temporal"
+      ]
+    },
+    "blinded_case_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "instructions": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

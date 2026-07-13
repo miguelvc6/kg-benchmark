@@ -34,16 +34,17 @@ Run the audit against these current artifacts:
 | Stage 2 recovered JSONL | `data/02_wikidata_repairs.jsonl` |
 | Stage 4 classified benchmark | `data/04_classified_benchmark.jsonl` |
 | Stage 3 world state | `data/03_world_state.json` |
-| Stage 0--4 lineage manifest | `reports/lineage/restored_v2.json` |
+| Stage 0--4 lineage manifest | `reports/lineage/restored_v3.json` |
 | Stage 4 schema | `schemas/04_classified_benchmark.schema.json` |
 | Current construct sample | `reports/manual_audit/audit_phase_d_v1_seed_13.csv` |
 | Current rendered prompts | `reports/temporal_audit/current_holdout96_v4_rendered/prompt_dev_rendered_prompts.jsonl` |
 | Current render summary | `reports/temporal_audit/current_holdout96_v4_rendered/prompt_dev_render_summary.json` |
 
-The restored baseline contains two Stage 2 representations. They are validation inputs, not interchangeable sources:
-`kg-artifact-lineage validate` must compare them and the audit must bind that result. A representation, provenance, or
-Stage 2/3/4 projection failure makes the dataset audit fail even when the compiled Stage 2/3/4 chain itself is exact. Never
-rewrite a recovered artifact to make the gate pass, and never substitute `data_sample/` or the release sample.
+The restored baseline contains an authoritative compiled Stage 2 and a recovered precursor. They are validation inputs,
+not interchangeable sources: `kg-artifact-lineage validate` must prove the declared, checksum-bound transform and the
+audit must bind that result. An unexplained relationship, provenance, or Stage 2/3/4 projection failure makes the dataset
+audit fail. Never rewrite a recovered artifact to make the gate pass, and never substitute `data_sample/` or the release
+sample.
 
 Use a new versioned directory for every audit iteration. Treat each directory as one audit unit: retain
 the input manifest, deterministic findings, review shards, Codex responses, consolidated dispositions, errors and
@@ -97,6 +98,19 @@ for 384 supplied prompts, but the audit manifest failed because the recovered St
 Stage 0 provenance do not pass complete lineage. No v2 dispositions or confirmatory selection were certified from this
 run. The full population flow, finding counts, and residual limits are recorded in [`audit.md`](../audit.md).
 
+## Final Restored-Baseline `full_v3` Result
+
+The v3 run binds the passing authoritative Stage 2 lineage and covers all 535,570 Stage 2/3/4 cases. Deterministic status
+counts are 472,790 pass, 56,761 unsupported, 6,019 disagreement, and zero integrity errors. The legacy 384-prompt input
+now correctly fails its prompt-level temporal gate: strengthened deterministic rules find 314 high-risk occurrences
+across 16 cases. This failure excludes those cases and prevents the restored prompt set from being used for a release;
+it is not an unresolved audit implementation defect.
+
+The byte-identical 450 construct and 50 temporal packets received 500 complete clean-commit Codex reviews without
+repeating provider queries. Finalization produced complete unique coverage: 472,605 include, 62,948 diagnostic, and 17
+exclude-pending-rerender dispositions. Only include is selection eligible, and the restored baseline remains
+non-confirmatory. Exact hashes and the population flow are in [`audit.md`](../audit.md).
+
 ## WSL Commands
 
 Verify the installed interface before starting:
@@ -118,14 +132,14 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-automated-audit run \
   --construct-sample reports/manual_audit/audit_phase_d_v1_seed_13.csv \
   --rendered-prompts reports/temporal_audit/current_holdout96_v4_rendered/prompt_dev_rendered_prompts.jsonl \
   --render-summary reports/temporal_audit/current_holdout96_v4_rendered/prompt_dev_render_summary.json \
-  --output-dir reports/automated_audit/full_v2c \
+  --output-dir reports/automated_audit/full_v3 \
   --stage2 data/02_wikidata_repairs.json \
-  --lineage-manifest reports/lineage/restored_v2.json
+  --lineage-manifest reports/lineage/restored_v3.json
 ```
 
-This restored-baseline command is expected to exit nonzero while its complete lineage manifest fails. It still writes the
-full deterministic result for remediation evidence. A confirmatory post-freeze run must use its own passing v2 lineage and
-snapshot manifests, not this restored manifest.
+This restored-baseline command exits nonzero because the supplied legacy prompts contain deterministic high-risk leakage.
+It still writes the complete dataset result and passing lineage binding for remediation evidence. A confirmatory
+post-freeze run must use its own snapshot, lineage, rendered reserve prompts, and passing temporal gate.
 
 Use the approved Codex review configuration. A shard contains at most 10 review cases, three workers may run in
 parallel, and a failed request receives at most two retries:

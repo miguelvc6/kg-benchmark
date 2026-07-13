@@ -1,0 +1,30 @@
+{
+  "manifest_type": "content_bound_audit_review_reuse",
+  "manifest_version": 1,
+  "source_audit_manifest": {
+    "path": "reports/automated_audit/full_v2c/manifest.json",
+    "sha256": "a1bbb288b4e207ed3bbdf885ace26a61522e12c94e73d7151f4f540f28ce3bc2"
+  },
+  "target_audit_manifest": {
+    "path": "reports/automated_audit/full_v3/manifest.json",
+    "sha256": "d3d25cfb25fa90ac9b45db1d0a73db862bf8dab92286fc962b69dffcb7c87933"
+  },
+  "packet_equivalence": {
+    "construct_source_sha256": "83825aec318502ddfcc8dfaa15dfa56218dd3ab1f41f295f323cfa087d8c142c",
+    "construct_target_sha256": "83825aec318502ddfcc8dfaa15dfa56218dd3ab1f41f295f323cfa087d8c142c",
+    "temporal_source_sha256": "85c5f36a183b0ff2d4c166558a6a6d911cd40da8dfa095c488e1d726819393a6",
+    "temporal_target_sha256": "85c5f36a183b0ff2d4c166558a6a6d911cd40da8dfa095c488e1d726819393a6",
+    "byte_identical": true
+  },
+  "review_run": {
+    "path": "reports/automated_audit/full_v2c/codex_review_run.json",
+    "sha256": "345f41e2cac2df202ee01dfa9a52c9c6459ebc3f3926237a888442c2e67fc7c3",
+    "status": "complete",
+    "packet_count": 500,
+    "git_commit": "8a3435ecefa02e543b2e6ecf04028b00451d47e2",
+    "git_dirty": false,
+    "model": "gpt-5.6-sol"
+  },
+  "reviews_sha256": "e5c0e3ff1bc609a6406ae86bcc6b841f347c15f4ca89ef36493a1379e0bb7ca1",
+  "provider_queries_repeated": false
+}

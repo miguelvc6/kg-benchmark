@@ -1,0 +1,56 @@
+{
+  "report_type": "automated_audit_final",
+  "report_version": 2,
+  "created_at_utc": "2026-07-13T19:53:19Z",
+  "policy": {
+    "relabeling_allowed": false,
+    "external_confirmed_allowed": false,
+    "deterministic_integrity_error": "exclude",
+    "deterministic_label_disagreement": "diagnostic",
+    "deterministic_temporal_leakage": "exclude_pending_rerender",
+    "ai_construct_concern_or_uncertainty": "diagnostic",
+    "suspected_temporal_leakage": "exclude_pending_rerender"
+  },
+  "inputs": {
+    "manifest": {
+      "path": "/home/wucloud/kg-benchmark/reports/automated_audit/full_v3/manifest.json",
+      "sha256": "d3d25cfb25fa90ac9b45db1d0a73db862bf8dab92286fc962b69dffcb7c87933"
+    },
+    "deterministic_dispositions": {
+      "path": "/home/wucloud/kg-benchmark/reports/automated_audit/full_v3/deterministic_case_status.jsonl",
+      "sha256": "4246fe46f028f2c75c4eb081923f8beb319447b8b8c4ef6aabf8014a92d3efa3"
+    },
+    "codex_reviews": {
+      "path": "/home/wucloud/kg-benchmark/reports/automated_audit/full_v2c/codex_reviews.jsonl",
+      "sha256": "e5c0e3ff1bc609a6406ae86bcc6b841f347c15f4ca89ef36493a1379e0bb7ca1"
+    }
+  },
+  "counts": {
+    "cases": 535570,
+    "reviews": 500,
+    "disagreements": 6233,
+    "by_disposition": {
+      "diagnostic": 62948,
+      "exclude_pending_rerender": 17,
+      "include": 472605
+    }
+  },
+  "validation": {
+    "complete_unique_disposition_coverage": true,
+    "selection_eligible_disposition": "include"
+  },
+  "outputs": {
+    "reviews": {
+      "path": "/home/wucloud/kg-benchmark/reports/automated_audit/full_v3/codex_reviews.jsonl",
+      "sha256": "e5c0e3ff1bc609a6406ae86bcc6b841f347c15f4ca89ef36493a1379e0bb7ca1"
+    },
+    "disagreements": {
+      "path": "/home/wucloud/kg-benchmark/reports/automated_audit/full_v3/audit_disagreements.jsonl",
+      "sha256": "14086873f52dc5799d9a812caa6e45a5c898267ec40c11d20979e3a9b1870dae"
+    },
+    "dispositions": {
+      "path": "/home/wucloud/kg-benchmark/reports/automated_audit/full_v3/audit_dispositions.jsonl",
+      "sha256": "5f8d7ad44d952a4887cf311b709beec384756cd9faa54feca651e0e1b741df6c"
+    }
+  }
+}

@@ -15,10 +15,10 @@ evaluation is unavailable; the accepted fallback is exhaustive automated consist
 Codex-assisted error discovery with narrower claims. A post-freeze snapshot, untouched-test execution, and final release
 materials still require execution.
 
-The historical `full_v1` fallback audit completed on 2026-07-13. It covered all 535,570 Stage 4/3 cases and 384 supplied prompts,
-then conservatively marked four cases `exclude_pending_rerender` after model-assisted temporal error discovery. Those cases
-must be rerendered and the v2 audit rerun against restored Stage 2 content before the current prompt set can enter a release candidate. See
-[Automated Consistency Audit](./Automated_Consistency_Audit.md) for measured results.
+The final restored-baseline `full_v3` audit completed on 2026-07-13. It covered all 535,570 authoritative Stage 2/3/4
+cases and 384 supplied prompts, produced complete dispositions, and deterministically marked the legacy prompt set as
+failing temporal review. The older `full_v1` remains historical evidence. Neither restored run is a confirmatory
+population. See [Automated Consistency Audit](./Automated_Consistency_Audit.md) for measured results.
 
 The governance workflow has two temporal freeze boundaries. A pre-acquisition **methodology protocol** binds methods,
 policies, analysis, prompts, model identifiers, and inference settings without depending on a not-yet-created release or
