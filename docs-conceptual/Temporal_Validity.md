@@ -31,9 +31,9 @@ For model inputs, this means:
 - `L1_ego_node.properties[target_pid]` is rewritten to the synthetic historical pre-repair target state;
 - current `L3_neighborhood` edges on the target property are omitted or rewritten so they do not reveal post-repair values;
 - labels for synthetic pre-repair target ids may be backfilled from historical mirrors when needed;
-- benchmark-only fields such as `repair_target`, `classification`, `persistence_check`, and current target-property truth are hidden.
+- benchmark-only fields such as `repair_target`, `classification`, `persistence_check`, and current target-property values are hidden.
 
-This rule allows frozen 2026 context to be useful without exposing the answer.
+This rule allows frozen 2026 context to be useful while reducing direct target exposure. It does not rule out every indirect or semantic leak from later context.
 
 ## Correct Evaluation Question
 
@@ -45,7 +45,7 @@ It is:
 
 > Given a temporally sanitized case representation, can the model propose the historically accepted repair transaction without access to post-repair target values?
 
-This framing preserves causal attribution between the original violation, the historical repair, and the evaluated proposal.
+This framing evaluates alignment with the recorded historical transaction. It does not establish that the transaction caused the report disappearance, was semantically correct, or was the unique valid repair.
 
 ## Scope Of The Temporal Claim
 
@@ -54,10 +54,19 @@ non-target properties, neighborhood structure, and constraint context come from 
 target property is reconstructed from historical repair metadata. The scientific task must therefore be described as a
 **historically targeted repair under later frozen context**, not as repair from a complete historical world state.
 
-Every released dataset binds Stage 2, the world state, and Stage 4 to a snapshot manifest with source identifiers and
-artifact hashes. Every frozen prompt set must also pass a field-level scan for hidden post-repair target values and retain
-a stratified sample for human review. A passing exact-token scan rules out the tested direct leaks; it does not establish
-that every surrounding field was knowable at repair time or that no semantic paraphrase reveals the answer.
+Before release or confirmatory evaluation, the dataset must bind Stage 2, the world state, and Stage 4 to a snapshot
+manifest with source identifiers and artifact hashes. Exhaustive automated consistency auditing must cover every Stage 4
+record and every supplied or final rendered prompt. Stage 2 availability is an explicit audit outcome: missing records or
+fields must be reported and handled by declared policy rather than silently interpreted as empty evidence. Prompt scans
+must test the supported exact and normalized target representations across all model-visible fields. A passing scan rules
+out only the tested direct leaks; it does not establish that every surrounding field was knowable at repair time or that
+no semantic paraphrase reveals the answer.
+
+No independent human evaluation is available. Label-hidden Codex-assisted review may be used to discover suspected
+reconstruction, context, or leakage errors, but its findings are exploratory nominations rather than ground truth,
+independent annotation, or inter-annotator agreement. Neither automated scans nor Codex review establish causal or
+semantic uniqueness. Coverage and findings must be reported only after the tools have run; this policy does not claim a
+completed audit.
 
 Provenance evaluation follows the same distinction. Structural completeness asks whether a proposal supplies a rationale,
 citation-shaped provenance, and uncertainty. Provenance support asks whether the cited identifier or snippet occurs in the

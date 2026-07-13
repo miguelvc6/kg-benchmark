@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 import re
+import unicodedata
 from collections import Counter, defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
@@ -24,8 +25,14 @@ COMMON_HIGH_RISK_FIELDS = {
 }
 A_BOX_TARGET_FIELDS = {
     "repair_target.new_value",
+    "repair_target.new_value_descriptions_en",
+    "repair_target.new_value_labels_en",
     "repair_target.value",
+    "repair_target.value_descriptions_en",
+    "repair_target.value_labels_en",
     "persistence_check.current_value_2026",
+    "persistence_check.current_value_2026_descriptions_en",
+    "persistence_check.current_value_2026_labels_en",
     "violation_context.value_current_2026",
 }
 
@@ -59,11 +66,43 @@ def _field(record: dict[str, Any], dotted_path: str) -> Any:
     return value
 
 
-def _occurrence_count(text: str, token: str) -> int:
+def _normalized_text(value: str) -> str:
+    return " ".join(unicodedata.normalize("NFKC", value).casefold().split())
+
+
+def _occurrence(text: str, token: str) -> tuple[int, str | None]:
     if token and token[0].isalnum() and token[-1].isalnum():
         pattern = rf"(?<![A-Za-z0-9]){re.escape(token)}(?![A-Za-z0-9])"
-        return len(re.findall(pattern, text))
-    return text.count(token)
+        count = len(re.findall(pattern, text))
+    else:
+        count = text.count(token)
+    if count:
+        return count, "exact"
+    normalized_text = _normalized_text(text)
+    normalized_token = _normalized_text(token)
+    if not normalized_token or normalized_token == token:
+        return 0, None
+    if normalized_token[0].isalnum() and normalized_token[-1].isalnum():
+        pattern = rf"(?<![a-z0-9]){re.escape(normalized_token)}(?![a-z0-9])"
+        count = len(re.findall(pattern, normalized_text))
+    else:
+        count = normalized_text.count(normalized_token)
+    return (count, "normalized") if count else (0, None)
+
+
+def _occurrence_count(text: str, token: str) -> int:
+    return _occurrence(text, token)[0]
+
+
+def mutation_sensitivity_checks() -> dict[str, bool]:
+    """Self-check the exact, normalized, label, and boundary behavior used by the gate."""
+    checks = {
+        "exact_identifier": _occurrence_count("hidden Q999 value", "Q999") == 1,
+        "normalized_label": _occurrence_count("NEW   TARGET LABEL", "New target label") == 1,
+        "serialized_identifier": _occurrence_count('{"value":"Q999"}', "Q999") == 1,
+        "substring_boundary": _occurrence_count("SCHEMBL54432", "54432") == 0,
+    }
+    return checks
 
 
 def _expected_rule_derived_visibility(record: dict[str, Any], field: str, token: str) -> bool:
@@ -93,12 +132,7 @@ def forbidden_claims(record: dict[str, Any]) -> list[dict[str, str]]:
         for token in _scalars(value)
         if token.strip()
     }
-    post_repair_value_fields = {
-        "repair_target.new_value",
-        "repair_target.value",
-        "persistence_check.current_value_2026",
-        "violation_context.value_current_2026",
-    }
+    post_repair_value_fields = set(A_BOX_TARGET_FIELDS)
     high_risk_fields = set(COMMON_HIGH_RISK_FIELDS)
     if record.get("track") == "A_BOX":
         high_risk_fields.update(A_BOX_TARGET_FIELDS)
@@ -207,7 +241,7 @@ def audit_rendered_prompts(
         scanned_claims += len(claims)
         for claim in claims:
             for surface, text in surfaces.items():
-                count = _occurrence_count(text, claim["token"])
+                count, match_mode = _occurrence(text, claim["token"])
                 if count:
                     hits.append(
                         {
@@ -221,6 +255,7 @@ def audit_rendered_prompts(
                             "token": claim["token"],
                             "severity": claim["severity"],
                             "occurrences": count,
+                            "match_mode": match_mode,
                         }
                     )
 
@@ -243,10 +278,11 @@ def audit_rendered_prompts(
                     (str(row.get("system_prompt") or "") + "\n" + str(row.get("user_prompt") or "")).encode()
                 ).hexdigest(),
                 "automated_hit": row_number in hit_rows,
-                "review_status": "pending_human_review",
+                "review_status": "pending_ai_review",
             }
         )
 
+    mutation_checks = mutation_sensitivity_checks()
     return {
         "report_type": "temporal_prompt_leakage_audit",
         "report_version": 1,
@@ -259,7 +295,8 @@ def audit_rendered_prompts(
         },
         "scope": {
             "automated_check": "exact hidden-field token occurrence in model-visible prompt text",
-            "manual_review_required": True,
+            "ai_error_discovery_required": True,
+            "ai_review_is_ground_truth": False,
             "temporal_claim": "later frozen context with historical target-property reconstruction",
         },
         "counts": {
@@ -273,7 +310,10 @@ def audit_rendered_prompts(
             "expected_rule_derived_hits": hit_counts["expected_rule_derived"],
             "manual_sample": len(sample),
         },
-        "passed_automated_gate": not missing_case_ids and hit_counts["high"] == 0,
+        "passed_automated_gate": not missing_case_ids
+        and hit_counts["high"] == 0
+        and all(mutation_checks.values()),
+        "mutation_sensitivity_checks": mutation_checks,
         "missing_case_ids": missing_case_ids,
         "hits_by_field": dict(sorted(hits_by_field.items())),
         "hits": hits,

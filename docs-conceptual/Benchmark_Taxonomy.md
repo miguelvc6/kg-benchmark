@@ -4,8 +4,8 @@ This document summarizes the research-facing labels used by WikidataRepairEval. 
 
 The benchmark has two orthogonal axes:
 
-- **repair locus**: where the historical repair happened or should happen;
-- **information-access condition**: what kind of evidence is needed to justify an A-box repair target under controlled context.
+- **repair locus**: where the recorded historical edit occurred;
+- **information-access condition**: which supported evidence channel, if any, identifies an A-box historical target under controlled context.
 
 Keeping these axes separate avoids presenting the existing A-box/T-box repair distinction as a new taxonomy.
 
@@ -17,7 +17,7 @@ The repair-locus axis follows existing Wikidata repair-taxonomy work.
 |---|---|---|
 | `A_BOX` | The repair edits entity-level instance data. | Can the model edit the correct entity/property/value while preserving useful information? |
 | `T_BOX` | The repair edits the property constraint or schema layer. | Can the model reform the correct constraint family and signature? |
-| `AMBIGUOUS` | Evidence overlaps or the causal repair locus is unclear. | Can the model represent uncertainty instead of forcing an overconfident edit? |
+| `AMBIGUOUS` | Evidence overlaps or the historical repair locus is unclear. | Can the model represent uncertainty instead of forcing an overconfident edit? |
 
 ### A-box Entity Repairs
 
@@ -31,36 +31,36 @@ Repeated T-box manifestations should be controlled in paper-facing subsets becau
 
 ## Information-Access Conditions
 
-Information-access labels apply to A-box repairs. They describe what information would be needed to reproduce or justify the historical repair target.
+Information-access labels apply to A-box repairs. They describe the result of the current supported rule and context checks against the historical target. They are operational extractor labels, not claims about semantic correctness, causal necessity, or repair uniqueness.
 
 The code may continue to use `TypeA`, `TypeB`, and `TypeC`, but paper-facing text should also use neutral names such as `IC-L`, `IC-G`, and `IC-E`/`IC-U`.
 
 | Code label | Paper-facing label | Meaning |
 |---|---|---|
-| `TypeA` | `IC-L: logical / rule-implied` | The rule, violation shape, or internal consistency is enough to determine the repair. |
-| `TypeB` | `IC-G: local graph-grounded` | The repair target is available in the focus node or bounded local graph context. |
-| `TypeC` | `IC-E` or `IC-U` | Supported rule and local evidence do not identify the target; this may require external evidence or may be unresolved by the current extractor. |
+| `TypeA` | `IC-L: rule-matched` | A supported rule, violation-shape, or consistency pattern maps to the historical target. |
+| `TypeB` | `IC-G: local match` | The extractor matches the historical target in the focus node or bounded local graph context. |
+| `TypeC` | `IC-E-elim` or `IC-U` | Supported rule and local checks do not identify the target, or required inputs are unresolved. |
 
 ### Type A: Logical / Rule-Implied
 
-Type A cases should be solvable from the violation shape, constraint, or internal consistency without graph traversal or retrieval.
+Type A cases match supported violation-shape, constraint, or internal-consistency rules without graph traversal. This does not prove that the historical edit is the only semantically valid repair.
 
 Examples include:
 
-- simple format normalization where the normalized value is uniquely determined;
+- simple format normalization where the implemented rule maps to the historical normalized value;
 - singleton one-of constraints where exactly one value is allowed;
 - range-boundary corrections where the target is implied by the rule;
 - deletion when the rule itself identifies the invalid value.
 
-Not every delete is automatically high-confidence Type A. If selecting which value to delete requires local or external evidence, the case should be downgraded, split into a more specific delete subtype, or audited.
+Not every delete is automatically high-confidence Type A. If the implemented rule does not identify the historical deletion, the case should be downgraded, split into a more specific delete subtype, or routed to diagnostics.
 
 ### Type B: Local Graph-Grounded
 
-Type B cases require information available in the focus node or immediate graph neighborhood.
+Type B cases are those for which the supported extractor finds a match in the focus node or immediate graph neighborhood. Match presence does not by itself establish that the field semantically justifies the repair.
 
 Local evidence can include:
 
-- reconstructed pre-repair target-property values;
+- reconstructed pre-repair target-property values for diagnostics only, not as independent local support;
 - non-target focus-node properties;
 - one-hop neighbor ids;
 - focus-node labels and descriptions;
@@ -70,22 +70,29 @@ Local evidence can include:
 
 These cases should benefit most from the `local_graph` context bundle compared with `logic_only`.
 
-### Type C: External, Non-Local, Or Unresolved
+### Type C: Not Identified By Supported Checks Or Unresolved
 
-Type C must be interpreted conservatively. A fallback label often means only that the current rule/local extractor did not find the target truth. It does not by itself prove that external evidence is required.
+Type C must be interpreted conservatively. A fallback label means only that the current rule/local extractor did not find the historical target. It does not prove that external evidence or retrieval is required.
 
 Recommended subtypes:
 
 | Subtype | Meaning |
 |---|---|
-| `EXTERNAL_CONFIRMED` | Manual audit or retrieval shows that non-local evidence is needed. |
 | `EXTERNAL_BY_ELIMINATION` | Supported rule/local checks failed to identify the target. |
 | `UNKNOWN_MISSING_WORLD_STATE` | Required frozen context is missing or incomplete. |
 | `UNKNOWN_MISSING_TRUTH` | The historical repair target is not sufficiently represented. |
 | `UNKNOWN_CURRENT_VALUE_FALLBACK` | Classification depended on a current-value fallback and should be leakage-audited. |
 | `UNKNOWN_INCOMPLETE_LOCAL_CONTEXT` | Local graph context is too sparse to make a strong claim. |
 
-For final experiments, Type C should be manually audited or reported with these caveats.
+The current study does not assign `EXTERNAL_CONFIRMED`. Type C is reported only with the extractor-relative caveat above.
+
+## Validation Without Independent Human Evaluation
+
+No independent human evaluation is available. The validation fallback combines exhaustive automated consistency auditing
+over every Stage 4 record and every supplied or final rendered prompt with label-hidden Codex-assisted error discovery.
+Missing Stage 2 records or required fields are explicit audit outcomes rather than empty evidence. Codex nominations are
+exploratory: they are not gold labels, independent annotations, inter-annotator agreement, or evidence of causal or
+semantic uniqueness. This policy defines required future checks and does not claim that the new audit has already run.
 
 ## T-box Subtypes
 
@@ -100,7 +107,7 @@ Candidate schema-reform subtypes include:
 | `RELAXATION_SET_EXPANSION` | Allowed value/class set expanded. |
 | `RESTRICTION_SET_CONTRACTION` | Allowed value/class set contracted. |
 | `SCHEMA_UPDATE` | Schema changed but direction is generic or not confidently typed. |
-| `COINCIDENTAL_SCHEMA_CHANGE` | Schema changed, but causal relation to the violation is weak. |
+| `COINCIDENTAL_SCHEMA_CHANGE` | Schema changed, but report-to-delta alignment is weak. |
 
 ## Dataset Tiers
 
@@ -111,6 +118,6 @@ The full dataset is the canonical historical record. Paper-facing evaluation sho
 | Full dataset | Release and descriptive statistics. |
 | Core dataset | Main LLM evaluation, stratified across repair locus, information condition, subtype, popularity, confidence, and T-box clusters. |
 | Dev/Pilot set | Prompt engineering, representation ablations, debugging, and failure analysis. |
-| Audit set | Manual validation of classifier labels, especially Type C and weak T-box cases. |
+| Audit set | Sampled diagnostic view for exploratory label-hidden error discovery; not independent label validation. |
 
 Classifier confidence should be a stratification variable, not a simple inclusion filter.

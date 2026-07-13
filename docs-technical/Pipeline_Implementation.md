@@ -15,6 +15,7 @@ The implemented repository currently provides:
 - deterministic train/dev/test split generation
 - group-isolated dev/core selection manifests and untouched-test allocation
 - independent annotation assignment, merge, agreement, and adjudication tooling
+- exhaustive Stage 4/3 consistency auditing, temporal scanning, and label-hidden Codex error-discovery tooling
 - T-box taxonomy-patch gold extraction, parsing, and evaluation
 - release-manifest, protocol-freeze, experiment-registry, and paired-analysis tooling
 - a Guardian-ready proposal interface for future intervention loops

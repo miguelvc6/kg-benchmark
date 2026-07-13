@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from temporal_audit import audit_rendered_prompts, forbidden_claims
+from temporal_audit import audit_rendered_prompts, forbidden_claims, mutation_sensitivity_checks
 
 
 class TemporalAuditTests(unittest.TestCase):
@@ -100,9 +100,10 @@ class TemporalAuditTests(unittest.TestCase):
             self.assertFalse(report["passed_automated_gate"])
             self.assertEqual(report["counts"]["high_risk_hits"], 2)
             self.assertEqual(len(report["manual_review_sample"]), 2)
-            self.assertTrue(
-                all(row["review_status"] == "pending_human_review" for row in report["manual_review_sample"])
-            )
+            self.assertTrue(all(row["review_status"] == "pending_ai_review" for row in report["manual_review_sample"]))
+
+    def test_mutation_sensitivity_checks_cover_normalized_and_boundary_cases(self) -> None:
+        self.assertTrue(all(mutation_sensitivity_checks().values()))
 
     def test_audit_passes_sanitized_prompts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:

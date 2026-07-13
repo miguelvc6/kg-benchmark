@@ -129,6 +129,6 @@ The main LLM experiments should use local H100-runnable instruction models. A sm
 ## Interpretation Rules
 
 - Report metrics stratified by repair locus, information condition, subtype, context bundle, prompt regime, model, popularity bucket, and T-box property revision cluster.
-- Treat Type C results carefully unless manual audit or retrieval confirms external evidence need.
+- Treat Type C as `EXTERNAL_BY_ELIMINATION`; the current no-human study does not confirm external-evidence necessity.
 - Treat historical repairs as historically accepted targets, not universal truth.
 - Compare future RAG or Guardian-style systems against the reasoning floor, not against an informal baseline.

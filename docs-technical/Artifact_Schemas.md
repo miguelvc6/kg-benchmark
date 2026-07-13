@@ -413,6 +413,8 @@ The repository schema set covers:
 - `release_manifest.schema.json`: validated content-addressed releases
 - `research_protocol.schema.json`: frozen experiment protocols
 - `experiment_registry.schema.json`: exploratory, confirmatory, and superseded run registry
+- `automated_consistency_audit.schema.json`: full-data audit inputs, coverage, packet counts, and hash-bound artifacts
+- `automated_audit_review.schema.json`: schema-constrained Codex error-discovery review batches
 
 `tests/test_json_schemas.py` validates every `*.schema.json` file as Draft 2020-12. Release validation additionally
 checks every Stage 4 record against the Stage 4 schema.

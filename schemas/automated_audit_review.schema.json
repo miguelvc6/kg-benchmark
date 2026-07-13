@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kg-benchmark.local/schemas/automated_audit_review.schema.json",
+  "title": "Codex Automated Audit Review Batch",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["reviews"],
+  "properties": {
+    "reviews": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["packet_id", "audit_dimension", "verdict", "rationale", "evidence"],
+        "properties": {
+          "packet_id": {"type": "string", "minLength": 1},
+          "audit_dimension": {"enum": ["construct", "temporal"]},
+          "verdict": {"enum": ["pass", "concern", "uncertain", "suspected_temporal_leakage"]},
+          "rationale": {"type": "string", "minLength": 1},
+          "evidence": {
+            "type": "array",
+            "items": {"type": "string", "minLength": 1},
+            "uniqueItems": true
+          }
+        }
+      }
+    }
+  }
+}

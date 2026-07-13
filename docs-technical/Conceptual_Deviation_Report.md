@@ -39,8 +39,9 @@ results confirmatory.
 
 The following work still requires deliberate execution and review:
 
-- independent annotation and adjudication by identified human reviewers;
-- independent validation of extracted T-box taxonomy gold;
+- exhaustive automated consistency auditing plus label-hidden Codex-assisted error discovery under the documented
+  no-human scope;
+- explicit reporting that extracted T-box taxonomy gold is not independently human-validated;
 - creation of a new post-freeze benchmark snapshot and sealed untouched-test manifest;
 - a clean, content-addressed release manifest and frozen protocol;
 - confirmatory model execution with stable model digests;

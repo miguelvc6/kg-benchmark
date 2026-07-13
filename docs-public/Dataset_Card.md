@@ -12,11 +12,12 @@ draft template in `release/artifact_distribution.template.json`.
 ## Summary
 
 The benchmark reconstructs historical Wikidata repair events and pairs them with later, frozen graph context. It is
-intended to test whether a system can choose an appropriate repair track and propose a historically aligned A-box value
-repair or T-box constraint repair without leaking the target from the later snapshot.
+intended to test whether a system can identify the recorded repair track and propose a historically aligned A-box value
+repair or T-box constraint repair under explicit direct-target leakage checks. These checks reduce tested exposure; they
+do not reconstruct the complete historical world or rule out every indirect semantic leak.
 
 Each classified case contains identifiers for the focus entity and property, constraint-report context, a historical
-repair target, a reference to frozen world-state context, a repair track, an information-necessity class/subtype,
+repair target, a reference to frozen world-state context, a repair track, an operational information-access class/subtype,
 classifier confidence, and popularity metadata. The exact record contract is
 `schemas/04_classified_benchmark.schema.json`.
 
@@ -102,10 +103,10 @@ selection.
 
 - **A-box:** instance-level value repair.
 - **T-box:** property-constraint or schema repair.
-- **Type A:** rule or target-derived repair under the repository taxonomy.
-- **Type B:** repair derivable from bounded local context.
-- **Type C:** `EXTERNAL_BY_ELIMINATION` or a diagnostic unknown subtype. It is not proof that an external source was
-  consulted by the historical editor.
+- **Type A:** a supported rule or target pattern maps to the historical edit under the repository taxonomy.
+- **Type B:** the supported extractor matches the historical target in bounded local context.
+- **Type C:** `EXTERNAL_BY_ELIMINATION` or a diagnostic unknown subtype. It means supported rule/local checks did not
+  identify the historical target; it is not proof that external evidence was consulted or required.
 - **Main-score cases:** cases admitted by the selection policy for headline scoring.
 - **Diagnostic cases:** low-confidence, ambiguous, incomplete-context, or otherwise analysis-only cases.
 
@@ -159,6 +160,14 @@ constraint state can therefore reveal the historical outcome. Use the official p
 audit tooling, and reconstruct the target property's pre-repair state from the historical benchmark record. Do not pass
 the raw later target-property value to a model.
 
+No independent human evaluation is available. Before release or confirmatory use, exhaustive automated consistency
+auditing must cover every Stage 4 record and every supplied or final rendered prompt. Missing Stage 2 records or required
+fields must be explicit audit outcomes, not silently treated as empty evidence. Label-hidden Codex-assisted review may
+nominate suspected extraction, reconstruction, taxonomy, or leakage errors, but those nominations are exploratory rather
+than ground truth, independent annotation, or inter-annotator agreement. Neither layer establishes semantic correctness,
+causal necessity, repair uniqueness, `EXTERNAL_CONFIRMED`, or external evidence necessity. This card specifies required
+checks; it does not claim that the new audit has run or passed.
+
 Development prompt work has already used the tracked dev tier. Existing exploratory core outputs are not an untouched
 confirmatory test. A paper claim requires a separately frozen, untouched test selection and protocol established before
 test execution. Model pretraining contamination by public Wikidata content and revision history cannot be ruled out;
@@ -167,7 +176,7 @@ report model/version dates and treat results as task performance, not evidence o
 ## Intended Uses
 
 - compare KG repair systems on a fixed, manifest-bound release
-- study A-box versus T-box behavior and information-necessity strata
+- study A-box versus T-box behavior and operational information-access strata
 - evaluate abstention, parsing, and repair validity alongside exact outcomes
 - audit errors against historical public revisions and bounded graph context
 
@@ -176,6 +185,8 @@ report model/version dates and treat results as task performance, not evidence o
 - estimating global Wikidata error or repair rates
 - measuring individual editor quality or behavior
 - treating Type C as verified external evidence
+- treating automated or Codex-assisted review as human annotation, ground truth, or inter-annotator agreement
+- claiming that the historical edit was causally necessary, semantically unique, or the only valid repair
 - treating diagnostic cases as ordinary main-score examples
 - claiming multilingual generalization from English-centric fields
 - rebuilding against live Wikidata and calling it byte-for-byte reproduction

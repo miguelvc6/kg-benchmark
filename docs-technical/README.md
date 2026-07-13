@@ -8,6 +8,8 @@ contracts, and developer operations. Research rationale and paper claims live in
 
 - [Research Release Protocol](./Research_Release_Protocol.md): authoritative engineering protocol for building,
   freezing, registering, verifying, and releasing paper-eligible artifacts.
+- [Automated Consistency Audit](./Automated_Consistency_Audit.md): deterministic and Codex-assisted error
+  discovery workflow for full-data and rendered-prompt artifacts.
 - [Pipeline Implementation](./Pipeline_Implementation.md): current stage-by-stage code paths and outputs.
 - [Artifact Schemas](./Artifact_Schemas.md): current artifact contracts and schema status.
 - [Artifact Acquisition](./Artifact_Acquisition.md): clean-clone retrieval and verification of published large files.

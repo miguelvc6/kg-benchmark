@@ -7,7 +7,7 @@ WikidataRepairEval studies whether language models can perform knowledge-graph r
 Knowledge-graph repair is not the same task as link prediction, triple classification, or question answering. A repair system must decide:
 
 - whether the error is in an entity statement or in a property constraint;
-- whether the repair is rule-implied, locally grounded, or dependent on non-local evidence;
+- whether supported rules or supplied local context identify the historical target, or leave it unresolved;
 - whether the available context is sufficient or the system should abstain or request retrieval;
 - whether the proposed edit is executable and preserves useful information;
 - whether the rationale, provenance, and uncertainty are auditable.
@@ -35,8 +35,8 @@ It should include:
 
 - benchmark construction from real Wikidata repair events;
 - repair-locus and information-access taxonomy alignment;
-- classifier audit and label validation;
-- full, core, dev/pilot, and audit dataset tiers;
+- exhaustive classifier consistency auditing and exploratory label-hidden error discovery;
+- full, core, dev/pilot, and diagnostic-review dataset tiers;
 - zero-shot reasoning-floor experiments;
 - `logic_only` vs `local_graph` context ablations;
 - oracle-track vs diagnosis-routed repair;
@@ -48,9 +48,9 @@ Retrieval-augmented repair, verifier-guided retry loops, and the full Guardian p
 
 ## Research Questions
 
-### RQ1. Does Information Need Predict Model Behavior?
+### RQ1. Does The Operational Evidence Condition Predict Model Behavior?
 
-Rule-implied, local-context, and external or unresolved cases should behave differently under controlled context ablations. Local graph context should help most on genuinely local cases, while no-retrieval Type C cases should remain difficult or require abstention.
+Rule-matched, local-match, and unresolved cases should behave differently under controlled context ablations. Local graph context should help most when the supported extractor finds the historical target locally, while no-retrieval Type C cases test behavior when supported rule/local checks do not identify it. These labels do not establish semantic sufficiency or external evidence necessity.
 
 ### RQ2. Can Models Choose The Correct Repair Locus?
 
@@ -72,10 +72,12 @@ Head entities may be easier in no-retrieval settings because of parametric memor
 
 - Use real historical Wikidata repair events rather than synthetic-only cases.
 - Separate repair locus from information-access condition.
-- Treat Type C conservatively unless manual audit or retrieval confirms external evidence need.
+- Treat Type C only as an extractor-relative negative or unresolved label; do not assign `EXTERNAL_CONFIRMED` or claim external evidence necessity.
 - Reconstruct the edited target property as a historical pre-repair state instead of exposing current post-repair values.
 - Report stratified metrics rather than a single aggregate leaderboard score.
 - Control repeated T-box schema reforms so one property revision cannot dominate paper-facing results.
 - Treat historical repairs as historically accepted targets, not universal truth.
+- Because independent human evaluation is unavailable, require exhaustive automated consistency auditing over every Stage 4 record and every supplied or final rendered prompt; report missing Stage 2 explicitly.
+- Use label-hidden Codex review only for exploratory error discovery, never as ground truth, independent annotation, inter-annotator agreement, or evidence of causal or semantic uniqueness.
 
 The taxonomy details are summarized in [Benchmark Taxonomy](./Benchmark_Taxonomy.md), evaluation details in [Evaluation Framework](./Evaluation_Framework.md), and temporal leakage policy in [Temporal Validity](./Temporal_Validity.md).

@@ -3,7 +3,8 @@
 **Project:** WikidataRepairEval 1.0  
 **Policy version:** `phase_c_v1`  
 **Seed:** `13`  
-**Purpose:** Define deterministic full/core/dev/audit tiers for LLM experiments, prompt development, and manual audit.
+**Purpose:** Define deterministic full/core/dev/audit tiers for LLM experiments, prompt development, and automated or
+Codex-assisted error discovery.
 
 ## 1. Why selection manifests are required
 
@@ -18,7 +19,7 @@ The paper should therefore use deterministic selection manifests instead of crea
 | Full | `data/04_classified_benchmark.jsonl` | all valid records | no, except descriptive stats | Canonical release and full historical coverage. |
 | Core v1 | `reports/benchmark_selection/core_v1_seed_13.json` | 4,800 | yes, but with main/diagnostic split | Main reasoning-floor experiments. |
 | Dev/Pilot v1 | `reports/benchmark_selection/dev_prompt_v1_seed_13.json` | 600 | no | Prompt engineering and parser debugging. |
-| Audit v1 | `reports/manual_audit/audit_phase_d_v1_seed_13.jsonl` and `.csv` | 450 | no | Manual label validation and classifier-risk audit. |
+| Audit v1 | `reports/manual_audit/audit_phase_d_v1_seed_13.jsonl` and `.csv` | 450 | no | Legacy sampled diagnostic view; seeds label-hidden Codex error discovery but is not ground truth. |
 
 ## 3. Main-score and diagnostic split
 
@@ -51,7 +52,7 @@ Diagnostic-only cases include:
 - `TypeA / DELETE_AMBIGUOUS`
 - `TypeC / UNKNOWN_*`
 - `T_BOX / COINCIDENTAL_SCHEMA_CHANGE`
-- any low-confidence case not explicitly upgraded by manual audit
+- any low-confidence case not supported by the automated main-score policy
 - cases with weak or missing split group keys
 
 ## 4. Core v1 quotas

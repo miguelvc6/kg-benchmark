@@ -55,6 +55,7 @@ kg-artifact-release = "artifact_release:main"
 kg-snapshot-manifest = "snapshot_manifest:main"
 kg-artifacts = "artifact_acquisition:main"
 kg-temporal-audit = "temporal_audit:main"
+kg-automated-audit = "automated_consistency_audit:main"
 kg-annotation-protocol = "annotation_protocol:main"
 kg-select-untouched-test = "select_untouched_test:main"
 kg-analyze-results = "analyze_results:main"
@@ -70,6 +71,8 @@ py-modules = [
     "snapshot_manifest",
     "artifact_acquisition",
     "temporal_audit",
+    "automated_consistency_audit",
+    "automated_audit_codex",
     "annotation_protocol",
     "select_untouched_test",
     "analyze_results",

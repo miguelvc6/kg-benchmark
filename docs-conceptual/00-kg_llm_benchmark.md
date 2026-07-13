@@ -1,5 +1,9 @@
 # WikidataRepairEval: Research Narrative for the Paper
 
+> **Current validation boundary:** independent human evaluation is unavailable. References below to manual confirmation
+> or `EXTERNAL_CONFIRMED` describe a possible future extension, not the current study. The current protocol uses exhaustive
+> automated consistency checks plus label-hidden Codex error discovery and keeps Type C extractor-relative.
+
 **Working thesis.** WikidataRepairEval is not primarily a leaderboard for large language models. It is a benchmark and evaluation protocol for studying whether language models can perform **knowledge-graph repair as a controlled edit problem**: decide whether the error lies in an entity statement or in a property constraint, identify what information is needed to justify a repair, and emit an auditable transaction that survives symbolic checks.
 
 The paper should be framed around this claim:
@@ -20,7 +24,7 @@ The benchmark is designed to answer questions such as:
 
 - Can a model tell whether the right repair is to edit an entity fact or to reform the schema rule?
 - Does local graph context improve repair quality only when the needed information is actually local?
-- Can a model distinguish a rule-implied fix from a case requiring external evidence?
+- Can a model distinguish a rule-implied fix from a case unresolved by supplied rule and local evidence?
 - Are valid-looking JSON repairs actually executable, historically aligned, and auditable?
 - Do head entities behave differently from long-tail entities, suggesting memorization or prior exposure?
 
@@ -225,7 +229,7 @@ The current Type A/B/C naming can remain in code, but the paper should consider 
 A crucial paper decision: TypeC should not be overclaimed. Use one of these formulations:
 
 - conservative: **TypeC / `EXTERNAL_BY_ELIMINATION` = not supported by local/rule evidence under the current extraction protocol**;
-- stronger, after manual audit: **TypeC / `EXTERNAL_CONFIRMED` = external evidence required after audit/retrieval confirmation**;
+- future-only, outside the current study: retrieval-supported evidence-necessity validation;
 - best: split into `EXTERNAL_CONFIRMED`, `EXTERNAL_BY_ELIMINATION`, and `UNKNOWN_*` subtypes.
 
 ### 6.3 T-box schema-reform subtypes
@@ -550,7 +554,8 @@ The paper's discussion should emphasize that these patterns support the benchmar
 ## 14. Limitations to state explicitly
 
 1. **Historical repair is not universal ground truth.** The benchmark evaluates alignment with a historically accepted repair target, not metaphysical correctness.
-2. **TypeC is not automatically retrieval-confirmed.** Without manual audit or retrieval evidence, many TypeC cases should be treated as `EXTERNAL_BY_ELIMINATION` / IC-E-elim or `UNKNOWN_*` / IC-U.
+2. **TypeC is not retrieval-confirmed.** Current TypeC cases remain `EXTERNAL_BY_ELIMINATION` / IC-E-elim or
+   `UNKNOWN_*` / IC-U; the no-human study makes no external-necessity claim.
 3. **Evaluation is partial.** The evaluator checks supported constraints and exact/semantic alignment but cannot reproduce all Wikidata community judgment.
 4. **Temporal reconstruction is difficult.** Some entities, properties, and constraints change independently after the repair event.
 5. **T-box skew is real.** Many apparent cases can originate from a single schema reform.

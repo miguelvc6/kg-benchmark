@@ -6,7 +6,11 @@ The older [Paper Execution Plan](./Paper_Execution_Plan.md) is historical and su
 
 ## Current Status
 
-The existing core and its model outputs are development-contaminated and remain exploratory. The tools below repair measurement and governance contracts, but they do not retroactively make old results confirmatory. Independent annotation, a post-freeze data snapshot, untouched-test execution, and final release materials still require human execution.
+The existing core and its model outputs are development-contaminated and remain exploratory. The tools below repair
+measurement and governance contracts, but they do not retroactively make old results confirmatory. Independent human
+evaluation is unavailable; the accepted fallback is exhaustive automated consistency checking plus label-hidden
+Codex-assisted error discovery with narrower claims. A post-freeze snapshot, untouched-test execution, and final release
+materials still require execution.
 
 The governance workflow uses two immutable freezes to avoid a selection/release dependency cycle. An **allocation
 protocol** binds a confirmatory dataset release before case allocation. After private allocation, an **execution
@@ -82,8 +86,9 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python -m artifact_release verify \
   --release-root .
 ```
 
-Render every frozen prompt before inference and run the exact hidden-field scan. The command fails on direct
-post-repair-only target occurrences and retains a deterministic stratified sample for human review:
+Render every frozen prompt before inference and run the hidden-field scan. The command checks exact and normalized target
+identifiers, labels, descriptions, serialized forms, and boundary behavior, and retains a deterministic stratified sample
+for Codex-assisted error discovery:
 
 ```bash
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python -m temporal_audit \
@@ -94,7 +99,19 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python -m temporal_audit \
 ```
 
 Expected Type A rule-derived visibility is reported separately from high-risk later-context leakage. A passing automated
-gate does not complete the human prompt review recorded in `manual_review_sample`.
+gate does not turn the Codex-assisted sample into ground truth or prove the absence of semantic leakage.
+
+## Automated Consistency Audit
+
+Run the three-step `kg-automated-audit` workflow before release review against the full Stage 4 and Stage 3 artifacts,
+the Stage 4 schema, the current construct sample, and the current rendered-prompt artifacts. The detailed inputs,
+commands, outputs, and disposition policy are in
+[Automated Consistency Audit](./Automated_Consistency_Audit.md).
+
+This workflow combines deterministic checks with Codex-assisted error discovery. It is the accepted replacement for an
+unavailable human study, but it does not establish human construct validity or semantic ground truth. Missing inputs remain
+explicitly unavailable; in particular, the current full-data checkout has no Stage 2 artifact and must not receive an
+inferred Stage 2 pass.
 
 ## Run Provenance
 
@@ -108,24 +125,12 @@ New reasoning-floor runs store in `run_config.json` and the final summary:
 
 A missing model digest or dirty worktree makes a run ineligible for confirmatory registration.
 
-## Independent Annotation
+## Construct-Validity Boundary
 
-Create blind, two-reviewer assignments from the stratified audit sample:
-
-```bash
-UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python -m annotation_protocol \
-  build \
-  --audit-csv reports/manual_audit/audit_phase_d_v1_seed_13.csv \
-  --classified-benchmark data/04_classified_benchmark.jsonl \
-  --world-state data/03_world_state.json \
-  --output-dir reports/manual_audit/double_review_v1 \
-  --private-map sealed/manual_audit_reidentification_v1.json \
-  --annotators reviewer_a,reviewer_b,reviewer_c
-```
-
-The builder removes raw IDs, classification, confidence, track, strata, information type, and build metadata from evidence cards. It writes the re-identification map separately. Every case receives two distinct reviewers, and disagreements require adjudication. Access controls for the private map and adjudicator identity are operational responsibilities outside the repository.
-
-T-box taxonomy gold still requires independent property/revision-level validation; extractor output alone is not independent gold.
+The repository retains annotation tooling for possible future work, but human annotation is not a gate for the current
+study. The automated audit exports label-hidden construct packets and uses Codex only to nominate errors. A deterministic or
+Codex disagreement downgrades a case conservatively; it does not create a replacement label. T-box taxonomy gold remains
+extractor-relative, and exact historical alignment does not prove semantic validity, causal necessity, or uniqueness.
 
 ## Untouched Test And Two-Phase Freeze
 
