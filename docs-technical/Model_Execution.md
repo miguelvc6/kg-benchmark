@@ -1,9 +1,10 @@
 # Model Execution Matrix
 
 The paper model and population plan is tracked in
-[`experiments/paper_execution_models_v1.json`](../experiments/paper_execution_models_v1.json). It is intentionally
-`draft` until final selection hashes and all immutable model revisions are available. The prompt-only configuration is
-already frozen in
+[`experiments/paper_execution_models_v1.json`](../experiments/paper_execution_models_v1.json). Its model identities,
+provider settings, planned populations, conditions, and prompt reference are `methodology_frozen` before acquisition.
+Final selection hashes and all immutable deployment revisions remain execution-freeze inputs. The prompt configuration is
+frozen in
 [`experiments/paper_prompt_profile_v1.json`](../experiments/paper_prompt_profile_v1.json) and bound by SHA-256.
 `kg-experiment-plan` validates the matrix and derives workloads and runner arguments; adding a model or population is a
 data-only change when it uses an existing provider contract.
@@ -42,11 +43,14 @@ Validate or render the plan with:
 
 ```bash
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-experiment-plan validate
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-experiment-plan validate --require-methodology-frozen
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-paper-prompt-profile
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-experiment-plan plan --output reports/execution_plan.json
 ```
 
-`--require-frozen` deliberately fails the current draft. Before changing the matrix to `frozen`, resolve the two missing
+`--require-methodology-frozen` is the pre-acquisition gate and deliberately does not require selection hashes or deployment
+digests. `--require-frozen` is the post-selection execution gate and currently fails. Before changing the matrix to
+`frozen`, resolve the two missing
 Ollama manifest digests, bind an immutable Azure deployment revision, and replace the snapshot selection placeholders
 and their SHA-256 hashes. The
 installed `gpt-oss:120b` manifest digest is already recorded. Large missing Ollama models are not pulled as part of

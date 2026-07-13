@@ -25,7 +25,8 @@ from artifact_release import sha256_file
 from classifier import lean_repair_target
 from lib.utils import iter_jsonl, iter_repairs
 
-LINEAGE_VERSION = 2
+LINEAGE_VERSION = 3
+RECONCILIATION_MODE = "ordered_filtered_enriched_successor"
 STAGE2_PROJECTED_FIELDS = (
     "id",
     "qid",
@@ -244,6 +245,187 @@ def _stage2_representation_check(json_path: Path, jsonl_path: Path) -> dict[str,
     }
 
 
+def _stage2_reconciliation_check(
+    authoritative_path: Path,
+    precursor_path: Path,
+    policy: dict[str, Any],
+) -> dict[str, Any]:
+    """Prove a declared historical precursor -> compiled Stage 2 transform.
+
+    The restored baseline contains a JSONL precursor and a later JSON array that
+    was filtered and enriched before Stage 3 was built.  This check accepts that
+    relationship only when every authoritative row occurs in precursor order and
+    is byte-canonically identical after removal of explicitly declared top-level
+    enrichment fields.  It never rewrites either artifact.
+    """
+    if policy.get("mode") != RECONCILIATION_MODE:
+        raise ValueError(f"Unsupported Stage 2 reconciliation mode: {policy.get('mode')!r}")
+    if policy.get("authoritative_artifact") != "stage2_json":
+        raise ValueError("Reconciliation must declare stage2_json as authoritative_artifact.")
+    if policy.get("precursor_artifact") != "stage2_jsonl":
+        raise ValueError("Reconciliation must declare stage2_jsonl as precursor_artifact.")
+    allowed_fields = policy.get("allowed_authoritative_only_fields")
+    if (
+        not isinstance(allowed_fields, list)
+        or not allowed_fields
+        or not all(isinstance(field, str) and field for field in allowed_fields)
+        or len(allowed_fields) != len(set(allowed_fields))
+    ):
+        raise ValueError("Reconciliation requires unique allowed_authoritative_only_fields.")
+    if policy.get("allow_precursor_only_records") is not True:
+        raise ValueError("The filtered-successor mode must explicitly allow precursor-only records.")
+    allow_multivalue_lines = policy.get("allow_precursor_jsonl_multi_value_lines") is True
+
+    precursor_by_id: dict[str, tuple[int, str, tuple[bool, ...]]] = {}
+    precursor_duplicates: list[str] = []
+    precursor_missing_ids = 0
+    precursor_count = 0
+    with precursor_path.open("rb") as handle:
+        for position, record in enumerate(ijson.items(handle, "", multiple_values=True)):
+            precursor_count += 1
+            case_id = record.get("id") if isinstance(record, dict) else None
+            if not isinstance(case_id, str) or not case_id:
+                precursor_missing_ids += 1
+                continue
+            if case_id in precursor_by_id:
+                if len(precursor_duplicates) < 100:
+                    precursor_duplicates.append(case_id)
+                continue
+            field_presence = tuple(field in record for field in allowed_fields)
+            normalized = {key: value for key, value in record.items() if key not in allowed_fields}
+            precursor_by_id[case_id] = (
+                position,
+                canonical_record_sha256(normalized),
+                field_presence,
+            )
+
+    with precursor_path.open("rb") as handle:
+        physical_lines = sum(1 for line in handle if line.strip())
+
+    authoritative_ids: set[str] = set()
+    authoritative_duplicates: list[str] = []
+    authoritative_missing_ids = 0
+    authoritative_count = 0
+    missing_from_precursor: list[str] = []
+    content_mismatches: list[str] = []
+    ordering_differences: list[str] = []
+    precursor_declared_field_violations: list[str] = []
+    enrichment_presence = Counter()
+    last_precursor_position = -1
+    for record in iter_repairs(authoritative_path):
+        authoritative_count += 1
+        case_id = record.get("id") if isinstance(record, dict) else None
+        if not isinstance(case_id, str) or not case_id:
+            authoritative_missing_ids += 1
+            continue
+        if case_id in authoritative_ids:
+            if len(authoritative_duplicates) < 100:
+                authoritative_duplicates.append(case_id)
+            continue
+        authoritative_ids.add(case_id)
+        for field in allowed_fields:
+            if field in record:
+                enrichment_presence[field] += 1
+        source = precursor_by_id.get(case_id)
+        if source is None:
+            if len(missing_from_precursor) < 100:
+                missing_from_precursor.append(case_id)
+            continue
+        precursor_position, precursor_digest, precursor_field_presence = source
+        if precursor_position <= last_precursor_position and len(ordering_differences) < 100:
+            ordering_differences.append(case_id)
+        last_precursor_position = precursor_position
+        if any(precursor_field_presence) and len(precursor_declared_field_violations) < 100:
+            precursor_declared_field_violations.append(case_id)
+        normalized = {key: value for key, value in record.items() if key not in allowed_fields}
+        if canonical_record_sha256(normalized) != precursor_digest and len(content_mismatches) < 100:
+            content_mismatches.append(case_id)
+
+    precursor_only_ids = [case_id for case_id in precursor_by_id if case_id not in authoritative_ids]
+    precursor_only_digest = hashlib.sha256()
+    for case_id in precursor_only_ids:
+        precursor_only_digest.update(case_id.encode("utf-8"))
+        precursor_only_digest.update(b"\n")
+    one_record_per_line = precursor_count == physical_lines
+    checks = {
+        "ids_complete": not precursor_missing_ids and not authoritative_missing_ids,
+        "ids_unique": not precursor_duplicates and not authoritative_duplicates,
+        "authoritative_ids_are_precursor_subset": not missing_from_precursor,
+        "authoritative_order_is_precursor_subsequence": not ordering_differences,
+        "shared_records_equal_after_declared_enrichment_removed": not content_mismatches,
+        "declared_enrichment_absent_from_precursor": not precursor_declared_field_violations,
+        "precursor_only_records_explicitly_allowed": policy.get("allow_precursor_only_records") is True,
+        "precursor_jsonl_format_explained": one_record_per_line or allow_multivalue_lines,
+    }
+    return {
+        "mode": RECONCILIATION_MODE,
+        "passed": all(checks.values()),
+        "checks": checks,
+        "counts": {
+            "authoritative": authoritative_count,
+            "precursor": precursor_count,
+            "precursor_physical_lines": physical_lines,
+            "shared": len(authoritative_ids) - len(missing_from_precursor),
+            "precursor_only": len(precursor_only_ids),
+        },
+        "declared_transform": {
+            "authoritative_artifact": "stage2_json",
+            "precursor_artifact": "stage2_jsonl",
+            "allowed_authoritative_only_fields": allowed_fields,
+            "allow_precursor_only_records": True,
+            "allow_precursor_jsonl_multi_value_lines": allow_multivalue_lines,
+        },
+        "enrichment_field_presence_counts": dict(sorted(enrichment_presence.items())),
+        "precursor_only_ids_sha256": precursor_only_digest.hexdigest(),
+        "differences": {
+            "authoritative_missing_from_precursor": missing_from_precursor,
+            "shared_content_mismatches": content_mismatches,
+            "ordering": ordering_differences,
+            "declared_fields_present_in_precursor": precursor_declared_field_violations,
+            "precursor_only_sample": precursor_only_ids[:100],
+        },
+        "missing_id_counts": {
+            "authoritative": authoritative_missing_ids,
+            "precursor": precursor_missing_ids,
+        },
+        "duplicate_ids": {
+            "authoritative": authoritative_duplicates,
+            "precursor": precursor_duplicates,
+        },
+    }
+
+
+def _representation_diagnostic_from_reconciliation(reconciliation: dict[str, Any]) -> dict[str, Any]:
+    """Retain the old equality report while making its expected failure non-authoritative."""
+    counts = reconciliation["counts"]
+    precursor_only = counts["precursor_only"]
+    enrichment_present = any(reconciliation["enrichment_field_presence_counts"].values())
+    one_record_per_line = counts["precursor"] == counts["precursor_physical_lines"]
+    checks = {
+        "counts_equal": counts["authoritative"] == counts["precursor"],
+        "ids_complete": reconciliation["checks"]["ids_complete"],
+        "ids_unique": reconciliation["checks"]["ids_unique"],
+        "id_sets_equal": not precursor_only
+        and reconciliation["checks"]["authoritative_ids_are_precursor_subset"],
+        "ordering_equal": not precursor_only
+        and reconciliation["checks"]["authoritative_order_is_precursor_subsequence"],
+        "canonical_record_digests_equal": not enrichment_present
+        and reconciliation["checks"]["shared_records_equal_after_declared_enrichment_removed"],
+        "jsonl_one_record_per_line": one_record_per_line,
+    }
+    return {
+        "passed": all(checks.values()),
+        "role": "diagnostic_only_when_stage2_relationship_mode_is_not_exact",
+        "checks": checks,
+        "counts": {
+            "json": counts["authoritative"],
+            "jsonl": counts["precursor"],
+            "jsonl_physical_lines": counts["precursor_physical_lines"],
+            "positions_compared": counts["shared"],
+        },
+        "differences": reconciliation["differences"],
+        "duplicate_ids": reconciliation["duplicate_ids"],
+    }
 def _candidate_key(record: dict[str, Any]) -> tuple[Any, ...]:
     context = record.get("violation_context")
     context = context if isinstance(context, dict) else {}
@@ -536,6 +718,7 @@ def validate_lineage(
     stage3_path: str | Path,
     stage4_path: str | Path,
     source_provenance: Iterable[dict[str, Any]] = (),
+    reconciliation_policy: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     paths = {
         "stage0": Path(stage0_path),
@@ -549,28 +732,59 @@ def validate_lineage(
         if not path.is_file():
             raise FileNotFoundError(path)
     total_size = sum(path.stat().st_size for path in paths.values())
+    provenance_records = list(source_provenance)
+    if reconciliation_policy is not None and not provenance_records:
+        raise ValueError("Historical Stage 2 reconciliation requires explicit source provenance.")
     if total_size >= 100 * 1024 * 1024:
         with ProcessPoolExecutor(max_workers=min(9, os.cpu_count() or 1)) as executor:
-            representation_future = executor.submit(
-                _stage2_representation_check, paths["stage2_json"], paths["stage2_jsonl"]
-            )
+            if reconciliation_policy is None:
+                relationship_future = executor.submit(
+                    _stage2_representation_check, paths["stage2_json"], paths["stage2_jsonl"]
+                )
+            else:
+                relationship_future = executor.submit(
+                    _stage2_reconciliation_check,
+                    paths["stage2_json"],
+                    paths["stage2_jsonl"],
+                    reconciliation_policy,
+                )
             provenance_future = executor.submit(
-                _validate_stage0_stage1, paths["stage0"], paths["stage1"], paths["stage2_jsonl"]
+                _validate_stage0_stage1, paths["stage0"], paths["stage1"], paths["stage2_json"]
             )
             # The compiled JSON is the enriched Stage 2 input used for Stage 3/4 construction.
             identity_future = executor.submit(
                 _validate_stage234, paths["stage2_json"], paths["stage3"], paths["stage4"]
             )
             hash_futures = {name: executor.submit(sha256_file, path) for name, path in paths.items()}
-            representation = representation_future.result()
+            relationship = relationship_future.result()
             provenance = provenance_future.result()
             identity = identity_future.result()
             artifact_hashes = {name: future.result() for name, future in hash_futures.items()}
     else:
-        representation = _stage2_representation_check(paths["stage2_json"], paths["stage2_jsonl"])
-        provenance = _validate_stage0_stage1(paths["stage0"], paths["stage1"], paths["stage2_jsonl"])
+        relationship = (
+            _stage2_representation_check(paths["stage2_json"], paths["stage2_jsonl"])
+            if reconciliation_policy is None
+            else _stage2_reconciliation_check(
+                paths["stage2_json"], paths["stage2_jsonl"], reconciliation_policy
+            )
+        )
+        provenance = _validate_stage0_stage1(paths["stage0"], paths["stage1"], paths["stage2_json"])
         identity = _validate_stage234(paths["stage2_json"], paths["stage3"], paths["stage4"])
         artifact_hashes = {name: sha256_file(path) for name, path in paths.items()}
+    if reconciliation_policy is None:
+        relationship = {"mode": "exact_representation_equivalence", **relationship}
+        representation = relationship
+    else:
+        expected_hashes = reconciliation_policy.get("expected_artifact_sha256")
+        bindings_valid = (
+            isinstance(expected_hashes, dict)
+            and expected_hashes.get("stage2_json") == artifact_hashes["stage2_json"]
+            and expected_hashes.get("stage2_jsonl") == artifact_hashes["stage2_jsonl"]
+        )
+        relationship["checks"]["declared_artifact_hashes_match"] = bindings_valid
+        relationship["passed"] = relationship["passed"] and bindings_valid
+        relationship["declared_transform"]["expected_artifact_sha256"] = expected_hashes
+        representation = _representation_diagnostic_from_reconciliation(relationship)
     manifest = {
         "manifest_type": "kg_artifact_lineage",
         "manifest_version": LINEAGE_VERSION,
@@ -592,9 +806,11 @@ def validate_lineage(
             )
             for name, path in paths.items()
         },
-        "source_provenance": list(source_provenance),
+        "source_provenance": provenance_records,
         "validation": {
-            "passed": representation["passed"] and provenance["passed"] and identity["passed"],
+            "passed": relationship["passed"] and provenance["passed"] and identity["passed"],
+            "authoritative_stage2_artifact": "stage2_json",
+            "stage2_relationship": relationship,
             "stage2_representation_equivalence": representation,
             "stage0_stage1_provenance": provenance,
             "stage234_identity_and_projection": identity,
@@ -627,6 +843,8 @@ def verify_bound_lineage_manifest(
     stage2_role = "stage2_jsonl" if stage2.suffix == ".jsonl" else "stage2_json"
     checks = {
         "schema_valid": not errors,
+        "stage2_is_declared_authoritative_artifact": stage2_role
+        == manifest.get("validation", {}).get("authoritative_stage2_artifact", "stage2_json"),
         "stage2_hash_matches": artifacts.get(stage2_role, {}).get("sha256")
         == (stage2_sha256 or sha256_file(stage2)),
         "stage3_hash_matches": artifacts.get("stage3", {}).get("sha256")
@@ -636,6 +854,16 @@ def verify_bound_lineage_manifest(
         "complete_lineage_passed": manifest.get("validation", {}).get("passed") is True,
     }
     identity = manifest.get("validation", {}).get("stage234_identity_and_projection")
+    relationship = manifest.get("validation", {}).get("stage2_relationship")
+    if manifest.get("manifest_version", 0) >= 3:
+        checks["stage2_relationship_passed"] = (
+            isinstance(relationship, dict) and relationship.get("passed") is True
+        )
+    else:
+        representation = manifest.get("validation", {}).get("stage2_representation_equivalence")
+        checks["stage2_relationship_passed"] = (
+            isinstance(representation, dict) and representation.get("passed") is True
+        )
     checks["identity_result_present"] = isinstance(identity, dict)
     return {
         "passed": all(checks.values()) and bool(identity.get("passed")) if isinstance(identity, dict) else False,
@@ -658,6 +886,10 @@ def main() -> int:
     validate.add_argument("--stage3", required=True)
     validate.add_argument("--stage4", required=True)
     validate.add_argument("--source-provenance", help="Optional JSON array of source records.")
+    validate.add_argument(
+        "--reconciliation-policy",
+        help="Explicit JSON transform declaration for a restored Stage 2 precursor.",
+    )
     validate.add_argument("--output", required=True)
     args = parser.parse_args()
     provenance = []
@@ -665,6 +897,13 @@ def main() -> int:
         provenance = json.loads(Path(args.source_provenance).read_text(encoding="utf-8"))
         if not isinstance(provenance, list):
             raise ValueError("--source-provenance must contain a JSON array.")
+    reconciliation_policy = None
+    if args.reconciliation_policy:
+        reconciliation_policy = json.loads(
+            Path(args.reconciliation_policy).read_text(encoding="utf-8")
+        )
+        if not isinstance(reconciliation_policy, dict):
+            raise ValueError("--reconciliation-policy must contain a JSON object.")
     manifest = validate_lineage(
         stage0_path=args.stage0,
         stage1_path=args.stage1,
@@ -673,6 +912,7 @@ def main() -> int:
         stage3_path=args.stage3,
         stage4_path=args.stage4,
         source_provenance=provenance,
+        reconciliation_policy=reconciliation_policy,
     )
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)

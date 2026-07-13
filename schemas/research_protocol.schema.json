@@ -20,9 +20,9 @@
   ],
   "properties": {
     "manifest_type": {"const": "research_protocol_freeze"},
-    "manifest_version": {"const": 2},
+    "manifest_version": {"enum": [2, 3]},
     "protocol_id": {"type": "string", "minLength": 1},
-    "protocol_phase": {"enum": ["allocation", "execution"]},
+    "protocol_phase": {"enum": ["methodology", "allocation", "execution"]},
     "status": {"enum": ["draft", "frozen"]},
     "created_at_utc": {"type": "string", "format": "date-time"},
     "code": {
@@ -34,15 +34,20 @@
       }
     },
     "release": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["path", "sha256", "release_kind", "release_status"],
-      "properties": {
-        "path": {"type": "string", "minLength": 1},
-        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-        "release_kind": {"enum": ["dataset", "evaluation"]},
-        "release_status": {"enum": ["candidate", "confirmatory"]}
-      }
+      "anyOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "sha256", "release_kind", "release_status"],
+          "properties": {
+            "path": {"type": "string", "minLength": 1},
+            "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+            "release_kind": {"enum": ["dataset", "evaluation"]},
+            "release_status": {"enum": ["candidate", "confirmatory"]}
+          }
+        }
+      ]
     },
     "models": {
       "type": "array",
@@ -53,7 +58,7 @@
         "required": ["name", "digest"],
         "properties": {
           "name": {"type": "string", "minLength": 1},
-          "digest": {"type": "string", "minLength": 8}
+          "digest": {"type": ["string", "null"], "minLength": 8}
         }
       }
     },
@@ -69,7 +74,7 @@
     },
     "files": {
       "type": "array",
-      "minItems": 4,
+      "minItems": 3,
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -82,5 +87,12 @@
         }
       }
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"protocol_phase": {"const": "methodology"}}},
+      "then": {"properties": {"release": {"type": "null"}}},
+      "else": {"properties": {"release": {"type": "object"}}}
+    }
+  ]
 }

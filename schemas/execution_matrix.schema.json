@@ -21,7 +21,7 @@
     "manifest_type": {"const": "paper_execution_matrix"},
     "manifest_version": {"const": 1},
     "matrix_id": {"type": "string", "minLength": 1},
-    "status": {"enum": ["draft", "frozen"]},
+    "status": {"enum": ["draft", "methodology_frozen", "frozen"]},
     "prompt_configuration": {"type": ["string", "null"]},
     "prompt_configuration_sha256": {
       "anyOf": [

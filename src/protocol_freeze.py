@@ -13,7 +13,7 @@ from jsonschema import Draft202012Validator
 from artifact_release import _git_state, git_commit_exists, sha256_file, verify_release_manifest
 
 PROTOCOL_STATUSES = {"draft", "frozen"}
-PROTOCOL_PHASES = {"allocation", "execution"}
+PROTOCOL_PHASES = {"methodology", "allocation", "execution"}
 
 
 def _relative_path(path: Path, root: Path) -> str:
@@ -40,11 +40,12 @@ def build_protocol_manifest(
     protocol_root: str | Path,
     protocol_id: str,
     protocol_phase: str,
-    release_manifest_path: str | Path,
-    models: Iterable[dict[str, str]],
+    release_manifest_path: str | Path | None,
+    models: Iterable[dict[str, Any]],
     conditions: Iterable[str],
     prompt_files: Iterable[str | Path],
     schema_files: Iterable[str | Path],
+    methodology_files: Iterable[str | Path] = (),
     analysis_plan_path: str | Path,
     expected_selected_count: int,
     expected_main_score_count: int,
@@ -55,8 +56,10 @@ def build_protocol_manifest(
     if protocol_phase not in PROTOCOL_PHASES:
         raise ValueError(f"Unsupported protocol phase: {protocol_phase}")
     normalized_models = [dict(model) for model in models]
-    if not normalized_models or any(not model.get("name") or not model.get("digest") for model in normalized_models):
-        raise ValueError("At least one model with a stable name and digest is required.")
+    if not normalized_models or any(not model.get("name") for model in normalized_models):
+        raise ValueError("At least one model identifier is required.")
+    if protocol_phase != "methodology" and any(not model.get("digest") for model in normalized_models):
+        raise ValueError("Allocation and execution protocols require stable model digests.")
     normalized_conditions = list(dict.fromkeys(value for value in conditions if value))
     if not normalized_conditions:
         raise ValueError("At least one preregistered condition is required.")
@@ -64,22 +67,31 @@ def build_protocol_manifest(
         raise ValueError("Expected population counts are invalid.")
 
     root = Path(protocol_root).resolve()
-    release_path = Path(release_manifest_path)
-    release_verification = verify_release_manifest(release_path, release_root=root)
-    if not release_verification["passed"]:
-        raise ValueError("Protocol cannot reference an invalid release manifest.")
-    release = json.loads(release_path.read_text(encoding="utf-8"))
-    expected_release_kind = "dataset" if protocol_phase == "allocation" else "evaluation"
-    if release.get("release_kind") != expected_release_kind:
-        raise ValueError(f"{protocol_phase.title()} protocols require a {expected_release_kind} release.")
+    release_path = Path(release_manifest_path) if release_manifest_path is not None else None
+    if protocol_phase == "methodology":
+        if release_path is not None:
+            raise ValueError("Methodology protocols are pre-acquisition and cannot reference a release.")
+        release = None
+    else:
+        if release_path is None:
+            raise ValueError(f"{protocol_phase.title()} protocols require a release manifest.")
+        release_verification = verify_release_manifest(release_path, release_root=root)
+        if not release_verification["passed"]:
+            raise ValueError("Protocol cannot reference an invalid release manifest.")
+        release = json.loads(release_path.read_text(encoding="utf-8"))
+        expected_release_kind = "dataset" if protocol_phase == "allocation" else "evaluation"
+        if release.get("release_kind") != expected_release_kind:
+            raise ValueError(f"{protocol_phase.title()} protocols require a {expected_release_kind} release.")
     code = _git_state()
     if status == "frozen":
-        if release.get("status") != "confirmatory":
+        if release is not None and release.get("status") != "confirmatory":
             raise ValueError("Frozen protocols require a confirmatory release.")
         if not code.get("commit") or code.get("dirty") is not False:
             raise ValueError("Frozen protocols require a clean Git commit.")
 
-    files = [_fingerprint("release_manifest", release_path, root)]
+    files = []
+    if release_path is not None:
+        files.append(_fingerprint("release_manifest", release_path, root))
     files.extend(
         _fingerprint(f"prompt_{index:03d}", Path(path), root)
         for index, path in enumerate(prompt_files, start=1)
@@ -88,16 +100,22 @@ def build_protocol_manifest(
         _fingerprint(f"schema_{index:03d}", Path(path), root)
         for index, path in enumerate(schema_files, start=1)
     )
+    files.extend(
+        _fingerprint(f"methodology_{index:03d}", Path(path), root)
+        for index, path in enumerate(methodology_files, start=1)
+    )
     files.append(_fingerprint("analysis_plan", Path(analysis_plan_path), root))
     manifest = {
         "manifest_type": "research_protocol_freeze",
-        "manifest_version": 2,
+        "manifest_version": 3,
         "protocol_id": protocol_id,
         "protocol_phase": protocol_phase,
         "status": status,
         "created_at_utc": datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
         "code": code,
-        "release": {
+        "release": None
+        if release_path is None
+        else {
             "path": _relative_path(release_path, root),
             "sha256": sha256_file(release_path),
             "release_kind": release["release_kind"],
@@ -144,31 +162,45 @@ def verify_protocol_manifest(
             "size_matches": size_matches,
             "sha256_matches": hash_matches,
         }
-    release_relative = manifest.get("release", {}).get("path")
-    release_path = (root / release_relative).resolve() if isinstance(release_relative, str) else root / "missing"
-    release_hash_matches = release_path.is_file() and sha256_file(release_path) == manifest.get("release", {}).get(
-        "sha256"
-    )
-    release_verification = (
-        verify_release_manifest(release_path, release_root=root) if release_hash_matches else {"passed": False}
-    )
-    release = json.loads(release_path.read_text(encoding="utf-8")) if release_hash_matches else {}
-    expected_release_kind = (
-        "dataset" if manifest.get("protocol_phase") == "allocation" else "evaluation"
-    )
+    phase = manifest.get("protocol_phase")
+    release_entry = manifest.get("release")
+    if phase == "methodology":
+        release_hash_matches = release_entry is None
+        release_verification = {"passed": True, "not_applicable": True}
+        release = None
+        release_checks = {
+            "release_hash_matches": release_hash_matches,
+            "release_verified": True,
+            "release_confirmatory": True,
+            "release_kind_matches_protocol_phase": True,
+            "release_code_recorded": True,
+        }
+    else:
+        release_relative = release_entry.get("path") if isinstance(release_entry, dict) else None
+        release_path = (root / release_relative).resolve() if isinstance(release_relative, str) else root / "missing"
+        expected_release_sha256 = release_entry.get("sha256") if isinstance(release_entry, dict) else None
+        release_hash_matches = release_path.is_file() and sha256_file(release_path) == expected_release_sha256
+        release_verification = (
+            verify_release_manifest(release_path, release_root=root) if release_hash_matches else {"passed": False}
+        )
+        release = json.loads(release_path.read_text(encoding="utf-8")) if release_hash_matches else {}
+        expected_release_kind = "dataset" if phase == "allocation" else "evaluation"
+        release_checks = {
+            "release_hash_matches": bool(release_hash_matches),
+            "release_verified": bool(release_verification.get("passed")),
+            "release_confirmatory": release.get("status") == "confirmatory",
+            "release_kind_matches_protocol_phase": release.get("release_kind") == expected_release_kind,
+            "release_code_recorded": bool(release.get("code", {}).get("commit")),
+        }
     checks = {
         "manifest_schema_valid": not schema_errors,
         "status_frozen": manifest.get("status") == "frozen",
         "code_clean": manifest.get("code", {}).get("dirty") is False,
         "code_commit_exists": git_commit_exists(manifest.get("code", {}).get("commit")),
-        "release_hash_matches": bool(release_hash_matches),
-        "release_verified": bool(release_verification.get("passed")),
-        "release_confirmatory": release.get("status") == "confirmatory",
-        "release_kind_matches_protocol_phase": release.get("release_kind") == expected_release_kind,
-        "release_code_recorded": bool(release.get("code", {}).get("commit")),
         "all_protocol_files_match": bool(file_checks) and all(
             all(item.values()) for item in file_checks.values()
         ),
+        **release_checks,
     }
     return {
         "passed": all(checks.values()),
@@ -188,11 +220,17 @@ def main() -> int:
     build.add_argument("--protocol-root", default=".")
     build.add_argument("--protocol-id", required=True)
     build.add_argument("--protocol-phase", choices=sorted(PROTOCOL_PHASES), required=True)
-    build.add_argument("--release-manifest", required=True)
-    build.add_argument("--model", action="append", required=True, help="NAME=DIGEST; repeat for each model.")
+    build.add_argument("--release-manifest")
+    build.add_argument(
+        "--model",
+        action="append",
+        required=True,
+        help="NAME=DIGEST, or NAME for a pre-acquisition methodology freeze.",
+    )
     build.add_argument("--condition", action="append", required=True)
     build.add_argument("--prompt", action="append", required=True)
     build.add_argument("--schema", action="append", required=True)
+    build.add_argument("--methodology-file", action="append", default=[])
     build.add_argument("--analysis-plan", required=True)
     build.add_argument("--expected-selected-count", required=True, type=int)
     build.add_argument("--expected-main-score-count", required=True, type=int)
@@ -208,9 +246,11 @@ def main() -> int:
         return 0 if result["passed"] else 1
     models = []
     for value in args.model:
-        if "=" not in value:
-            raise ValueError("Each --model must use NAME=DIGEST.")
-        name, digest = value.split("=", 1)
+        name, separator, digest = value.partition("=")
+        if not name:
+            raise ValueError("Each --model requires a non-empty name.")
+        if not separator:
+            digest = None
         models.append({"name": name, "digest": digest})
     manifest = build_protocol_manifest(
         protocol_root=args.protocol_root,
@@ -221,6 +261,7 @@ def main() -> int:
         conditions=args.condition,
         prompt_files=args.prompt,
         schema_files=args.schema,
+        methodology_files=args.methodology_file,
         analysis_plan_path=args.analysis_plan,
         expected_selected_count=args.expected_selected_count,
         expected_main_score_count=args.expected_main_score_count,

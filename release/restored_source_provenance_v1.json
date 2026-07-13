@@ -1,0 +1,14 @@
+[
+  {
+    "source_type": "restored_workspace_artifacts",
+    "status": "exact_upstream_snapshot_unresolved",
+    "recovery_date_utc": "2026-07-13",
+    "statement": "These immutable local artifacts predate the confirmatory freeze work. No upstream URL, retrieval timestamp, or source snapshot identifier is inferred. Their exact bytes are bound by the lineage manifest.",
+    "stage0_sha256": "704fba361c9701bd19433a9fe163892aa753d7665c1580497dc0045f79c1c965",
+    "stage1_sha256": "0ae540c6589cb5aea808b2b95623b8f67d60644e01690470ae2ed59fad66a2e1",
+    "stage2_json_sha256": "7d7777358e27f7c8e8fa8df881192a600dc4c879c91a60b83c5161ad61259a3a",
+    "stage2_jsonl_sha256": "5119840b548ace231b716603957a4a413b6fd2e13f5e1353200f708c988252b3",
+    "stage3_sha256": "7e3591a9bfc7289c698d1cc87339604b3c796a042d8ce96bb0d67f435bfa21bf",
+    "stage4_sha256": "dfbdc9286cc54e10dfe7092ecdf78f95e9852b9271c564b3dfa2447b4487f344"
+  }
+]

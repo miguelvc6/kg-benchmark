@@ -62,6 +62,11 @@ class ArtifactLineageTests(unittest.TestCase):
                 manifest_path, stage2_path=p["s2.json"], stage3_path=p["s3.json"], stage4_path=p["s4.jsonl"]
             )
             self.assertTrue(bound["passed"])
+            precursor_bound = verify_bound_lineage_manifest(
+                manifest_path, stage2_path=p["s2.jsonl"], stage3_path=p["s3.json"], stage4_path=p["s4.jsonl"]
+            )
+            self.assertFalse(precursor_bound["checks"]["stage2_is_declared_authoritative_artifact"])
+            self.assertFalse(precursor_bound["passed"])
 
     def test_representation_mutation_and_projection_mutation_fail(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -97,6 +102,83 @@ class ArtifactLineageTests(unittest.TestCase):
             self.assertEqual(representation["counts"]["jsonl_physical_lines"], 1)
             self.assertFalse(representation["checks"]["jsonl_one_record_per_line"])
             self.assertFalse(representation["passed"])
+
+    def test_declared_filtered_enriched_successor_passes_without_rewriting_precursor(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            authoritative = _stage2()
+            authoritative["popularity"] = {"score": 1.0}
+            p = self._files(root, [authoritative])
+            precursor_rows = [_stage2(), _stage2("repair_Q1_extra")]
+            p["s2.jsonl"].write_text(
+                "".join(json.dumps(row) + "\n" for row in precursor_rows), encoding="utf-8"
+            )
+            policy = {
+                "mode": "ordered_filtered_enriched_successor",
+                "authoritative_artifact": "stage2_json",
+                "precursor_artifact": "stage2_jsonl",
+                "allowed_authoritative_only_fields": ["popularity"],
+                "allow_precursor_only_records": True,
+                "allow_precursor_jsonl_multi_value_lines": False,
+                "expected_artifact_sha256": {
+                    "stage2_json": canonical_record_sha256([]),
+                    "stage2_jsonl": canonical_record_sha256([]),
+                },
+            }
+            from artifact_release import sha256_file
+
+            policy["expected_artifact_sha256"] = {
+                "stage2_json": sha256_file(p["s2.json"]),
+                "stage2_jsonl": sha256_file(p["s2.jsonl"]),
+            }
+            result = validate_lineage(
+                stage0_path=p["s0.json"], stage1_path=p["s1.json"],
+                stage2_json_path=p["s2.json"], stage2_jsonl_path=p["s2.jsonl"],
+                stage3_path=p["s3.json"], stage4_path=p["s4.jsonl"],
+                source_provenance=[{"status": "restored", "note": "test fixture"}],
+                reconciliation_policy=policy,
+            )
+            relationship = result["validation"]["stage2_relationship"]
+            self.assertTrue(result["validation"]["passed"])
+            self.assertTrue(relationship["passed"])
+            self.assertEqual(relationship["counts"]["precursor_only"], 1)
+            self.assertFalse(result["validation"]["stage2_representation_equivalence"]["passed"])
+
+    def test_reconciliation_rejects_mutation_reordering_and_unbound_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            first = _stage2("repair_Q1_first")
+            second = _stage2("repair_Q1_second")
+            first["popularity"] = {"score": 1.0}
+            second["popularity"] = {"score": 1.0}
+            p = self._files(root, [second, first])
+            mutated = _stage2("repair_Q1_second")
+            mutated["repair_target"]["new_value"] = ["unexpected"]
+            p["s2.jsonl"].write_text(
+                json.dumps(first | {"popularity": None}) + "\n" + json.dumps(mutated) + "\n",
+                encoding="utf-8",
+            )
+            policy = {
+                "mode": "ordered_filtered_enriched_successor",
+                "authoritative_artifact": "stage2_json",
+                "precursor_artifact": "stage2_jsonl",
+                "allowed_authoritative_only_fields": ["popularity"],
+                "allow_precursor_only_records": True,
+                "allow_precursor_jsonl_multi_value_lines": False,
+                "expected_artifact_sha256": {"stage2_json": "0" * 64, "stage2_jsonl": "0" * 64},
+            }
+            result = validate_lineage(
+                stage0_path=p["s0.json"], stage1_path=p["s1.json"],
+                stage2_json_path=p["s2.json"], stage2_jsonl_path=p["s2.jsonl"],
+                stage3_path=p["s3.json"], stage4_path=p["s4.jsonl"],
+                source_provenance=[{"status": "restored"}], reconciliation_policy=policy,
+            )
+            checks = result["validation"]["stage2_relationship"]["checks"]
+            self.assertFalse(checks["declared_artifact_hashes_match"])
+            self.assertFalse(checks["authoritative_order_is_precursor_subsequence"])
+            self.assertFalse(checks["shared_records_equal_after_declared_enrichment_removed"])
+            self.assertFalse(checks["declared_enrichment_absent_from_precursor"])
+            self.assertFalse(result["validation"]["passed"])
 
 
 if __name__ == "__main__":

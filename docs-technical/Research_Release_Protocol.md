@@ -20,10 +20,11 @@ then conservatively marked four cases `exclude_pending_rerender` after model-ass
 must be rerendered and the v2 audit rerun against restored Stage 2 content before the current prompt set can enter a release candidate. See
 [Automated Consistency Audit](./Automated_Consistency_Audit.md) for measured results.
 
-The governance workflow uses two immutable freezes to avoid a selection/release dependency cycle. An **allocation
-protocol** binds a confirmatory dataset release before case allocation. After private allocation, an **execution
-protocol** binds the selected confirmatory evaluation release before any model run. The registry accepts only execution
-protocols for confirmatory results.
+The governance workflow has two temporal freeze boundaries. A pre-acquisition **methodology protocol** binds methods,
+policies, analysis, prompts, model identifiers, and inference settings without depending on a not-yet-created release or
+selection. After private allocation, an **execution protocol** binds the selected evaluation release, selection hashes,
+and immutable deployment revisions before any model run. A checksum-bound dataset/allocation protocol is still produced
+between them to authorize private selection. The registry accepts only execution protocols for confirmatory results.
 
 ## Local Smoke Workflow
 
@@ -139,9 +140,9 @@ New reasoning-floor runs store in `run_config.json` and the final summary:
 A missing model digest or dirty worktree makes a run ineligible for confirmatory registration.
 
 The extensible model/population configuration, generation-cache identity, and evaluation replay procedure are specified
-in [Model Execution Matrix](./Model_Execution.md). Its `--require-frozen` validation is an execution-freeze gate. The
-tracked matrix remains draft while prompt configuration, final selection hashes, and unresolved model revisions are
-pending.
+in [Model Execution Matrix](./Model_Execution.md). Its `--require-methodology-frozen` validation is the pre-acquisition
+gate; `--require-frozen` is the execution gate. The tracked matrix is methodology-frozen but remains intentionally
+ineligible for execution while final selection hashes and unresolved model revisions are pending.
 
 ## Construct-Validity Boundary
 
@@ -150,12 +151,38 @@ study. The automated audit exports label-hidden construct packets and uses Codex
 Codex disagreement downgrades a case conservatively; it does not create a replacement label. T-box taxonomy gold remains
 extractor-relative, and exact historical alignment does not prove semantic validity, causal necessity, or uniqueness.
 
-## Untouched Test And Two-Phase Freeze
+## Untouched Test And Two-Boundary Freeze
 
-Freeze prompts, models, metrics, analysis code, and allocation policy before creating a test manifest. Use a post-freeze
+Freeze prompts, model identifiers/settings, metrics, analysis code, acquisition procedure, and allocation policy before
+acquiring candidates. This methodology protocol has `protocol_phase=methodology`, has `release: null`, and allows model
+digests to remain unresolved. Use a post-freeze
 benchmark snapshot; code-level exclusions on the existing snapshot are not sufficient to establish untouchedness.
 
-First build a **dataset** release without a selection manifest, then create the allocation protocol. Every model must use
+```bash
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-protocol-freeze build \
+  --protocol-root . \
+  --protocol-id methodology_v1 \
+  --protocol-phase methodology \
+  --model qwen3:30b \
+  --model llama3.3:70b \
+  --model gpt-oss:120b \
+  --model gpt-5.6-sol \
+  --condition logic_only \
+  --condition local_graph \
+  --prompt experiments/paper_prompt_profile_v1.json \
+  --schema schemas/verified_repair_proposal.schema.json \
+  --schema schemas/tbox_taxonomy_patch_proposal.schema.json \
+  --methodology-file experiments/paper_execution_models_v1.json \
+  --methodology-file protocols/post_freeze_acquisition_v1.json \
+  --methodology-file protocols/selection_policy_v1.json \
+  --analysis-plan protocols/analysis_plan_v1.md \
+  --expected-selected-count 1200 \
+  --expected-main-score-count 1200 \
+  --status frozen \
+  --output protocols/methodology_v1.json
+```
+
+After acquisition and audit, build a **dataset** release without a selection manifest, then create the allocation protocol. Every model must use
 a stable digest, and every prompt, schema, and analysis-plan file is hashed into the protocol:
 
 ```bash

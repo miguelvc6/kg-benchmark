@@ -2,7 +2,7 @@
   "manifest_type": "paper_execution_matrix",
   "manifest_version": 1,
   "matrix_id": "paper_execution_models_v1",
-  "status": "draft",
+  "status": "methodology_frozen",
   "prompt_configuration": "experiments/paper_prompt_profile_v1.json",
   "prompt_configuration_sha256": "c075e4e6875e110f82850f2a34a23ae49b386b76da23ba9720cf05c33ed716e3",
   "tbox_task_version": "tbox_taxonomy_patch_v1",

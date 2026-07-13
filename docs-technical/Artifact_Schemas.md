@@ -1,9 +1,10 @@
 # Artifact Schemas
 
-Confirmatory releases additionally use two v2 contracts:
+Confirmatory releases additionally use versioned lineage and disposition contracts:
 
-- `schemas/artifact_lineage.schema.json` binds Stage 0--4 file hashes, sizes, counts, Stage 2 JSON/JSONL canonical
-  equivalence, Stage 0/1 provenance, and Stage 2/3/4 identity/projection results.
+- `schemas/artifact_lineage.schema.json` v3 binds Stage 0--4 file hashes, sizes, counts, the authoritative Stage 2 role,
+  Stage 0/1 provenance, and Stage 2/3/4 identity/projection results. Exact JSON/JSONL equality is the default. A restored
+  historical precursor may differ only under a checksum-bound, explicitly declared and exhaustively verified transform.
 - `schemas/final_disposition.schema.json` defines the per-case final audit disposition. Confirmatory selection requires
   exactly one valid row for every Stage 4 case and admits only `include` rows.
 

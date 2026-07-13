@@ -45,6 +45,13 @@ class ExperimentPlanTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "status=frozen"):
             validate_execution_matrix(self.matrix, require_frozen=True)
 
+    def test_methodology_gate_does_not_require_selection_hashes_or_model_digests(self) -> None:
+        methodology = copy.deepcopy(self.matrix)
+        methodology["status"] = "methodology_frozen"
+        validate_execution_matrix(methodology, require_methodology_frozen=True)
+        with self.assertRaisesRegex(ValueError, "status=frozen"):
+            validate_execution_matrix(methodology, require_frozen=True)
+
 
 if __name__ == "__main__":
     unittest.main()

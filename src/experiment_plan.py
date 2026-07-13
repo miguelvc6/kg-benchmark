@@ -33,7 +33,12 @@ def load_execution_matrix(path: str | Path) -> dict[str, Any]:
     return matrix
 
 
-def validate_execution_matrix(matrix: dict[str, Any], *, require_frozen: bool = False) -> None:
+def validate_execution_matrix(
+    matrix: dict[str, Any],
+    *,
+    require_methodology_frozen: bool = False,
+    require_frozen: bool = False,
+) -> None:
     population_ids = [entry["population_id"] for entry in matrix["populations"]]
     if len(population_ids) != len(set(population_ids)):
         raise ValueError("population_id values must be unique.")
@@ -66,6 +71,20 @@ def validate_execution_matrix(matrix: dict[str, Any], *, require_frozen: bool = 
         raise ValueError("Paper execution requires the tbox_taxonomy_patch_v1 T-box task.")
     if matrix["reporting_policy"]["combined_abox_tbox_score"]:
         raise ValueError("A-box and T-box metric families must not be collapsed into one score.")
+    methodology_required = (
+        require_methodology_frozen
+        or require_frozen
+        or matrix["status"] in {"methodology_frozen", "frozen"}
+    )
+    if methodology_required:
+        if matrix["status"] not in {"methodology_frozen", "frozen"}:
+            if require_frozen:
+                raise ValueError("Confirmatory planning requires matrix status=frozen.")
+            raise ValueError("Post-freeze acquisition requires matrix status=methodology_frozen or frozen.")
+        if not matrix["prompt_configuration"]:
+            raise ValueError("A methodology-frozen matrix requires a prompt_configuration reference.")
+        if not matrix["prompt_configuration_sha256"]:
+            raise ValueError("A methodology-frozen matrix requires a prompt_configuration_sha256.")
     frozen_required = require_frozen or matrix["status"] == "frozen"
     if not frozen_required:
         return
@@ -180,6 +199,7 @@ def main() -> int:
     subparsers = parser.add_subparsers(dest="command", required=True)
     validate_parser = subparsers.add_parser("validate")
     validate_parser.add_argument("--matrix", default="experiments/paper_execution_models_v1.json")
+    validate_parser.add_argument("--require-methodology-frozen", action="store_true")
     validate_parser.add_argument("--require-frozen", action="store_true")
     plan_parser = subparsers.add_parser("plan")
     plan_parser.add_argument("--matrix", default="experiments/paper_execution_models_v1.json")
@@ -187,7 +207,11 @@ def main() -> int:
     args = parser.parse_args()
     matrix = load_execution_matrix(args.matrix)
     if args.command == "validate":
-        validate_execution_matrix(matrix, require_frozen=args.require_frozen)
+        validate_execution_matrix(
+            matrix,
+            require_methodology_frozen=args.require_methodology_frozen,
+            require_frozen=args.require_frozen,
+        )
         print(json.dumps({"valid": True, "matrix_id": matrix["matrix_id"], "status": matrix["status"]}))
         return 0
     plan = build_execution_plan(matrix)

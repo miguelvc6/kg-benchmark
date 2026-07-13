@@ -5,9 +5,11 @@ Git. Run repository commands from WSL with `UV_PROJECT_ENVIRONMENT=.venv-wsl`.
 
 ## 1. Validate the restored baseline
 
-Do not rewrite the recovered files. The lineage command streams both Stage 2 representations, compares canonical record
-digests and order, validates Stage 0 popularity and Stage 1 candidate provenance, and requires exact Stage 2/3/4 IDs plus
-field equality between Stage 2 and the lean Stage 4 projection.
+Do not rewrite the recovered files. The compiled JSON array is the authoritative Stage 2 consumed by Stages 3 and 4; the
+larger JSONL is a recovered pre-popularity precursor. The lineage command proves the checksum-bound declared relationship:
+every compiled row must be an ordered precursor row with only `popularity` added, while precursor-only rows and the known
+multi-value physical line remain recorded. It validates Stage 0/1 provenance against authoritative Stage 2 and requires
+exact Stage 2/3/4 IDs plus field equality between Stage 2 and the lean Stage 4 projection.
 
 ```bash
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-artifact-lineage validate \
@@ -17,32 +19,36 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-artifact-lineage validate \
   --stage2-jsonl data/02_wikidata_repairs.jsonl \
   --stage3 data/03_world_state.json \
   --stage4 data/04_classified_benchmark.jsonl \
-  --output reports/lineage/restored_v2.json
+  --source-provenance release/restored_source_provenance_v1.json \
+  --reconciliation-policy release/restored_stage2_reconciliation_v1.json \
+  --output reports/lineage/restored_v3.json
 ```
 
-The command exits nonzero on duplicate or missing IDs, reordered rows, canonical representation differences, missing
-provenance, identity gaps, or projection mutation. The v2 manifest records file sizes, SHA-256 hashes, counts, provenance,
-Git revision, and every validation result. `kg-automated-audit run --stage2 ...` now repeats the Stage 2/3/4 content gate;
+The command exits nonzero on any undeclared difference, checksum mismatch, duplicate or missing ID, reordered successor,
+missing provenance, identity gap, or projection mutation. The v3 manifest records file sizes, SHA-256 hashes, counts,
+provenance, Git revision, strict-equivalence diagnostics, and the authoritative reconciliation result.
+`kg-automated-audit run --stage2 ...` now repeats the Stage 2/3/4 content gate;
 it no longer records Stage 2 presence as if that were validation.
 
 ## 2. Freeze and acquire an isolated snapshot
 
-The model/population portion of the methodology freeze is defined by
+The first freeze boundary is the pre-acquisition methodology freeze. It is defined by
 [Model Execution Matrix](./Model_Execution.md) and `experiments/paper_execution_models_v1.json`. Validate it before the
-allocation freeze. The current matrix remains a draft until selection hashes exist and all four immutable
-model/deployment revisions are bound. The prompt-only freeze is
-`experiments/paper_prompt_profile_v1.json`; validate it separately and do not acquire the post-freeze snapshot while any
-matrix fields remain unresolved.
+snapshot is acquired. It binds prompts, schemas, classifier/audit/selection/evaluation code, acquisition and allocation
+policies, model identifiers and inference settings, and `protocols/analysis_plan_v1.md`. It intentionally does not bind a
+dataset release, final selections, or deployment digests that cannot exist yet.
 
 ```bash
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-experiment-plan validate
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-paper-prompt-profile
-UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-experiment-plan validate --require-frozen
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-experiment-plan validate --require-methodology-frozen
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-protocol-freeze verify \
+  --manifest protocols/methodology_v1.json --protocol-root .
 ```
 
-The final command is the confirmatory gate and must pass immediately before the freeze commit.
+Both methodology checks must pass before acquisition.
 
-Create and commit the allocation freeze before mining. Use an unused snapshot directory and an isolated cache. Candidate
+Use an unused snapshot directory and an isolated cache. Candidate
 refresh is explicit; resume statistics and checkpoints remain supported.
 
 ```bash
@@ -115,6 +121,11 @@ Finalization removes prompt failures, transfers any T-box deficit with largest-r
 1,200 unique events remain. It also writes the deterministic nested 600-case API subset. Private manifests bind snapshot,
 audit, exclusion, ranking, prompt-audit, and per-case eligibility hashes; public manifests expose commitments and aggregates
 without case IDs.
+
+After final selection, build the evaluation release, bind its selection hashes and immutable deployment revisions, change
+the execution matrix status to `frozen`, and create the execution protocol. `kg-experiment-plan validate --require-frozen`
+and the execution-protocol verifier are the second freeze boundary and must pass before any model request. The intermediate
+dataset/allocation binding protects private selection but does not replace either freeze boundary.
 
 ## 5. Execution accounting and recovery
 

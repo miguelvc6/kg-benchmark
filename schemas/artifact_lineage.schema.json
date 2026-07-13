@@ -7,7 +7,7 @@
   "required": ["manifest_type", "manifest_version", "created_at_utc", "git_revision", "artifacts", "source_provenance", "validation"],
   "properties": {
     "manifest_type": {"const": "kg_artifact_lineage"},
-    "manifest_version": {"const": 2},
+    "manifest_version": {"enum": [2, 3]},
     "created_at_utc": {"type": "string", "format": "date-time"},
     "git_revision": {"type": ["string", "null"]},
     "artifacts": {
@@ -21,12 +21,26 @@
       "required": ["passed", "stage2_representation_equivalence", "stage0_stage1_provenance", "stage234_identity_and_projection"],
       "properties": {
         "passed": {"type": "boolean"},
+        "authoritative_stage2_artifact": {"const": "stage2_json"},
+        "stage2_relationship": {"type": "object"},
         "stage2_representation_equivalence": {"type": "object"},
         "stage0_stage1_provenance": {"type": "object"},
         "stage234_identity_and_projection": {"type": "object"}
       }
     }
   },
+  "allOf": [
+    {
+      "if": {"properties": {"manifest_version": {"const": 3}}},
+      "then": {
+        "properties": {
+          "validation": {
+            "required": ["authoritative_stage2_artifact", "stage2_relationship"]
+          }
+        }
+      }
+    }
+  ],
   "$defs": {
     "artifact": {
       "type": "object",
