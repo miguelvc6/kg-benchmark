@@ -1,0 +1,81 @@
+{
+  "manifest_type": "automated_consistency_audit",
+  "manifest_version": 1,
+  "created_at_utc": "2026-07-13T12:18:58Z",
+  "output_dir": "/home/wucloud/kg-benchmark/reports/automated_audit/full_v1",
+  "inputs": {
+    "classified_benchmark": "/home/wucloud/kg-benchmark/data/04_classified_benchmark.jsonl",
+    "classified_benchmark_sha256": "dfbdc9286cc54e10dfe7092ecdf78f95e9852b9271c564b3dfa2447b4487f344",
+    "world_state": "/home/wucloud/kg-benchmark/data/03_world_state.json",
+    "world_state_sha256": "7e3591a9bfc7289c698d1cc87339604b3c796a042d8ce96bb0d67f435bfa21bf",
+    "stage4_schema": "/home/wucloud/kg-benchmark/schemas/04_classified_benchmark.schema.json",
+    "stage4_schema_sha256": "086cf06c3f18b033f42352bac0df1024b20bedba7a55de7dd5fb53376d0f8353",
+    "construct_sample": "/home/wucloud/kg-benchmark/reports/manual_audit/audit_phase_d_v1_seed_13.csv",
+    "construct_sample_sha256": "98c38799f4fb8a679b1753b99b634f12d150f3bac42a47060d6dfaa48d0417d6",
+    "rendered_prompts": "/home/wucloud/kg-benchmark/reports/temporal_audit/current_holdout96_v4_rendered/prompt_dev_rendered_prompts.jsonl",
+    "rendered_prompts_sha256": "1473f4678aaa5bd4d5edcec719b0f4d7c3b5b14ead97249fdbcf0f06cca42cd1",
+    "render_summary": "/home/wucloud/kg-benchmark/reports/temporal_audit/current_holdout96_v4_rendered/prompt_dev_render_summary.json",
+    "render_summary_sha256": "af23d9f34643758f03fed0293ddd84870f4c828af6d9eb382995546956b32049",
+    "stage2": null
+  },
+  "parameters": {
+    "construct_review_size": 450,
+    "temporal_review_size": 50,
+    "seed": 13
+  },
+  "git": {
+    "commit": "57534463a1bd18f58445d3749bf36c27aff7ad3c",
+    "dirty": false
+  },
+  "world_state_index": {
+    "source": "existing_sidecar",
+    "path": "data/03_world_state.json.sqlite"
+  },
+  "counts": {
+    "stage4_rows": 535570,
+    "construct_review_packets": 450,
+    "temporal_review_packets": 50
+  },
+  "artifacts": {
+    "deterministic_summary": {
+      "path": "deterministic_summary.json",
+      "sha256": "429d66d87cce76524721668a49620d0fabed2e6f823d279af56f5c8e6621dbf1",
+      "size_bytes": 2387
+    },
+    "deterministic_findings": {
+      "path": "deterministic_findings.jsonl",
+      "sha256": "cd27c4b646997bae48a1e7f22300fcbd61ac3ddeedfabd10a63c6c9a93036832",
+      "size_bytes": 8480332
+    },
+    "deterministic_case_status": {
+      "path": "deterministic_case_status.jsonl",
+      "sha256": "821a4b89221796ec098966443c5ac5a26231d8e2ee5f0b0530e959f0b6d50603",
+      "size_bytes": 48895182
+    },
+    "temporal_audit": {
+      "path": "temporal_audit.json",
+      "sha256": "a5d3695b832ff8d575220ca520e75440a5d9dd75c2a1660ca05176a7dc1d7cab",
+      "size_bytes": 390824
+    },
+    "construct_review_packets": {
+      "path": "construct_review_packets.jsonl",
+      "sha256": "6d5f29ac87af67f51af4847449c956fb7c2dc6d29a3ceca1c3443a2b1382a27f",
+      "size_bytes": 16761299
+    },
+    "temporal_review_packets": {
+      "path": "temporal_review_packets.jsonl",
+      "sha256": "85c5f36a183b0ff2d4c166558a6a6d911cd40da8dfa095c488e1d726819393a6",
+      "size_bytes": 560469
+    },
+    "private_packet_map": {
+      "path": "private_packet_map.json",
+      "sha256": "a0001d0c6fcb03977dcf25a8f34587b7378b9004e23b28b0d8f8ae756e09b438",
+      "size_bytes": 27022
+    },
+    "review_packet_schema": {
+      "path": "review_packet.schema.json",
+      "sha256": "c3c259927612df2051c6d9fc2ce136e3ece90d98269ca10bb165f9224d96ffe3",
+      "size_bytes": 551
+    }
+  }
+}

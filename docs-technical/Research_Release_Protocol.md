@@ -12,6 +12,11 @@ evaluation is unavailable; the accepted fallback is exhaustive automated consist
 Codex-assisted error discovery with narrower claims. A post-freeze snapshot, untouched-test execution, and final release
 materials still require execution.
 
+The `full_v1` fallback audit completed on 2026-07-13. It covered all 535,570 Stage 4/3 cases and 384 supplied prompts,
+then conservatively marked four cases `exclude_pending_rerender` after model-assisted temporal error discovery. Those cases
+must be rerendered and the audit rerun before the current prompt set can enter a release candidate. See
+[Automated Consistency Audit](./Automated_Consistency_Audit.md) for measured results.
+
 The governance workflow uses two immutable freezes to avoid a selection/release dependency cycle. An **allocation
 protocol** binds a confirmatory dataset release before case allocation. After private allocation, an **execution
 protocol** binds the selected confirmatory evaluation release before any model run. The registry accepts only execution

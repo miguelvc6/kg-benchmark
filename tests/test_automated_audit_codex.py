@@ -136,7 +136,7 @@ class AutomatedAuditCodexTest(unittest.TestCase):
                 )
             self.assertEqual(fake.calls, [])
 
-            _, construct, temporal, _ = self._inputs(root)
+            _, construct, temporal, output = self._inputs(root)
             with self.assertRaisesRegex(AutomatedAuditError, "omitted packet_id"):
                 run_codex_reviews(
                     manifest_path=manifest,
@@ -145,6 +145,11 @@ class AutomatedAuditCodexTest(unittest.TestCase):
                     retries=0,
                     run_command=FakeCodex(omit_last=True),
                 )
+            failure_report = json.loads((output / RUN_FILENAME).read_text())
+            self.assertEqual(failure_report["status"], "failed")
+            self.assertEqual(failure_report["execution"]["failed_batch_count"], 1)
+            self.assertFalse(failure_report["reviews"]["partial_results_published"])
+            self.assertFalse((output / REVIEWS_FILENAME).exists())
 
     def test_finalizer_applies_conservative_precedence_without_relabeling(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -274,8 +279,18 @@ class AutomatedAuditCodexTest(unittest.TestCase):
             run_codex_reviews(manifest_path=manifest, shard_size=2, run_command=FakeCodex())
             report = finalize_audit(manifest_path=manifest)
             self.assertEqual(report["counts"]["cases"], 2)
-            dispositions = {row["case_id"]: row["disposition"] for row in report["case_dispositions"]}
+            dispositions = {
+                row["case_id"]: row["disposition"]
+                for row in (
+                    json.loads(line) for line in (output / DISPOSITIONS_FILENAME).read_text().splitlines()
+                )
+            }
             self.assertEqual(dispositions, {"Q1-case": "include", "Q2-case": "diagnostic"})
+
+            review_lines = (output / REVIEWS_FILENAME).read_text().splitlines()
+            (output / REVIEWS_FILENAME).write_text(review_lines[0] + "\n")
+            with self.assertRaisesRegex(AutomatedAuditError, "packet coverage mismatch"):
+                finalize_audit(manifest_path=manifest)
 
     @staticmethod
     def _review(packet_id: str, case_id: str, dimension: str, verdict: str) -> dict:

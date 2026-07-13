@@ -92,7 +92,9 @@ No independent human evaluation is available. The validation fallback combines e
 over every Stage 4 record and every supplied or final rendered prompt with label-hidden Codex-assisted error discovery.
 Missing Stage 2 records or required fields are explicit audit outcomes rather than empty evidence. Codex nominations are
 exploratory: they are not gold labels, independent annotations, inter-annotator agreement, or evidence of causal or
-semantic uniqueness. This policy defines required future checks and does not claim that the new audit has already run.
+semantic uniqueness. The completed `full_v1` run found 1,621 deterministic disagreements and placed model-assisted
+concerns in conservative diagnostic or rerender dispositions; measured details are in the technical
+[Automated Consistency Audit](../docs-technical/Automated_Consistency_Audit.md).
 
 ## T-box Subtypes
 

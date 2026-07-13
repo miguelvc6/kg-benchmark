@@ -34,6 +34,14 @@ class AutomatedAuditError(ValueError):
     """Raised when audit inputs or model output violate the frozen contract."""
 
 
+class AutomatedAuditBatchError(AutomatedAuditError):
+    """Raised with a serializable record after a review batch exhausts its retries."""
+
+    def __init__(self, message: str, batch_record: dict[str, Any]) -> None:
+        super().__init__(message)
+        self.batch_record = batch_record
+
+
 @dataclass(frozen=True)
 class AuditPacket:
     packet_id: str
@@ -366,7 +374,17 @@ def _run_batch(
                 },
                 reviews,
             )
-    raise AutomatedAuditError(f"Batch {batch_id} failed after {retries + 1} attempt(s): {last_error}")
+    message = f"Batch {batch_id} failed after {retries + 1} attempt(s): {last_error}"
+    raise AutomatedAuditBatchError(
+        message,
+        {
+            "batch_id": batch_id,
+            "packet_ids": [packet.packet_id for packet in batch],
+            "prompt_sha256": hashlib.sha256(prompt.encode("utf-8")).hexdigest(),
+            "attempts": attempt_records,
+            "error": message,
+        },
+    )
 
 
 def run_codex_reviews(
@@ -413,6 +431,7 @@ def run_codex_reviews(
     git_state = _git_state()
 
     batch_results: dict[int, tuple[dict[str, Any], list[dict[str, Any]]]] = {}
+    batch_failures: dict[int, dict[str, Any]] = {}
     with ThreadPoolExecutor(max_workers=workers) as executor:
         future_indexes = {
             executor.submit(
@@ -429,7 +448,60 @@ def run_codex_reviews(
             for index, batch in enumerate(batches, start=1)
         }
         for future in as_completed(future_indexes):
-            batch_results[future_indexes[future]] = future.result()
+            index = future_indexes[future]
+            try:
+                batch_results[index] = future.result()
+            except AutomatedAuditBatchError as exc:
+                batch_failures[index] = exc.batch_record
+
+    if batch_failures:
+        completed_reviews = sum(len(result[1]) for result in batch_results.values())
+        failure_report = {
+            "report_type": "codex_assisted_automated_audit",
+            "report_version": 1,
+            "created_at_utc": _utc_now(),
+            "status": "failed",
+            "git": git_state,
+            "manifest": {"path": str(manifest_file), "sha256": _sha256_file(manifest_file)},
+            "inputs": {
+                "construct_packets": {"path": str(construct_file), "sha256": _sha256_file(construct_file)},
+                "temporal_packets": {"path": str(temporal_file), "sha256": _sha256_file(temporal_file)},
+            },
+            "codex": {
+                "version": version,
+                "model": selected_model,
+                "ephemeral": True,
+                "sandbox": "read-only",
+                "ignore_user_config": True,
+                "ignore_rules": True,
+                "approval_policy": "never",
+                "output_schema_sha256": _sha256_file(schema_path),
+            },
+            "execution": {
+                "batch_size": batch_size,
+                "workers": workers,
+                "retries": retries,
+                "timeout_seconds": timeout_seconds,
+                "packet_count": len(packets),
+                "batch_count": len(batches),
+                "completed_batch_count": len(batch_results),
+                "failed_batch_count": len(batch_failures),
+                "completed_review_count": completed_reviews,
+            },
+            "batches": [
+                (batch_results[index][0] if index in batch_results else batch_failures[index])
+                for index in sorted(set(batch_results) | set(batch_failures))
+            ],
+            "reviews": {"path": None, "count": 0, "partial_results_published": False},
+        }
+        _write_json(output_dir / RUN_FILENAME, failure_report)
+        failed_details = "; ".join(
+            batch_failures[index]["error"] for index in sorted(batch_failures)
+        )
+        raise AutomatedAuditError(
+            f"Codex review failed for {len(batch_failures)} batch(es): {failed_details}. "
+            f"Inspect {output_dir / RUN_FILENAME}; no partial reviews were published."
+        )
 
     ordered = [batch_results[index] for index in sorted(batch_results)]
     reviews = [review for _, batch_reviews in ordered for review in batch_reviews]
@@ -443,6 +515,7 @@ def run_codex_reviews(
         "report_type": "codex_assisted_automated_audit",
         "report_version": 1,
         "created_at_utc": _utc_now(),
+        "status": "complete",
         "git": git_state,
         "manifest": {"path": str(manifest_file), "sha256": _sha256_file(manifest_file)},
         "inputs": {
@@ -579,6 +652,21 @@ def _disposition(
     return "include", ["no_exclusion_or_diagnostic_signal"], flags
 
 
+def _compact_disposition(row: dict[str, Any]) -> dict[str, Any]:
+    compact: dict[str, Any] = {
+        "case_id": row["case_id"],
+        "disposition": row["disposition"],
+    }
+    if row["reasons"] != ["no_exclusion_or_diagnostic_signal"]:
+        compact["reasons"] = row["reasons"]
+    active_flags = {name: True for name, active in row["flags"].items() if active}
+    if active_flags:
+        compact["flags"] = active_flags
+    if row["review_packet_ids"]:
+        compact["review_packet_ids"] = row["review_packet_ids"]
+    return compact
+
+
 def finalize_audit(
     *,
     manifest_path: str | Path,
@@ -608,7 +696,26 @@ def finalize_audit(
     review_rows = _load_jsonl(review_file)
     input_review_sha256 = _sha256_file(review_file)
     deterministic_by_case = _index_unique(deterministic_rows, "case_id", str(deterministic_file))
-    _index_unique(review_rows, "packet_id", str(review_file))
+    review_by_packet = _index_unique(review_rows, "packet_id", str(review_file))
+    if isinstance(artifacts, dict):
+        packet_roles = {"construct_review_packets", "temporal_review_packets"}
+        present_packet_roles = packet_roles.intersection(artifacts)
+        if present_packet_roles and present_packet_roles != packet_roles:
+            raise AutomatedAuditError("Manifest must bind both construct and temporal review packets.")
+        if present_packet_roles:
+            expected_packets = _packets(
+                _manifest_artifact(manifest_file, manifest, "construct_review_packets"), "construct"
+            ) + _packets(_manifest_artifact(manifest_file, manifest, "temporal_review_packets"), "temporal")
+            _validate_unique_packet_ids(expected_packets)
+            expected_packet_ids = {packet.packet_id for packet in expected_packets}
+            observed_packet_ids = set(review_by_packet)
+            missing_packet_ids = sorted(expected_packet_ids - observed_packet_ids)
+            unexpected_packet_ids = sorted(observed_packet_ids - expected_packet_ids)
+            if missing_packet_ids or unexpected_packet_ids:
+                raise AutomatedAuditError(
+                    "Codex review packet coverage mismatch: "
+                    f"missing={missing_packet_ids}, unexpected={unexpected_packet_ids}."
+                )
     reviews_by_case: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row_number, review in enumerate(review_rows, start=1):
         _validate_stored_review(review, row_number, review_file)
@@ -645,9 +752,11 @@ def finalize_audit(
             )
 
     normalized_reviews_path = output_dir / REVIEWS_FILENAME
+    disagreements_path = output_dir / DISAGREEMENTS_FILENAME
+    dispositions_path = output_dir / DISPOSITIONS_FILENAME
     _write_jsonl(normalized_reviews_path, sorted(review_rows, key=lambda row: row["packet_id"]))
-    _write_jsonl(output_dir / DISAGREEMENTS_FILENAME, disagreements)
-    _write_jsonl(output_dir / DISPOSITIONS_FILENAME, dispositions)
+    _write_jsonl(disagreements_path, disagreements)
+    _write_jsonl(dispositions_path, (_compact_disposition(row) for row in dispositions))
     counts = Counter(row["disposition"] for row in dispositions)
     report = {
         "report_type": "automated_audit_final",
@@ -680,10 +789,15 @@ def finalize_audit(
                 "path": str(normalized_reviews_path),
                 "sha256": _sha256_file(normalized_reviews_path),
             },
-            "disagreements": str(output_dir / DISAGREEMENTS_FILENAME),
-            "dispositions": str(output_dir / DISPOSITIONS_FILENAME),
+            "disagreements": {
+                "path": str(disagreements_path),
+                "sha256": _sha256_file(disagreements_path),
+            },
+            "dispositions": {
+                "path": str(dispositions_path),
+                "sha256": _sha256_file(dispositions_path),
+            },
         },
-        "case_dispositions": dispositions,
     }
     _write_json(output_dir / FINAL_JSON_FILENAME, report)
     markdown = [

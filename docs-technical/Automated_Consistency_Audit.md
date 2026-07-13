@@ -36,6 +36,45 @@ the input manifest, deterministic findings, review shards, Codex responses, cons
 retry records, and final machine-readable and human-readable summaries together. Do not mix artifacts from another
 input set or audit version into this directory.
 
+## Recorded `full_v1` Result
+
+The full audit completed on 2026-07-13. The manifest binds the deterministic run to commit `5753446`, Stage 4 SHA-256
+`dfbdc9286cc54e10dfe7092ecdf78f95e9852b9271c564b3dfa2447b4487f344`, and Stage 3 SHA-256
+`7e3591a9bfc7289c698d1cc87339604b3c796a042d8ce96bb0d67f435bfa21bf`. It covered all 535,570 Stage 4 rows, all
+535,570 Stage 3 entries, and all 384 supplied rendered prompts. Stage 2 remained explicitly unavailable.
+
+Deterministic status counts were:
+
+| Status | Cases | Interpretation |
+| --- | ---: | --- |
+| `pass` | 473,412 | All implemented checks for the case reproduced. |
+| `unsupported` | 60,537 | The current replay does not implement enough evidence to decide; this is not agreement. |
+| `disagreement` | 1,621 | The implemented replay contradicted the stored class/subtype evidence. |
+| `error` | 0 | No schema, identity, or join failure was found. |
+
+The 1,621 deterministic disagreements comprise 350 Type A rule-replay failures, 109 Type B cases whose local support was
+not reproduced, and 1,162 Type C cases with visible local support. Major coverage gaps include 33,525 T-box cases requiring
+causality-policy replay, 16,741 unsupported Type A subtypes, 5,402 unknown Type C cases, and 4,993 derived-text cases that
+require semantic review. The finding stream also records 42 missing one-of constraints and four missing or invalid format
+constraints. Finding categories can overlap and must not be summed as a partition.
+
+The expanded temporal scan checked 3,024 hidden claims across 96 cases and 384 prompts. It found zero deterministic
+high-risk hits, 672 diagnostic hits, and 156 expected rule-derived hits. Exact identifier, normalized-label, serialized-ID,
+and substring-boundary mutation checks all fired as expected.
+
+Codex CLI `0.144.3` with model `gpt-5.6-sol` reviewed 450 blinded construct packets and 50 temporal packets in 50 batches;
+all batches succeeded on their first attempt. Construct verdicts were 221 `pass`, 193 `concern`, and 36 `uncertain`.
+Temporal verdicts were 39 `pass`, five `suspected_temporal_leakage`, and six `uncertain`. The five leakage packets map to
+four benchmark cases. They include direct target-value exposure, a target identifier embedded in a visible URL, and hidden
+replacement labels/descriptions exposed under another QID. These mechanisms explain why a zero-hit deterministic gate is
+not a semantic no-leakage guarantee.
+
+Conservative finalization produced 473,222 `include`, 62,344 `diagnostic`, and four `exclude_pending_rerender` case
+dispositions. There were no integrity exclusions and no labels were changed. The construct sample is stratified error
+discovery, not a population estimate: notably, 148 concerns occurred among deterministic-pass cases, while 18 Codex passes
+occurred among deterministic disagreements. This disagreement in both directions is evidence for follow-up, not model
+adjudication.
+
 ## WSL Commands
 
 Verify the installed interface before starting:

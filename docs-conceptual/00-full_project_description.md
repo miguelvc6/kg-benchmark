@@ -2,7 +2,7 @@
 
 **Project.** WikidataRepairEval 1.0  
 **Purpose.** Benchmarking LLM-assisted knowledge-graph repair using real Wikidata repair events, frozen context, information-access labels, executable proposal contracts, and symbolic evaluation.  
-**Current status.** The benchmark substrate, hardened classifier, fixed core/dev selection manifests, prompt-development workflow, sampled diagnostic-review artifacts, reasoning-floor runner, proposal contracts, evaluator, and project documentation exist. No independent human evaluation is available, and the existing sampled review is not independent label validation. Existing model runs remain exploratory; the next phase is exhaustive automated consistency auditing, label-hidden Codex-assisted error discovery, protocol hardening, and confirmatory experiments on an untouched evaluation set.
+**Current status.** The benchmark substrate, hardened classifier, fixed core/dev selection manifests, prompt-development workflow, reasoning-floor runner, proposal contracts, evaluator, project documentation, exhaustive Stage 4/3 consistency audit, and label-hidden Codex error-discovery artifacts exist. No independent human evaluation is available, and model-assisted review is not independent label validation. Existing model runs remain exploratory; the next phase is remediation of audit-nominated temporal cases, protocol hardening, and confirmatory experiments on an untouched evaluation set.
 
 ---
 
@@ -361,7 +361,7 @@ Independent human evaluation is not available for the current study. Validation 
 1. **Exhaustive automated consistency auditing.** The audit must cover every Stage 4 record and every supplied or final rendered prompt. It checks artifact joins, schema and taxonomy invariants, reconstruction diagnostics, target-value exposure under the supported exact/normalized representations, selection membership, and prompt-field policy. Stage 2 availability is an explicit outcome: a missing Stage 2 record or unavailable Stage 2 field must be reported, never silently treated as valid evidence or an empty match.
 2. **Label-hidden Codex-assisted error discovery.** Codex review may inspect cases without access to the classifier label and nominate suspected extraction, reconstruction, taxonomy, or prompt-leakage errors. These nominations are exploratory diagnostics. They are not ground truth, independent human annotation, inter-annotator agreement, or evidence that an alternative repair is semantically or causally unique.
 
-Neither layer validates the universal correctness of the historical edit. In particular, it cannot establish external evidence necessity or justify assigning `EXTERNAL_CONFIRMED`. Tool coverage and findings must be reported only after an audit run has produced measured results; this design description does not claim that the new audit has run.
+Neither layer validates the universal correctness of the historical edit. In particular, it cannot establish external evidence necessity or justify assigning `EXTERNAL_CONFIRMED`. The completed `full_v1` run covered all 535,570 Stage 4/3 cases and 384 supplied prompts; its measured findings and conservative dispositions are documented in the technical [Automated Consistency Audit](../docs-technical/Automated_Consistency_Audit.md).
 
 ---
 

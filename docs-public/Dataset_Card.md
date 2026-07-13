@@ -160,13 +160,17 @@ constraint state can therefore reveal the historical outcome. Use the official p
 audit tooling, and reconstruct the target property's pre-repair state from the historical benchmark record. Do not pass
 the raw later target-property value to a model.
 
-No independent human evaluation is available. Before release or confirmatory use, exhaustive automated consistency
-auditing must cover every Stage 4 record and every supplied or final rendered prompt. Missing Stage 2 records or required
-fields must be explicit audit outcomes, not silently treated as empty evidence. Label-hidden Codex-assisted review may
-nominate suspected extraction, reconstruction, taxonomy, or leakage errors, but those nominations are exploratory rather
-than ground truth, independent annotation, or inter-annotator agreement. Neither layer establishes semantic correctness,
-causal necessity, repair uniqueness, `EXTERNAL_CONFIRMED`, or external evidence necessity. This card specifies required
-checks; it does not claim that the new audit has run or passed.
+No independent human evaluation is available. The 2026-07-13 `full_v1` audit covered every one of the 535,570 Stage 4
+records, all matched Stage 3 entries, and all 384 supplied rendered prompts. It found no schema, identity, or join errors;
+473,412 cases passed all implemented checks, 60,537 were unsupported by the implemented replay, and 1,621 disagreed with a
+replayed rule or local-evidence check. Stage 2 was unavailable and therefore received no inferred pass.
+
+A label-hidden Codex error-discovery sample reviewed 450 construct packets and 50 temporal packets. It nominated 229
+construct concerns or uncertainties and five suspected temporal-leakage packets affecting four cases; those cases are
+excluded pending rerender. The model-assisted findings are exploratory rather than ground truth, independent annotation,
+or inter-annotator agreement. Neither layer establishes semantic correctness, causal necessity, repair uniqueness,
+`EXTERNAL_CONFIRMED`, or external evidence necessity. Re-run the audit against every final rendered prompt and any changed
+Stage 4/3 input before release.
 
 Development prompt work has already used the tracked dev tier. Existing exploratory core outputs are not an untouched
 confirmatory test. A paper claim requires a separately frozen, untouched test selection and protocol established before

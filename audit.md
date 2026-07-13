@@ -11,22 +11,25 @@ and locally available research artifacts.
 
 WikidataRepairEval is a mature exploratory research implementation, but it is not yet a completed confirmatory study or a
 public benchmark release. The repository now has credible controls for immutable releases, two-phase protocol freezing,
-private untouched-test allocation, paired analysis, independent annotation, temporal leakage auditing, provenance support,
-and experiment registration. The high- and medium-severity implementation defects from the previous audit have been
-remediated and tested.
+private untouched-test allocation, paired analysis, optional independent annotation, temporal leakage auditing, provenance
+support, and experiment registration. The high- and medium-severity implementation defects from the previous audit have
+been remediated and tested. The approved no-human fallback has also been implemented and executed over the full available
+Stage 4/3 population and the current rendered prompts.
 
 The remaining blockers are scientific execution and deposition rather than missing core software:
 
-1. No new post-freeze snapshot and privately allocated untouched test have been used for a confirmatory model run.
-2. Independent double annotation, agreement calculation, adjudication, and the 50-item manual temporal review remain to be
-   performed by humans.
-3. The full research artifacts have no published immutable URLs, DOI, final derived-data license, or complete upstream
+1. Four cases are excluded pending prompt rerender after model-assisted temporal-leakage discovery.
+2. No new post-freeze snapshot and privately allocated untouched test have been used for a confirmatory model run.
+3. Independent human construct validation is unavailable. Automated replay and label-hidden Codex review can discover
+   inconsistencies, but cannot establish semantic correctness, causal necessity, repair uniqueness, or agreement.
+4. The full research artifacts have no published immutable URLs, DOI, final derived-data license, or complete upstream
    snapshot identifiers.
-4. Historical model outputs predate corrected measurement contracts. They are registered as superseded and are not
+5. Historical model outputs predate corrected measurement contracts. They are registered as superseded and are not
    paper-eligible.
 
-The repository can support a defensible paper after those gates are executed without adapting prompts, parsers, metrics,
-or analysis in response to untouched-test outcomes.
+The repository can support a defensible, explicitly no-human paper after the remaining release and untouched-execution
+gates are completed without adapting prompts, parsers, metrics, or analysis in response to untouched-test outcomes. Its
+claims must stay narrower than a study with independent construct validation.
 
 ## Research Direction
 
@@ -55,6 +58,29 @@ local-evidence checks; it does not prove external evidence was causally necessar
 - The current core has already influenced task and prompt development. It is development data, not an untouched test.
 - A selection CLI now creates a private allocation from an allocation-phase protocol, enforces predeclared composition and
   main-score counts, checks exclusions, and emits a separately publishable blinded aggregate.
+
+### Exhaustive Automated Audit
+
+- The `full_v1` run replayed all 535,570 Stage 4 rows against all 535,570 Stage 3 entries. It found no schema, identity, join,
+  or missing-ID errors. Stage 2 is absent and is explicitly recorded as unavailable.
+- Deterministic outcomes were 473,412 pass (88.394%), 60,537 unsupported (11.303%), and 1,621 disagreement (0.303%).
+  Unsupported means insufficient implemented replay coverage, not agreement.
+- The disagreements are 350 Type A rule-replay failures, 109 Type B cases whose claimed local support was not reproduced,
+  and 1,162 Type C cases for which visible local support was found.
+- The largest coverage gaps are 33,525 T-box causality-policy replays, 16,741 unsupported Type A subtypes, 5,402 unknown
+  Type C cases, and 4,993 derived-text cases needing semantic review. Finding codes overlap and are not a partition.
+- The deterministic prompt audit covered all 384 supplied prompts and 3,024 hidden claims. It found zero high-risk exact or
+  normalized hits, 672 diagnostic hits, and 156 expected rule-derived hits; all four mutation-sensitivity checks passed.
+- Codex reviewed 450 blinded construct packets and 50 temporal packets. Construct verdicts were 221 pass, 193 concern, and
+  36 uncertain. Temporal verdicts were 39 pass, five suspected leakage, and six uncertain. All 50 batches succeeded on the
+  first attempt.
+- Conservative finalization retained 473,222 cases as `include`, placed 62,344 in `diagnostic`, and marked four cases
+  `exclude_pending_rerender`. It did not relabel any case or emit an integrity exclusion.
+
+The model-assisted review found error mechanisms outside the deterministic scanner's supported representation: a hidden
+identifier embedded in a visible URL and hidden replacement labels/descriptions exposed under different QIDs. It also found
+one direct target-value exposure. The five leakage packets map to four cases because one case appeared in two sampled
+prompts. This is the clearest new audit result: a zero-hit lexical gate was necessary but not sufficient.
 
 ### Evaluation And Analysis
 
@@ -135,14 +161,17 @@ Evidence: `experiments/registry.json` and the invalid/superseded few-shot JSON a
 Residual gate: rerun only after the execution protocol is frozen. Historical metrics must not be presented as results from
 the remediated evaluator or evidence contracts.
 
-#### H5. Construct Validation: Resolved In Protocol, Pending Human Evidence
+#### H5. Construct Validation: Automated Fallback Complete, Human Evidence Unavailable
 
-The repository now supports stratified independent review, separate annotation constructs, agreement, adjudication, and
-final labels. Documentation consistently limits extractor-relative gold, historical alignment, and
-`EXTERNAL_BY_ELIMINATION` claims.
+The repository supports an optional independent-review workflow, but the current study has no access to human evaluation.
+The implemented fallback exhaustively replays machine-checkable Stage 4/3 invariants and exports a stratified,
+label-hidden construct sample for Codex-assisted error discovery. Codex can nominate concerns but cannot relabel cases,
+produce `EXTERNAL_CONFIRMED`, or serve as an independent annotator. Documentation consistently limits extractor-relative
+gold, historical alignment, and `EXTERNAL_BY_ELIMINATION` claims.
 
-Residual gate: conduct the study. Causal linkage, alternative valid repairs, T-box semantic validity, and evidence necessity
-remain unvalidated until independent annotations exist. This finding cannot be closed scientifically by code alone.
+Residual limitation: causal linkage, alternative valid repairs, T-box semantic validity, and evidence necessity remain
+unvalidated. This is a permanent scope limitation for the no-human paper, not a software gate that code or model review can
+close.
 
 #### H6. Contradictory Documentation: Resolved
 
@@ -158,12 +187,13 @@ Evidence: conceptual and technical documentation plus `tests/test_documentation.
 
 Proposal and diagnosis contexts prune post-repair-only target atoms from non-target properties, constraints, graph edges,
 and labels while preserving legitimate reconstructed history and expected Type A rule visibility. A snapshot manifest makes
-the later-context boundary explicit. The temporal audit scans rendered prompts against hidden target/current fields and
-produces a deterministic stratified human-review sample.
+the later-context boundary explicit. The expanded temporal audit scans rendered prompts against hidden target/current
+identifiers, labels, descriptions, normalized forms, serialized forms, and token boundaries; it also runs mutation checks
+and produces a deterministic stratified sample for label-hidden Codex error discovery.
 
-The current 96-case rerender contains 384 prompts. Automated scanning checked 2,868 forbidden claims and found **zero
-high-risk hits**. It separately recorded 60 expected Type A rule-derived hits and 384 diagnostic track-label hits. Fifty
-prompts are sampled with `pending_human_review`; the automated result must not be described as a completed human audit.
+The current audit scanned 3,024 forbidden claims in 384 prompts across 96 cases and found zero deterministic high-risk hits.
+Codex nevertheless nominated five suspected-leakage packets affecting four cases, including URL-mediated and alias-based
+exposure. Those cases are now `exclude_pending_rerender`; six additional temporal reviews are diagnostic uncertainties.
 
 Provenance reporting now separates structurally auditable output from claims supported by evaluation-visible evidence.
 Neither measure proves real-world causal correctness.
@@ -224,12 +254,12 @@ currently obtain the full research dataset because that external deposit does no
 1. The generic reasoning-floor summary does not score the specialized T-box taxonomy-patch task; that task currently uses
    its dedicated parser/evaluator. A unified paper table must join those outputs by case ID or the generic runner must gain
    an explicit taxonomy-patch evaluation path.
-2. The 50-item temporal sample is pending manual review. Automated exact-field scans can miss paraphrased or semantically
-   equivalent leakage.
+2. Automated temporal scans can miss paraphrased, alias-based, or semantically equivalent leakage. The 50-item label-hidden
+   Codex sample reduces this blind spot but remains model-assisted error discovery, not independent validation.
 3. Later snapshot labels, descriptions, unrelated claims, and graph structure may encode post-repair information even after
    target-atom pruning. The paper must retain the later-frozen-context qualification.
-4. Exact historical alignment is only one outcome. The paper needs independently reviewed semantic-validity and
-   over/under-repair outcomes to discuss alternative correct repairs.
+4. Exact historical alignment is only one outcome. Without independent semantic-validity and over/under-repair review, the
+   paper cannot make strong claims about alternative correct repairs.
 5. A single model/server configuration cannot support broad claims about LLM behavior. Either freeze multiple models and
    replicates or explicitly frame the experiment as a single-model case study.
 
@@ -240,7 +270,7 @@ currently obtain the full research dataset because that external deposit does no
 | Historical repairs can be represented as structured A/T cases | Defensible with extraction and temporal limitations. |
 | Implemented group keys prevent cross-split event leakage | Defensible as an implementation claim. |
 | Release and protocol artifacts are content-addressed and verifiable | Defensible for the tooling and synthetic sample. |
-| Current prompts passed the automated target-field leakage scan | Defensible for the audited 96-case/384-prompt sample only. |
+| The deterministic scanner found zero high-risk target-field hits | Defensible for the audited 96-case/384-prompt population; not equivalent to no leakage because Codex nominated four affected cases. |
 | `local_graph` improves model repair | Unsupported until an untouched paired run. |
 | Few-shot prompting improves repair | Unsupported; the historical comparison is invalid/superseded. |
 | Diagnosis routing is competitive with oracle routing | Unsupported until an untouched paired run. |
@@ -251,7 +281,9 @@ currently obtain the full research dataset because that external deposit does no
 
 ## Recommended Paper Execution Order
 
-1. Finish independent annotation and the sampled manual temporal review; publish agreement, adjudication, and limitations.
+1. Treat the completed exhaustive automated audit and label-hidden Codex review as an error-discovery gate. Apply its
+   conservative dispositions, rerender excluded temporal cases, and retain the explicit no-human construct-validity
+   limitation; do not infer replacement labels from model output.
 2. Freeze a confirmatory dataset release from an exactly identified post-freeze snapshot in a clean commit.
 3. Freeze an allocation protocol and privately select the untouched population with declared strata and exclusions.
 4. Build the selected evaluation release, then freeze the execution protocol, models, prompts, metrics, and analysis.
@@ -272,22 +304,29 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python -m artifact_release verify \
   --release-root release/sample-v0.1.0
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python -m artifact_acquisition \
   --manifest release/artifact_distribution.template.json status --allow-unresolved
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-automated-audit finalize \
+  --manifest reports/automated_audit/full_v1/manifest.json \
+  --reviews reports/automated_audit/full_v1/codex_reviews.jsonl
 git -c core.whitespace=cr-at-eol diff --check
 ```
 
 Results:
 
-- **384 tests passed; 80 subtests passed**.
+- **399 tests passed; 82 subtests passed**.
 - Repository-wide configured Ruff: **passed**.
 - Documentation portability/link checks: **passed**.
 - Synthetic release schema, hashes, complete-data validation, cross-artifact identity, and snapshot binding: **passed**.
-- Temporal audit: **384 prompts, 96 cases, 2,868 forbidden claims, 0 high-risk hits, 50 pending human reviews**.
+- Full deterministic audit: **535,570 Stage 4/3 cases; 473,412 pass, 60,537 unsupported, 1,621 disagreement, 0 errors**.
+- Temporal audit: **384 prompts, 96 cases, 3,024 forbidden claims, 0 deterministic high-risk hits, 50 AI reviews**.
+- Codex review: **500/500 packets; 229 construct concerns/uncertainties, 5 suspected temporal leaks, 6 temporal
+  uncertainties; 4 cases excluded pending rerender**.
 - Git whitespace check (treating the repository's existing CRLF files correctly): **passed**.
 
 ## Bottom Line
 
 The repository has moved beyond the high- and medium-severity implementation failures identified in the previous audit.
-Its main risk is now overclaiming what the improved machinery has already demonstrated. The software establishes enforceable
-contracts for a confirmatory study; it does not retroactively validate contaminated outputs, replace independent human
-review, or create an archival release. The paper should remain explicitly exploratory until the untouched execution,
-construct validation, and public deposit gates are complete.
+Its main risk is now overclaiming what the improved machinery has demonstrated. The software establishes enforceable
+contracts for a confirmatory study and a reproducible no-human error-discovery audit; it does not retroactively validate
+contaminated outputs, create human construct validity, or create an archival release. The paper should remain explicitly
+exploratory until the untouched execution and public deposit gates are complete, and its construct-validity limitation must
+remain explicit thereafter.
