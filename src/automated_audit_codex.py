@@ -46,6 +46,24 @@ def _utc_now() -> str:
     return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
+def _git_state() -> dict[str, Any]:
+    try:
+        commit_result = subprocess.run(
+            ["git", "rev-parse", "HEAD"], text=True, capture_output=True, check=False
+        )
+        status_result = subprocess.run(
+            ["git", "status", "--porcelain", "--untracked-files=no"],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+    except OSError:
+        return {"commit": None, "dirty": None}
+    if commit_result.returncode != 0 or status_result.returncode != 0:
+        return {"commit": None, "dirty": None}
+    return {"commit": commit_result.stdout.strip() or None, "dirty": bool(status_result.stdout.strip())}
+
+
 def _sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -392,6 +410,7 @@ def run_codex_reviews(
     _write_json(schema_path, CODEX_REVIEW_SCHEMA)
     batches = [packets[index : index + batch_size] for index in range(0, len(packets), batch_size)]
     version = _codex_version(run_command)
+    git_state = _git_state()
 
     batch_results: dict[int, tuple[dict[str, Any], list[dict[str, Any]]]] = {}
     with ThreadPoolExecutor(max_workers=workers) as executor:
@@ -424,6 +443,7 @@ def run_codex_reviews(
         "report_type": "codex_assisted_automated_audit",
         "report_version": 1,
         "created_at_utc": _utc_now(),
+        "git": git_state,
         "manifest": {"path": str(manifest_file), "sha256": _sha256_file(manifest_file)},
         "inputs": {
             "construct_packets": {"path": str(construct_file), "sha256": _sha256_file(construct_file)},
