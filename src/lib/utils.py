@@ -100,7 +100,7 @@ def iter_repairs(path):
                     continue
                 yield obj
         else:
-            with open(path, "r", encoding="utf-8") as fh:
+            with open(path, "rb") as fh:
                 for obj in ijson.items(fh, "item"):
                     if isinstance(obj, dict):
                         yield obj
@@ -128,7 +128,7 @@ def count_repairs(path):
             return None
     if ijson is not None:
         try:
-            with open(path, "r", encoding="utf-8") as fh:
+            with open(path, "rb") as fh:
                 return sum(1 for _ in ijson.items(fh, "item"))
         except Exception:
             return None

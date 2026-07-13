@@ -10,7 +10,6 @@ from typing import Any
 
 from classifier import WorldStateStore, classify_one
 
-
 TARGET_OLD = {
     ("TypeB", "LOCAL_TEXT"),
     ("TypeB", "LOCAL_FOCUS_PREREPAIR_PROPERTY"),

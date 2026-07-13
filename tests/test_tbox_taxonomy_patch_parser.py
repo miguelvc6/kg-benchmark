@@ -3,7 +3,6 @@ from pathlib import Path
 
 from guardian.tbox_taxonomy_patch_parser import PatchValidationError, load_schema, normalize_tbox_taxonomy_patch
 
-
 OPERATION_CODE_PAIRS = [
     ("CONSTRAINT_REMOVE", "C_MINUS"),
     ("CONSTRAINT_DEPRECATE", "C_D"),

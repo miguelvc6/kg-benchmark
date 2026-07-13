@@ -1,8 +1,8 @@
 # kg-benchmark
 
-WikidataRepairEval 1.0 is a benchmark of real Wikidata repair events with frozen
-context for evaluating knowledge-graph repair and retrieval needs. The pipeline
-reconstructs historical fixes, attaches a 2026 world-state snapshot, labels each
+WikidataRepairEval is an unreleased research benchmark implementation for real Wikidata repair events with later frozen
+context. The pipeline
+reconstructs historical fixes, attaches a later world-state snapshot, labels each
 case by information necessity (Type A/B/C), and supports downstream evaluation
 and reasoning-floor runs.
 
@@ -113,21 +113,25 @@ uv run python src/splitter.py --sample
 uv run python src/classifier.py --self-test
 ```
 
-Build a deterministic benchmark-selection manifest for paper-facing runs:
+The tracked dev and core manifests are development-contaminated exploratory views. They are useful for software checks
+and error analysis, but they are not an untouched paper test. The authoritative release, two-phase protocol freeze,
+private allocation, execution, and registration workflow is in
+[`docs-technical/Research_Release_Protocol.md`](docs-technical/Research_Release_Protocol.md).
+
+Inspect the current tracked exploratory manifests:
 
 ```bash
-uv run python src/select_benchmark_cases.py \
-  --classified-benchmark data/04_classified_benchmark.jsonl \
-  --output reports/benchmark_selection/paper_eval_tbox_cap_100_seed_13.json \
-  --tbox-cap-per-update 100 \
-  --seed 13
+uv run python -m select_benchmark_cases --help
+uv run python -m artifact_release verify \
+  --manifest release/sample-v0.1.0/release_manifest.json \
+  --release-root release/sample-v0.1.0
 ```
 
 Run or resume the reasoning floor:
 
 ```bash
 uv run python src/reasoning_floor.py \
-  --selection-manifest reports/benchmark_selection/paper_eval_tbox_cap_100_seed_13.json
+  --selection-manifest reports/benchmark_selection/core_v1_seed_13.json
 
 uv run python src/reasoning_floor.py \
   --resume-run-dir reports/reasoning_floor/<RUN_ID>_<provider>_<model>
@@ -139,12 +143,15 @@ Evaluate proposal artifacts against the benchmark:
 uv run python src/evaluate.py \
   --classified-benchmark data/04_classified_benchmark.jsonl \
   --world-state data/03_world_state.json \
-  --selection-manifest reports/benchmark_selection/paper_eval_tbox_cap_100_seed_13.json \
+  --selection-manifest reports/benchmark_selection/core_v1_seed_13.json \
   --a-box-proposals <path/to/a_box_proposals.jsonl> \
   --t-box-proposals <path/to/t_box_proposals.jsonl> \
   --out-traces reports/evaluation_traces.jsonl \
   --out-summary reports/evaluation_summary.json
 ```
+
+Outputs from these tracked core commands remain exploratory. Confirmatory runs require a verified execution protocol
+and untouched private selection as defined by the release protocol.
 
 Launch the reasoning-floor viewer:
 

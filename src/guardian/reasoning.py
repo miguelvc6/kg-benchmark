@@ -719,6 +719,50 @@ def _synthetic_target_label_entries(record: dict[str, Any]) -> dict[str, dict[st
     return pre_repair_target_state(record).entity_label_entries()
 
 
+def _post_repair_only_target_tokens(record: dict[str, Any]) -> set[str]:
+    repair_target = record.get("repair_target")
+    persistence = record.get("persistence_check")
+    violation_context = record.get("violation_context")
+    repair_target = repair_target if isinstance(repair_target, dict) else {}
+    persistence = persistence if isinstance(persistence, dict) else {}
+    violation_context = violation_context if isinstance(violation_context, dict) else {}
+    pre_repair = set(_iter_leaf_strings(repair_target.get("old_value"))) | set(
+        _iter_leaf_strings(violation_context.get("value"))
+    )
+    post_repair = (
+        set(_iter_leaf_strings(repair_target.get("new_value")))
+        | set(_iter_leaf_strings(repair_target.get("value")))
+        | set(_iter_leaf_strings(persistence.get("current_value_2026")))
+        | set(_iter_leaf_strings(violation_context.get("value_current_2026")))
+    )
+    return {token for token in post_repair - pre_repair if token}
+
+
+def _contains_post_repair_only_token(value: Any, tokens: set[str]) -> bool:
+    return bool(tokens and any(leaf in tokens for leaf in _iter_leaf_strings(value)))
+
+
+def _remove_post_repair_only_atoms(value: Any, tokens: set[str]) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: cleaned
+            for key, item in value.items()
+            if key not in tokens
+            for cleaned in [_remove_post_repair_only_atoms(item, tokens)]
+            if cleaned not in (None, [], {})
+        }
+    if isinstance(value, list):
+        return [
+            cleaned
+            for item in value
+            for cleaned in [_remove_post_repair_only_atoms(item, tokens)]
+            if cleaned not in (None, [], {})
+        ]
+    if value is not None and str(value).strip() in tokens:
+        return None
+    return value
+
+
 def _repair_target_constraint_type_qids(record: dict[str, Any]) -> list[str]:
     repair_target = record.get("repair_target")
     if not isinstance(repair_target, dict):
@@ -906,7 +950,12 @@ def _pruned_constraints_payload(
     constraints = constraints_payload.get("constraints")
     if not isinstance(constraints, list):
         constraints = []
-    valid_constraints = [constraint for constraint in constraints if isinstance(constraint, dict)]
+    post_repair_only = _post_repair_only_target_tokens(record)
+    valid_constraints = [
+        constraint
+        for constraint in constraints
+        if isinstance(constraint, dict) and not _contains_post_repair_only_token(constraint, post_repair_only)
+    ]
     audit = {
         "constraint_count_before": len(valid_constraints),
         "constraint_count_after": 0,
@@ -958,6 +1007,7 @@ def _pruned_l1_ego_node(
         "description": l1_node.get("description"),
     }
     properties = reconstruct_properties_with_pre_repair_target(record, l1_node.get("properties"))
+    properties = _remove_post_repair_only_atoms(properties, _post_repair_only_target_tokens(record))
     if properties:
         sanitized["properties"] = properties
     return {key: value for key, value in sanitized.items() if value not in (None, {}, [])}
@@ -981,11 +1031,13 @@ def _pruned_l2_labels(
     references: set[str],
     *,
     synthetic_entities: Optional[dict[str, dict[str, Any]]] = None,
+    forbidden_tokens: Optional[set[str]] = None,
 ) -> tuple[Any, int]:
+    forbidden = forbidden_tokens or set()
     fallback_entities = {
         key: value
         for key, value in (synthetic_entities or {}).items()
-        if key in references and isinstance(value, dict)
+        if key in references and key not in forbidden and isinstance(value, dict)
     }
     if not isinstance(labels_payload, dict):
         if not fallback_entities:
@@ -993,7 +1045,11 @@ def _pruned_l2_labels(
         return {"entities": fallback_entities}, len(fallback_entities)
     entities = labels_payload.get("entities")
     if isinstance(entities, dict):
-        kept = {key: value for key, value in entities.items() if key in references}
+        kept = {
+            key: value
+            for key, value in entities.items()
+            if key in references and key not in forbidden and not _contains_post_repair_only_token(value, forbidden)
+        }
         for key, value in fallback_entities.items():
             existing = kept.get(key)
             if isinstance(existing, dict):
@@ -1005,7 +1061,11 @@ def _pruned_l2_labels(
             else:
                 kept[key] = dict(value)
         return {**labels_payload, "entities": kept}, len(kept)
-    kept = {key: value for key, value in labels_payload.items() if key in references}
+    kept = {
+        key: value
+        for key, value in labels_payload.items()
+        if key in references and key not in forbidden and not _contains_post_repair_only_token(value, forbidden)
+    }
     for key, value in fallback_entities.items():
         if key not in kept:
             kept[key] = dict(value)
@@ -1026,6 +1086,7 @@ def _pruned_local_context(
         return None, audit
 
     l1_ego_node = _pruned_l1_ego_node(record, world_state_entry)
+    post_repair_only = _post_repair_only_target_tokens(record)
     references = _collect_reference_ids(l1_ego_node) | _collect_reference_ids(l4_constraints)
     references.add(record.get("qid")) if isinstance(record.get("qid"), str) else None
     if isinstance(record.get("property"), str):
@@ -1035,7 +1096,9 @@ def _pruned_local_context(
     l3_payload = world_state_entry.get("L3_neighborhood")
     if isinstance(l3_payload, dict):
         for edge in l3_payload.get("outgoing_edges", []):
-            if _edge_matches_references(edge, record.get("property"), references):
+            if not _contains_post_repair_only_token(edge, post_repair_only) and _edge_matches_references(
+                edge, record.get("property"), references
+            ):
                 outgoing_edges.append(edge)
                 references.update(_collect_reference_ids(edge))
 
@@ -1043,6 +1106,7 @@ def _pruned_local_context(
         world_state_entry.get("L2_labels"),
         references,
         synthetic_entities=_synthetic_target_label_entries(record),
+        forbidden_tokens=post_repair_only,
     )
 
     local_context = {
@@ -1095,8 +1159,13 @@ def _diagnosis_neutral_constraints_payload(
         constraints_payload = dict(world_state_entry["L4_constraints"])
 
     raw_constraints = constraints_payload.get("constraints")
+    post_repair_only = _post_repair_only_target_tokens(record)
     valid_constraints = (
-        [constraint for constraint in raw_constraints if isinstance(constraint, dict)]
+        [
+            constraint
+            for constraint in raw_constraints
+            if isinstance(constraint, dict) and not _contains_post_repair_only_token(constraint, post_repair_only)
+        ]
         if isinstance(raw_constraints, list)
         else []
     )
@@ -1145,7 +1214,9 @@ def _diagnosis_neutral_l1_ego_node(
         for pid, values in properties.items():
             if isinstance(target_pid, str) and pid == target_pid:
                 continue
-            kept_properties[pid] = values
+            cleaned = _remove_post_repair_only_atoms(values, _post_repair_only_target_tokens(record))
+            if cleaned not in (None, [], {}):
+                kept_properties[pid] = cleaned
     sanitized = {
         "qid": l1_node.get("qid"),
         "label": l1_node.get("label"),
@@ -1164,6 +1235,7 @@ def _diagnosis_neutral_local_context(
     world_state_entry: Optional[dict[str, Any]],
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     l4_constraints, constraint_audit = _diagnosis_neutral_constraints_payload(record, world_state_entry)
+    post_repair_only = _post_repair_only_target_tokens(record)
     l1_ego_node = _diagnosis_neutral_l1_ego_node(record, world_state_entry)
     references = _collect_reference_ids(l1_ego_node) | _collect_reference_ids(l4_constraints)
     if isinstance(record.get("qid"), str):
@@ -1174,7 +1246,9 @@ def _diagnosis_neutral_local_context(
     outgoing_edges: list[dict[str, Any]] = []
     if isinstance(world_state_entry, dict) and isinstance(world_state_entry.get("L3_neighborhood"), dict):
         for edge in world_state_entry["L3_neighborhood"].get("outgoing_edges", []):
-            if _edge_matches_references(edge, record.get("property"), references):
+            if not _contains_post_repair_only_token(edge, post_repair_only) and _edge_matches_references(
+                edge, record.get("property"), references
+            ):
                 sanitized_edge = _strip_diagnosis_forbidden_context(edge)
                 outgoing_edges.append(sanitized_edge)
                 references.update(_collect_reference_ids(sanitized_edge))
@@ -1182,7 +1256,9 @@ def _diagnosis_neutral_local_context(
     l2_payload: Any = {}
     label_count_after = 0
     if isinstance(world_state_entry, dict):
-        l2_payload, label_count_after = _pruned_l2_labels(world_state_entry.get("L2_labels"), references)
+        l2_payload, label_count_after = _pruned_l2_labels(
+            world_state_entry.get("L2_labels"), references, forbidden_tokens=post_repair_only
+        )
         l2_payload = _strip_diagnosis_forbidden_context(l2_payload)
 
     local_context = {

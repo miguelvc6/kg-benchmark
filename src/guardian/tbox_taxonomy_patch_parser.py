@@ -7,7 +7,6 @@ from typing import Any, Iterable
 
 from .common import PatchValidationError, canonical_hash, canonicalize, load_schema, normalize_pid, normalize_qid
 
-
 SCHEMA_DECISIONS = {
     "CAUSAL_SCHEMA_REPAIR",
     "NO_CAUSAL_SCHEMA_REPAIR",

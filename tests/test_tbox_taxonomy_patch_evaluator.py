@@ -2,7 +2,6 @@ import unittest
 
 from guardian.tbox_taxonomy_patch_evaluator import NEW_TBOX_PATCH_METRICS, evaluate_tbox_taxonomy_patch_predictions
 
-
 OPERATION_CODE_PAIRS = [
     ("CONSTRAINT_REMOVE", "C_MINUS"),
     ("CONSTRAINT_DEPRECATE", "C_D"),

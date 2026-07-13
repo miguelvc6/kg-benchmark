@@ -5,7 +5,6 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
-
 OPERATION_CODE_PAIRS = [
     ("CONSTRAINT_REMOVE", "C_MINUS"),
     ("CONSTRAINT_DEPRECATE", "C_D"),

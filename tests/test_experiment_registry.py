@@ -35,9 +35,10 @@ class ExperimentRegistryTests(unittest.TestCase):
         protocol.write_text("{}", encoding="utf-8")
         protocol_manifest = {
             "protocol_id": "protocol_v1",
+            "protocol_phase": "execution",
             "status": "frozen",
             "code": {"commit": "abc", "dirty": False},
-            "release": {"path": "release.json"},
+            "release": {"path": "release.json", "release_kind": "evaluation"},
             "models": [{"name": "model", "digest": "digest-123"}],
             "conditions": ["logic_only", "local_graph"],
             "expected_population": {"selected_count": 2, "main_score_count": 2},

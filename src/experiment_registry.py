@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -89,6 +90,10 @@ def _eligibility(
         return reasons, evidence
 
     protocol = protocol_verification["manifest"]
+    if protocol.get("protocol_phase") != "execution":
+        reasons.append("protocol_is_not_execution_phase")
+    if protocol.get("release", {}).get("release_kind") != "evaluation":
+        reasons.append("protocol_release_is_not_evaluation_release")
     release_manifest = protocol_verification.get("release_verification", {}).get("validation")
     release_manifest_file_entries = (
         json.loads(
@@ -158,10 +163,7 @@ def _eligibility(
 
 
 def _relative_to_registry(path: Path, registry_path: Path) -> str:
-    try:
-        return path.resolve().relative_to(registry_path.parent.resolve()).as_posix()
-    except ValueError:
-        return path.resolve().as_posix()
+    return Path(os.path.relpath(path.resolve(), start=registry_path.parent.resolve())).as_posix()
 
 
 def register_experiment(
@@ -180,7 +182,7 @@ def register_experiment(
     summary_path = Path(run_summary_path).resolve()
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
     run_info = summary.get("run_info") if isinstance(summary.get("run_info"), dict) else {}
-    experiment_id = str(run_info.get("run_id") or summary_path.parent.name)
+    experiment_id = str(run_info.get("run_id") or summary.get("run_id") or summary_path.parent.name)
     registry_file = Path(registry_path)
     registry = (
         json.loads(registry_file.read_text(encoding="utf-8"))

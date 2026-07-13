@@ -1,0 +1,23 @@
+{
+  "manifest_type": "kg_benchmark_snapshot",
+  "manifest_version": 1,
+  "snapshot_id": "synthetic-fixture-v0.1.0",
+  "created_at_utc": "2026-07-13T11:09:47Z",
+  "context_policy": "later_frozen_context_with_historical_target_reconstruction",
+  "repair_time_complete": false,
+  "sources": [
+    {
+      "name": "synthetic",
+      "source_id": "tracked-data-sample-v1",
+      "retrieved_at_utc": "2026-01-01T00:00:00Z"
+    }
+  ],
+  "artifacts": {
+    "stage2_repairs_sha256": "bca1db6bcfe81a4bc0dbd9ab02a9781cae1ea1841253b72e0380226081c6a064",
+    "world_state_sha256": "aede634f3ac7df0a98784d3f03cdd7e7241b7763ea4f16dac57403e125be5ee8",
+    "classified_benchmark_sha256": "494b39e8460d5438758618470deba06d452ec8295245825b0ca697116dfaaf81"
+  },
+  "limitations": [
+    "Synthetic software fixture; not research data."
+  ]
+}

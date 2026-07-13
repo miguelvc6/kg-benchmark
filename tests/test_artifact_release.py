@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from artifact_release import build_release_manifest, validate_release_inputs, verify_release_manifest
+from artifact_release import build_release_manifest, sha256_file, validate_release_inputs, verify_release_manifest
 
 
 class ArtifactReleaseTests(unittest.TestCase):
@@ -93,7 +93,41 @@ class ArtifactReleaseTests(unittest.TestCase):
         schema = root / "stage4.schema.json"
         source_schema = Path(__file__).resolve().parents[1] / "schemas" / "04_classified_benchmark.schema.json"
         schema.write_bytes(source_schema.read_bytes())
-        return {"stage2": stage2, "world": world, "stage4": stage4, "selection": selection, "schema": schema}
+        snapshot = root / "snapshot.json"
+        snapshot.write_text(
+            json.dumps(
+                {
+                    "manifest_type": "kg_benchmark_snapshot",
+                    "manifest_version": 1,
+                    "snapshot_id": "synthetic-2026-01-01",
+                    "created_at_utc": "2026-01-01T00:00:00Z",
+                    "context_policy": "later_frozen_context_with_historical_target_reconstruction",
+                    "repair_time_complete": False,
+                    "sources": [
+                        {
+                            "name": "synthetic",
+                            "source_id": "fixture-v1",
+                            "retrieved_at_utc": "2026-01-01T00:00:00Z",
+                            "immutable": True,
+                        }
+                    ],
+                    "artifacts": {
+                        "stage2_repairs_sha256": sha256_file(stage2),
+                        "world_state_sha256": sha256_file(world),
+                        "classified_benchmark_sha256": sha256_file(stage4),
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        return {
+            "stage2": stage2,
+            "world": world,
+            "stage4": stage4,
+            "selection": selection,
+            "schema": schema,
+            "snapshot": snapshot,
+        }
 
     def test_build_and_verify_evaluation_release(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -105,11 +139,13 @@ class ArtifactReleaseTests(unittest.TestCase):
                 world_state_path=paths["world"],
                 stage4_path=paths["stage4"],
                 schema_path=paths["schema"],
+                snapshot_manifest_path=paths["snapshot"],
                 selection_manifest_path=paths["selection"],
                 release_kind="evaluation",
             )
             self.assertTrue(manifest["validation"]["passed"])
             self.assertTrue(all(not Path(item["path"]).is_absolute() for item in manifest["files"]))
+            self.assertEqual(manifest["snapshot_id"], "synthetic-2026-01-01")
             manifest_path = root / "release.json"
             manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
             verification = verify_release_manifest(manifest_path, release_root=root)
@@ -126,6 +162,7 @@ class ArtifactReleaseTests(unittest.TestCase):
                 world_state_path=paths["world"],
                 stage4_path=paths["stage4"],
                 schema_path=paths["schema"],
+                snapshot_manifest_path=paths["snapshot"],
                 selection_manifest_path=paths["selection"],
                 release_kind="evaluation",
             )
@@ -143,6 +180,7 @@ class ArtifactReleaseTests(unittest.TestCase):
                 world_state_path=paths["world"],
                 stage4_path=paths["stage4"],
                 schema_path=paths["schema"],
+                snapshot_manifest_path=paths["snapshot"],
                 selection_manifest_path=paths["selection"],
                 release_kind="evaluation",
             )
@@ -165,10 +203,58 @@ class ArtifactReleaseTests(unittest.TestCase):
                         world_state_path=paths["world"],
                         stage4_path=paths["stage4"],
                         schema_path=paths["schema"],
+                        snapshot_manifest_path=paths["snapshot"],
                         selection_manifest_path=paths["selection"],
                         release_kind="evaluation",
                         release_status="confirmatory",
                     )
+
+    def test_snapshot_manifest_must_bind_all_released_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            paths = self._fixture(root)
+            snapshot = json.loads(paths["snapshot"].read_text(encoding="utf-8"))
+            snapshot["artifacts"]["world_state_sha256"] = "0" * 64
+            paths["snapshot"].write_text(json.dumps(snapshot), encoding="utf-8")
+
+            validation = validate_release_inputs(
+                stage2_path=paths["stage2"],
+                world_state_path=paths["world"],
+                stage4_path=paths["stage4"],
+                schema_path=paths["schema"],
+                snapshot_manifest_path=paths["snapshot"],
+                selection_manifest_path=paths["selection"],
+                release_kind="evaluation",
+            )
+
+            self.assertTrue(validation["checks"]["snapshot_manifest_valid"])
+            self.assertFalse(validation["checks"]["snapshot_artifact_hashes_match"])
+            self.assertFalse(validation["passed"])
+
+    def test_confirmatory_verifier_rejects_nonexistent_git_commit(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            paths = self._fixture(root)
+            manifest = build_release_manifest(
+                release_root=root,
+                stage2_path=paths["stage2"],
+                world_state_path=paths["world"],
+                stage4_path=paths["stage4"],
+                schema_path=paths["schema"],
+                snapshot_manifest_path=paths["snapshot"],
+                release_kind="evaluation",
+                selection_manifest_path=paths["selection"],
+            )
+            manifest["status"] = "confirmatory"
+            manifest["code"] = {"commit": "not-a-real-commit", "dirty": False}
+            manifest_path = root / "release.json"
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+            with patch("artifact_release.git_commit_exists", return_value=False):
+                verification = verify_release_manifest(manifest_path, release_root=root)
+
+            self.assertFalse(verification["checks"]["confirmatory_code_verified"])
+            self.assertFalse(verification["passed"])
 
 
 if __name__ == "__main__":

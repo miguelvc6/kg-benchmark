@@ -1,6 +1,8 @@
 # Reasoning Floor
 
-The zero-shot baseline runner is [reasoning_floor.py](/mnt/c/Code/kg-benchmark/src/reasoning_floor.py).
+The zero-shot baseline runner is [reasoning_floor.py](../src/reasoning_floor.py). Paper-eligible use is governed by
+[Research Release Protocol](./Research_Release_Protocol.md); existing development runs remain exploratory unless they
+are registered against a verified frozen protocol.
 
 ## Objective
 
@@ -38,7 +40,9 @@ The first-wave bundles are:
 - `logic_only`: sanitized case-local payload plus pruned touched `L4_constraints`
 - `local_graph`: sanitized case-local payload plus pruned touched `L1` through `L4`
 
-`minimal_case` remains supported, but the CLI in [reasoning_floor.py](/mnt/c/Code/kg-benchmark/src/reasoning_floor.py) now defaults to `logic_only,local_graph`. Include `minimal_case` explicitly with `--ablation-bundles` when you want to run the no-context bundle.
+`minimal_case` remains supported, but the CLI in [reasoning_floor.py](../src/reasoning_floor.py) now defaults to
+`logic_only,local_graph`. Include `minimal_case` explicitly with `--ablation-bundles` when you want to run the
+no-context bundle.
 
 Prompt payloads are now hard-sanitized before rendering. Model-visible inputs exclude benchmark-only fields such as:
 
@@ -180,7 +184,9 @@ Providers that support batch execution may additionally implement a batch contra
 - submit and poll a batch job
 - parse returned batch result records back into the same raw response and usage shape used by synchronous execution
 
-Named prompt templates for the reasoning floor now live in [src/guardian/prompts.py](/mnt/c/Code/kg-benchmark/src/guardian/prompts.py). This keeps prompt text out of the runner itself and gives each prompt a stable descriptive name that can be reused across callers.
+Named prompt templates for the reasoning floor now live in [src/guardian/prompts.py](../src/guardian/prompts.py). This
+keeps prompt text out of the runner itself and gives each prompt a stable descriptive name that can be reused across
+callers.
 
 Those prompts now spell out the exact normalized JSON contract expected by the proposal and diagnosis parsers. The runner still requests JSON objects from providers, but prompt text now explicitly forbids wrapper shapes such as `proposal_id`, `summary`, `actions`, or `proposed_changes` in place of the canonical benchmark schema.
 
@@ -219,6 +225,11 @@ A reasoning-floor run writes:
 - normalized proposal JSONL per ablation bundle
 - per-bundle evaluation traces and summaries
 - one combined reasoning-floor summary with paper-facing breakdowns
+
+New runs also record the Git commit and dirty state, model digest when available, resolved inference settings, and
+SHA-256 fingerprints for benchmark, world state, selection manifest, active schemas, and prompt definitions. Missing
+model digests or a dirty worktree do not stop exploratory execution, but they make a run ineligible for confirmatory
+registration.
 
 Batch runs also write provider batch artifacts at the top level of the run directory:
 
@@ -261,7 +272,7 @@ After generation completes, the runner shows a second `tqdm` bar for bundle eval
 
 In synchronous mode, the runner appends raw responses, manifest rows, normalized proposals, and evaluation traces incrementally over one stable ordered selected subset. In parallel mode, it keeps the same outputs but executes multiple cases concurrently with bounded in-flight work.
 
-The Ollama convenience wrapper [run_phase_g_ollama_oracle.sh](/mnt/c/Code/kg-benchmark/scripts/run_phase_g_ollama_oracle.sh)
+The Ollama convenience wrapper [run_phase_g_ollama_oracle.sh](../scripts/run_phase_g_ollama_oracle.sh)
 is dry-run safe: it requires `MAX_CASES` unless a full selected-core run has been explicitly approved with
 `ALLOW_FULL_CORE_RUN=1`.
 
@@ -325,10 +336,11 @@ and visible violation context. Internal audit metadata records which policy was 
 do not expose policy labels such as `compact_inventory_no_pre_change_signature`.
 
 The template registry also includes `reasoning_floor_t_box_taxonomy_patch_zero_shot` for the Ferranti-style T-box
-taxonomy patch task. This template asks for `schema_decision`, target property and constraint family, taxonomy repair
-operations, value deltas only when visible, provenance, and uncertainty. It is registered separately from the historical
-strict `reasoning_floor_t_box_zero_shot` template so strict `signature_after` reconstruction remains available as a
-diagnostic path rather than the default taxonomy-patch task.
+taxonomy patch task. Set `TBOX_TASK_VERSION=tbox_taxonomy_patch_v1` before starting the process to select it. The
+runner then records `prompt_dev_v5_tbox_taxonomy_patch`, writes `t_box_taxonomy_patch_proposals.jsonl`, and fingerprints
+the taxonomy-patch schema. Without that setting, the runtime default remains the legacy strict-signature task for
+backward compatibility. A release protocol must pin the task version explicitly; strict-signature and taxonomy-patch
+scores are not interchangeable.
 
 `prompt_dev_v3_scaffolded` remains a Phase F diagnostic ablation only. It must not be used as the Phase G main prompt
 solely because it scores higher on dev or holdout.
@@ -339,9 +351,9 @@ This prevents summaries from collapsing plausible narrower T-box reforms to zero
 
 ## Test Coverage
 
-The dry-run integration path is covered by [tests/test_reasoning_floor.py](/mnt/c/Code/kg-benchmark/tests/test_reasoning_floor.py).
+The dry-run integration path is covered by [tests/test_reasoning_floor.py](../tests/test_reasoning_floor.py).
 
-The diagnosis normalization path is covered by [tests/test_track_parser.py](/mnt/c/Code/kg-benchmark/tests/test_track_parser.py).
+The diagnosis normalization path is covered by [tests/test_track_parser.py](../tests/test_track_parser.py).
 
 ## Phase C Selection Manifests
 

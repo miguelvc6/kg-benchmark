@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kg-benchmark"
-version = "0.0.0"
+version = "0.1.0"
 description = "WikidataRepairEval research pipeline"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -52,6 +52,9 @@ kg-test-llm-endpoint = "scripts.test_llm_endpoint:main"
 kg-analyze-tbox-updates = "scripts.analyze_tbox_updates:main"
 kg-classifier-audit-report = "scripts.classifier_audit_report:main"
 kg-artifact-release = "artifact_release:main"
+kg-snapshot-manifest = "snapshot_manifest:main"
+kg-artifacts = "artifact_acquisition:main"
+kg-temporal-audit = "temporal_audit:main"
 kg-annotation-protocol = "annotation_protocol:main"
 kg-select-untouched-test = "select_untouched_test:main"
 kg-analyze-results = "analyze_results:main"
@@ -64,6 +67,9 @@ packages = ["guardian", "lib", "scripts"]
 py-modules = [
     "classifier",
     "artifact_release",
+    "snapshot_manifest",
+    "artifact_acquisition",
+    "temporal_audit",
     "annotation_protocol",
     "select_untouched_test",
     "analyze_results",
@@ -85,6 +91,7 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
+ignore = ["E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

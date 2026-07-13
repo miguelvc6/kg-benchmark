@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-
 DIAGNOSTIC_TASKS = (
     "a_box_value_extraction",
     "a_box_operation_selection",

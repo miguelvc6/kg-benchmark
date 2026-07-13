@@ -2,8 +2,7 @@ import math
 import unittest
 from pathlib import Path
 
-from guardian.patch_parser import PatchValidationError, load_schema, normalize_proposal
-from guardian.patch_parser import canonicalize
+from guardian.patch_parser import PatchValidationError, canonicalize, load_schema, normalize_proposal
 
 
 class PatchParserTests(unittest.TestCase):

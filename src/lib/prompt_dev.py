@@ -24,17 +24,17 @@ from guardian.reasoning import (
     _diagnosis_bundle_payload_and_audit,
     _t_box_constraint_type_qids,
 )
+from guardian.tbox_parser import normalize_proposal as normalize_t_box_proposal
 from guardian.tbox_taxonomy_patch_evaluator import evaluate_tbox_taxonomy_patch_predictions, load_jsonl
 from guardian.tbox_taxonomy_patch_parser import normalize_tbox_taxonomy_patch
-from guardian.tbox_parser import normalize_proposal as normalize_t_box_proposal
 from guardian.track_parser import normalize_diagnosis
 from lib.benchmark_selection import derive_case_metadata, group_key_for_record, load_selection_manifest
-from lib.tbox_taxonomy_patch_gold import gold_patch_for_record
 from lib.repair_state import derive_value_change_summary, normalize_value_list
+from lib.tbox_taxonomy_patch_gold import gold_patch_for_record
 from lib.utils import iter_jsonl
 from scripts.prompt_dev_templates import (
-    PROMPT_DEV_VERSION,
     PROMPT_DEV_TBOX_TAXONOMY_PATCH_VERSION,
+    PROMPT_DEV_VERSION,
     REPRESENTATIONS,
     render_prompt_dev_prompt,
 )
@@ -3135,6 +3135,9 @@ def _result_key(result: dict[str, Any]) -> tuple[Any, ...]:
         result.get("representation"),
         result.get("context_bundle"),
         result.get("track_mode"),
+        result.get("tbox_task_version"),
+        result.get("abox_task_version"),
+        result.get("evaluation_subset"),
     )
 
 
@@ -3242,8 +3245,13 @@ def _usage_totals(result: dict[str, Any]) -> dict[str, Any]:
     for field in fields:
         if observed[field] == 0:
             totals[field] = None
+    means = {
+        f"{field}_mean_per_request": (totals[field] / observed[field] if observed[field] else None)
+        for field in fields
+    }
     return {
         **totals,
+        **means,
         "elapsed_seconds_total": elapsed_total if elapsed_count else None,
         "elapsed_seconds_mean": elapsed_total / elapsed_count if elapsed_count else None,
         "rows_with_usage": max(observed.values()) if observed else 0,
@@ -3253,12 +3261,11 @@ def _usage_totals(result: dict[str, Any]) -> dict[str, Any]:
 
 def _usage_comparison(zero: dict[str, Any], few: dict[str, Any]) -> dict[str, Any]:
     fields = (
-        "prompt_tokens",
-        "completion_tokens",
-        "total_tokens",
-        "cached_tokens",
-        "estimated_cost_usd",
-        "elapsed_seconds_total",
+        "prompt_tokens_mean_per_request",
+        "completion_tokens_mean_per_request",
+        "total_tokens_mean_per_request",
+        "cached_tokens_mean_per_request",
+        "estimated_cost_usd_mean_per_request",
         "elapsed_seconds_mean",
     )
     return {
@@ -3273,7 +3280,27 @@ def _comparison_key_payload(result: dict[str, Any]) -> dict[str, Any]:
         "representation": result.get("representation"),
         "context_bundle": result.get("context_bundle"),
         "track_mode": result.get("track_mode"),
+        "tbox_task_version": result.get("tbox_task_version"),
+        "abox_task_version": result.get("abox_task_version"),
+        "evaluation_subset": result.get("evaluation_subset"),
     }
+
+
+def _paired_population(zero: dict[str, Any], few: dict[str, Any]) -> dict[str, Any]:
+    zero_ids = zero.get("case_ids")
+    few_ids = few.get("case_ids")
+    if not isinstance(zero_ids, list) or not isinstance(few_ids, list):
+        raise ValueError("Few-shot comparisons require explicit case_ids in both matrix summaries.")
+    zero_set = {str(value) for value in zero_ids}
+    few_set = {str(value) for value in few_ids}
+    if zero_set != few_set or len(zero_set) != len(zero_ids) or len(few_set) != len(few_ids):
+        raise ValueError(
+            "Few-shot comparison populations differ: "
+            f"zero_only={len(zero_set - few_set)}, few_only={len(few_set - zero_set)}, "
+            f"zero_count={len(zero_ids)}, few_count={len(few_ids)}."
+        )
+    population_hash = hashlib.sha256("\n".join(sorted(zero_set)).encode()).hexdigest()
+    return {"case_count": len(zero_set), "case_ids_sha256": population_hash, "identical_case_ids": True}
 
 
 def _a_box_comparison(zero: dict[str, Any], few: dict[str, Any]) -> dict[str, Any]:
@@ -3338,6 +3365,7 @@ def _a_box_comparison(zero: dict[str, Any], few: dict[str, Any]) -> dict[str, An
         "few_shot_matrix_id": few.get("matrix_id"),
         "few_shot_policy": few.get("example_policy"),
         **_few_shot_condition(str(few.get("example_policy"))),
+        "paired_population": _paired_population(zero, few),
         "metrics": metrics,
         "token_cost_latency_overhead": _usage_comparison(_usage_totals(zero), _usage_totals(few)),
     }
@@ -3425,6 +3453,7 @@ def _t_box_comparison(zero: dict[str, Any], few: dict[str, Any]) -> dict[str, An
         "few_shot_matrix_id": few.get("matrix_id"),
         "few_shot_policy": few.get("example_policy"),
         **_few_shot_condition(str(few.get("example_policy"))),
+        "paired_population": _paired_population(zero, few),
         "metrics": metrics,
         "token_cost_latency_overhead": _usage_comparison(_usage_totals(zero), _usage_totals(few)),
     }
@@ -3456,6 +3485,7 @@ def _diagnosis_comparison(
         "few_shot_matrix_id": few.get("matrix_id"),
         "few_shot_policy": few.get("example_policy"),
         **_few_shot_condition(str(few.get("example_policy"))),
+        "paired_population": _paired_population(zero, few),
         "metrics": {
             key: _comparison_metric(
                 zero_value=_metric_value(zero_metrics, key),
@@ -3517,7 +3547,9 @@ def _few_shot_reports(
             if isinstance(zero_shot_baseline_summary, dict)
             else None,
         },
-        "comparison_rule": "Match few-shot matrices to zero-shot by task, representation, context bundle, and track mode.",
+        "comparison_rule": (
+            "Match task, representation, context bundle, track mode, task versions, evaluation subset, and exact case IDs."
+        ),
         "headline_policy": "No aggregate A-box/T-box headline is computed.",
         "sections": {"a_box": [], "t_box_taxonomy_patch": [], "diagnosis": []},
         "unmatched_few_shot_matrix_ids": [],

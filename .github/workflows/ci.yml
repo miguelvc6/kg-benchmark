@@ -14,9 +14,14 @@ jobs:
         run: uv sync --extra dev
       - name: Tests
         run: uv run python -m pytest -q
-      - name: Critical lint checks
-        run: uv run ruff check src scripts tests --select E9,F63,F7,F82
+      - name: Documentation portability and links
+        run: uv run python -m pytest -q tests/test_documentation.py
+      - name: Lint
+        run: uv run ruff check src scripts tests
       - name: Sample workflow
         run: |
           uv run python -m classifier --sample --no-progress --no-full-output
           uv run python -m splitter --sample
+          uv run python -m artifact_release verify \
+            --manifest release/sample-v0.1.0/release_manifest.json \
+            --release-root release/sample-v0.1.0

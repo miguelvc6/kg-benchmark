@@ -1,216 +1,83 @@
-# MPU Implementation Tracker
+# Implemented Boundary And Remaining Gaps
 
 ## Purpose
 
-This document is the living tracker for minimum-publishable-unit gaps between the conceptual program and the implemented repository.
-
-It now also records the acceptance judgment for the current MPU and the next implementation checkpoints needed to keep building the rest of Track B on top of this repository.
-
-Deletion rule:
-
-- when a workstream reaches its exit criteria, remove it from this document
-- move its implementation detail into the normal technical docs
+This document records the current engineering boundary between the implemented repository and the broader research
+program. It is not the operational release checklist; use [Research Release Protocol](./Research_Release_Protocol.md)
+for release and confirmatory-run gates.
 
 ## Current Implemented Scope
 
-The repository now implements:
+The repository implements:
 
-- Stage 1 candidate mining in `src/fetcher.py` and `src/lib/mining.py`
-- Stage 2 repair reconstruction in `src/fetcher.py`
-- Stage 3 popularity enrichment and world-state construction in `src/fetcher.py`, `src/lib/popularity.py`, and `src/lib/world_state.py`
-- Stage 4 classification in `src/classifier.py`
-- Stage 5 deterministic train/dev/test split generation in `src/splitter.py`
-- A-box proposal validation in `guardian.patch_parser`
-- T-box proposal validation in `guardian.tbox_parser`
-- A-box vs T-box diagnosis normalization in `guardian.track_parser`
-- Benchmark evaluation in `src/evaluate.py`
-- Zero-shot reasoning-floor execution in `src/reasoning_floor.py`
+- historical Wikidata candidate mining, repair reconstruction, popularity enrichment, and frozen world-state building;
+- Stage 4 classification and schema validation;
+- group-aware train/dev/test splitting and deterministic dev/core selection manifests;
+- A-box, strict-signature T-box, taxonomy-patch T-box, and track-diagnosis normalization;
+- deterministic non-LLM baselines and zero-shot/few-shot model evaluation;
+- oracle proposal routing and optional diagnosis-routed generation;
+- blinded multi-reviewer annotation assignment, agreement reporting, and adjudication support;
+- paired cluster-bootstrap analysis with exact paired-binary tests;
+- content-addressed release manifests, frozen protocol manifests, and an experiment registry;
+- protocol-bound untouched-test allocation from a post-freeze benchmark snapshot.
 
-Implemented details now live in:
+Implementation details live in:
 
+- [Pipeline Implementation](./Pipeline_Implementation.md)
 - [Proposal Validation](./Proposal_Validation.md)
 - [Evaluation Harness](./Evaluation_Harness.md)
 - [Reasoning Floor](./Reasoning_Floor.md)
 - [Track Diagnosis](./Track_Diagnosis.md)
-- [Pipeline Implementation](./Pipeline_Implementation.md)
+- [T-Box Taxonomy Patch Task](./TBox_Taxonomy_Patch_Task.md)
+- [Few-Shot Evaluation](./Few_Shot_Evaluation.md)
 
-## MPU-1 Assessment
+## Current Release Judgment
 
-Current judgment:
+The repository supplies the engineering substrate needed to create a paper-eligible release, but existing core/model
+artifacts remain exploratory. The controls added after those runs do not retroactively make development-contaminated
+results confirmatory.
 
-- the repository is a valid first minimum publishable unit for Track B
-- it does not implement the whole Track B research program
-- it does implement the correct benchmark, baseline, and evaluation substrate for the rest of Track B
+The following work still requires deliberate execution and review:
 
-Why this counts as MPU-1-complete:
+- independent annotation and adjudication by identified human reviewers;
+- independent validation of extracted T-box taxonomy gold;
+- creation of a new post-freeze benchmark snapshot and sealed untouched-test manifest;
+- a clean, content-addressed release manifest and frozen protocol;
+- confirmatory model execution with stable model digests;
+- registered statistical analyses and paper tables;
+- dataset card, license, citation metadata, ethics statement, limitations, and archival deposit.
 
-- the benchmark is built from historical A-box and T-box repair events
-- the benchmark has frozen world-state context, temporal controls, and Type A/B/C classification
-- the repository can normalize repair proposals and score them against benchmark-native targets
-- the repository includes a pre-Guardian reasoning-floor baseline
-- the repository includes a separate A-box vs T-box diagnosis task
+## Research Features Not Implemented
 
-What is intentionally not part of MPU-1:
+These remain outside the current paper-release substrate:
 
-- retrieval-augmented repair protocols
-- Guardian-style multi-attempt verifier loops
-- repair-time tool use
-- cost-quality frontier experiments over tool calls and verifier calls
-- end-to-end locus-controlled repair where the predicted track determines the repair path
+### Live Verifier Loop
 
-## Track B Continuation Judgment
+`src/evaluate.py` scores completed outputs. The repository does not provide a repair-time loop that returns verifier
+diagnostics to a generator and allows bounded proposal revision.
 
-The current architecture is suitable for continuing Track B without redesigning the conceptual layer.
+### Retrieval And Tool Use
 
-The repository already separates the main long-term concerns cleanly:
+The model runners do not perform external evidence retrieval, live Wikidata editing, or repair-time tool use. Provenance
+fields describe evidence supplied in the frozen task context; they are not evidence that a retrieval system ran.
 
-- benchmark construction
-- proposal contracts
-- offline evaluation
-- zero-shot baseline execution
+### Full Diagnosis-Routed Main Condition
 
-This means the rest of Track B can be added as new protocol layers around the existing benchmark and evaluation machinery rather than by rewriting the benchmark core.
+The runtime can route proposals from track-diagnosis predictions, including explicit `AMBIGUOUS` skips. The current
+diagnosis prompt did not pass the development gate, so oracle routing remains the supported main condition and
+diagnosis-routed execution remains exploratory.
 
-## Open Post-MPU Workstreams
+### Cost-Quality Protocol Frontier
 
-These are not blockers for MPU-1 acceptance. They are the next implementation checkpoints for the rest of Track B.
+Runs capture tokens, latency, request failures, and configured cost estimates. They do not yet compare bounded
+multi-attempt, retrieval, tool-call, and verifier-call protocols because those protocol runners do not exist.
 
-### Workstream 1: Verifier Runtime
+## Engineering Rules
 
-Goal:
-
-- introduce a repair-time verifier interface that can evaluate candidate transactions and emit structured rejection diagnostics during generation
-
-Why it matters:
-
-- Track B is defined as a generator-verifier program, not only as offline post hoc scoring
-
-Current gap:
-
-- [evaluate.py](./Evaluation_Harness.md) scores completed artifacts after generation
-- the repository does not yet expose a live verifier loop that can reject a draft and return actionable diagnostics to the generator
-
-Completion condition:
-
-- the repository has a callable verifier component that can be used inside future protocol runners
-- verifier outputs are machine-readable and aligned with benchmark validity rules
-
-### Workstream 2: Protocol Runners Beyond the Reasoning Floor
-
-Goal:
-
-- add separate runners for the next Track B protocol families without collapsing them into the reasoning-floor runner
-
-Priority protocol families:
-
-- one-shot with retrieval
-- bounded retrieval-augmented generation
-- bounded Guardian-style iterative repair
-
-Why it matters:
-
-- the reasoning floor must remain the stable pre-intervention control condition
-- later protocols need to be compared against it, not replace it
-
-Completion condition:
-
-- new runners exist beside `src/reasoning_floor.py`
-- the zero-shot baseline remains unchanged and comparable
-
-### Workstream 3: Actionable Locus Selection
-
-Goal:
-
-- turn A-box vs T-box diagnosis from a separate analytic task into an optional control point for repair generation
-
-Why it matters:
-
-- the broader Track B proposal treats locus selection as part of the repair problem
-
-Current gap:
-
-- diagnosis is currently scored separately
-- proposal generation still uses the historical benchmark `track` to choose the proposal schema and route
-
-Completion condition:
-
-- a future protocol runner can use the predicted track to determine whether to attempt an A-box repair, a T-box reform, or abstention
-- evaluation can attribute failures to wrong locus choice versus wrong repair content
-
-### Workstream 4: Evidence and Retrieval Layer
-
-Goal:
-
-- add retrieval-backed evidence collection and structured provenance for Type C and evidence-heavy T-box cases
-
-Why it matters:
-
-- Track B is specifically about verifier-guided LLM repair with evidence and provenance
-
-Current gap:
-
-- provenance fields exist in proposal schemas
-- the current baseline does not perform retrieval or evidence-grounded proposal construction
-
-Completion condition:
-
-- protocol runners can attach retrieved evidence to proposals
-- evidence provenance is logged in a normalized form
-- evaluation can distinguish unsupported proposals from evidence-backed ones
-
-### Workstream 5: Cost-Aware Protocol Evaluation
-
-Goal:
-
-- extend evaluation from token-only accounting to full protocol-cost accounting
-
-Required future measures:
-
-- attempt count
-- tool call count
-- verifier invocation count
-- conversion rate across attempts
-- tokens-to-fix
-
-Why it matters:
-
-- Track B is not only about correctness; it is also about reliability under bounded operational cost
-
-Completion condition:
-
-- protocol runs emit structured cost telemetry
-- evaluation summaries report cost-quality trade-offs consistently across protocol families
-
-## Repository Design Rules for the Next Phases
-
-To preserve compatibility with the conceptual program and keep the repository useful as a benchmark, future Track B work should follow these rules:
-
-- keep benchmark construction independent from protocol experimentation
-- keep the reasoning floor as a stable pre-intervention baseline
-- add new protocol runners beside the existing baseline runner instead of overloading it with all future behaviors
-- treat offline evaluation as the benchmark authority even after a live verifier runtime is introduced
-- keep proposal schemas stable and extend them only when the research design actually requires it
-- preserve deterministic artifact generation and link consistency across docs
-- do not edit conceptual docs unless a real research decision has changed
-
-## Open Workstreams Policy
-
-There are no open MPU-1 blockers.
-
-The workstreams above are continuation workstreams for Track B after MPU-1. As they are implemented, this document should be shortened again and the implementation details moved into the regular technical docs.
-
-## Cross-Cutting Constraints
-
-- Stick to the conceptual docs unless an actual conceptual ambiguity is discovered.
-- Do not weaken benchmark validity rules for convenience.
-- Prefer frozen benchmark artifacts and deterministic evaluation over live external dependencies.
-- Keep the end goal explicit: a publishable research paper and a benchmark that is also practically useful.
-
-## Exit Criteria
-
-A continuation workstream can be deleted from this tracker only when:
-
-- the code path exists and is runnable
-- tests cover the core contract
-- the relevant technical docs have been updated
-- the implementation remains aligned with the conceptual docs
+- Keep benchmark construction independent from protocol experiments.
+- Keep exploratory and confirmatory runs distinct in `experiments/registry.json`.
+- Preserve the reasoning floor as a stable pre-intervention control.
+- Treat offline evaluation as the benchmark authority.
+- Bind releases and runs to hashes, code commits, prompt/schema versions, and model digests.
+- Do not infer untouchedness from code-level exclusions on the development snapshot; use a post-freeze snapshot.
+- Update this document when an implementation boundary changes, and put operational commands in the release protocol.

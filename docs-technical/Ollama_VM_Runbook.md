@@ -28,51 +28,44 @@ Increase concurrency only after checking the shared GPU policy and measured late
 Create the remote directory:
 
 ```bash
-ssh -o KexAlgorithms=curve25519-sha256 \
-  -i ~/.ssh/gpu-wu-h100_ed25519 \
-  -p 32629 \
-  mvazquez@137.208.33.107 \
+export GPU_VM_HOST=your-user@your-vm.example
+export GPU_VM_PORT=22
+export GPU_VM_KEY=~/.ssh/your_vm_key
+
+ssh -i "$GPU_VM_KEY" -p "$GPU_VM_PORT" "$GPU_VM_HOST" \
   'mkdir -p ~/kg-benchmark/data ~/kg-benchmark/reports/benchmark_selection ~/kg-benchmark/reports/prompt_dev'
 ```
 
 Copy code, docs, tests, and project metadata:
 
 ```bash
-scp -r -o KexAlgorithms=curve25519-sha256 \
-  -i ~/.ssh/gpu-wu-h100_ed25519 \
-  -P 32629 \
+scp -r -i "$GPU_VM_KEY" -P "$GPU_VM_PORT" \
   pyproject.toml uv.lock requirements.txt .env.example \
   src scripts tests docs-conceptual docs-technical \
-  mvazquez@137.208.33.107:~/kg-benchmark/
+  "$GPU_VM_HOST":~/kg-benchmark/
 ```
 
 Copy Phase F/G data and manifests:
 
 ```bash
-scp -p -o KexAlgorithms=curve25519-sha256 \
-  -i ~/.ssh/gpu-wu-h100_ed25519 \
-  -P 32629 \
+scp -p -i "$GPU_VM_KEY" -P "$GPU_VM_PORT" \
   data/03_world_state.json \
   data/04_classified_benchmark.jsonl \
-  mvazquez@137.208.33.107:~/kg-benchmark/data/
+  "$GPU_VM_HOST":~/kg-benchmark/data/
 ```
 
 ```bash
-scp -o KexAlgorithms=curve25519-sha256 \
-  -i ~/.ssh/gpu-wu-h100_ed25519 \
-  -P 32629 \
+scp -i "$GPU_VM_KEY" -P "$GPU_VM_PORT" \
   reports/benchmark_selection/dev_prompt_v1_seed_13.json \
   reports/benchmark_selection/dev_prompt_holdout_spec_v4_96_seed_17.json \
   reports/benchmark_selection/core_v1_seed_13.json \
-  mvazquez@137.208.33.107:~/kg-benchmark/reports/benchmark_selection/
+  "$GPU_VM_HOST":~/kg-benchmark/reports/benchmark_selection/
 ```
 
 ```bash
-scp -o KexAlgorithms=curve25519-sha256 \
-  -i ~/.ssh/gpu-wu-h100_ed25519 \
-  -P 32629 \
+scp -i "$GPU_VM_KEY" -P "$GPU_VM_PORT" \
   reports/prompt_dev/prompt_validity_charter.md \
-  mvazquez@137.208.33.107:~/kg-benchmark/reports/prompt_dev/
+  "$GPU_VM_HOST":~/kg-benchmark/reports/prompt_dev/
 ```
 
 Do not copy the local `.env` by default. It may contain Azure or university endpoint secrets that are not needed for the

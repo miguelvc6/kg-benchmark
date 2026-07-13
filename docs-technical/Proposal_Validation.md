@@ -30,9 +30,13 @@ Current runtime behavior:
 - normalizes proposal-level `uncertainty` into `{"confidence": <0.0-1.0>, "notes": ...}` when present
 - emits a deterministic `canonical_hash`
 
-## T-box Contract
+## T-box Contracts
 
-The T-box contract is defined by [tbox_reform_proposal.schema.json](../schemas/tbox_reform_proposal.schema.json).
+The legacy strict-signature contract is defined by
+[tbox_reform_proposal.schema.json](../schemas/tbox_reform_proposal.schema.json). The taxonomy-patch contract is defined
+separately by
+[tbox_taxonomy_patch_proposal.schema.json](../schemas/tbox_taxonomy_patch_proposal.schema.json) and normalized by
+`guardian.tbox_taxonomy_patch_parser`.
 
 Current runtime behavior:
 
@@ -80,5 +84,7 @@ Legacy proposals that omit `rationale`, `provenance`, or `uncertainty` still nor
 Current parser coverage includes:
 
 - existing A-box parser tests in [test_patch_parser.py](../tests/test_patch_parser.py)
-- T-box parser tests in [test_tbox_parser.py](../tests/test_tbox_parser.py)
+- strict T-box parser tests in [test_tbox_parser.py](../tests/test_tbox_parser.py)
+- taxonomy-patch parser tests in
+  [test_tbox_taxonomy_patch_parser.py](../tests/test_tbox_taxonomy_patch_parser.py)
 - track-diagnosis parser tests in [test_track_parser.py](../tests/test_track_parser.py)

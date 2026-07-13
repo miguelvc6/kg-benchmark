@@ -1,0 +1,94 @@
+{
+  "manifest_type": "kg_benchmark_release",
+  "manifest_version": 3,
+  "created_at_utc": "2026-07-13T11:09:47Z",
+  "release_kind": "dataset",
+  "status": "candidate",
+  "snapshot_id": "synthetic-fixture-v0.1.0",
+  "code": {
+    "commit": "348def59c05f55e7893863dc7c6b4dc32c11f97b",
+    "dirty": true
+  },
+  "validation": {
+    "passed": true,
+    "release_kind": "dataset",
+    "checks": {
+      "stage2_nonempty": true,
+      "stage2_ids_complete": true,
+      "stage2_ids_unique": true,
+      "stage4_nonempty": true,
+      "stage4_ids_unique": true,
+      "full_stage4_schema_valid": true,
+      "world_state_contract_valid": true,
+      "world_state_ids_unique": true,
+      "stage2_stage4_ids_match": true,
+      "stage2_world_state_ids_match": true,
+      "stage4_context_refs_match": true,
+      "snapshot_manifest_valid": true,
+      "snapshot_artifact_hashes_match": true,
+      "subset_partition_present": true,
+      "selected_ids_present": true,
+      "tbox_cap_valid": true,
+      "abox_cap_valid": true,
+      "exclude_case_isolation": true,
+      "exclude_group_isolation": true,
+      "exclude_tbox_isolation": true
+    },
+    "counts": {
+      "stage2_records": 1,
+      "stage4_records": 1,
+      "world_state_records": 1,
+      "selected": 0,
+      "selected_observed": 0,
+      "stage4_schema_invalid_records": 0,
+      "stage4_schema_errors": 0,
+      "world_state_errors": 0,
+      "max_tbox_per_revision": 0,
+      "max_abox_per_qid_property": 0
+    },
+    "differences": {
+      "stage2_only_vs_stage4": [],
+      "stage4_only_vs_stage2": [],
+      "stage2_only_vs_world_state": [],
+      "world_state_only_vs_stage2": [],
+      "missing_selected_case_ids": [],
+      "context_ref_mismatches": []
+    },
+    "schema_error_examples": [],
+    "world_state_error_examples": [],
+    "snapshot_id": "synthetic-fixture-v0.1.0",
+    "snapshot_schema_errors": []
+  },
+  "files": [
+    {
+      "role": "stage2_repairs",
+      "path": "02_wikidata_repairs.json",
+      "size_bytes": 1251,
+      "sha256": "bca1db6bcfe81a4bc0dbd9ab02a9781cae1ea1841253b72e0380226081c6a064"
+    },
+    {
+      "role": "world_state",
+      "path": "03_world_state.json",
+      "size_bytes": 973,
+      "sha256": "aede634f3ac7df0a98784d3f03cdd7e7241b7763ea4f16dac57403e125be5ee8"
+    },
+    {
+      "role": "classified_benchmark",
+      "path": "04_classified_benchmark.jsonl",
+      "size_bytes": 3118,
+      "sha256": "494b39e8460d5438758618470deba06d452ec8295245825b0ca697116dfaaf81"
+    },
+    {
+      "role": "classified_benchmark_schema",
+      "path": "schemas/04_classified_benchmark.schema.json",
+      "size_bytes": 6787,
+      "sha256": "086cf06c3f18b033f42352bac0df1024b20bedba7a55de7dd5fb53376d0f8353"
+    },
+    {
+      "role": "snapshot_manifest",
+      "path": "snapshot_manifest.json",
+      "size_bytes": 821,
+      "sha256": "57c2eeafcb9694b8f4781d4063ed639f585aa5e2f2a2aa19096c049f9533940e"
+    }
+  ]
+}

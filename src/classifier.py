@@ -30,6 +30,7 @@ from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple
 import ijson
 from tqdm import tqdm
 
+from lib.repair_state import derive_value_change_summary, pre_repair_target_raw_value
 from lib.utils import (
     _json_default,
     count_repairs,
@@ -42,8 +43,6 @@ from lib.utils import (
     safe_get,
     utc_now_iso,
 )
-from lib.repair_state import pre_repair_target_raw_value
-from lib.repair_state import derive_value_change_summary
 
 DATE_ISO_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 WIKIDATA_DATE_RE = re.compile(r"^[+-]\d{4,}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}Z)?$")
@@ -1337,7 +1336,6 @@ class ConstraintDiffer:
             "mapped_violation_reason",
         )}
         mapped_qid = mapping["mapped_violation_constraint_qid"]
-        report_tokens = selected["report_tokens"]
         overlap = selected["overlap"]
         compatible_overlap = selected["compatible_overlap"]
         target_qid, target_reason, target_confidence, target_is_changed, target_is_related = self._select_target_qid(
@@ -1438,7 +1436,6 @@ class ConstraintDiffer:
             trace.append({"step": "tbox_causality", "result": "UNKNOWN_TBOX_CAUSALITY", **causality_detail})
             return "UNKNOWN_TBOX_CAUSALITY", trace, "No changed target constraint could be selected for the reported violation."
 
-        target_family = _constraint_family(target_qid, target_label)
         target_change_rows = [
             row for row in self.qualifier_value_changes if row.get("constraint_qid") == target_qid
         ]

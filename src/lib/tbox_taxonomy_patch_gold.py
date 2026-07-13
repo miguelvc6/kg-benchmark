@@ -8,7 +8,6 @@ from typing import Any, Iterable
 
 from guardian.common import PatchValidationError, normalize_pid, normalize_qid
 
-
 REPAIR_OP_TO_CODE = {
     "CONSTRAINT_REMOVE": "C_MINUS",
     "CONSTRAINT_DEPRECATE": "C_D",

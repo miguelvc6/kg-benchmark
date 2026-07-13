@@ -6,7 +6,6 @@ from collections import Counter
 from math import ceil
 from pathlib import Path
 
-
 TBOX_TRACK_MARKER = '"track": "T_BOX"'
 PROPERTY_REVISION_RE = re.compile(r'"property_revision_id"\s*:\s*(\d+)')
 

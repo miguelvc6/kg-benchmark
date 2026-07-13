@@ -10,9 +10,10 @@ from typing import Any, Iterable
 
 from jsonschema import Draft202012Validator
 
-from artifact_release import _git_state, sha256_file, verify_release_manifest
+from artifact_release import _git_state, git_commit_exists, sha256_file, verify_release_manifest
 
 PROTOCOL_STATUSES = {"draft", "frozen"}
+PROTOCOL_PHASES = {"allocation", "execution"}
 
 
 def _relative_path(path: Path, root: Path) -> str:
@@ -38,6 +39,7 @@ def build_protocol_manifest(
     *,
     protocol_root: str | Path,
     protocol_id: str,
+    protocol_phase: str,
     release_manifest_path: str | Path,
     models: Iterable[dict[str, str]],
     conditions: Iterable[str],
@@ -50,6 +52,8 @@ def build_protocol_manifest(
 ) -> dict[str, Any]:
     if status not in PROTOCOL_STATUSES:
         raise ValueError(f"Unsupported protocol status: {status}")
+    if protocol_phase not in PROTOCOL_PHASES:
+        raise ValueError(f"Unsupported protocol phase: {protocol_phase}")
     normalized_models = [dict(model) for model in models]
     if not normalized_models or any(not model.get("name") or not model.get("digest") for model in normalized_models):
         raise ValueError("At least one model with a stable name and digest is required.")
@@ -65,14 +69,15 @@ def build_protocol_manifest(
     if not release_verification["passed"]:
         raise ValueError("Protocol cannot reference an invalid release manifest.")
     release = json.loads(release_path.read_text(encoding="utf-8"))
+    expected_release_kind = "dataset" if protocol_phase == "allocation" else "evaluation"
+    if release.get("release_kind") != expected_release_kind:
+        raise ValueError(f"{protocol_phase.title()} protocols require a {expected_release_kind} release.")
     code = _git_state()
     if status == "frozen":
         if release.get("status") != "confirmatory":
             raise ValueError("Frozen protocols require a confirmatory release.")
         if not code.get("commit") or code.get("dirty") is not False:
             raise ValueError("Frozen protocols require a clean Git commit.")
-        if release.get("code", {}).get("commit") != code["commit"]:
-            raise ValueError("Protocol and release must reference the same Git commit.")
 
     files = [_fingerprint("release_manifest", release_path, root)]
     files.extend(
@@ -86,8 +91,9 @@ def build_protocol_manifest(
     files.append(_fingerprint("analysis_plan", Path(analysis_plan_path), root))
     manifest = {
         "manifest_type": "research_protocol_freeze",
-        "manifest_version": 1,
+        "manifest_version": 2,
         "protocol_id": protocol_id,
+        "protocol_phase": protocol_phase,
         "status": status,
         "created_at_utc": datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
         "code": code,
@@ -147,14 +153,19 @@ def verify_protocol_manifest(
         verify_release_manifest(release_path, release_root=root) if release_hash_matches else {"passed": False}
     )
     release = json.loads(release_path.read_text(encoding="utf-8")) if release_hash_matches else {}
+    expected_release_kind = (
+        "dataset" if manifest.get("protocol_phase") == "allocation" else "evaluation"
+    )
     checks = {
         "manifest_schema_valid": not schema_errors,
         "status_frozen": manifest.get("status") == "frozen",
         "code_clean": manifest.get("code", {}).get("dirty") is False,
+        "code_commit_exists": git_commit_exists(manifest.get("code", {}).get("commit")),
         "release_hash_matches": bool(release_hash_matches),
         "release_verified": bool(release_verification.get("passed")),
         "release_confirmatory": release.get("status") == "confirmatory",
-        "code_matches_release": manifest.get("code", {}).get("commit") == release.get("code", {}).get("commit"),
+        "release_kind_matches_protocol_phase": release.get("release_kind") == expected_release_kind,
+        "release_code_recorded": bool(release.get("code", {}).get("commit")),
         "all_protocol_files_match": bool(file_checks) and all(
             all(item.values()) for item in file_checks.values()
         ),
@@ -176,6 +187,7 @@ def main() -> int:
     build = subparsers.add_parser("build")
     build.add_argument("--protocol-root", default=".")
     build.add_argument("--protocol-id", required=True)
+    build.add_argument("--protocol-phase", choices=sorted(PROTOCOL_PHASES), required=True)
     build.add_argument("--release-manifest", required=True)
     build.add_argument("--model", action="append", required=True, help="NAME=DIGEST; repeat for each model.")
     build.add_argument("--condition", action="append", required=True)
@@ -203,6 +215,7 @@ def main() -> int:
     manifest = build_protocol_manifest(
         protocol_root=args.protocol_root,
         protocol_id=args.protocol_id,
+        protocol_phase=args.protocol_phase,
         release_manifest_path=args.release_manifest,
         models=models,
         conditions=args.condition,

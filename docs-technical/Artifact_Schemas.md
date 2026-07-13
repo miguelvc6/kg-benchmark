@@ -261,10 +261,11 @@ The audit policy report is produced by `src/apply_audit_policy.py`. It has `mani
 
 ## Proposal Artifacts
 
-Two normalized proposal contracts are now implemented:
+Four normalized model-output contracts are implemented:
 
 - `schemas/verified_repair_proposal.schema.json` for A-box entity repairs
-- `schemas/tbox_reform_proposal.schema.json` for T-box schema reforms
+- `schemas/tbox_reform_proposal.schema.json` for legacy strict-signature T-box reforms
+- `schemas/tbox_taxonomy_patch_proposal.schema.json` for taxonomy-patch T-box repairs
 - `schemas/track_diagnosis.schema.json` for A-box vs T-box diagnosis outputs
 
 Normalized A-box proposal JSONL records contain:
@@ -275,6 +276,15 @@ Normalized A-box proposal JSONL records contain:
 - `ops`
 - required `rationale`, `provenance`, `uncertainty`
 - optional `metadata`
+- `canonical_hash`
+
+Normalized taxonomy-patch T-box proposal JSONL records contain:
+
+- `case_id`
+- `schema_decision`
+- `target.pid` and a decision-dependent `target.constraint_type_qid`
+- zero or more taxonomy `repairs` with operation, taxonomy code, visible deltas, and evidence level
+- required `rationale`, `provenance`, and `uncertainty`
 - `canonical_hash`
 
 Normalized T-box proposal JSONL records contain:
@@ -372,7 +382,11 @@ When the runner uses `--execution-mode batch`, the same run directory also inclu
 
 `run_manifest.jsonl` includes per-call provider, model, token usage, cached token counts when available, elapsed seconds when available, estimated cost when pricing metadata is configured, and cost-estimation metadata including whether batch pricing was applied. Recovered batch rows may also include a `recovery` object describing a synchronous retry after a retryable batch failure.
 
-`run_config.json` stores the stable run configuration, including provider/model choice, the optional OpenAI reasoning-effort setting, execution mode, proposal-track mode, selected case ids, and selected generation artifact path when present. The runner uses this file to validate `--resume-run-dir` invocations before it appends new results into an interrupted run directory.
+`run_config.json` stores the stable run configuration, including provider/model choice, model digest when available,
+resolved inference settings, Git commit and dirty state, input/schema/prompt fingerprints, execution mode,
+proposal-track mode, task and prompt versions, selected case ids, and selected generation artifact path when present.
+The runner uses this file to validate `--resume-run-dir` invocations before it appends new results into an interrupted
+run directory.
 
 `reasoning_floor_summary.json` includes aggregated run-level token totals, cached token totals when available, estimated cost, elapsed time, provider, model, the OpenAI reasoning-effort setting when applicable, execution mode, an explicit `run_info.batch_mode_used` flag, output directory, cost-estimation metadata, and input references including the optional selection manifest path. The same OpenAI reasoning-effort value is also stored in the summary input block when present. OpenAI batch calls apply a built-in `0.5` cost-estimation multiplier. If some batch failures are retried synchronously, the summary reports `usage.cost_estimation_mode: "mixed"` and includes both `usage.per_call_cost_estimation_modes` and `usage.per_call_cost_estimation_multipliers`. Batch runs also include provider batch metadata under `run_info.batch`, including `run_info.batch.sync_retry_fallback` and per-phase `run_info.batch.phases[*].sync_retry_fallback`. Resumed runs also include `run_info.resume` metadata describing the reused run directory and the amount of generation work already completed before the resumed process began.
 
@@ -387,14 +401,21 @@ The combined and per-bundle evaluation summaries now also expose:
 
 ## Schema Files in `schemas/`
 
-Three schema files exist in the repository:
+The repository schema set covers:
 
-- `schemas/04_classified_benchmark.schema.json`: intended to describe the lean Stage 4 artifact, but it is not kept in lockstep with the current Python output
-- `schemas/verified_repair_proposal.schema.json`: implemented by `guardian.patch_parser`
-- `schemas/tbox_reform_proposal.schema.json`: implemented by `guardian.tbox_parser`
-- `schemas/track_diagnosis.schema.json`: implemented by `guardian.track_parser`
+- `04_classified_benchmark.schema.json`: lean Stage 4 v2 records
+- `verified_repair_proposal.schema.json`: A-box proposals
+- `tbox_reform_proposal.schema.json`: legacy strict-signature T-box proposals
+- `tbox_taxonomy_patch_proposal.schema.json`: taxonomy-patch T-box proposals
+- `track_diagnosis.schema.json`: track diagnosis
+- `few_shot_support_set.schema.json`: frozen few-shot support sets
+- `snapshot_manifest.schema.json`: named data snapshots and Stage 2/3/4 hash binding
+- `release_manifest.schema.json`: validated content-addressed releases
+- `research_protocol.schema.json`: frozen experiment protocols
+- `experiment_registry.schema.json`: exploratory, confirmatory, and superseded run registry
 
-Treat `schemas/04_classified_benchmark.schema.json` as a design asset unless it is brought back into sync with the classifier output.
+`tests/test_json_schemas.py` validates every `*.schema.json` file as Draft 2020-12. Release validation additionally
+checks every Stage 4 record against the Stage 4 schema.
 
 ## Related Docs
 

@@ -1,0 +1,20 @@
+{
+  "build_utc": "2026-07-13T11:09:46Z",
+  "inputs": {
+    "repairs": "release/sample-v0.1.0/02_wikidata_repairs.json",
+    "world_state": "release/sample-v0.1.0/03_world_state.json",
+    "popularity": null
+  },
+  "counts": {
+    "class:TypeC": 1,
+    "subtype:EXTERNAL_BY_ELIMINATION": 1,
+    "confidence:medium": 1,
+    "track:A_BOX": 1,
+    "truth_source:repair_target.new_value": 1,
+    "output_records": 1
+  },
+  "errors": {},
+  "decision_trace": {
+    "external_by_elimination": 1
+  }
+}

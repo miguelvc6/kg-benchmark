@@ -157,7 +157,7 @@ Fallback to record id with `weak_group_key=true` only when either qid or propert
 
 - Dev and core must have no shared case ids.
 - Dev and core must have no shared T-box property-revision group keys.
-- Dev and core should have no shared A-box `(qid, property)` group keys. If impossible, the selector must emit a warning and exact overlap count.
+- Dev and core must have no shared A-box `(qid, property)` group keys. Any overlap is a hard manifest-validation failure.
 
 ## 7. Popularity stratification
 
@@ -219,6 +219,7 @@ Every manifest must include a `validation` object with:
   "max_abox_per_qid_property": 3,
   "dev_core_case_overlap": 0,
   "dev_core_tbox_revision_overlap": 0,
+  "dev_core_abox_group_overlap": 0,
   "unknown_or_low_confidence_in_main_score": 0,
   "diagnostic_subtypes_in_main_score": 0
 }

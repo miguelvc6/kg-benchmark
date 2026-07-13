@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kg-benchmark.local/schemas/snapshot_manifest.schema.json",
+  "title": "KG Benchmark Snapshot Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest_type",
+    "manifest_version",
+    "snapshot_id",
+    "created_at_utc",
+    "context_policy",
+    "repair_time_complete",
+    "sources",
+    "artifacts"
+  ],
+  "properties": {
+    "manifest_type": {"const": "kg_benchmark_snapshot"},
+    "manifest_version": {"const": 1},
+    "snapshot_id": {"type": "string", "minLength": 1},
+    "created_at_utc": {"type": "string", "format": "date-time"},
+    "context_policy": {"const": "later_frozen_context_with_historical_target_reconstruction"},
+    "repair_time_complete": {"const": false},
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "source_id", "retrieved_at_utc"],
+        "properties": {
+          "name": {"type": "string", "minLength": 1},
+          "source_id": {"type": "string", "minLength": 1},
+          "retrieved_at_utc": {"type": "string", "format": "date-time"},
+          "immutable": {"type": "boolean"},
+          "url": {"type": "string", "minLength": 1},
+          "notes": {"type": "string"}
+        }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stage2_repairs_sha256",
+        "world_state_sha256",
+        "classified_benchmark_sha256"
+      ],
+      "properties": {
+        "stage2_repairs_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "world_state_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "classified_benchmark_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    }
+  }
+}
+

@@ -1,0 +1,99 @@
+{
+  "manifest_type": "kg_benchmark_distribution",
+  "manifest_version": 1,
+  "status": "draft",
+  "release": {
+    "benchmark_version": "UNRELEASED",
+    "repository_url": "https://github.com/miguelvc6/kg-benchmark",
+    "source_commit": null,
+    "release_manifest_url": null,
+    "release_manifest_sha256": null
+  },
+  "source_snapshots": [
+    {
+      "source_id": "wikidata_historical_repairs",
+      "description": "Wikidata constraint-violation reports and revision history used to reconstruct repair events",
+      "status": "unresolved",
+      "snapshot_at_utc": null,
+      "source_url": null,
+      "upstream_license_id": "CC0-1.0",
+      "notes": "The current repository does not bind the exact query, endpoint, collection window, and response hashes to a tracked release manifest. Resolve all fields before publication."
+    },
+    {
+      "source_id": "wikidata_world_state",
+      "description": "Wikidata entity and property state used to build frozen evaluation context",
+      "status": "unresolved",
+      "snapshot_at_utc": null,
+      "source_url": null,
+      "upstream_license_id": "CC0-1.0",
+      "notes": "The local artifact was built in 2026, but the exact upstream snapshot time and source locator are not recorded in a tracked immutable manifest."
+    },
+    {
+      "source_id": "wikidata_popularity",
+      "description": "Wikidata-derived popularity signals used for benchmark stratification",
+      "status": "unresolved",
+      "snapshot_at_utc": null,
+      "source_url": null,
+      "upstream_license_id": "CC0-1.0",
+      "notes": "Record the exact endpoint or dump, request/query definition, collection time, and checksum before publication."
+    }
+  ],
+  "artifacts": [
+    {
+      "artifact_id": "stage2_repairs",
+      "role": "historical repair records",
+      "path": "data/02_wikidata_repairs.json",
+      "required": true,
+      "status": "unresolved",
+      "urls": [],
+      "sha256": null,
+      "size_bytes": null,
+      "media_type": "application/json",
+      "license_id": null,
+      "source_snapshot_ids": ["wikidata_historical_repairs", "wikidata_popularity"],
+      "notes": "No publication URL, immutable checksum, byte count, or project-derived data license is currently declared."
+    },
+    {
+      "artifact_id": "stage3_world_state",
+      "role": "frozen world-state context",
+      "path": "data/03_world_state.json",
+      "required": true,
+      "status": "unresolved",
+      "urls": [],
+      "sha256": null,
+      "size_bytes": null,
+      "media_type": "application/json",
+      "license_id": null,
+      "source_snapshot_ids": ["wikidata_world_state"],
+      "notes": "No publication URL, immutable checksum, byte count, or project-derived data license is currently declared."
+    },
+    {
+      "artifact_id": "stage4_classified_benchmark",
+      "role": "classified benchmark records",
+      "path": "data/04_classified_benchmark.jsonl",
+      "required": true,
+      "status": "unresolved",
+      "urls": [],
+      "sha256": null,
+      "size_bytes": null,
+      "media_type": "application/x-ndjson",
+      "license_id": null,
+      "source_snapshot_ids": ["wikidata_historical_repairs", "wikidata_world_state", "wikidata_popularity"],
+      "notes": "The locally built file is not a published release. Populate this entry from the final immutable release manifest."
+    },
+    {
+      "artifact_id": "stage5_splits",
+      "role": "deterministic train/dev/test split metadata",
+      "path": "data/05_splits.json",
+      "required": true,
+      "status": "unresolved",
+      "urls": [],
+      "sha256": null,
+      "size_bytes": null,
+      "media_type": "application/json",
+      "license_id": null,
+      "source_snapshot_ids": [],
+      "notes": "The canonical Stage 5 release artifact has not been generated and published."
+    }
+  ]
+}

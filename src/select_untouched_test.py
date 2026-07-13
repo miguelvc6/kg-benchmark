@@ -186,6 +186,8 @@ def build_untouched_test_manifest(
     if not protocol_verification["passed"]:
         raise ValueError("Untouched allocation requires a verified frozen protocol.")
     protocol = protocol_verification["manifest"]
+    if protocol.get("protocol_phase") != "allocation" or protocol.get("release", {}).get("release_kind") != "dataset":
+        raise ValueError("Untouched allocation requires an allocation protocol bound to a dataset release.")
     target_size = sum(normalized_targets.values())
     if protocol.get("expected_population", {}).get("selected_count") != target_size:
         raise ValueError("Stratum targets must sum to the protocol's expected selected count.")
@@ -225,6 +227,11 @@ def build_untouched_test_manifest(
     selected_ids = [record["id"] for record, _ in selected]
     main_ids = [case_id for case_id in selected_ids if annotations[case_id].get("main_score")]
     diagnostic_ids = [case_id for case_id in selected_ids if annotations[case_id].get("diagnostic_only")]
+    expected_main = protocol.get("expected_population", {}).get("main_score_count")
+    if expected_main != len(main_ids):
+        raise ValueError(
+            f"Allocated main-score count {len(main_ids)} does not match protocol expectation {expected_main}."
+        )
     created_at = datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     manifest = {
         "manifest_type": "untouched_test_private_allocation",

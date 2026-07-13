@@ -7,12 +7,13 @@ from collections import Counter
 from pathlib import Path
 from unittest.mock import patch
 
+import lib.prompt_dev as prompt_dev_lib
+import scripts.prompt_dev_templates as prompt_templates
 from guardian.model_provider import StaticResponseProvider
 from guardian.patch_parser import normalize_proposal as normalize_a_box_proposal
 from guardian.prompts import get_prompt_template
 from guardian.tbox_taxonomy_patch_parser import normalize_tbox_taxonomy_patch
 from guardian.track_parser import normalize_diagnosis
-import lib.prompt_dev as prompt_dev_lib
 from lib.prompt_dev import (
     PromptDevEvaluateOptions,
     PromptDevMatrixOptions,
@@ -23,7 +24,6 @@ from lib.prompt_dev import (
     render_prompt_dev_prompts,
     select_examples,
 )
-import scripts.prompt_dev_templates as prompt_templates
 from scripts.prompt_dev_templates import render_prompt_dev_prompt
 
 
@@ -1265,6 +1265,42 @@ class PromptDevTests(unittest.TestCase):
             self.assertIn("## A-Box", markdown)
             self.assertIn("## T-Box Taxonomy Patch", markdown)
             self.assertIn("No combined A-box/T-box headline", markdown)
+
+    def test_few_shot_report_rejects_unequal_case_populations(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            common = {
+                "task": "repair_proposal",
+                "representation": "hybrid_json_nl",
+                "context_bundle": "logic_only",
+                "track_mode": "oracle",
+                "counts": {"by_historical_track": {"A_BOX": 1}},
+            }
+            summary = {
+                "results": [
+                    {
+                        **common,
+                        "matrix_id": "zero",
+                        "example_policy": "zero_shot",
+                        "case_ids": ["case_a"],
+                        "output_dir": str(root / "zero"),
+                    },
+                    {
+                        **common,
+                        "matrix_id": "few",
+                        "example_policy": "static_diverse_kshot",
+                        "case_ids": ["case_b"],
+                        "output_dir": str(root / "few"),
+                    },
+                ]
+            }
+
+            with self.assertRaisesRegex(ValueError, "populations differ"):
+                prompt_dev_lib._few_shot_reports(
+                    summary=summary,
+                    output_dir=root,
+                    diagnosis_report=None,
+                )
 
     def test_static_only_few_shot_delta_uses_existing_zero_shot_baseline_summary(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:

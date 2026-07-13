@@ -8,6 +8,7 @@ The benchmark evaluation entry point is `src/evaluate.py`.
 - Stage 3 world state
 - normalized A-box proposal JSONL
 - normalized T-box proposal JSONL
+- optional normalized taxonomy-patch T-box proposal JSONL for the separate taxonomy-patch evaluator
 - optional normalized track-diagnosis JSONL
 - optional reasoning-floor run manifest
 - optional benchmark selection manifest containing `selected_case_ids`
@@ -76,6 +77,22 @@ Family-level T-box compatibility requires:
 - when the evaluator can identify a specific historical target constraint family, the proposal must target that same family
 - the proposal action maps to the same semantic family as the historical reform
 - the proposed `signature_after` is directionally compatible with that family when the historical `signature_before` makes direction inferable
+
+## Taxonomy-Patch T-box Evaluation
+
+The taxonomy-patch task is a separate metric family implemented in
+`guardian.tbox_taxonomy_patch_evaluator`. It compares normalized taxonomy-patch proposals against a versioned gold
+JSONL and reports schema-decision, constraint-family, taxonomy-code, repair-operation, and value-delta metrics with
+explicit applicability denominators.
+
+Prompt-development runs invoke this evaluator and write `tbox_taxonomy_patch_evaluation_summary.json`. The
+reasoning-floor runner can currently generate and normalize taxonomy-patch proposals when
+`TBOX_TASK_VERSION=tbox_taxonomy_patch_v1`, but its generic per-bundle `evaluation_summary.json` remains the strict
+evaluator output. Do not interpret missing strict T-box proposals as taxonomy-patch failures; run the taxonomy-patch
+evaluator against the versioned gold artifact before reporting those results.
+
+Strict-signature and taxonomy-patch scores measure different tasks and must remain separate in tables and registry
+metadata.
 
 ## Summary Splits
 

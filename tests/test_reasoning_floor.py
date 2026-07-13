@@ -1172,7 +1172,7 @@ class ReasoningFloorTests(unittest.TestCase):
                 "label": "Entity",
                 "description": "desc",
                 "sitelinks_count": 1,
-                "properties": {"P31": ["Q_NEW"], "P279": ["Q_LOCAL"]},
+                "properties": {"P31": ["Q_NEW"], "P279": ["Q_LOCAL"], "P999": ["Q_NEW"]},
             },
             "L2_labels": {
                 "entities": {
@@ -1192,9 +1192,17 @@ class ReasoningFloorTests(unittest.TestCase):
                         "target_description": "Current value",
                     },
                     {"property_id": "P279", "target_qid": "Q_LOCAL"},
+                    {"property_id": "P999", "target_qid": "Q_NEW"},
                 ]
             },
-            "L4_constraints": {"constraints": []},
+            "L4_constraints": {
+                "constraints": [
+                    {
+                        "constraint_type": {"qid": "Q21510859"},
+                        "qualifiers": [{"property_id": "P2305", "values": ["Q_NEW"]}],
+                    }
+                ]
+            },
         }
 
         proposal_payload = _extract_input_case(build_prompt_bundle(record, world_state_entry, "local_graph").prompt)

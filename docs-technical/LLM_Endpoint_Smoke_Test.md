@@ -27,7 +27,7 @@ OLLAMA_SEED=13
 Azure AI endpoint:
 
 ```dotenv
-AZURE_OPENAI_ENDPOINT=https://mvazquez-it-184686-ki.openai.azure.com/openai/v1
+AZURE_OPENAI_ENDPOINT=https://your-azure-resource.example/openai/v1
 AZURE_OPENAI_DEPLOYMENT=gpt-5.4-nano
 AZURE_OPENAI_API_KEY=your-api-key
 ```

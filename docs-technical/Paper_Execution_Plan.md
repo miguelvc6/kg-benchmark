@@ -1,6 +1,12 @@
 # Paper Execution Plan
 
-This runbook is the command-by-command sequence for producing the benchmark artifacts and zero-shot paper outputs from the current repository.
+> **Historical and superseded.** This document records the exploratory Phase F/G workflow used before release
+> governance, content-addressed artifacts, independent annotation, protocol freezing, and untouched-test controls were
+> implemented. Do not use it for confirmatory results or a paper release. Use
+> [Research Release Protocol](./Research_Release_Protocol.md) as the current engineering runbook.
+
+This runbook is retained as the command-by-command sequence that produced legacy benchmark artifacts and zero-shot
+exploratory outputs.
 
 The commands below assume a bash shell on Linux or WSL and a full build, not a sample run.
 
@@ -45,7 +51,7 @@ If your dump is elsewhere on disk, link it into the repository path used by the 
 ## 1. Environment Setup
 
 ```bash
-cd /mnt/c/Code/kg-benchmark
+cd /path/to/kg-benchmark
 
 export UV_PROJECT_ENVIRONMENT=.venv-wsl
 uv sync
@@ -229,7 +235,7 @@ Azure:
 
 ```dotenv
 MODEL_ENDPOINT=azure
-AZURE_OPENAI_ENDPOINT=https://mvazquez-it-184686-ki.openai.azure.com/openai/v1
+AZURE_OPENAI_ENDPOINT=https://your-azure-resource.example/openai/v1
 AZURE_OPENAI_DEPLOYMENT=gpt-5.4-nano
 AZURE_OPENAI_API_KEY=YOUR_API_KEY
 ```
@@ -426,7 +432,7 @@ MAIN_SCORE_CASE_IDS=$(uv run python -c 'import json; print(",".join(json.load(op
 If you only want the shortest strict sequence, run these in order:
 
 ```bash
-cd /mnt/c/Code/kg-benchmark
+cd /path/to/kg-benchmark
 export UV_PROJECT_ENVIRONMENT=.venv-wsl
 uv sync
 mkdir -p data reports logs

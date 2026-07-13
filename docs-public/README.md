@@ -14,6 +14,8 @@ Start here:
 - [Benchmark Invariants](./Benchmark_Invariants.md): the rules that must stay true when loading, prompting, and evaluating cases
 - [Correct Usage and Pitfalls](./Correct_Usage_and_Pitfalls.md): the shortest path to using the benchmark correctly and the most common failure modes
 - [Release Structure](./Release_Structure.md): how to think about the benchmark release versus protocol/runtime releases
+- [Artifact Acquisition](../docs-technical/Artifact_Acquisition.md): clean-clone download, checksum verification, and the
+  current unresolved release boundary
 
 Canonical deeper references:
 

@@ -10,16 +10,18 @@
     "created_at_utc",
     "release_kind",
     "status",
+    "snapshot_id",
     "code",
     "validation",
     "files"
   ],
   "properties": {
     "manifest_type": {"const": "kg_benchmark_release"},
-    "manifest_version": {"const": 2},
+    "manifest_version": {"const": 3},
     "created_at_utc": {"type": "string", "format": "date-time"},
     "release_kind": {"enum": ["dataset", "evaluation"]},
     "status": {"enum": ["candidate", "confirmatory"]},
+    "snapshot_id": {"type": "string", "minLength": 1},
     "code": {
       "type": "object",
       "additionalProperties": false,
@@ -41,7 +43,7 @@
     },
     "files": {
       "type": "array",
-      "minItems": 4,
+      "minItems": 5,
       "items": {
         "type": "object",
         "additionalProperties": false,

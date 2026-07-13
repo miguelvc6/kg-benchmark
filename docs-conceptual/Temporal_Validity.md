@@ -47,6 +47,22 @@ It is:
 
 This framing preserves causal attribution between the original violation, the historical repair, and the evaluated proposal.
 
+## Scope Of The Temporal Claim
+
+The benchmark does **not** reconstruct the complete graph as it existed at the repair timestamp. Labels, descriptions,
+non-target properties, neighborhood structure, and constraint context come from a later frozen snapshot. Only the edited
+target property is reconstructed from historical repair metadata. The scientific task must therefore be described as a
+**historically targeted repair under later frozen context**, not as repair from a complete historical world state.
+
+Every released dataset binds Stage 2, the world state, and Stage 4 to a snapshot manifest with source identifiers and
+artifact hashes. Every frozen prompt set must also pass a field-level scan for hidden post-repair target values and retain
+a stratified sample for human review. A passing exact-token scan rules out the tested direct leaks; it does not establish
+that every surrounding field was knowable at repair time or that no semantic paraphrase reveals the answer.
+
+Provenance evaluation follows the same distinction. Structural completeness asks whether a proposal supplies a rationale,
+citation-shaped provenance, and uncertainty. Provenance support asks whether the cited identifier or snippet occurs in the
+model-visible evidence. Neither measure alone establishes that a citation is factually correct in the historical world.
+
 ## Conceptual Consequence
 
 Temporal filtering and target-property reconstruction are not implementation conveniences. They define the benchmark's scientific validity. Without them, local graph context could leak the answer and no-retrieval success would be hard to distinguish from memorization, leakage, or lucky guessing.

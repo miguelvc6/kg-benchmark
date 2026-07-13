@@ -13,6 +13,10 @@ The implemented repository currently provides:
 - deterministic non-LLM Phase E baselines
 - a zero-shot reasoning-floor baseline runner
 - deterministic train/dev/test split generation
+- group-isolated dev/core selection manifests and untouched-test allocation
+- independent annotation assignment, merge, agreement, and adjudication tooling
+- T-box taxonomy-patch gold extraction, parsing, and evaluation
+- release-manifest, protocol-freeze, experiment-registry, and paired-analysis tooling
 - a Guardian-ready proposal interface for future intervention loops
 
 The repository does not currently provide Guardian multi-turn intervention loops.
@@ -26,6 +30,12 @@ The repository does not currently provide Guardian multi-turn intervention loops
 - `src/evaluate.py`: benchmark evaluation entry point for normalized proposal artifacts.
 - `src/non_llm_baselines.py`: Phase E deterministic non-LLM baseline generator and evaluator.
 - `src/reasoning_floor.py`: zero-shot baseline runner over Stage 4 benchmark cases.
+- `src/annotation_protocol.py`: blinded multi-reviewer annotation assignment and adjudication.
+- `src/artifact_release.py`: release validation, hashing, and manifest verification.
+- `src/protocol_freeze.py`: protocol manifest construction and verification.
+- `src/select_untouched_test.py`: protocol-bound allocation of a post-freeze test manifest.
+- `src/analyze_results.py`: paired cluster-bootstrap and exact paired-binary analysis.
+- `src/experiment_registry.py`: immutable exploratory/confirmatory run registration.
 
 ## Runtime Convention
 
@@ -167,7 +177,7 @@ Classification is offline and deterministic for fixed inputs. No live web calls 
 Implementation details that are easy to miss:
 
 - the classifier builds a SQLite sidecar index next to `03_world_state.json` for keyed lookup during classification
-- missing world-state entries are classified as low-confidence `TypeC/EXTERNAL`
+- missing world-state entries are classified as low-confidence `TypeC/UNKNOWN_MISSING_WORLD_STATE`
 - T-box entries are not mapped to `UNKNOWN`; they receive class `T_BOX` and a schema-change subtype
 - each Stage 4 record gets a `build` block with classifier version and build timestamp
 
@@ -177,11 +187,11 @@ The decision logic itself is documented in [Classifier Specification](./Classifi
 
 `src/splitter.py` creates `data/05_splits.json` from the classified benchmark.
 
-Current stratification dimensions:
+Current group and stratification policy:
 
-- `classification.class`
-- `track`
-- popularity bucket derived from the Stage 4 popularity score
+- A-box cases are grouped by `(qid, property)` and T-box cases by property revision, with explicit weak-key fallbacks.
+- assignment balances track, class, subtype, confidence, popularity bucket, constraint family, and selection stratum.
+- group isolation prevents the same repair event from crossing train/dev/test boundaries.
 
 The splitter raises an error if split proportions drift beyond the configured tolerance or if popularity is missing while `ALLOW_MISSING_POPULARITY` is `False`.
 
@@ -189,10 +199,9 @@ The splitter raises an error if split proportions drift beyond the configured to
 
 `src/select_benchmark_cases.py` derives a small frozen selection manifest from Stage 4.
 
-Current paper policy:
-
-- keep all `A_BOX` cases
-- cap `T_BOX` cases at `100` per `repair_target.property_revision_id`
+Current paper policy uses the fixed Phase C tier definitions in [Benchmark Selection](./Benchmark_Selection.md). Core v1
+targets 4,800 cases, excludes dev case and T-box revision groups, caps T-box property revisions at 10 by default, and
+separates `main_score_case_ids` from `diagnostic_case_ids`.
 
 The selector can write `selected_case_ids` either in global case-id order or in a deterministic seeded shuffled order for mixed small-sample runs.
 
@@ -232,10 +241,14 @@ The default output bundle is `reports/non_llm_baselines/core_v1_phase_e/`. Detai
 
 Current behavior:
 
-- builds three fixed ablation bundles from current artifacts: `minimal_case`, `logic_only`, and `local_graph`
-- runs a separate zero-shot diagnosis call to predict whether the case belongs to the A-box or T-box track
-- routes A-box cases to the A-box proposal schema and T-box cases to the T-box proposal schema
+- supports three fixed ablation bundles: `minimal_case`, `logic_only`, and `local_graph`; the default is
+  `logic_only,local_graph`
+- uses historical-track oracle routing by default and skips the diagnosis request unless explicitly enabled
+- optionally runs `diagnosis_routed`, which diagnoses first and routes or skips the proposal from that prediction
+- supports strict-signature T-box proposals by default and taxonomy-patch T-box proposals when
+  `TBOX_TASK_VERSION=tbox_taxonomy_patch_v1`
 - records raw model responses, parse status, normalized proposals, evaluation traces, and aggregate summaries
+- fingerprints benchmark, world-state, manifest, schema, and prompt inputs and records code/model provenance
 - uses a provider adapter boundary with concrete OpenAI, Ollama, Azure, university Responses API, and static test providers
 
 The runner details are documented in [Reasoning Floor](./Reasoning_Floor.md).
@@ -259,7 +272,8 @@ uv run python src/fetcher.py --max-candidates 100
 uv run python src/fetcher.py --resume-stats logs/fetcher_stats_YYYYMMDDTHHMMSS.jsonl
 uv run python src/fetcher.py --resume-checkpoint logs/resume_checkpoint_YYYYMMDDTHHMMSS.json
 uv run python src/fetcher.py --reuse-popularity-artifact
-uv run python src/select_benchmark_cases.py --classified-benchmark data/04_classified_benchmark.jsonl --output reports/benchmark_selection/paper_eval_tbox_cap_100_seed_13.json
+uv run python src/select_benchmark_cases.py --tier dev --output reports/benchmark_selection/dev_prompt_v1_seed_13.json
+uv run python src/select_benchmark_cases.py --tier core --exclude-manifest reports/benchmark_selection/dev_prompt_v1_seed_13.json --output reports/benchmark_selection/core_v1_seed_13.json
 uv run python src/fetcher.py --validate-only
 uv run python src/classifier.py --sample
 uv run python src/classifier.py --self-test

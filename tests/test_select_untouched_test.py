@@ -48,6 +48,8 @@ class UntouchedTestSelectionTests(unittest.TestCase):
             "passed": True,
             "manifest": {
                 "protocol_id": "protocol_v1",
+                "protocol_phase": "allocation",
+                "release": {"release_kind": "dataset"},
                 "expected_population": {"selected_count": 2, "main_score_count": 2},
             },
         }
@@ -111,6 +113,8 @@ class UntouchedTestSelectionTests(unittest.TestCase):
                 "passed": True,
                 "manifest": {
                     "protocol_id": "protocol_v1",
+                    "protocol_phase": "allocation",
+                    "release": {"release_kind": "dataset"},
                     "expected_population": {"selected_count": 2, "main_score_count": 2},
                 },
             }
@@ -120,6 +124,40 @@ class UntouchedTestSelectionTests(unittest.TestCase):
                         classified_path=classified,
                         exclude_manifests=[exclusion],
                         stratum_targets={"TypeB_LOCAL_TEXT_CONFIRMED": 1},
+                        protocol_manifest_path=protocol,
+                        protocol_root=root,
+                    )
+
+    def test_allocation_requires_main_score_count_matching_protocol(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            classified = root / "classified.jsonl"
+            classified.write_text(
+                "".join(
+                    json.dumps(row) + "\n"
+                    for row in [_record("new_a", "Q2", "P2"), _record("new_b", "Q2", "P2")]
+                ),
+                encoding="utf-8",
+            )
+            exclusion = root / "exclude.json"
+            exclusion.write_text(json.dumps({"selected_case_ids": []}), encoding="utf-8")
+            protocol = root / "protocol.json"
+            protocol.write_text("{}", encoding="utf-8")
+            verification = {
+                "passed": True,
+                "manifest": {
+                    "protocol_id": "protocol_v1",
+                    "protocol_phase": "allocation",
+                    "release": {"release_kind": "dataset"},
+                    "expected_population": {"selected_count": 2, "main_score_count": 1},
+                },
+            }
+            with patch("select_untouched_test.verify_protocol_manifest", return_value=verification):
+                with self.assertRaisesRegex(ValueError, "main-score count"):
+                    build_untouched_test_manifest(
+                        classified_path=classified,
+                        exclude_manifests=[exclusion],
+                        stratum_targets={"TypeB_LOCAL_TEXT_CONFIRMED": 2},
                         protocol_manifest_path=protocol,
                         protocol_root=root,
                     )

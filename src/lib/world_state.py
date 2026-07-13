@@ -1,6 +1,5 @@
 import copy
 import gzip
-import json
 import logging
 import sys
 import time
@@ -9,8 +8,8 @@ from pathlib import Path
 import ijson
 from tqdm import tqdm
 
-from .caching import LabelResolver
 from . import config
+from .caching import LabelResolver
 from .utils import format_datavalue, iter_repairs, pick_description, pick_label
 
 logger = logging.getLogger(__name__)

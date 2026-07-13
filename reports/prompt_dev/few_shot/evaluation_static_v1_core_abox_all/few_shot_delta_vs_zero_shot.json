@@ -5,6 +5,9 @@
   "run_id": "prompt_dev_eval_20260622T083142",
   "provider": "ollama",
   "model": "gpt-oss:120b",
+  "artifact_status": "invalid_superseded",
+  "paper_eligible": false,
+  "invalidation_reason": "Zero-shot and few-shot matrices contain disjoint case populations; aggregate deltas and total usage differences are not treatment effects.",
   "zero_shot_baseline": {
     "source": "/home/wucloud/kg-benchmark/reports/prompt_dev/evaluation_prompt_dev_v5_tbox_taxonomy_patch_holdout96_zero_shot/prompt_dev_evaluation_summary.json",
     "run_id": "prompt_dev_eval_20260617T172125",
@@ -25,7 +28,7 @@
         "few_shot_matrix_id": "prompt_dev_001_hybrid_json_nl_static_diverse_kshot_logic_only_repair_proposal_oracle_no_abstain",
         "few_shot_policy": "static_diverse_kshot",
         "selection_type": "static_support_set",
-        "paper_status": "paper-facing",
+        "paper_status": "invalid_superseded",
         "interpretation": "Static few-shot oracle ablation.",
         "metrics": {
           "overall_a_box_accepted": {
@@ -169,7 +172,7 @@
         "few_shot_matrix_id": "prompt_dev_002_hybrid_json_nl_static_diverse_kshot_local_graph_repair_proposal_oracle_no_abstain",
         "few_shot_policy": "static_diverse_kshot",
         "selection_type": "static_support_set",
-        "paper_status": "paper-facing",
+        "paper_status": "invalid_superseded",
         "interpretation": "Static few-shot oracle ablation.",
         "metrics": {
           "overall_a_box_accepted": {

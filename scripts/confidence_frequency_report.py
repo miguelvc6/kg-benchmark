@@ -11,7 +11,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-
 DEFAULT_INPUT = "data/04_classified_benchmark.jsonl"
 DEFAULT_OUTPUT = "reports/confidence_frequency_report.json"
 MISSING = "__missing__"

@@ -2,7 +2,7 @@
 
 **Project.** WikidataRepairEval 1.0  
 **Purpose.** Benchmarking LLM-assisted knowledge-graph repair using real Wikidata repair events, frozen context, information-access labels, executable proposal contracts, and symbolic evaluation.  
-**Current status.** The benchmark substrate, classifier, reasoning-floor runner, proposal contracts, evaluator, deterministic selection manifest, and project documentation exist. The next phase is classifier hardening, core/dev dataset definition, prompt engineering, manual audit, and LLM experiments.
+**Current status.** The benchmark substrate, hardened classifier, fixed core/dev selection manifests, prompt-development workflow, manual-audit artifacts, reasoning-floor runner, proposal contracts, evaluator, and project documentation exist. Existing model runs remain exploratory; the next phase is independent construct validation, protocol hardening, and confirmatory experiments on an untouched evaluation set.
 
 ---
 
@@ -165,7 +165,7 @@ T-box main-score labels require causal constraint-family alignment or type-compa
 
 The project supports deterministic train/dev/test splits and deterministic paper-subset selection. Selection manifests allow experiments to target a frozen subset without creating a second full benchmark artifact.
 
-The current selector keeps all A-box cases and caps T-box cases per property revision. For broader prompt and model experiments, the project should define:
+The Phase C selector builds fixed dev and core manifests using explicit quotas, per-group caps, popularity-aware selection, and separate main-score and diagnostic partitions. Dev is selected first; core excludes dev case ids, T-box property-revision groups, and A-box `(qid, property)` groups. The project defines:
 
 - a full dataset;
 - a core dataset;

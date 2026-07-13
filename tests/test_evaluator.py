@@ -1149,6 +1149,50 @@ class EvaluatorTests(unittest.TestCase):
             self.assertEqual(trace["details"]["provenance_present"], False)
             self.assertEqual(trace["details"]["uncertainty_present"], False)
 
+    def test_provenance_support_is_separate_from_structural_auditability(self) -> None:
+        from guardian.evaluator import evaluate_a_box_case
+        from guardian.patch_parser import normalize_proposal
+
+        record = {
+            "id": "repair_case",
+            "qid": "Q1",
+            "property": "P31",
+            "track": "A_BOX",
+            "violation_context": {"value": ["Q2"]},
+            "repair_target": {"action": "UPDATE", "old_value": ["Q2"], "new_value": ["Q5"]},
+            "classification": {"class": "TypeB", "subtype": "LOCAL_NEIGHBOR_IDS"},
+        }
+        world_state = {
+            "L1_ego_node": {"properties": {"P31": ["Q2"]}},
+            "L4_constraints": {"constraints": []},
+        }
+
+        def proposal(node_id: str):
+            return normalize_proposal(
+                {
+                    "case_id": "repair_case",
+                    "target": {"qid": "Q1", "pid": "P31"},
+                    "ops": [{"op": "SET", "pid": "P31", "value": "Q5"}],
+                    "rationale": "Replace the invalid value.",
+                    "provenance": [{"kind": "KG", "node_id": node_id}],
+                    "uncertainty": {"confidence": 0.8},
+                }
+            )
+
+        supported = evaluate_a_box_case(record, world_state, proposal("Q2"), {}, {}, "mid", "local_graph")
+        fabricated = evaluate_a_box_case(record, world_state, proposal("Q999999"), {}, {}, "mid", "local_graph")
+
+        self.assertEqual(supported["metrics"]["auditability_complete"], 1.0)
+        self.assertEqual(fabricated["metrics"]["auditability_complete"], 1.0)
+        self.assertEqual(supported["metrics"]["provenance_supported"], 1.0)
+        self.assertEqual(fabricated["metrics"]["provenance_supported"], 0.0)
+        self.assertEqual(fabricated["details"]["provenance_support"]["unsupported_indices"], [0])
+
+        summary = summarize_trace_iterable([supported, fabricated], {"classified_benchmark": "stub"})
+        self.assertEqual(summary["overall_metrics"]["provenance_support_mean"], 0.5)
+        self.assertEqual(summary["overall_metrics"]["provenance_supported_rate"], 0.5)
+        self.assertEqual(summary["overall_metrics"]["metric_applicability"]["provenance_supported"], 2)
+
     def test_tokens_to_fix_sums_diagnosis_and_proposal_tokens_for_accepted_cases(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)

@@ -45,6 +45,21 @@ def _git_state() -> dict[str, Any]:
     return {"commit": commit or None, "dirty": dirty}
 
 
+def git_commit_exists(commit: Any) -> bool:
+    if not isinstance(commit, str) or not commit:
+        return False
+    try:
+        subprocess.run(
+            ["git", "cat-file", "-e", f"{commit}^{{commit}}"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return False
+    return True
+
+
 def _portable_path(path: Path, root: Path) -> str:
     resolved = path.resolve()
     try:
@@ -89,6 +104,7 @@ def validate_release_inputs(
     world_state_path: str | Path,
     stage4_path: str | Path,
     schema_path: str | Path,
+    snapshot_manifest_path: str | Path,
     release_kind: str,
     selection_manifest_path: str | Path | None = None,
 ) -> dict[str, Any]:
@@ -101,6 +117,18 @@ def validate_release_inputs(
     schema = json.loads(Path(schema_path).read_text(encoding="utf-8"))
     Draft202012Validator.check_schema(schema)
     validator = Draft202012Validator(schema)
+
+    snapshot_path = Path(snapshot_manifest_path)
+    snapshot_manifest = json.loads(snapshot_path.read_text(encoding="utf-8"))
+    snapshot_schema_path = Path(__file__).resolve().parents[1] / "schemas" / "snapshot_manifest.schema.json"
+    snapshot_schema = json.loads(snapshot_schema_path.read_text(encoding="utf-8"))
+    snapshot_errors = list(Draft202012Validator(snapshot_schema).iter_errors(snapshot_manifest))
+    snapshot_artifacts = snapshot_manifest.get("artifacts", {})
+    snapshot_hashes_match = not snapshot_errors and snapshot_artifacts == {
+        "stage2_repairs_sha256": sha256_file(stage2_path),
+        "world_state_sha256": sha256_file(world_state_path),
+        "classified_benchmark_sha256": sha256_file(stage4_path),
+    }
 
     selection_path = Path(selection_manifest_path) if selection_manifest_path is not None else None
     selection = load_selection_manifest(selection_path) if selection_path is not None else None
@@ -207,6 +235,8 @@ def validate_release_inputs(
         "stage2_stage4_ids_match": stage2_ids == stage4_ids,
         "stage2_world_state_ids_match": stage2_ids == world_state_ids,
         "stage4_context_refs_match": not context_ref_mismatches,
+        "snapshot_manifest_valid": not snapshot_errors,
+        "snapshot_artifact_hashes_match": snapshot_hashes_match,
         "subset_partition_present": subset_partition_present,
         "selected_ids_present": selection is None or not missing_selected_ids,
         "tbox_cap_valid": selection is None
@@ -243,6 +273,8 @@ def validate_release_inputs(
         },
         "schema_error_examples": schema_error_examples,
         "world_state_error_examples": world_state_error_examples,
+        "snapshot_id": snapshot_manifest.get("snapshot_id"),
+        "snapshot_schema_errors": [error.message for error in snapshot_errors[:20]],
     }
 
 
@@ -264,6 +296,7 @@ def build_release_manifest(
     world_state_path: str | Path,
     stage4_path: str | Path,
     schema_path: str | Path,
+    snapshot_manifest_path: str | Path,
     release_kind: str,
     selection_manifest_path: str | Path | None = None,
     release_status: str = "candidate",
@@ -276,6 +309,7 @@ def build_release_manifest(
         world_state_path=world_state_path,
         stage4_path=stage4_path,
         schema_path=schema_path,
+        snapshot_manifest_path=snapshot_manifest_path,
         release_kind=release_kind,
         selection_manifest_path=selection_manifest_path,
     )
@@ -291,6 +325,7 @@ def build_release_manifest(
         ("world_state", Path(world_state_path)),
         ("classified_benchmark", Path(stage4_path)),
         ("classified_benchmark_schema", Path(schema_path)),
+        ("snapshot_manifest", Path(snapshot_manifest_path)),
     ]
     if selection_manifest_path is not None:
         role_paths.append(("selection_manifest", Path(selection_manifest_path)))
@@ -298,10 +333,11 @@ def build_release_manifest(
     files = [_file_entry(role, path, root) for role, path in role_paths]
     manifest = {
         "manifest_type": "kg_benchmark_release",
-        "manifest_version": 2,
+        "manifest_version": 3,
         "created_at_utc": datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
         "release_kind": release_kind,
         "status": release_status,
+        "snapshot_id": validation["snapshot_id"],
         "code": code,
         "validation": validation,
         "files": files,
@@ -349,6 +385,7 @@ def verify_release_manifest(
         "world_state",
         "classified_benchmark",
         "classified_benchmark_schema",
+        "snapshot_manifest",
     }
     if manifest.get("release_kind") == "evaluation":
         required_roles.add("selection_manifest")
@@ -361,6 +398,7 @@ def verify_release_manifest(
             world_state_path=role_paths["world_state"],
             stage4_path=role_paths["classified_benchmark"],
             schema_path=role_paths["classified_benchmark_schema"],
+            snapshot_manifest_path=role_paths["snapshot_manifest"],
             release_kind=manifest["release_kind"],
             selection_manifest_path=role_paths.get("selection_manifest"),
         )
@@ -369,6 +407,11 @@ def verify_release_manifest(
         "required_roles_present": roles_present,
         "all_files_match": files_pass,
         "validation_recomputed": not rerun_validation or bool(validation and validation["passed"]),
+        "confirmatory_code_verified": manifest.get("status") != "confirmatory"
+        or (
+            manifest.get("code", {}).get("dirty") is False
+            and git_commit_exists(manifest.get("code", {}).get("commit"))
+        ),
     }
     return {
         "passed": all(checks.values()),
@@ -391,6 +434,7 @@ def main() -> int:
     build.add_argument("--world-state", required=True)
     build.add_argument("--stage4", required=True)
     build.add_argument("--schema", default="schemas/04_classified_benchmark.schema.json")
+    build.add_argument("--snapshot-manifest", required=True)
     build.add_argument("--selection-manifest")
     build.add_argument("--artifact", action="append", default=[])
     build.add_argument("--output", required=True)
@@ -415,6 +459,7 @@ def main() -> int:
         world_state_path=args.world_state,
         stage4_path=args.stage4,
         schema_path=args.schema,
+        snapshot_manifest_path=args.snapshot_manifest,
         release_kind=args.release_kind,
         selection_manifest_path=args.selection_manifest,
         release_status=args.release_status,
