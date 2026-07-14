@@ -67,6 +67,15 @@ py-modules = [
     "temporal_audit",
 ]
 
+[tool.setuptools.data-files]
+"paper/prompts" = [
+    "paper/prompts/README.md",
+    "paper/prompts/abox-repair.txt",
+    "paper/prompts/tbox-taxonomy-patch.txt",
+    "paper/prompts/track-diagnosis.txt",
+]
+"schemas" = ["schemas/*.json"]
+
 [tool.ruff]
 line-length = 120
 target-version = "py311"

@@ -144,6 +144,29 @@ def canonicalize_acquisition(*, acquisition_dir: Path, work_dir: Path) -> dict[s
     return counts
 
 
+def canonicalize_case_context_references(cases_path: Path) -> int:
+    """Replace construction-machine Stage 3 paths with the canonical release-relative reference."""
+
+    def rows() -> Iterable[dict[str, Any]]:
+        with cases_path.open(encoding="utf-8") as handle:
+            for line_number, line in enumerate(handle, 1):
+                if not line.strip():
+                    continue
+                try:
+                    row = json.loads(line)
+                except json.JSONDecodeError as exc:
+                    raise ValueError(f"Invalid classified case JSON at {cases_path}:{line_number}") from exc
+                if not isinstance(row, dict):
+                    raise ValueError(f"Classified case at {cases_path}:{line_number} is not an object.")
+                context = row.get("context_ref")
+                if not isinstance(context, dict):
+                    raise ValueError(f"Classified case at {cases_path}:{line_number} has no context_ref object.")
+                context["world_state_path"] = CANONICAL_FILES["world_state"]
+                yield row
+
+    return _write_rows(cases_path, rows())
+
+
 def write_source_provenance(
     *,
     acquisition_dir: Path,

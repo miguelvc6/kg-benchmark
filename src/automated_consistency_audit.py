@@ -208,6 +208,20 @@ class WorldStateLookup:
         temporary.replace(path)
 
     def _iter_world_state(self) -> Iterator[tuple[str, dict[str, Any]]]:
+        if self.world_state_path.suffix.lower() == ".jsonl":
+            with self.world_state_path.open("rb") as handle:
+                for line_number, raw_line in enumerate(handle, 1):
+                    if not raw_line.strip():
+                        continue
+                    row = json.loads(raw_line)
+                    if not isinstance(row, dict):
+                        raise ValueError(f"Invalid world-state JSONL row at line {line_number}.")
+                    case_id = row.get("id") or row.get("case_id")
+                    payload = row.get("world_state") or row.get("context")
+                    if not isinstance(case_id, str) or not isinstance(payload, dict):
+                        raise ValueError(f"Invalid canonical world-state row at line {line_number}.")
+                    yield case_id, payload
+            return
         with self.world_state_path.open("rb") as handle:
             first = b""
             while byte := handle.read(1):

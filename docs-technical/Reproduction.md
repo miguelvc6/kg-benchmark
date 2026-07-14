@@ -3,15 +3,42 @@
 All WSL commands use `UV_PROJECT_ENVIRONMENT=.venv-wsl`. Install with `uv sync --extra dev --extra analysis --extra ui`.
 The repository exposes only `kg-benchmark`; run `kg-benchmark --help` for the paper workflow.
 
+## Implementation acceptance
+
+Before the final methodology freeze, run the complete offline implementation gate from a clean worktree:
+
+```bash
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run ruff check .
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run pytest -q
+git diff --check
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark methodology check
+```
+
+The test suite includes schema and documentation checks, a tracked-files-only clean-clone wheel build/install smoke test,
+and the full synthetic lifecycle from build through paper analysis. The lifecycle uses deterministic fake Codex and
+model executors: it performs no network access or provider calls, but still proves rejection/replacement, generation
+cache reuse, provider-free metric replay, final dataset manifest reproduction, and byte-identical result packages.
+
 Before dataset construction, run `kg-benchmark methodology check`. Candidate validity and final freeze readiness are
 separate: a valid candidate may still report unresolved model revisions, non-frozen statuses, a dirty worktree, or a
 missing lock. `kg-benchmark methodology freeze` writes the deterministic lock only after every other blocker has been
 removed. Acquisition, build, and model execution refuse to run without a matching final lock.
 
-A clean clone obtains the published bulk release with `kg-benchmark fetch --manifest-url ... --manifest-sha256 ...`,
+A clean clone obtains the published bulk release with `kg-benchmark fetch`, using the published manifest URL and hash,
 validates every byte and record count with `kg-benchmark verify --dataset-dir dataset`, plans and executes with
 `kg-benchmark matrix`, and uses `kg-benchmark score` for metric replay. Raw generations live under ignored `runs/`;
 compact aggregate outputs used in the paper live in `results/`.
+
+After publication, a clean clone retrieves and verifies the immutable dataset with explicit release metadata:
+
+```bash
+: "${DATASET_MANIFEST_URL:?Set DATASET_MANIFEST_URL to the published manifest URL}"
+: "${DATASET_MANIFEST_SHA256:?Set DATASET_MANIFEST_SHA256 to its SHA-256}"
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark fetch \
+  --manifest-url "$DATASET_MANIFEST_URL" \
+  --manifest-sha256 "$DATASET_MANIFEST_SHA256"
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark verify --dataset-dir dataset
+```
 
 Dataset construction uses an empty ignored `work/` directory. Acquisition, build, audit, and selection must complete
 before the following command atomically creates the immutable `dataset/`:
@@ -46,8 +73,9 @@ sample, review, disposition, or summary in place.
 After audit finalization, freeze a complete event-group exclusion artifact and run selection:
 
 ```bash
+: "${EVENT_GROUP_EXCLUSIONS:?Set EVENT_GROUP_EXCLUSIONS to the frozen exclusion manifest}"
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select reserve \
-  --exclusions <frozen-event-group-exclusions.json>
+  --exclusions "$EVENT_GROUP_EXCLUSIONS"
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select review
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select finalize
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select status
@@ -65,9 +93,13 @@ cannot exceed the audited reserve. Provider request deduplication is handled lat
 After promotion, materialize and inspect the exact execution matrix before any provider call:
 
 ```bash
-UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark matrix plan
+MATRIX_DIR="$(
+  UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark matrix plan |
+    UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python -c \
+      'import json,sys; print(json.load(sys.stdin)["matrix_dir"])'
+)"
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark matrix dry-run \
-  --matrix-dir runs/matrices/<matrix-id>
+  --matrix-dir "$MATRIX_DIR"
 ```
 
 The dry run must report no missing revisions before execution. Run or resume the matrix, then require complete cell
@@ -75,9 +107,9 @@ coverage:
 
 ```bash
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark matrix execute \
-  --matrix-dir runs/matrices/<matrix-id>
+  --matrix-dir "$MATRIX_DIR"
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark matrix status \
-  --matrix-dir runs/matrices/<matrix-id>
+  --matrix-dir "$MATRIX_DIR"
 ```
 
 Planning and status are safe to repeat. Execution skips independently verified complete groups and resumes incomplete
@@ -89,13 +121,17 @@ package:
 
 ```bash
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark analyze replay \
-  --matrix-dir runs/matrices/<matrix-id> \
+  --matrix-dir "$MATRIX_DIR" \
   --evaluation-id paper-metrics-v1
-UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark analyze run \
-  --matrix-dir runs/matrices/<matrix-id> \
-  --evaluation-id paper-metrics-v1
+RESULT_DIR="$(
+  UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark analyze run \
+    --matrix-dir "$MATRIX_DIR" \
+    --evaluation-id paper-metrics-v1 |
+    UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python -c \
+      'import json,sys; print(json.load(sys.stdin)["result_dir"])'
+)"
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark analyze status \
-  --result-dir results/<analysis-id>
+  --result-dir "$RESULT_DIR"
 ```
 
 Use a new evaluation ID when evaluator metrics change. Replay and analysis make zero provider calls. The result package

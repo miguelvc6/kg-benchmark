@@ -69,11 +69,11 @@ acquisition and model calls are deliberately listed later as operational executi
 
 ### 7. Acceptance and reproduction
 
-- [ ] Add one end-to-end synthetic test covering build, lineage, audit, reserve, prompt rejection/replacement,
+- [x] Add one end-to-end synthetic test covering build, lineage, audit, reserve, prompt rejection/replacement,
   finalization, promotion, matrix planning, cached execution, rescoring, and paper analysis.
-- [ ] Add a clean-clone reproduction smoke test.
-- [ ] Replace remaining workflow ellipses with executable commands after their public interfaces exist.
-- [ ] Run the complete test/schema/documentation suite and verify byte-reproducible manifests.
+- [x] Add a clean-clone reproduction smoke test.
+- [x] Replace remaining workflow ellipses with executable commands after their public interfaces exist.
+- [x] Run the complete test/schema/documentation suite and verify byte-reproducible manifests.
 
 ### 8. Final methodology freeze gate
 

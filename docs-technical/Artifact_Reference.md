@@ -34,7 +34,13 @@ relationship.
 cache inventory, and acquisition Git revision. `lineage.json` proves Stage 0/1 provenance, exact Stage 2 representation
 equivalence, exact Stage 2/3/4 case identity, and the Stage 2 projection of every Stage 4 case. The final release keeps
 only canonical JSONL source roles; promotion additionally compares their Stage 0, Stage 1, and Stage 3 content with the
-original construction JSON. The original JSON and cache remain outside the published dataset.
+original construction JSON. Each published case refers to the world state by the portable dataset-relative path
+`source/world-state.jsonl`, never by a construction-machine path. The original JSON and cache remain outside the
+published dataset.
+
+The Python distribution includes the active schemas and frozen prompt templates as package data. Runtime resource
+lookup supports both a repository checkout and an installed wheel, so the paper-facing CLI does not depend on the
+caller's working directory or on untracked files.
 
 Generation identity is independent of population membership. It contains case-payload, rendered-prompt, context,
 model-revision, inference-parameter, and task hashes. Run manifests record which population requested those generation

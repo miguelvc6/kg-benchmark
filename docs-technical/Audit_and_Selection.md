@@ -58,8 +58,9 @@ next clean case in the frozen stratum order before finalization.
 The public sequence is:
 
 ```bash
+: "${EVENT_GROUP_EXCLUSIONS:?Set EVENT_GROUP_EXCLUSIONS to the frozen exclusion manifest}"
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select reserve \
-  --exclusions <frozen-event-group-exclusions.json>
+  --exclusions "$EVENT_GROUP_EXCLUSIONS"
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select review
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select finalize
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select status
@@ -96,10 +97,17 @@ schemas and provenance, and rechecks prompt-clean membership and Azure nesting i
 Larger experiments use only the already prompt-audited clean reserve:
 
 ```bash
+: "${EXPANDED_IC_L:?Set the expanded IC-L quota}"
+: "${EXPANDED_IC_G:?Set the expanded IC-G quota}"
+: "${EXPANDED_IC_E_ELIM:?Set the expanded IC-E-elim quota}"
+: "${EXPANDED_TBOX:?Set the expanded T-box quota}"
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select expand \
   --parent work/selections/main-1200.json \
   --name main-expanded \
-  --quota-ic-l <N> --quota-ic-g <N> --quota-ic-e-elim <N> --quota-tbox <N> \
+  --quota-ic-l "$EXPANDED_IC_L" \
+  --quota-ic-g "$EXPANDED_IC_G" \
+  --quota-ic-e-elim "$EXPANDED_IC_E_ELIM" \
+  --quota-tbox "$EXPANDED_TBOX" \
   --destination work/selections/main-expanded.json
 ```
 

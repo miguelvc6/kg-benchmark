@@ -14,10 +14,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Callable, Iterable, Sequence
 
+from kg_benchmark.resources import artifact_path
+
 CODEX_REVIEW_SCHEMA = json.loads(
-    (Path(__file__).resolve().parents[1] / "schemas" / "automated-audit-review.schema.json").read_text(
-        encoding="utf-8"
-    )
+    artifact_path("schemas/automated-audit-review.schema.json").read_text(encoding="utf-8")
 )
 
 REVIEWS_FILENAME = "codex_reviews.jsonl"

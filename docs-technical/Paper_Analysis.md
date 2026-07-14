@@ -5,14 +5,19 @@ physical matrix group. `analyze run` consumes those immutable evaluation manifes
 content-addressed result package under `results/`. Neither command constructs a model provider or submits a request.
 
 ```bash
+: "${MATRIX_DIR:?Set MATRIX_DIR to the completed matrix directory}"
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark analyze replay \
-  --matrix-dir runs/matrices/<matrix-id> \
+  --matrix-dir "$MATRIX_DIR" \
   --evaluation-id paper-metrics-v1
-UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark analyze run \
-  --matrix-dir runs/matrices/<matrix-id> \
-  --evaluation-id paper-metrics-v1
+RESULT_DIR="$(
+  UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark analyze run \
+    --matrix-dir "$MATRIX_DIR" \
+    --evaluation-id paper-metrics-v1 |
+    UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python -c \
+      'import json,sys; print(json.load(sys.stdin)["result_dir"])'
+)"
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark analyze status \
-  --result-dir results/<analysis-id>
+  --result-dir "$RESULT_DIR"
 ```
 
 Replay is resumable at the physical-group boundary. An absent evaluation is created from immutable generations; an

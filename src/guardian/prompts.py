@@ -5,6 +5,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from kg_benchmark.resources import artifact_path
+
 
 @dataclass(frozen=True)
 class PromptTemplate:
@@ -23,7 +25,7 @@ class PromptTemplate:
 
 
 def _load_paper_prompt(filename: str) -> tuple[str, str]:
-    path = Path(__file__).resolve().parents[2] / "paper" / "prompts" / filename
+    path = artifact_path(Path("paper") / "prompts" / filename)
     text = path.read_text(encoding="utf-8")
     system_marker = "[system]\n"
     user_marker = "\n[user]\n"

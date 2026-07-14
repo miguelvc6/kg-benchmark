@@ -23,13 +23,17 @@ request membership records that a population needs a generation; unique counts r
 populations.
 
 ```bash
-UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark matrix plan
+MATRIX_DIR="$(
+  UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark matrix plan |
+    UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python -c \
+      'import json,sys; print(json.load(sys.stdin)["matrix_dir"])'
+)"
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark matrix dry-run \
-  --matrix-dir runs/matrices/<matrix-id>
+  --matrix-dir "$MATRIX_DIR"
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark matrix execute \
-  --matrix-dir runs/matrices/<matrix-id>
+  --matrix-dir "$MATRIX_DIR"
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark matrix status \
-  --matrix-dir runs/matrices/<matrix-id>
+  --matrix-dir "$MATRIX_DIR"
 ```
 
 Execution is blocked unless the methodology lock is valid and every selected model has a stable revision. It passes the
@@ -44,10 +48,11 @@ and schedules only new keys. To plan extensions, pass one or more explicit popul
 is crossed with each supplied population:
 
 ```bash
+: "${EXPANDED_POPULATION:?Set EXPANDED_POPULATION to the sealed extension manifest}"
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark matrix plan \
   --model-id ollama_qwen3_30b \
   --population dataset/selections/main-1200.json \
-  --population dataset/selections/<expanded-population>.json
+  --population "$EXPANDED_POPULATION"
 ```
 
 The dry run is the proof and preflight: shared parent keys appear as cache hits once the parent has run, while only keys

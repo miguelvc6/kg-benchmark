@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 from automated_consistency_audit import (
+    WorldStateLookup,
     _case_findings,
     _changed_constraint_entries,
     _changed_constraint_types,
@@ -41,6 +42,20 @@ def _abox_world() -> dict:
 
 
 class AutomatedConsistencyAuditTests(unittest.TestCase):
+    def test_world_state_lookup_reads_canonical_jsonl_starting_with_object_rows(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            world = root / "world-state.jsonl"
+            rows = [
+                {"id": "case-1", "world_state": _abox_world()},
+                {"id": "case-2", "world_state": {**_abox_world(), "marker": 2}},
+            ]
+            world.write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
+
+            with WorldStateLookup(world, root / "cache") as lookup:
+                self.assertEqual(lookup.get("case-1"), _abox_world())
+                self.assertEqual(lookup.get("case-2")["marker"], 2)
+
     def test_independent_locus_and_type_a_replay_pass(self) -> None:
         self.assertEqual(_case_findings(_abox_record(), _abox_world()), [])
 

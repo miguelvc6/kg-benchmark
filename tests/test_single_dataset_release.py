@@ -7,13 +7,47 @@ from pathlib import Path
 from unittest.mock import patch
 
 from kg_benchmark.dataset.gates import SCHEMA_ARTIFACTS, WORK_ARTIFACTS
-from kg_benchmark.dataset.release import fetch_dataset, promote_dataset, sha256_file, verify_dataset
+from kg_benchmark.dataset.release import (
+    canonicalize_case_context_references,
+    fetch_dataset,
+    promote_dataset,
+    sha256_file,
+    verify_dataset,
+)
 from kg_benchmark.methodology import MethodologyError
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 class SingleDatasetReleaseTests(unittest.TestCase):
+    def test_classified_context_references_are_release_relative(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            cases = Path(temporary) / "cases.jsonl"
+            rows = [
+                {
+                    "id": "case-1",
+                    "context_ref": {
+                        "world_state_id": "case-1",
+                        "world_state_path": "/construction-machine/work/acquisition/03_world_state.json",
+                    },
+                },
+                {
+                    "id": "case-2",
+                    "context_ref": {
+                        "world_state_id": "case-2",
+                        "world_state_path": "C:\\construction\\03_world_state.json",
+                    },
+                },
+            ]
+            cases.write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
+
+            self.assertEqual(canonicalize_case_context_references(cases), 2)
+            rewritten = [json.loads(line) for line in cases.read_text(encoding="utf-8").splitlines()]
+            self.assertEqual(
+                {row["context_ref"]["world_state_path"] for row in rewritten},
+                {"source/world-state.jsonl"},
+            )
+
     def _write_work(self, root: Path) -> tuple[Path, Path, Path, dict]:
         work = root / "work"
         for role, relative in WORK_ARTIFACTS.items():

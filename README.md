@@ -38,8 +38,9 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit prepare
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit deterministic
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit review
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit finalize
+: "${EVENT_GROUP_EXCLUSIONS:?Set EVENT_GROUP_EXCLUSIONS to the frozen exclusion manifest}"
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select reserve \
-  --exclusions <frozen-event-group-exclusions.json>
+  --exclusions "$EVENT_GROUP_EXCLUSIONS"
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select review
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select finalize
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select status
@@ -48,25 +49,35 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark promote \
   --lineage work/lineage.json
 
 # Clean-clone use after the external release is published.
+: "${DATASET_MANIFEST_URL:?Set DATASET_MANIFEST_URL to the published manifest URL}"
+: "${DATASET_MANIFEST_SHA256:?Set DATASET_MANIFEST_SHA256 to its SHA-256}"
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark fetch \
-  --manifest-url <published-manifest-url> \
-  --manifest-sha256 <published-manifest-sha256>
+  --manifest-url "$DATASET_MANIFEST_URL" \
+  --manifest-sha256 "$DATASET_MANIFEST_SHA256"
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark verify --dataset-dir dataset
-UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark matrix plan
+MATRIX_DIR="$(
+  UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark matrix plan |
+    UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python -c \
+      'import json,sys; print(json.load(sys.stdin)["matrix_dir"])'
+)"
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark matrix dry-run \
-  --matrix-dir runs/matrices/<matrix-id>
+  --matrix-dir "$MATRIX_DIR"
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark matrix execute \
-  --matrix-dir runs/matrices/<matrix-id>
+  --matrix-dir "$MATRIX_DIR"
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark matrix status \
-  --matrix-dir runs/matrices/<matrix-id>
+  --matrix-dir "$MATRIX_DIR"
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark analyze replay \
-  --matrix-dir runs/matrices/<matrix-id> \
+  --matrix-dir "$MATRIX_DIR" \
   --evaluation-id paper-metrics-v1
-UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark analyze run \
-  --matrix-dir runs/matrices/<matrix-id> \
-  --evaluation-id paper-metrics-v1
+RESULT_DIR="$(
+  UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark analyze run \
+    --matrix-dir "$MATRIX_DIR" \
+    --evaluation-id paper-metrics-v1 |
+    UV_PROJECT_ENVIRONMENT=.venv-wsl uv run python -c \
+      'import json,sys; print(json.load(sys.stdin)["result_dir"])'
+)"
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark analyze status \
-  --result-dir results/<analysis-id>
+  --result-dir "$RESULT_DIR"
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark viewer
 ```
 

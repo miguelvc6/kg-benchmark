@@ -7,6 +7,7 @@ from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 DOC_ROOTS = (ROOT / "docs", ROOT / "docs-conceptual", ROOT / "docs-technical")
+WORKFLOW_DOCUMENTS = (ROOT / "README.md", *(ROOT / "docs-technical").glob("*.md"))
 MARKDOWN_LINK = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
 MACHINE_PATH_PATTERNS = (
     re.compile(r"/mnt/[A-Za-z]/"),
@@ -73,6 +74,21 @@ class TechnicalDocumentationTests(unittest.TestCase):
         self.assertIn("active implementation", technical)
         self.assertIn("research decisions", conceptual)
         self.assertIn("archive/pre-paper-restructure-20260714", history)
+
+    def test_shell_workflows_do_not_contain_placeholder_arguments(self) -> None:
+        failures: list[str] = []
+        for document in WORKFLOW_DOCUMENTS:
+            in_shell_block = False
+            for line_number, line in enumerate(document.read_text(encoding="utf-8").splitlines(), 1):
+                if line.startswith("```bash") or line.startswith("```sh"):
+                    in_shell_block = True
+                    continue
+                if in_shell_block and line.startswith("```"):
+                    in_shell_block = False
+                    continue
+                if in_shell_block and (re.search(r"<[A-Za-z][^>]*>", line) or "..." in line):
+                    failures.append(f"{document.relative_to(ROOT)}:{line_number}: {line}")
+        self.assertEqual(failures, [], "\n".join(failures))
 
 
 if __name__ == "__main__":

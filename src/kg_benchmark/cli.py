@@ -29,6 +29,7 @@ from kg_benchmark.audit.workflow import (
 from kg_benchmark.dataset.gates import DatasetGateError
 from kg_benchmark.dataset.release import (
     canonicalize_acquisition,
+    canonicalize_case_context_references,
     fetch_dataset,
     promote_dataset,
     sha256_file,
@@ -249,6 +250,7 @@ def _run_build(argv: list[str]) -> int:
     if result:
         return result
     summary = canonicalize_acquisition(acquisition_dir=acquisition, work_dir=work)
+    canonicalize_case_context_references(work / "cases.jsonl")
     provenance = write_source_provenance(
         acquisition_dir=acquisition,
         work_dir=work,

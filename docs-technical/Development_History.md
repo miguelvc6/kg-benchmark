@@ -142,6 +142,21 @@ and cache provenance; requires complete dispositions with no unresolved systemic
 1,200/600 populations; and reproduces the manifest bytes before the atomic rename. Synthetic mutations exercise each
 fail-closed boundary without generating the paper dataset or making model calls.
 
+The final acceptance pass joined those phase-level checks into one offline synthetic lifecycle. It builds a frozen
+1,620-case source population through the public interface, validates lineage and the exhaustive audit, rejects a
+would-be selected prompt and replaces it from the declared reserve order, promotes exact nested 1,200/600 populations,
+materializes and completes the experiment matrix through a fake executor, replays revised metrics without generation,
+and reproduces the paper-analysis manifests byte for byte. A separate tracked-files-only smoke test builds and installs
+the wheel in a clean temporary clone, then checks the installed CLI and frozen prompts without relying on ignored local
+state. Both tests are provider-free and do not certify the real paper dataset.
+
+That pass exposed three engineering defects before execution. Canonical Stage 3 JSONL began with an object token and
+was incorrectly routed through the streaming JSON-object reader; suffix-first dispatch now preserves JSONL record
+boundaries. Stage 4 cases retained the construction machine's absolute world-state path; build canonicalization now
+publishes `source/world-state.jsonl`. Finally, frozen prompt files and schemas were available only from a source tree;
+they are now installed as package data and resolved through one repository-or-installation resource lookup. Regression
+tests preserve all three fixes.
+
 The first post-freeze acquisition, `post_freeze_20260714T062500Z_wd20260706`, was invalidated after discovering that
 exhausted history, pageview, and dump errors could be interpreted as missing or partial data and that the methodology
 freeze omitted transitive modules. Commit `cba9349` made acquisition fail closed, and `bf9129b` created a broader freeze.
