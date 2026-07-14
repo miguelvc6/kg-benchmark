@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kg-benchmark.local/schemas/audit-workflow.schema.json",
+  "title": "Canonical Resumable Audit Workflow",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest_type",
+    "manifest_version",
+    "created_at_utc",
+    "updated_at_utc",
+    "git",
+    "protocol",
+    "settings",
+    "inputs",
+    "phases"
+  ],
+  "properties": {
+    "manifest_type": {"const": "canonical_audit_workflow"},
+    "manifest_version": {"const": 1},
+    "created_at_utc": {"type": "string", "format": "date-time"},
+    "updated_at_utc": {"type": "string", "format": "date-time"},
+    "git": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commit", "dirty"],
+      "properties": {
+        "commit": {"type": ["string", "null"]},
+        "dirty": {"type": ["boolean", "null"]}
+      }
+    },
+    "protocol": {"$ref": "#/$defs/artifact"},
+    "settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "construct_review_size",
+        "temporal_review_size",
+        "seed",
+        "reviewer_model",
+        "context_bundles"
+      ],
+      "properties": {
+        "construct_review_size": {"type": "integer", "minimum": 1},
+        "temporal_review_size": {"type": "integer", "minimum": 1},
+        "seed": {"type": "integer", "minimum": 0},
+        "reviewer_model": {"type": "string", "minLength": 1},
+        "context_bundles": {"const": ["logic_only", "local_graph"]}
+      }
+    },
+    "inputs": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {"$ref": "#/$defs/artifact"}
+    },
+    "phases": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "prepare": {"$ref": "#/$defs/phase"},
+        "deterministic": {"$ref": "#/$defs/phase"},
+        "review": {"$ref": "#/$defs/phase"},
+        "finalize": {"$ref": "#/$defs/phase"}
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "size_bytes"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "size_bytes": {"type": "integer", "minimum": 0},
+        "records": {"type": "integer", "minimum": 0}
+      }
+    },
+    "phase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "completed_at_utc", "artifacts"],
+      "properties": {
+        "status": {"const": "complete"},
+        "completed_at_utc": {"type": "string", "format": "date-time"},
+        "passed": {"type": "boolean"},
+        "artifacts": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {"$ref": "#/$defs/artifact"}
+        },
+        "counts": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+        "validation": {"type": "object"},
+        "reviewer": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["interface", "model", "cli_version"],
+          "properties": {
+            "interface": {"const": "codex_cli"},
+            "model": {"type": "string", "minLength": 1},
+            "cli_version": {"type": "string", "minLength": 1}
+          }
+        },
+        "execution": {"type": "object"}
+      }
+    }
+  }
+}

@@ -48,6 +48,7 @@ packages = [
     "lib",
     "scripts",
     "kg_benchmark",
+    "kg_benchmark.audit",
     "kg_benchmark.dataset",
     "kg_benchmark.selection",
 ]

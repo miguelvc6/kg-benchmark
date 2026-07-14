@@ -33,7 +33,10 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark methodology check
 # Run only after the final methodology lock has been committed.
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark acquire --refresh-candidates
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark build
-UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit ...
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit prepare
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit deterministic
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit review
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit finalize
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select build \
   --cases work/cases.jsonl \
   --dispositions work/audit/dispositions.jsonl
@@ -50,6 +53,10 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark score ...
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark baseline ...
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark viewer ...
 ```
+
+The four audit phases are hash-verified and resumable. `kg-benchmark audit run` executes or resumes the same sequence,
+including the protocol-bound Codex review. `kg-benchmark audit status` verifies stored phase artifacts without calling
+a model.
 
 Construction is isolated under ignored `work/`. Promotion is atomic and refuses to overwrite the final dataset. Raw
 generations are content-addressed under ignored `runs/`; metric changes do not call providers again.

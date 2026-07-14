@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kg-benchmark.local/schemas/audit-summary.schema.json",
+  "title": "Canonical Whole-Dataset Audit Summary",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "report_type",
+    "report_version",
+    "created_at_utc",
+    "policy",
+    "counts",
+    "validation",
+    "reviewer",
+    "provenance"
+  ],
+  "properties": {
+    "report_type": {"const": "canonical_audit_summary"},
+    "report_version": {"const": 1},
+    "created_at_utc": {"type": "string", "format": "date-time"},
+    "policy": {"type": "object", "minProperties": 1},
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cases", "rendered_prompts", "construct_reviews", "temporal_reviews", "reviews", "by_disposition"],
+      "properties": {
+        "cases": {"type": "integer", "minimum": 1},
+        "rendered_prompts": {"type": "integer", "minimum": 1},
+        "construct_reviews": {"type": "integer", "minimum": 1},
+        "temporal_reviews": {"type": "integer", "minimum": 1},
+        "reviews": {"type": "integer", "minimum": 1},
+        "by_disposition": {
+          "type": "object",
+          "additionalProperties": {"type": "integer", "minimum": 0}
+        }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "complete_unique_disposition_coverage",
+        "deterministic_gates_passed",
+        "temporal_gate_passed",
+        "review_complete",
+        "unresolved_systemic_findings",
+        "selection_eligible_disposition"
+      ],
+      "properties": {
+        "complete_unique_disposition_coverage": {"const": true},
+        "deterministic_gates_passed": {"const": true},
+        "temporal_gate_passed": {"const": true},
+        "review_complete": {"const": true},
+        "unresolved_systemic_findings": {"const": 0},
+        "selection_eligible_disposition": {"const": "include"}
+      }
+    },
+    "reviewer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["interface", "model", "cli_version"],
+      "properties": {
+        "interface": {"const": "codex_cli"},
+        "model": {"type": "string", "minLength": 1},
+        "cli_version": {"type": "string", "minLength": 1}
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol",
+        "cases",
+        "world_state",
+        "stage2",
+        "lineage_manifest",
+        "stage4_schema",
+        "construct_sample",
+        "rendered_prompts",
+        "render_summary",
+        "deterministic_manifest",
+        "review_schema",
+        "review_run",
+        "reviews",
+        "dispositions"
+      ],
+      "properties": {
+        "protocol": {"$ref": "#/$defs/artifact"},
+        "cases": {"$ref": "#/$defs/artifact"},
+        "world_state": {"$ref": "#/$defs/artifact"},
+        "stage2": {"anyOf": [{"$ref": "#/$defs/artifact"}, {"type": "null"}]},
+        "lineage_manifest": {"anyOf": [{"$ref": "#/$defs/artifact"}, {"type": "null"}]},
+        "stage4_schema": {"$ref": "#/$defs/artifact"},
+        "construct_sample": {"$ref": "#/$defs/artifact"},
+        "rendered_prompts": {"$ref": "#/$defs/artifact"},
+        "render_summary": {"$ref": "#/$defs/artifact"},
+        "deterministic_manifest": {"$ref": "#/$defs/artifact"},
+        "review_schema": {"$ref": "#/$defs/artifact"},
+        "review_run": {"$ref": "#/$defs/artifact"},
+        "reviews": {"$ref": "#/$defs/artifact"},
+        "dispositions": {"$ref": "#/$defs/artifact"}
+      }
+    }
+  },
+  "$defs": {
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "size_bytes"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "size_bytes": {"type": "integer", "minimum": 0},
+        "records": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}

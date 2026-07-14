@@ -17,3 +17,23 @@ metric replay. Raw generations live under ignored `runs/`; compact aggregate out
 Dataset construction uses an empty ignored `work/` directory. Acquisition, build, audit, and selection must complete
 before `kg-benchmark promote --source-provenance work/source-provenance.json` atomically creates the immutable
 `dataset/`. Promotion requires source provenance and refuses to overwrite an existing dataset.
+
+After `kg-benchmark build`, run the canonical audit as four explicit resumable phases:
+
+```bash
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit prepare
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit deterministic
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit review
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit finalize
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit status
+```
+
+The equivalent one-command form is `kg-benchmark audit run`. It performs Codex calls during the review phase; `status`
+never calls a model. If a bound artifact changes, preserve the failed workflow for diagnosis, remediate the source or
+implementation defect, remove the invalid `work/audit/` run, and restart from `audit prepare`. Do not edit a sample,
+review, disposition, or summary in place.
+
+If the audit exposes a systemic implementation defect after methodology freeze, the protocol requires invalidating the
+freeze and acquired dataset, fixing the implementation, creating a new freeze, and acquiring again. Restarting only the
+audit is appropriate for damaged audit outputs or non-systemic case-level dispositions, not for a changed methodology
+or construction rule.

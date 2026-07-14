@@ -117,10 +117,11 @@
             "construct_review": {
               "type": "object",
               "additionalProperties": false,
-              "required": ["sample_size", "seed", "label_hidden", "purpose", "reviewer_interface", "reviewer_model", "exact_cli_and_model_versions_recorded_at_run"],
+              "required": ["sample_size", "seed", "selection", "label_hidden", "purpose", "reviewer_interface", "reviewer_model", "exact_cli_and_model_versions_recorded_at_run"],
               "properties": {
                 "sample_size": {"type": "integer", "minimum": 1},
                 "seed": {"type": "integer", "minimum": 0},
+                "selection": {"const": "sha256_rank_by_case_id_v1"},
                 "label_hidden": {"const": true},
                 "purpose": {"const": "error_discovery_only"},
                 "reviewer_interface": {"const": "codex_cli"},

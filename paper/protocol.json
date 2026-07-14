@@ -46,6 +46,7 @@
     "construct_review": {
       "sample_size": 450,
       "seed": 13,
+      "selection": "sha256_rank_by_case_id_v1",
       "label_hidden": true,
       "purpose": "error_discovery_only",
       "reviewer_interface": "codex_cli",

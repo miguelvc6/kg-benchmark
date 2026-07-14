@@ -248,8 +248,26 @@ def forbidden_claims(record: dict[str, Any]) -> list[dict[str, str]]:
 def _sample_rows(rows: list[dict[str, Any]], sample_size: int, seed: int) -> list[dict[str, Any]]:
     if sample_size <= 0:
         return []
-    strata: dict[tuple[str, str, str], list[dict[str, Any]]] = defaultdict(list)
+    # The protocol specifies a case sample, not a prompt-row sample. Select one
+    # stable prompt variant per case before balancing across task/context/track.
+    rows_by_case: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in rows:
+        case_id = row.get("case_id")
+        if isinstance(case_id, str) and case_id:
+            rows_by_case[case_id].append(row)
+    representatives: list[dict[str, Any]] = []
+    for case_id, case_rows in rows_by_case.items():
+        case_rows.sort(
+            key=lambda row: hashlib.sha256(
+                (
+                    f"{seed}|temporal-case-row|{case_id}|{row.get('task')}|"
+                    f"{row.get('context_bundle')}|{row.get('matrix_id')}"
+                ).encode()
+            ).hexdigest()
+        )
+        representatives.append(case_rows[0])
+    strata: dict[tuple[str, str, str], list[dict[str, Any]]] = defaultdict(list)
+    for row in representatives:
         key = (
             str(row.get("task") or "unknown"),
             str(row.get("context_bundle") or "unknown"),
@@ -264,7 +282,7 @@ def _sample_rows(rows: list[dict[str, Any]], sample_size: int, seed: int) -> lis
         )
     chosen: list[dict[str, Any]] = []
     keys = sorted(strata)
-    while len(chosen) < min(sample_size, len(rows)):
+    while len(chosen) < min(sample_size, len(representatives)):
         progressed = False
         for key in keys:
             if strata[key] and len(chosen) < sample_size:

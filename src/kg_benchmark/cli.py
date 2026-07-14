@@ -8,6 +8,14 @@ import sys
 from pathlib import Path
 from typing import Callable
 
+from kg_benchmark.audit.workflow import (
+    AuditWorkflowError,
+    audit_status,
+    prepare_audit,
+    run_deterministic_phase,
+    run_finalize_phase,
+    run_review_phase,
+)
 from kg_benchmark.dataset.release import (
     canonicalize_acquisition,
     fetch_dataset,
@@ -24,11 +32,104 @@ from kg_benchmark.methodology import (
 from kg_benchmark.selection.extensible import build_selection_artifacts, materialize_population
 
 LEGACY_COMMANDS = {
-    "audit": "automated_consistency_audit",
     "baseline": "non_llm_baselines",
     "run": "reasoning_floor",
     "score": "rescore_run",
 }
+
+
+def _add_audit_prepare_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--cases", type=Path, default=Path("work/cases.jsonl"))
+    parser.add_argument("--world-state", type=Path, default=Path("work/source/world-state.jsonl"))
+    parser.add_argument("--stage2", type=Path, default=Path("work/source/repairs.jsonl"))
+    parser.add_argument("--lineage-manifest", type=Path)
+    parser.add_argument("--stage4-schema", type=Path, default=Path("schemas/dataset-case.schema.json"))
+    parser.add_argument("--protocol", type=Path, default=Path("paper/protocol.json"))
+    parser.add_argument("--work-dir", type=Path, default=Path("work/audit"))
+
+
+def _add_audit_review_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--batch-size", type=int, default=10)
+    parser.add_argument("--workers", type=int, default=1)
+    parser.add_argument("--retries", type=int, default=2)
+    parser.add_argument("--timeout-seconds", type=float, default=600)
+
+
+def _audit_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="kg-benchmark audit")
+    subparsers = parser.add_subparsers(dest="audit_command", required=True)
+    prepare = subparsers.add_parser("prepare", help="Create the frozen construct sample and canonical prompt render.")
+    _add_audit_prepare_arguments(prepare)
+    deterministic = subparsers.add_parser("deterministic", help="Run exhaustive deterministic and temporal gates.")
+    deterministic.add_argument("--work-dir", type=Path, default=Path("work/audit"))
+    review = subparsers.add_parser("review", help="Run the protocol-bound label-hidden Codex review.")
+    review.add_argument("--work-dir", type=Path, default=Path("work/audit"))
+    _add_audit_review_arguments(review)
+    finalize = subparsers.add_parser("finalize", help="Write conservative canonical dispositions and audit report.")
+    finalize.add_argument("--work-dir", type=Path, default=Path("work/audit"))
+    finalize.add_argument("--report", type=Path, default=Path("audit.md"))
+    run = subparsers.add_parser("run", help="Run or resume every canonical audit phase in order.")
+    _add_audit_prepare_arguments(run)
+    _add_audit_review_arguments(run)
+    run.add_argument("--report", type=Path, default=Path("audit.md"))
+    status = subparsers.add_parser("status", help="Verify phase hashes and report the resumable audit position.")
+    status.add_argument("--work-dir", type=Path, default=Path("work/audit"))
+    return parser
+
+
+def _run_audit_workflow(argv: list[str]) -> int:
+    args = _audit_parser().parse_args(argv)
+    repo_root = Path.cwd()
+    if args.audit_command in {"review", "run"}:
+        require_frozen_methodology(repo_root)
+    if args.audit_command == "status":
+        print(json.dumps(audit_status(work_dir=args.work_dir, repo_root=repo_root), indent=2, sort_keys=True))
+        return 0
+    if args.audit_command in {"prepare", "run"}:
+        state = prepare_audit(
+            cases_path=args.cases,
+            world_state_path=args.world_state,
+            stage2_path=args.stage2,
+            lineage_manifest_path=args.lineage_manifest,
+            stage4_schema_path=args.stage4_schema,
+            protocol_path=args.protocol,
+            work_dir=args.work_dir,
+            repo_root=repo_root,
+        )
+        if args.audit_command == "prepare":
+            print(json.dumps({"phase": "prepare", "counts": state["phases"]["prepare"]["counts"]}, indent=2))
+            return 0
+    if args.audit_command in {"deterministic", "run"}:
+        state = run_deterministic_phase(work_dir=args.work_dir, repo_root=repo_root)
+        if args.audit_command == "deterministic":
+            print(json.dumps({"phase": "deterministic", "passed": state["phases"]["deterministic"]["passed"]}, indent=2))
+            return 0 if state["phases"]["deterministic"]["passed"] else 1
+    if args.audit_command in {"review", "run"}:
+        state = run_review_phase(
+            work_dir=args.work_dir,
+            repo_root=repo_root,
+            batch_size=args.batch_size,
+            workers=args.workers,
+            retries=args.retries,
+            timeout_seconds=args.timeout_seconds,
+        )
+        if args.audit_command == "review":
+            print(json.dumps({"phase": "review", "reviewer": state["phases"]["review"]["reviewer"]}, indent=2))
+            return 0
+    state = run_finalize_phase(work_dir=args.work_dir, report_path=args.report, repo_root=repo_root)
+    print(
+        json.dumps(
+            {
+                "phase": "finalize",
+                "dispositions": state["phases"]["finalize"]["artifacts"]["dispositions"],
+                "summary": state["phases"]["finalize"]["artifacts"]["summary"],
+                "report": state["phases"]["finalize"]["artifacts"]["release_report"],
+            },
+            indent=2,
+            sort_keys=True,
+        )
+    )
+    return 0
 
 
 def _contains_option(argv: list[str], option: str) -> bool:
@@ -300,6 +401,8 @@ def _main(argv: list[str] | None = None) -> int:
         return _run_methodology(rest)
     if command == "select":
         return _run_selection(rest)
+    if command == "audit":
+        return _run_audit_workflow(rest)
     if command == "acquire":
         return _run_acquire(rest)
     if command == "build":
@@ -323,7 +426,7 @@ def _main(argv: list[str] | None = None) -> int:
 def main(argv: list[str] | None = None) -> int:
     try:
         return _main(argv)
-    except MethodologyError as exc:
+    except (MethodologyError, AuditWorkflowError) as exc:
         raise SystemExit(str(exc)) from exc
 
 

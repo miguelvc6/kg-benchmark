@@ -4,6 +4,10 @@ The dataset is reconstructed from Wikidata constraint-report candidates and hist
 case records a pre-repair problem, the historically accepted repair, current persistence, and sanitized world-state
 context. Classification and selection metadata remain hidden from model-visible prompts.
 
+The fixed construct-review sample is selected by seed-13 SHA-256 ranking over case IDs and exposes no class, track,
+subtype, or label columns. It is used only to discover possible implementation errors; exhaustive deterministic gates
+and conservative dispositions, rather than the sampled reviewer, determine selection eligibility.
+
 The final release contains the complete Stage 0–4 lineage, audit dispositions, independently eligible ordering, a fixed
 few-shot support bank, the main 1,200 selection, and the nested Azure 600 selection. Only final disposition `include`
 can enter evaluated populations. Each A-box QID/property group and each T-box property/revision group contributes at

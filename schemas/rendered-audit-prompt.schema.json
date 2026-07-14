@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kg-benchmark.local/schemas/rendered-audit-prompt.schema.json",
+  "title": "Canonical Audit Prompt Row",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "matrix_id",
+    "case_id",
+    "visible_case_id",
+    "task",
+    "prompt_regime",
+    "context_bundle",
+    "historical_track",
+    "prompt_name",
+    "system_prompt",
+    "user_prompt",
+    "prompt_sha256",
+    "response_format"
+  ],
+  "properties": {
+    "matrix_id": {"type": "string", "pattern": "^audit_[0-9a-f]{20}$"},
+    "case_id": {"type": "string", "minLength": 1},
+    "visible_case_id": {"type": "string", "pattern": "^case_[0-9a-f]{12}$"},
+    "task": {"enum": ["a_box_repair", "t_box_taxonomy_patch", "track_diagnosis"]},
+    "prompt_regime": {"const": "zero_shot"},
+    "context_bundle": {"enum": ["logic_only", "local_graph"]},
+    "historical_track": {"enum": ["A_BOX", "T_BOX"]},
+    "prompt_name": {"type": "string", "minLength": 1},
+    "system_prompt": {"type": "string", "minLength": 1},
+    "user_prompt": {"type": "string", "minLength": 1},
+    "prompt_sha256": {"$ref": "#/$defs/sha256"},
+    "response_format": {"type": "object", "minProperties": 1}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

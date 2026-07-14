@@ -19,12 +19,12 @@ acquisition and model calls are deliberately listed later as operational executi
 
 ### 2. Canonical audit workflow
 
-- [ ] Generate the deterministic label-hidden 450-case construct sample through the public CLI.
-- [ ] Render canonical audit prompts and their render summary without relying on removed prompt-development systems.
-- [ ] Connect deterministic audit, Codex error discovery, and conservative finalization into one resumable workflow.
-- [ ] Write canonical `work/audit/dispositions.jsonl` and `work/audit/summary.json` artifacts directly.
-- [ ] Bind reviewer model, Codex CLI version, inputs, samples, schemas, reviews, and dispositions by hash.
-- [ ] Generate the final release-facing `audit.md` from the completed audit artifacts.
+- [x] Generate the deterministic label-hidden 450-case construct sample through the public CLI.
+- [x] Render canonical audit prompts and their render summary without relying on removed prompt-development systems.
+- [x] Connect deterministic audit, Codex error discovery, and conservative finalization into one resumable workflow.
+- [x] Write canonical `work/audit/dispositions.jsonl` and `work/audit/summary.json` artifacts directly.
+- [x] Bind reviewer model, Codex CLI version, inputs, samples, schemas, reviews, and dispositions by hash.
+- [x] Generate the final release-facing `audit.md` from the completed audit artifacts.
 
 ### 3. Reserve, prompt-quality gate, and selection finalization
 
