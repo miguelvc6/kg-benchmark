@@ -23,6 +23,9 @@ class FetcherPathTests(unittest.TestCase):
                 self.assertEqual(fetcher.REPAIR_CANDIDATES_FILE, root / "01_repair_candidates.json")
                 self.assertEqual(config.ENTITY_SNAPSHOT_DB, cache / "entity_snapshots.sqlite")
                 self.assertEqual(fetcher.LATEST_DUMP_PATH, dump)
+                self.assertEqual(fetcher.STATS_FILE.parent, root / "logs")
+                self.assertEqual(fetcher.SUMMARY_FILE.parent, root / "logs")
+                self.assertEqual(fetcher.RESUME_DEFAULT_CHECKPOINT.parent, root / "logs")
             finally:
                 fetcher.configure_runtime_paths(data_dir=original[0], cache_dir=original[1], dump_path=original[2])
 

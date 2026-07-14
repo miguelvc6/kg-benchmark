@@ -65,10 +65,10 @@ no semantic paraphrase reveals the answer.
 No independent human evaluation is available. Label-hidden Codex-assisted review may be used to discover suspected
 reconstruction, context, or leakage errors, but its findings are exploratory nominations rather than ground truth,
 independent annotation, or inter-annotator agreement. Neither automated scans nor Codex review establish causal or
-semantic uniqueness. In the completed `full_v1` audit, the deterministic scanner found zero high-risk hits but Codex
+semantic uniqueness. In the historical `full_v1` audit, the deterministic scanner found zero high-risk hits but Codex
 nominated five suspected-leakage prompts affecting four cases; this demonstrates why passing lexical scans cannot support
-a universal no-leakage claim. Measured details are in the technical
-[Automated Consistency Audit](../docs-technical/Automated_Consistency_Audit.md).
+a universal no-leakage claim. The audit's methodological role is preserved in the
+[development history](../docs-technical/Development_History.md).
 
 Provenance evaluation follows the same distinction. Structural completeness asks whether a proposal supplies a rationale,
 citation-shaped provenance, and uncertainty. Provenance support asks whether the cited identifier or snippet occurs in the

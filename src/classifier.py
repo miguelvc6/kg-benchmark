@@ -3702,10 +3702,23 @@ class WorldStateStore:
         batch_size = 1000
         heartbeat_seconds = 30
 
-        with open(self.world_state_path, "rb") as fh:
-            for rid, payload in ijson.kvitems(fh, ""):
+        if self.world_state_path.suffix == ".jsonl":
+            source_items = (
+                (
+                    str(row.get("id") or ""),
+                    row.get("world_state") if isinstance(row.get("world_state"), dict) else row.get("context"),
+                )
+                for row in iter_jsonl(self.world_state_path)
+            )
+        else:
+            source_handle = open(self.world_state_path, "rb")
+            source_items = ijson.kvitems(source_handle, "")
+        try:
+            for rid, payload in source_items:
                 if not isinstance(rid, str):
                     continue
+                if not rid or not isinstance(payload, dict):
+                    raise ValueError(f"Invalid world-state record for id {rid!r} in {self.world_state_path}.")
                 batch.append((rid, json.dumps(payload, ensure_ascii=False, default=_json_default)))
                 if len(batch) >= batch_size:
                     self.conn.executemany(
@@ -3725,6 +3738,9 @@ class WorldStateStore:
                             rate,
                         )
                         last_heartbeat = now
+        finally:
+            if self.world_state_path.suffix != ".jsonl":
+                source_handle.close()
 
         if batch:
             self.conn.executemany("INSERT INTO world_state(id, payload) VALUES (?, ?)", batch)
@@ -3814,7 +3830,6 @@ def _run_self_tests() -> None:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--sample", action="store_true", help="Use data_sample/ inputs/outputs instead of data/")
     ap.add_argument("--self-test", action="store_true", help="Run minimal self-tests and exit")
     ap.add_argument("--verbose", action="store_true", help="Enable verbose logging")
     ap.add_argument("--quiet", action="store_true", help="Show only warnings and errors")
@@ -3838,8 +3853,6 @@ def main() -> int:
 
     # Set up paths
     FOLDER_PATH = Path("data/")
-    if args.sample:
-        FOLDER_PATH = Path("data_sample/")
     repairs_path = args.repairs_path or (FOLDER_PATH / DEFAULT_REPAIRS_PATH)
     world_state_path = args.world_state_path or (FOLDER_PATH / DEFAULT_WORLD_STATE_PATH)
     popularity_path = args.popularity_path or (FOLDER_PATH / DEFAULT_POPULARITY_PATH)
@@ -3847,9 +3860,7 @@ def main() -> int:
     out_full_path = args.out_full_path or (FOLDER_PATH / DEFAULT_OUT_FULL_PATH if DEFAULT_OUT_FULL_PATH else None)
     if args.no_full_output:
         out_full_path = None
-    stats_path = args.stats_path or (
-        FOLDER_PATH / "classifier_stats.json" if args.sample else Path(DEFAULT_STATS_PATH)
-    )
+    stats_path = args.stats_path or Path(DEFAULT_STATS_PATH)
     use_progress = (not args.no_progress) and sys.stderr.isatty()
     log.info("Starting classifier run")
     log.info("Inputs: repairs=%s world_state=%s", repairs_path, world_state_path)

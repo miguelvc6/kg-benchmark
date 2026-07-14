@@ -4,7 +4,6 @@ import argparse
 
 from guardian.reasoning import (
     ABLATION_BUNDLES,
-    TBOX_TASK_VERSION_STRICT,
     TBOX_TASK_VERSION_TAXONOMY_PATCH,
     configure_tbox_task_version,
     run_reasoning_floor,
@@ -14,10 +13,10 @@ DEFAULT_ABLATION_BUNDLES = tuple(bundle for bundle in ABLATION_BUNDLES if bundle
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run the zero-shot reasoning-floor baseline.")
-    parser.add_argument("--classified-benchmark", default="data/04_classified_benchmark.jsonl")
-    parser.add_argument("--world-state", default="data/03_world_state.json")
-    parser.add_argument("--output-dir", default="reports/reasoning_floor")
+    parser = argparse.ArgumentParser(description="Run the paper reasoning-floor tasks.")
+    parser.add_argument("--classified-benchmark", default="dataset/cases.jsonl")
+    parser.add_argument("--world-state", default="dataset/source/world-state.jsonl")
+    parser.add_argument("--output-dir", default="runs")
     parser.add_argument(
         "--resume-run-dir",
         default=None,
@@ -57,11 +56,7 @@ def main() -> int:
         default=None,
         help="Immutable model/deployment revision digest used in provenance and cache identity.",
     )
-    parser.add_argument(
-        "--prompt-profile",
-        default=None,
-        help="Content-addressed paper prompt profile to validate and bind to the run.",
-    )
+    parser.add_argument("--protocol", default="paper/protocol.json", help="Paper protocol to validate and bind.")
     parser.add_argument(
         "--generation-cache",
         default=None,
@@ -78,9 +73,9 @@ def main() -> int:
     )
     parser.add_argument(
         "--tbox-task-version",
-        choices=(TBOX_TASK_VERSION_TAXONOMY_PATCH, TBOX_TASK_VERSION_STRICT),
-        default=None,
-        help="Pin the T-box answer contract. Confirmatory paper runs use tbox_taxonomy_patch_v1.",
+        choices=(TBOX_TASK_VERSION_TAXONOMY_PATCH,),
+        default=TBOX_TASK_VERSION_TAXONOMY_PATCH,
+        help="Paper T-box answer contract (taxonomy patch).",
     )
     parser.add_argument(
         "--execution-mode",
@@ -115,19 +110,30 @@ def main() -> int:
     )
     parser.add_argument(
         "--proposal-track-mode",
-        choices=("oracle", "diagnosis_routed"),
+        choices=("oracle",),
         default="oracle",
-        help="Use the historical track directly or route proposal generation through track diagnosis.",
+        help="Use the audited historical track for proposal generation.",
     )
     parser.add_argument(
         "--oracle-diagnosis-mode",
         choices=("run", "skip"),
-        default=None,
-        help=(
-            "Whether to run track-diagnosis requests during oracle proposal scoring. "
-            "Defaults to skip for --proposal-track-mode=oracle and run for diagnosis_routed."
-        ),
+        default="run",
+        help="Whether to run the independently scored track-diagnosis task alongside oracle-routed proposals.",
     )
+    parser.add_argument(
+        "--prompt-regime",
+        choices=("zero_shot", "static_few_shot"),
+        default="zero_shot",
+        help="Run the zero-shot contract or inject a deterministic prefix of the support bank.",
+    )
+    parser.add_argument(
+        "--support-bank",
+        default=None,
+        help="Support-bank manifest required for --prompt-regime=static_few_shot.",
+    )
+    parser.add_argument("--a-box-examples", type=int, default=4)
+    parser.add_argument("--t-box-examples", type=int, default=4)
+    parser.add_argument("--diagnosis-examples", type=int, default=2)
     parser.add_argument("--max-cases", type=int, default=None)
     parser.add_argument("--case-ids", default=None, help="Comma-separated case ids to include.")
     parser.add_argument(
@@ -146,8 +152,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    if args.tbox_task_version is not None:
-        configure_tbox_task_version(args.tbox_task_version)
+    configure_tbox_task_version(args.tbox_task_version)
 
     run_reasoning_floor(
         classified_path=args.classified_benchmark,
@@ -164,12 +169,17 @@ def main() -> int:
         seed=args.seed,
         ollama_think=args.ollama_think,
         max_retries=args.max_retries,
-        prompt_profile_path=args.prompt_profile,
+        protocol_path=args.protocol,
         model_digest=args.model_digest,
         generation_cache_path=args.generation_cache,
         execution_mode=args.execution_mode,
         proposal_track_mode=args.proposal_track_mode,
         oracle_diagnosis_mode=args.oracle_diagnosis_mode,
+        prompt_regime=args.prompt_regime,
+        support_bank_path=args.support_bank,
+        a_box_example_count=args.a_box_examples,
+        t_box_example_count=args.t_box_examples,
+        diagnosis_example_count=args.diagnosis_examples,
         parallel_workers=args.parallel_workers,
         batch_completion_window=args.batch_completion_window,
         batch_poll_interval_seconds=args.batch_poll_interval_seconds,

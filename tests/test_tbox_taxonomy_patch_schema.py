@@ -23,7 +23,7 @@ class TBoxTaxonomyPatchSchemaTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         repo_root = Path(__file__).resolve().parents[1]
-        schema_path = repo_root / "schemas" / "tbox_taxonomy_patch_proposal.schema.json"
+        schema_path = repo_root / "schemas" / "tbox-response.schema.json"
         with schema_path.open(encoding="utf-8") as handle:
             cls.schema = json.load(handle)
         Draft202012Validator.check_schema(cls.schema)

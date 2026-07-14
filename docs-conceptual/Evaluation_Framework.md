@@ -18,19 +18,20 @@ The benchmark asks whether a model can:
 
 ## Reasoning Floor
 
-The reasoning floor is the zero-shot, no-tool, pre-intervention baseline. It measures what current models can do before retrieval, memory, verifier-guided retries, rejection sampling, learning, or a Guardian-style controller is added.
+The reasoning floor is the no-tool, pre-intervention benchmark. It measures what current models can do before retrieval,
+memory, verifier-guided retries, rejection sampling, learning, or a Guardian-style controller is added.
 
 The main reasoning-floor setup uses:
 
-- deterministic zero-shot contract prompting;
+- deterministic zero-shot and static-few-shot contract prompting;
 - sanitized benchmark inputs only;
 - `logic_only` and `local_graph` context bundles as primary conditions;
 - `minimal_case` as an optional diagnostic condition;
-- oracle-track proposal generation with track diagnosis skipped;
+- oracle-track proposal generation plus independently scored track diagnosis;
 - one provider-neutral logical prompt contract with model-native hidden reasoning allowed only when explicitly pinned.
 
-Few-shot and diagnosis-routed prompting are later ablations, not part of the confirmatory reasoning-floor workload. They
-test precedent adaptation and routing cost rather than the pure repair baseline.
+The headline design is the full factorial of task (repair or diagnosis), prompt regime (zero or static few-shot), and
+context bundle (`logic_only` or `local_graph`). Diagnosis does not route proposal generation.
 
 ## Prediction Tasks
 
@@ -42,11 +43,8 @@ The model predicts whether the repair locus is `A_BOX`, `T_BOX`, or `AMBIGUOUS`.
 
 The model receives the historical repair locus and proposes a repair using the corresponding contract. This measures repair quality when layer selection is not the bottleneck.
 
-### Diagnosis-Routed Repair
-
-The model first predicts the repair locus and then generates a proposal using that predicted route. The gap between oracle-track and diagnosis-routed performance measures the cost of repair-locus errors.
-The current diagnosis gate did not justify confirmatory routing, so this remains exploratory unless a later frozen
-protocol adds it.
+Diagnosis-routed repair was implemented during development but is outside the paper matrix. It remains a possible
+registered extension rather than a hidden mode of the confirmatory runner.
 
 ## Context Ablations
 
@@ -117,7 +115,7 @@ confirmatory workload.
 - false A-box rate on T-box cases;
 - false T-box rate on A-box cases;
 - ambiguous prediction rate;
-- oracle-track vs diagnosis-routed repair gap.
+- performance by locus and context condition.
 
 ## Baselines
 

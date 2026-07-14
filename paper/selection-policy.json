@@ -1,0 +1,32 @@
+{
+  "manifest_type": "paper_selection_policy",
+  "manifest_version": 1,
+  "seed": 13,
+  "ranking": "sha256",
+  "sampling_unit": {
+    "A_BOX": "qid_property",
+    "T_BOX": "property_revision"
+  },
+  "eligibility": {
+    "required_disposition": "include",
+    "allowed_strata": ["IC-L", "IC-G", "IC-E-elim", "TBOX"],
+    "diagnostic_ic_u_allowed": false,
+    "support_bank_groups_allowed": false
+  },
+  "support_bank": {
+    "capacity_per_locus": 16,
+    "A_BOX_roles": ["ic_l_rule", "ic_l_normalization", "ic_g_local", "ic_e_elim"],
+    "T_BOX_roles": ["cq_plus", "cq_minus_or_replace", "no_causal_empty", "other_or_family_only"]
+  },
+  "populations": {
+    "main-1200": {"IC-L": 230, "IC-G": 375, "IC-E-elim": 295, "TBOX": 300},
+    "azure-600": {"IC-L": 115, "IC-G": 188, "IC-E-elim": 147, "TBOX": 150}
+  },
+  "expansion": {
+    "method": "per_stratum_prefix",
+    "require_nondecreasing_quotas_for_nested_parent": true,
+    "tbox_underfill_policy": "transfer_to_abox_by_largest_remainder",
+    "other_underfill_policy": "fail",
+    "overwrite_existing_manifest": false
+  }
+}

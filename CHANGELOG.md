@@ -1,18 +1,13 @@
 # Changelog
 
-All notable changes to released versions will be documented here. The project has not yet published a stable dataset or
-software release.
+## Unreleased paper release
 
-## [Unreleased]
+- Consolidated the repository around one protocol, one public CLI, one canonical dataset, ignored construction/run
+  workspaces, and compact results.
+- Retained zero/few-shot repair, independent track diagnosis, deterministic baselines, replayable scoring, and the
+  Reasoning-floor Streamlit viewer.
+- Replaced the strict T-box signature paper task with the taxonomy-patch task.
+- Added complete-disposition, independent-group, nested-population, support-bank exclusion, and atomic-release gates.
 
-### Added
-
-- fail-closed artifact distribution schema, reproducibility template, acquisition CLI, and tests
-- public dataset-card coverage of provenance, selection, bias, privacy, licensing, contamination, and maintenance
-- software license, data-license boundary, and repository-level citation metadata
-
-### Release blockers
-
-- publish immutable Stage 2/3/4/5 artifacts and bind their URLs, byte counts, hashes, and licenses
-- record exact upstream source snapshot metadata and a reconciled selection funnel
-- declare archival citation metadata, maintainers, correction policy contacts, and the paper author list
+No stable dataset or software release has been published yet. Detailed pre-restructure work is preserved in the
+[development history](docs-technical/Development_History.md).

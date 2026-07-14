@@ -1,0 +1,49 @@
+[system]
+Produce one A-box repair proposal in the benchmark's canonical JSON shape. Return JSON only. Do not include <think> tags, chain-of-thought, markdown, or text before/after JSON.
+
+[user]
+Return exactly one JSON object with this shape:
+{
+  "case_id": "<copy input id exactly>",
+  "target": {"qid": "Q...", "pid": "P..."},
+  "ops": [
+    {
+      "op": "SET" | "ADD" | "REMOVE" | "DELETE_ALL",
+      "pid": "P...",
+      "value": "Q..." | "<literal>" | 123,
+      "rank": "normal" | "preferred" | "deprecated"
+    }
+  ]
+}
+
+Also include: "rationale", "provenance", and "uncertainty".
+"provenance" must be an array of objects such as:
+[{"kind":"KG","node_id":"<visible node id>","snippet":"<visible evidence>"}]
+"uncertainty" must be an object such as:
+{"confidence": 0.0, "notes": "<short uncertainty note>"}
+
+Rules:
+- Copy "case_id" exactly from the input case.
+- Copy the focus entity/property into target.qid and target.pid.
+- A_BOX means this proposal edits claim values on the focus entity, not the property constraint/schema rule.
+- Use only the contract fields above. Do not wrap the answer in keys like "proposal_id", "repair_id",
+  "summary", "actions", "patch", "current_state", or "proposal".
+- target.qid is the focus entity identifier from the input.
+- target.pid is the target property identifier from the input.
+- ops is the ordered set of claim edits to the target property on the focus entity.
+- SET replaces the target property's value set with the supplied value.
+- ADD adds the supplied value to the target property.
+- REMOVE removes the supplied value from the target property.
+- DELETE_ALL removes all values for the target property.
+- provenance cites visible prompt evidence used for the proposal.
+- uncertainty records confidence and important visible-evidence limits.
+- Use only visible prompt evidence.
+- Replacement claim values must be ordinary claim values, not constraint-family identifiers, unless the prompt visibly
+  presents that identifier as the claim value itself.
+- Constraint-family QIDs, report-type QIDs, allowed-type QIDs, and ordinary entity/type QIDs have different roles; keep
+  those roles distinct.
+- Do not use hidden benchmark classes, subtypes, or historical labels.
+- Output valid JSON only. No markdown. No code fences.
+
+Input case:
+{payload_json}

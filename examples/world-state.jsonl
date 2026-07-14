@@ -1,0 +1,2 @@
+{"id":"example-abox-1","world_state":{"L1_ego_node":{"properties":{"P1":["Q2"]},"qid":"Q1"},"L2_labels":{"entities":{}},"L3_neighborhood":{"outgoing_edges":[]},"L4_constraints":{"constraints":[]}}}
+{"id":"example-tbox-1","world_state":{"L1_ego_node":{"properties":{},"qid":"Q4"},"L2_labels":{"entities":{}},"L3_neighborhood":{"outgoing_edges":[]},"L4_constraints":{"constraints":[]}}}

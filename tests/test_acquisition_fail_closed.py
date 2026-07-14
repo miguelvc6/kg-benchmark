@@ -1,8 +1,10 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
+import fetcher
 from lib.caching import SnapshotFetcher, SnapshotFetchError
 from lib.mining import mine_repairs
 from lib.popularity import PageviewClient
@@ -11,6 +13,23 @@ from lib.world_state import WorldStateBuilder
 
 
 class AcquisitionFailClosedTests(unittest.TestCase):
+    def test_partial_stage2_jsonl_requires_explicit_resume(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            partial = root / "02_wikidata_repairs.jsonl"
+            partial.write_text(json.dumps({"id": "partial"}) + "\n", encoding="utf-8")
+            with (
+                patch.object(fetcher, "REPAIR_CANDIDATES_FILE", root / "01_repair_candidates.json"),
+                patch.object(fetcher, "WIKIDATA_REPAIRS", root / "02_wikidata_repairs.json"),
+                patch.object(fetcher, "WIKIDATA_REPAIRS_JSONL", partial),
+                patch.object(fetcher, "ensure_repair_candidates_file", return_value=[{"qid": "Q1"}]),
+                patch.object(fetcher, "deduplicate_candidates", return_value=([{"qid": "Q1"}], {})),
+                patch.object(fetcher, "LabelResolver"),
+                patch.object(fetcher, "load_cached_repairs", return_value=None),
+                self.assertRaisesRegex(RuntimeError, "may be partial output"),
+            ):
+                fetcher.process_pipeline()
+
     def test_json_api_exhaustion_raises_when_required(self) -> None:
         with (
             patch("lib.utils.requests.get", side_effect=OSError("offline")),

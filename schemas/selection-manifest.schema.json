@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kg-benchmark.local/schemas/selection-manifest.schema.json",
+  "title": "Nested evaluation population",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["manifest_type", "manifest_version", "name", "quotas", "case_count", "selected_case_ids", "selected_group_keys", "support_groups_excluded", "parent"],
+  "properties": {
+    "manifest_type": {"const": "evaluation_population"},
+    "manifest_version": {"const": 1},
+    "name": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"},
+    "quotas": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["IC-L", "IC-G", "IC-E-elim", "TBOX"],
+      "properties": {
+        "IC-L": {"type": "integer", "minimum": 0},
+        "IC-G": {"type": "integer", "minimum": 0},
+        "IC-E-elim": {"type": "integer", "minimum": 0},
+        "TBOX": {"type": "integer", "minimum": 0}
+      }
+    },
+    "case_count": {"type": "integer", "minimum": 1},
+    "selected_case_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "selected_group_keys": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "support_groups_excluded": {"type": "integer", "minimum": 0},
+    "parent": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "nesting_proven"],
+          "properties": {"name": {"type": "string", "minLength": 1}, "nesting_proven": {"const": true}}
+        }
+      ]
+    }
+  }
+}

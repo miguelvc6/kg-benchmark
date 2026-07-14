@@ -1,94 +1,19 @@
-# Model Execution Matrix
+# Model Execution
 
-The paper model and population plan is tracked in
-[`experiments/paper_execution_models_v1.json`](../experiments/paper_execution_models_v1.json). Its model identities,
-provider settings, planned populations, conditions, and prompt reference are `methodology_frozen` before acquisition.
-Final selection hashes and all immutable deployment revisions remain execution-freeze inputs. The prompt configuration is
-frozen in
-[`experiments/paper_prompt_profile_v1.json`](../experiments/paper_prompt_profile_v1.json) and bound by SHA-256.
-`kg-experiment-plan` validates the matrix and derives workloads and runner arguments; adding a model or population is a
-data-only change when it uses an existing provider contract.
+The model matrix is configured in `paper/models.json`; populations, tasks, prompt regimes, and contexts are data-driven.
+The initial full factorial has repair proposal and track diagnosis under zero/static-few-shot and
+`logic_only`/`local_graph`: 9,600 calls per Ollama model and 4,800 Azure batch calls.
 
-## Registered draft conditions
+Ollama models are `qwen3:30b`, `llama3.3:70b`, and `gpt-oss:120b`. Azure uses `gpt-5.6-sol`, high reasoning effort,
+batch execution, and disabled tools. Exact model/deployment revisions must be filled before methodology freeze.
 
-| Provider | Model/deployment | Population | Execution | Requests |
-|---|---|---:|---|---:|
-| Ollama | `qwen3:30b` | full 1,200 | parallel, one worker | 2,400 |
-| Ollama | `llama3.3:70b` | full 1,200 | parallel, one worker | 2,400 |
-| Ollama | `gpt-oss:120b` | full 1,200 | parallel, one worker | 2,400 |
-| Azure | `gpt-5.6-sol` | nested 600 | batch, high reasoning effort, tools disabled | 1,200 |
+`kg-benchmark run` writes immutable raw generations and run manifests under ignored `runs/`. Generation keys depend on
+the rendered request, model revision, and inference settings rather than population membership. A larger nested
+population therefore reuses all matching earlier requests and schedules only new cases. Changing few-shot count changes
+the rendered prompt and correctly defines new requests.
 
-The counts assume oracle routing with diagnosis skipped and the `logic_only` and `local_graph` bundles. The Azure
-condition disables synchronous fallback: a failed batch item remains a recorded request error and is not silently
-reissued through a different execution mode. The OpenAI-compatible request adapter sends `tool_choice: "none"` for both
-synchronous and batch payloads.
+`kg-benchmark score` writes a new metric-version output without mutating or resubmitting generations. Confirmatory and
+extension populations remain separately identified even when they share cached responses.
 
-All models receive the same logical zero-shot, hybrid JSON/NL contract. A-box uses `prompt_dev_v4_spec_only`; T-box uses
-`prompt_dev_v5_tbox_taxonomy_patch`. The prompt profile disables abstention and semantic retries, requires JSON plus
-short rationale/provenance/uncertainty fields, redacts reasoning traces, and exposes only confirmatory-supported T-box
-operations. Class-hierarchy and exception operations remain in the extensible schema but are absent from the paper
-prompt.
-
-Local inference is explicit: 32,768 context tokens, 8,192 output tokens, temperature 0, top-p 1, seed 13, and two
-exact-request transport retries. Qwen 3 thinking is enabled, Llama 3.3 thinking is disabled, and GPT-OSS uses high
-thinking. Azure uses 8,192 maximum completion tokens, high reasoning effort, zero client item retries, batch execution,
-and no synchronous fallback. Reasoning levels are provider-native conditions and are not claimed to be equivalent.
-
-All four conditions pin `tbox_task_version=tbox_taxonomy_patch_v1`. T-box scoring requires complete mechanically
-supported gold and excludes cases requiring unmined class-hierarchy or exception operations. A-box and T-box use separate
-metric families and are never collapsed into one repair-success score. Strict-signature reconstruction is not queried by
-the confirmatory matrix.
-
-Validate or render the plan with:
-
-```bash
-UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-experiment-plan validate
-UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-experiment-plan validate --require-methodology-frozen
-UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-paper-prompt-profile
-UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-experiment-plan plan --output reports/execution_plan.json
-```
-
-`--require-methodology-frozen` is the pre-acquisition gate and deliberately does not require selection hashes or deployment
-digests. `--require-frozen` is the post-selection execution gate and currently fails. Before changing the matrix to
-`frozen`, resolve the two missing
-Ollama manifest digests, bind an immutable Azure deployment revision, and replace the snapshot selection placeholders
-and their SHA-256 hashes. The
-installed `gpt-oss:120b` manifest digest is already recorded. Large missing Ollama models are not pulled as part of
-validation.
-
-`kg-paper-prompt-profile` verifies the profile's own canonical digest, the exact system/user template digests, output
-schema digests, and prompt registry, renderer, context-policy, prompt-development, and provider-adapter file hashes.
-Every planned runner command receives `--prompt-profile`; the runner revalidates it and records it in `run_config.json`.
-
-## Cross-run generation reuse
-
-Every planned model has a dedicated append-only SQLite generation cache under `.cache/model_generations/`. The cache key
-binds provider, model, immutable model digest, resolved inference settings, system prompt, user prompt, and response
-format. A cache is therefore reusable across retries, population extensions, and selection reorganizations without
-allowing responses to cross a changed model revision or changed prompt.
-
-Prompt-visible case IDs are stable hashes of raw case IDs. They no longer depend on selection order, so adding cases to
-a population does not alter existing prompts. Cache hits report zero new tokens and cost while preserving the source
-generation usage in provenance. A model digest is mandatory whenever caching is enabled.
-
-The runner still supports `--resume-run-dir` for an interrupted identical population. The generation cache is the broader
-mechanism for reuse across different run directories and expanded populations.
-
-## Versioned metric replay
-
-Generation and scoring are separable. Apply a revised evaluator to stored normalized proposals without model calls:
-
-```bash
-UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-rescore-run \
-  --run-dir reports/reasoning_floor/RUN_ID \
-  --evaluation-id metrics_v2
-```
-
-Outputs are written under `RUN_ID/evaluations/metrics_v2/`. The command refuses to overwrite an existing evaluation ID
-and writes a manifest containing source-output hashes, evaluator code hashes, Git state, output hashes, and
-`provider_calls: 0`. If data artifacts have moved, pass explicit benchmark, world-state, and selection-manifest paths;
-their content is fingerprinted in the replay manifest.
-
-For taxonomy-patch runs, replay writes separate A-box and T-box taxonomy summaries using a newly derived, content-bound
-gold version. It refuses incomplete mechanically supported T-box gold and never routes missing strict-signature proposals
-through the legacy evaluator.
+`kg-benchmark baseline` retains the deterministic non-LLM comparisons. The Reasoning-floor Streamlit application is
+launched with `kg-benchmark viewer` and reads the same dataset and run layout.

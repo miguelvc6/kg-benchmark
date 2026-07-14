@@ -9,7 +9,7 @@ class TrackParserTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         repo_root = Path(__file__).resolve().parents[1]
-        cls.schema_path = repo_root / "schemas" / "track_diagnosis.schema.json"
+        cls.schema_path = repo_root / "schemas" / "track-diagnosis-response.schema.json"
         cls.schema = load_schema(str(cls.schema_path))
 
     def test_valid_track_diagnosis(self) -> None:

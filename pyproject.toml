@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kg-benchmark"
-version = "0.1.0"
-description = "WikidataRepairEval research pipeline"
+version = "0.2.0"
+description = "Reproducible Wikidata repair benchmark for the paper experiments"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -39,62 +39,28 @@ ui = [
 ]
 
 [project.scripts]
-kg-fetcher = "fetcher:main"
-kg-classifier = "classifier:main"
-kg-splitter = "splitter:main"
-kg-select-benchmark-cases = "select_benchmark_cases:main"
-kg-evaluate = "evaluate:main"
-kg-reasoning-floor = "reasoning_floor:main"
-kg-rescore-run = "rescore_run:main"
-kg-non-llm-baselines = "non_llm_baselines:main"
-kg-prompt-dev = "prompt_dev:main"
-kg-select-few-shot-support = "select_few_shot_support:main"
-kg-reasoning-floor-viewer = "scripts.reasoning_floor_viewer:main"
-kg-test-llm-endpoint = "scripts.test_llm_endpoint:main"
-kg-analyze-tbox-updates = "scripts.analyze_tbox_updates:main"
-kg-classifier-audit-report = "scripts.classifier_audit_report:main"
-kg-artifact-release = "artifact_release:main"
-kg-snapshot-manifest = "snapshot_manifest:main"
-kg-artifacts = "artifact_acquisition:main"
-kg-temporal-audit = "temporal_audit:main"
-kg-automated-audit = "automated_consistency_audit:main"
-kg-annotation-protocol = "annotation_protocol:main"
-kg-select-untouched-test = "select_untouched_test:main"
-kg-analyze-results = "analyze_results:main"
-kg-experiment-registry = "experiment_registry:main"
-kg-experiment-plan = "experiment_plan:main"
-kg-paper-prompt-profile = "paper_prompt_profile:main"
-kg-protocol-freeze = "protocol_freeze:main"
-kg-artifact-lineage = "artifact_lineage:main"
+kg-benchmark = "kg_benchmark.cli:main"
 
 [tool.setuptools]
 package-dir = {"" = "src", "scripts" = "scripts"}
-packages = ["guardian", "lib", "scripts"]
+packages = [
+    "guardian",
+    "lib",
+    "scripts",
+    "kg_benchmark",
+    "kg_benchmark.dataset",
+    "kg_benchmark.selection",
+]
 py-modules = [
     "classifier",
-    "artifact_release",
-    "snapshot_manifest",
-    "artifact_acquisition",
-    "temporal_audit",
-    "automated_consistency_audit",
-    "automated_audit_codex",
-    "annotation_protocol",
-    "select_untouched_test",
-    "analyze_results",
-    "experiment_registry",
-    "experiment_plan",
-    "paper_prompt_profile",
-    "protocol_freeze",
     "artifact_lineage",
-    "evaluate",
+    "automated_audit_codex",
+    "automated_consistency_audit",
     "fetcher",
     "non_llm_baselines",
-    "prompt_dev",
     "reasoning_floor",
     "rescore_run",
-    "select_benchmark_cases",
-    "select_few_shot_support",
-    "splitter",
+    "temporal_audit",
 ]
 
 [tool.ruff]

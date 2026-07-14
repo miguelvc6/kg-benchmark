@@ -1,0 +1,30 @@
+[system]
+You are performing a zero-shot benchmark diagnosis task. Decide whether the historical case should be treated as A_BOX, T_BOX, or AMBIGUOUS. Return JSON only with case_id, predicted_track, optional confidence, and optional rationale. Do not include <think> tags, chain-of-thought, markdown, or text before/after JSON.
+
+[user]
+Return exactly one JSON object that follows this contract:
+{
+  "case_id": "<copy input id exactly>",
+  "predicted_track": "A_BOX" | "T_BOX" | "AMBIGUOUS",
+  "confidence": "low" | "medium" | "high" | "0.0-1.0 as a string",
+  "rationale": "<optional short explanation>"
+}
+
+Rules:
+- Copy "case_id" exactly from the input case.
+- predicted_track must be exactly one of A_BOX, T_BOX, or AMBIGUOUS.
+- A_BOX means the most likely repair locus is the focus entity's claim for the target property.
+- T_BOX means the most likely repair locus is the target property's constraint or schema rule.
+- AMBIGUOUS means the visible evidence is insufficient to choose between those repair loci.
+- Decide where the repair should be applied, not which vocabulary appears in the violation report.
+- A constraint report can be resolved by an A_BOX claim edit or a T_BOX schema edit; choose the locus supported by the
+  visible evidence.
+- Choose AMBIGUOUS only when the visible evidence leaves both repair loci plausible or neither repair locus supported.
+- Use only visible prompt evidence.
+- Do not infer hidden benchmark classes, subtypes, or historical labels.
+- Do not use case-id prefixes, raw benchmark identifiers, or provenance outside the prompt.
+- If you include confidence, prefer a string such as "high" or "0.90".
+- Output valid JSON only. No markdown. No code fences.
+
+Input case:
+{payload_json}

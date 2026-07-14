@@ -167,7 +167,7 @@ class ArtifactLineageTests(unittest.TestCase):
                     "stage2_jsonl": canonical_record_sha256([]),
                 },
             }
-            from artifact_release import sha256_file
+            from kg_benchmark.dataset.release import sha256_file
 
             policy["expected_artifact_sha256"] = {
                 "stage2_json": sha256_file(p["s2.json"]),

@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any, Callable, Iterable, Sequence
 
 CODEX_REVIEW_SCHEMA = json.loads(
-    (Path(__file__).resolve().parents[1] / "schemas" / "automated_audit_review.schema.json").read_text(
+    (Path(__file__).resolve().parents[1] / "schemas" / "automated-audit-review.schema.json").read_text(
         encoding="utf-8"
     )
 )

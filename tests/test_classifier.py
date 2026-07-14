@@ -2,7 +2,6 @@ import unittest
 
 from classifier import classify_one, local_context_buckets, match_truth_locally
 from lib.benchmark_selection import derive_case_metadata
-from lib.manual_audit import audit_truth_token_kind
 from lib.repair_state import comparable_atom, derive_value_change_summary, normalize_value_list
 
 
@@ -557,7 +556,6 @@ class ClassifierPhaseBTests(unittest.TestCase):
             }
         }
 
-        self.assertEqual(audit_truth_token_kind(record), "literal")
         self.assertEqual(derive_case_metadata({**_base_repair(id="phone"), **record}, tier="core")["truth_token_kind"], "literal")
 
     def test_wikidata_date_literal_is_date_token_kind(self):
@@ -570,7 +568,6 @@ class ClassifierPhaseBTests(unittest.TestCase):
             }
         }
 
-        self.assertEqual(audit_truth_token_kind(record), "date")
         self.assertEqual(derive_case_metadata({**_base_repair(id="date"), **record}, tier="core")["truth_token_kind"], "date")
 
     def test_delete_format_invalid_requires_format_report(self):

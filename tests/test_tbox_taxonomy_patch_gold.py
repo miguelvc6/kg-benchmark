@@ -18,7 +18,7 @@ class TBoxTaxonomyPatchGoldTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         repo_root = Path(__file__).resolve().parents[1]
-        with (repo_root / "schemas" / "tbox_taxonomy_patch_proposal.schema.json").open(encoding="utf-8") as handle:
+        with (repo_root / "schemas" / "tbox-response.schema.json").open(encoding="utf-8") as handle:
             cls.validator = Draft202012Validator(json.load(handle))
 
     def assertSchemaValid(self, payload: dict) -> None:

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kg-benchmark.local/schemas/generation-record.schema.json",
+  "title": "Content-addressed model generation",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["request_key", "case_id", "case_payload_sha256", "task", "rendered_prompt_sha256", "context_sha256", "model_revision", "inference_parameters_sha256", "status"],
+  "properties": {
+    "request_key": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "case_id": {"type": "string", "minLength": 1},
+    "case_payload_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "task": {"enum": ["repair_proposal", "track_diagnosis"]},
+    "rendered_prompt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "context_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "model_revision": {"type": "string", "minLength": 1},
+    "inference_parameters_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "status": {"enum": ["completed", "failed", "missing"]},
+    "response": {}
+  }
+}

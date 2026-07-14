@@ -458,7 +458,10 @@ class ReasoningFloorViewerDataTests(unittest.TestCase):
         prompt_debug = build_case_prompt_debug(bundle_data, "repair_case")
 
         self.assertIsNone(prompt_debug.error)
-        self.assertEqual(prompt_debug.proposal_prompt.prompt_name, "reasoning_floor_t_box_zero_shot")
+        self.assertEqual(
+            prompt_debug.proposal_prompt.prompt_name,
+            "reasoning_floor_t_box_taxonomy_patch_zero_shot",
+        )
 
     def test_load_bundle_debug_data_can_skip_eager_case_record_loading(self) -> None:
         root, reports_root, run_dir, _ = self._build_fixture(with_evaluation_artifacts=True)

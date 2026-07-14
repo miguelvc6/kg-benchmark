@@ -1,0 +1,68 @@
+{
+  "manifest_type": "paper_model_matrix",
+  "manifest_version": 1,
+  "status": "pending_refreeze",
+  "request_dimensions": {
+    "tasks": ["repair_proposal", "track_diagnosis"],
+    "prompt_regimes": ["zero_shot", "static_few_shot"],
+    "context_bundles": ["logic_only", "local_graph"]
+  },
+  "generation_identity": [
+    "case_payload_sha256",
+    "task",
+    "rendered_prompt_sha256",
+    "context_sha256",
+    "model_revision",
+    "inference_parameters_sha256"
+  ],
+  "models": [
+    {
+      "model_id": "ollama_qwen3_30b",
+      "provider": "ollama",
+      "model": "qwen3:30b",
+      "population": "main-1200",
+      "temperature": 0,
+      "top_p": 1,
+      "seed": 13,
+      "context_length": 32768,
+      "max_output_tokens": 8192,
+      "tools_disabled": true
+    },
+    {
+      "model_id": "ollama_llama3_3_70b",
+      "provider": "ollama",
+      "model": "llama3.3:70b",
+      "population": "main-1200",
+      "temperature": 0,
+      "top_p": 1,
+      "seed": 13,
+      "context_length": 32768,
+      "max_output_tokens": 8192,
+      "tools_disabled": true
+    },
+    {
+      "model_id": "ollama_gpt_oss_120b",
+      "provider": "ollama",
+      "model": "gpt-oss:120b",
+      "population": "main-1200",
+      "temperature": 0,
+      "top_p": 1,
+      "seed": 13,
+      "context_length": 32768,
+      "max_output_tokens": 8192,
+      "ollama_think": "high",
+      "tools_disabled": true
+    },
+    {
+      "model_id": "azure_gpt_5_6_sol_high",
+      "provider": "azure",
+      "model": "gpt-5.6-sol",
+      "population": "azure-600",
+      "execution_mode": "batch",
+      "reasoning_effort": "high",
+      "max_output_tokens": 8192,
+      "tools_disabled": true,
+      "transport_retries": 0
+    }
+  ]
+}

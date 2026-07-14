@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any, Iterable
 from urllib.parse import quote, quote_plus, unquote, unquote_plus
 
-from artifact_release import sha256_file
+from kg_benchmark.dataset.release import sha256_file
 from lib.utils import iter_jsonl
 
 COMMON_HIGH_RISK_FIELDS = {

@@ -1,6 +1,8 @@
 # Benchmark Taxonomy
 
-This document summarizes the research-facing labels used by WikidataRepairEval. The full conceptual rationale is in [Full Project Description](./00-full_project_description.md) and the paper narrative is in [KG LLM Benchmark Narrative](./00-kg_llm_benchmark.md). Technical artifact layouts belong in [docs-technical](../docs-technical/README.md).
+This document summarizes the research-facing labels used by WikidataRepairEval. The rationale and paper narrative are
+in [Research Objectives and Paper Narrative](./Research_Objectives_and_Paper_Narrative.md). Technical artifact layouts
+belong in [technical documentation](../docs-technical/README.md).
 
 The benchmark has two orthogonal axes:
 
@@ -96,8 +98,9 @@ over every Stage 4 record and every supplied or final rendered prompt with label
 Missing Stage 2 records or required fields are explicit audit outcomes rather than empty evidence. Codex nominations are
 exploratory: they are not gold labels, independent annotations, inter-annotator agreement, or evidence of causal or
 semantic uniqueness. The completed `full_v1` run found 1,621 deterministic disagreements and placed model-assisted
-concerns in conservative diagnostic or rerender dispositions; measured details are in the technical
-[Automated Consistency Audit](../docs-technical/Automated_Consistency_Audit.md).
+concerns in conservative diagnostic or rerender dispositions. That run informed deterministic rules but does not
+certify the final dataset; its role is recorded in the
+[development history](../docs-technical/Development_History.md).
 
 ## T-box Subtypes
 
@@ -114,15 +117,9 @@ Candidate schema-reform subtypes include:
 | `SCHEMA_UPDATE` | Schema changed but direction is generic or not confidently typed. |
 | `COINCIDENTAL_SCHEMA_CHANGE` | Schema changed, but report-to-delta alignment is weak. |
 
-## Dataset Tiers
+## Dataset Views
 
-The full dataset is the canonical historical record. Paper-facing evaluation should use fixed deterministic subsets:
-
-| Tier | Purpose |
-|---|---|
-| Full dataset | Release and descriptive statistics. |
-| Core dataset | Main LLM evaluation, stratified across repair locus, information condition, subtype, popularity, confidence, and T-box clusters. |
-| Dev/Pilot set | Prompt engineering, representation ablations, debugging, and failure analysis. |
-| Audit set | Sampled diagnostic view for exploratory label-hidden error discovery; not independent label validation. |
-
-Classifier confidence should be a stratification variable, not a simple inclusion filter.
+The release contains one canonical dataset and several deterministic views of its fully audited eligible pool. The
+initial main view has 1,200 independent cases; the Azure view is a nested 600-case prefix. A reserved support bank is
+excluded from every evaluation population. Larger experiments use longer prefixes of the same stable per-stratum order,
+so they do not redefine or resample earlier cases.

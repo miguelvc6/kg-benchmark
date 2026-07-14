@@ -383,7 +383,7 @@ class ReasoningFloorTests(unittest.TestCase):
                 fh,
             )
         selection_manifest_path.write_text(
-            json.dumps({"selected_case_ids": ["reform_case"]}),
+            json.dumps({"selected_case_ids": ["repair_case"]}),
             encoding="utf-8",
         )
 
@@ -398,18 +398,26 @@ class ReasoningFloorTests(unittest.TestCase):
             if metadata["case_id"] == "reform_case":
                 return {
                     "case_id": visible_case_id,
+                    "schema_decision": "CAUSAL_SCHEMA_REPAIR",
                     "target": {"pid": "P31", "constraint_type_qid": "Q21510859"},
-                    "proposal": {
-                        "action": "RELAXATION_SET_EXPANSION",
-                        "signature_after": [
-                            {
-                                "constraint_qid": "Q21510859",
-                                "snaktype": "VALUE",
-                                "rank": "normal",
-                                "qualifiers": [{"property_id": "P2305", "values": ["Q5", "Q43229"]}],
-                            }
-                        ],
-                    },
+                    "repairs": [
+                        {
+                            "repair_op": "CONSTRAINT_QUALIFIER_ADD",
+                            "taxonomy_code": "CQ_PLUS",
+                            "constraint_type_qid": "Q21510859",
+                            "qualifier_property_id": "P2305",
+                            "added_values": ["Q5"],
+                            "removed_values": [],
+                            "old_value": None,
+                            "new_value": "Q5",
+                            "rank_after": "normal",
+                            "snaktype_after": "VALUE",
+                            "evidence_level": "VALUE_DELTA_VISIBLE",
+                        }
+                    ],
+                    "rationale": "stub",
+                    "provenance": [{"kind": "KG", "node_id": "P31", "snippet": "stub"}],
+                    "uncertainty": {"confidence": 0.9, "notes": "stub"},
                 }
             return {
                 "case_id": visible_case_id,
@@ -446,22 +454,26 @@ class ReasoningFloorTests(unittest.TestCase):
         run_config = json.loads((run_dir / "run_config.json").read_text(encoding="utf-8"))
         manifest_rows = self._read_jsonl(run_dir / "run_manifest.jsonl")
         raw_rows = self._read_jsonl(run_dir / "raw_model_responses.jsonl")
-        t_box_rows = self._read_jsonl(run_dir / "minimal_case" / "t_box_proposals.jsonl")
-        visible_case_id = prompt_visible_case_id("reform_case")
-        self.assertEqual(run_config["visible_case_id_map"], {"reform_case": visible_case_id})
+        a_box_rows = self._read_jsonl(run_dir / "minimal_case" / "a_box_proposals.jsonl")
+        visible_case_id = prompt_visible_case_id("repair_case")
+        self.assertEqual(run_config["visible_case_id_map"], {"repair_case": visible_case_id})
         self.assertEqual(len(run_config["artifact_fingerprints"]["classified_benchmark"]["sha256"]), 64)
         self.assertEqual(len(run_config["artifact_fingerprints"]["world_state"]["sha256"]), 64)
         self.assertIn("temperature", run_config["inference_settings"])
         self.assertIn("commit", run_config["code"])
         self.assertTrue(all(row.get("visible_case_id") == visible_case_id for row in manifest_rows))
         self.assertTrue(all(row.get("parsed_payload", {}).get("case_id") == visible_case_id for row in raw_rows))
-        self.assertEqual(t_box_rows[0]["case_id"], "reform_case")
+        self.assertEqual(a_box_rows[0]["case_id"], "repair_case")
         self.assertEqual(summary["run_info"]["evaluation"]["classified_record_strategy"], "memory_cache")
         self.assertIsNone(summary["run_info"]["evaluation"]["filtered_classified_path"])
         self.assertEqual(summary["parse_errors"]["proposal_parse_error_count"], 0)
 
     def test_reasoning_floor_taxonomy_patch_tbox_mode_writes_distinct_output(self) -> None:
         root, classified_path, world_state_path, selection_manifest_path, _ = self._make_stub_fixture()
+        selection_manifest_path.write_text(
+            json.dumps({"selected_case_ids": ["reform_case"]}),
+            encoding="utf-8",
+        )
 
         def resolver(metadata: dict[str, Any]) -> dict[str, Any]:
             visible_case_id = metadata.get("visible_case_id") or metadata["case_id"]
@@ -513,7 +525,7 @@ class ReasoningFloorTests(unittest.TestCase):
         taxonomy_rows = self._read_jsonl(run_dir / "minimal_case" / "t_box_taxonomy_patch_proposals.jsonl")
         strict_rows = self._read_jsonl(run_dir / "minimal_case" / "t_box_proposals.jsonl")
         self.assertEqual(run_config["tbox_task_version"], "tbox_taxonomy_patch_v1")
-        self.assertEqual(run_config["prompt_version"], "prompt_dev_v5_tbox_taxonomy_patch")
+        self.assertEqual(run_config["prompt_version"], "paper_prompts_v1")
         self.assertEqual(run_config["strict_tbox_signature_diagnostic"], "not_run")
         self.assertEqual(taxonomy_rows[0]["case_id"], "reform_case")
         self.assertEqual(strict_rows, [])
@@ -852,8 +864,8 @@ class ReasoningFloorTests(unittest.TestCase):
         run_dir = next((root / "outputs").iterdir())
         manifest_rows = self._read_jsonl(run_dir / "run_manifest.jsonl")
         self.assertEqual(len(manifest_rows), 4)
-        self.assertEqual(summary["counts"]["cases"], 2)
-        self.assertEqual(summary["request_errors"]["proposal_request_error_count"], 1)
+        self.assertEqual(summary["counts"]["cases"], 1)
+        self.assertEqual(summary["request_errors"]["proposal_request_error_count"], 0)
         self.assertEqual(
             sum(
                 1
@@ -932,7 +944,7 @@ class ReasoningFloorTests(unittest.TestCase):
         run_dir = Path(initial_summary["run_info"]["output_dir"])
         manifest_path = run_dir / "run_manifest.jsonl"
         raw_path = run_dir / "raw_model_responses.jsonl"
-        t_box_path = run_dir / "minimal_case" / "t_box_proposals.jsonl"
+        t_box_path = run_dir / "minimal_case" / "t_box_taxonomy_patch_proposals.jsonl"
         self._write_jsonl(
             manifest_path,
             [
@@ -972,7 +984,7 @@ class ReasoningFloorTests(unittest.TestCase):
         self.assertEqual(resumed_provider.batch_execute_call_count, 1)
         self.assertEqual(len(proposal_manifest_rows), 1)
         self.assertEqual(proposal_manifest_rows[0]["metadata"]["case_id"], "reform_case")
-        self.assertEqual(summary["counts"]["cases"], 2)
+        self.assertEqual(summary["counts"]["cases"], 1)
         self.assertTrue(summary["run_info"]["resume"]["enabled"])
         self.assertEqual(summary["run_info"]["resume"]["existing_manifest_rows"], 3)
         self.assertEqual(len(manifest_rows), 4)
@@ -1474,7 +1486,7 @@ class ReasoningFloorTests(unittest.TestCase):
         self.assertNotIn("Q_NEW", local_context["L2_labels"]["entities"])
 
     def test_t_box_prompt_template_avoids_specific_anchor_example(self) -> None:
-        template = get_prompt_template("reasoning_floor_t_box_zero_shot")
+        template = get_prompt_template("reasoning_floor_t_box_taxonomy_patch_zero_shot")
         self.assertNotIn("Q21510859", template.user_prompt_template)
         self.assertNotIn("Q43229", template.user_prompt_template)
         self.assertNotIn("Q_CONSTRAINT_", template.user_prompt_template)
@@ -1484,11 +1496,11 @@ class ReasoningFloorTests(unittest.TestCase):
         self.assertNotIn("Expand the allowed set", template.user_prompt_template)
         self.assertNotIn("Narrow the allowed types", template.user_prompt_template)
         self.assertIn("constraint-family QIDs", template.user_prompt_template)
-        self.assertIn("ordinary entity/type QIDs", template.user_prompt_template)
-        self.assertIn("target.constraint_type_qid is the constraint-family identifier", template.user_prompt_template)
+        self.assertIn("ordinary item/type values", template.user_prompt_template)
+        self.assertIn("target.constraint_type_qid is the visible constraint-family QID", template.user_prompt_template)
         self.assertNotIn("Action decision tree", template.user_prompt_template)
         self.assertNotIn("compact_inventory_no_pre_change_signature", template.user_prompt_template)
-        self.assertNotIn("Do not invent a full signature_after", template.user_prompt_template)
+        self.assertIn("Do not construct a full post-repair signature_after", template.user_prompt_template)
 
     def test_a_box_prompt_template_is_spec_only(self) -> None:
         template = get_prompt_template("reasoning_floor_a_box_zero_shot")
@@ -1634,6 +1646,10 @@ class ReasoningFloorTests(unittest.TestCase):
 
     def test_reasoning_floor_diagnosis_routed_skips_ambiguous_proposals(self) -> None:
         root, classified_path, world_state_path, selection_manifest_path, _resolver = self._make_stub_fixture()
+        selection_manifest_path.write_text(
+            json.dumps({"selected_case_ids": ["reform_case"]}),
+            encoding="utf-8",
+        )
 
         def resolver(metadata: dict[str, Any]) -> dict[str, Any]:
             if metadata["task_type"] == "track_diagnosis":
@@ -1731,19 +1747,12 @@ class ReasoningFloorTests(unittest.TestCase):
             if metadata["case_id"] == "reform_case":
                 return {
                     "case_id": "reform_case",
+                    "schema_decision": "UNCLEAR_SCHEMA_EVIDENCE",
                     "target": {"pid": "P31", "constraint_type_qid": "Q21510859"},
-                    "proposal": {
-                        "action": "RELAXATION_SET_EXPANSION",
-                        "signature_after": [
-                            {
-                                "constraint_qid": "Q21510859",
-                                "snaktype": "VALUE",
-                                "rank": "normal",
-                                "qualifiers": [{"property_id": "P2305", "values": ["Q5", "Q43229"]}],
-                            }
-                        ],
-                    },
+                    "repairs": [],
+                    "rationale": "stub",
                     "provenance": {"node_id": "Q21510859", "snippet": "constraint"},
+                    "uncertainty": {"confidence": 0.5, "notes": "stub"},
                 }
             return {
                 "case_id": "repair_case",
@@ -1758,6 +1767,7 @@ class ReasoningFloorTests(unittest.TestCase):
             output_dir=root / "outputs",
             provider=StaticResponseProvider(resolver, model="stub-model"),
             ablation_bundles=["minimal_case"],
+            tracks=["A_BOX"],
         )
 
         run_dir = Path(summary["run_info"]["output_dir"])
@@ -1766,17 +1776,15 @@ class ReasoningFloorTests(unittest.TestCase):
             for line in (run_dir / "minimal_case" / "a_box_proposals.jsonl").read_text(encoding="utf-8").splitlines()
             if line.strip()
         ]
-        t_box_rows = [
-            json.loads(line)
-            for line in (run_dir / "minimal_case" / "t_box_proposals.jsonl").read_text(encoding="utf-8").splitlines()
-            if line.strip()
-        ]
         self.assertEqual(summary["parse_errors"]["proposal_parse_error_count"], 0)
         self.assertEqual(a_box_rows[0]["provenance"], [{"kind": "OTHER", "snippet": "historical statement"}])
-        self.assertEqual(t_box_rows[0]["provenance"], [{"kind": "KG", "node_id": "Q21510859", "snippet": "constraint"}])
 
     def test_reasoning_floor_rejects_invalid_t_box_constraint_family_qids(self) -> None:
         root, classified_path, world_state_path, selection_manifest_path, _resolver = self._make_stub_fixture()
+        selection_manifest_path.write_text(
+            json.dumps({"selected_case_ids": ["reform_case"]}),
+            encoding="utf-8",
+        )
 
         def resolver(metadata: dict[str, Any]) -> dict[str, Any]:
             if metadata["task_type"] == "track_diagnosis":
@@ -1788,18 +1796,12 @@ class ReasoningFloorTests(unittest.TestCase):
             if metadata["case_id"] == "reform_case":
                 return {
                     "case_id": "reform_case",
-                    "target": {"pid": "P31", "constraint_type_qid": "Q11122"},
-                    "proposal": {
-                        "action": "RELAXATION_SET_EXPANSION",
-                        "signature_after": [
-                            {
-                                "constraint_qid": "Q11122",
-                                "snaktype": "VALUE",
-                                "rank": "normal",
-                                "qualifiers": [{"property_id": "P2305", "values": ["Q5", "Q43229"]}],
-                            }
-                        ],
-                    },
+                    "schema_decision": "UNCLEAR_SCHEMA_EVIDENCE",
+                    "target": {"pid": "P31", "constraint_type_qid": "Q999999999"},
+                    "repairs": [],
+                    "rationale": "stub",
+                    "provenance": [],
+                    "uncertainty": {"confidence": 0.5, "notes": "stub"},
                 }
             return {
                 "case_id": "repair_case",
@@ -1825,13 +1827,14 @@ class ReasoningFloorTests(unittest.TestCase):
         proposal_row = next(row for row in manifest_rows if row["case_id"] == "reform_case" and row["task_type"] == "proposal")
         t_box_rows = [
             json.loads(line)
-            for line in (run_dir / "minimal_case" / "t_box_proposals.jsonl").read_text(encoding="utf-8").splitlines()
+            for line in (run_dir / "minimal_case" / "t_box_taxonomy_patch_proposals.jsonl")
+            .read_text(encoding="utf-8")
+            .splitlines()
             if line.strip()
         ]
 
-        self.assertEqual(summary["parse_errors"]["proposal_parse_error_count"], 1)
         self.assertEqual(proposal_row["parse_status"], "parse_error")
-        self.assertEqual(proposal_row["parser_error"], "invalid constraint_type_qid for T-box proposal")
+        self.assertIn("constraint_type_qid", proposal_row["parser_error"])
         self.assertEqual(t_box_rows, [])
 
 

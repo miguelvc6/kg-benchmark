@@ -28,7 +28,7 @@ class RescoreRunTests(unittest.TestCase):
                         "selection_manifest": str(selection),
                         "selected_case_ids": ["case-1"],
                         "ablation_bundles": ["logic_only", "local_graph"],
-                        "tbox_task_version": "strict_signature_after_v1",
+                        "tbox_task_version": "tbox_taxonomy_patch_v1",
                     }
                 ),
                 encoding="utf-8",

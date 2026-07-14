@@ -19,7 +19,7 @@ import ijson
 from jsonschema import Draft202012Validator
 
 from artifact_lineage import _validate_stage234, verify_bound_lineage_manifest
-from artifact_release import sha256_file
+from kg_benchmark.dataset.release import sha256_file
 from temporal_audit import audit_rendered_prompts
 
 AUDIT_VERSION = 2
@@ -191,15 +191,12 @@ class WorldStateLookup:
             )
             batch: list[tuple[str, str]] = []
             count = 0
-            with self.world_state_path.open("rb") as handle:
-                for case_id, payload in ijson.kvitems(handle, ""):
-                    if not isinstance(case_id, str) or not isinstance(payload, dict):
-                        continue
-                    batch.append((case_id, json.dumps(payload, ensure_ascii=True, separators=(",", ":"))))
-                    if len(batch) >= 1000:
-                        connection.executemany("INSERT INTO world_state VALUES (?, ?)", batch)
-                        count += len(batch)
-                        batch.clear()
+            for case_id, payload in self._iter_world_state():
+                batch.append((case_id, json.dumps(payload, ensure_ascii=True, separators=(",", ":"))))
+                if len(batch) >= 1000:
+                    connection.executemany("INSERT INTO world_state VALUES (?, ?)", batch)
+                    count += len(batch)
+                    batch.clear()
             if batch:
                 connection.executemany("INSERT INTO world_state VALUES (?, ?)", batch)
                 count += len(batch)
@@ -209,6 +206,31 @@ class WorldStateLookup:
             )
             connection.commit()
         temporary.replace(path)
+
+    def _iter_world_state(self) -> Iterator[tuple[str, dict[str, Any]]]:
+        with self.world_state_path.open("rb") as handle:
+            first = b""
+            while byte := handle.read(1):
+                if not byte.isspace():
+                    first = byte
+                    break
+            handle.seek(0)
+            if first == b"{":
+                for case_id, payload in ijson.kvitems(handle, ""):
+                    if isinstance(case_id, str) and isinstance(payload, dict):
+                        yield case_id, payload
+                return
+            for line_number, raw_line in enumerate(handle, 1):
+                if not raw_line.strip():
+                    continue
+                row = json.loads(raw_line)
+                if not isinstance(row, dict):
+                    raise ValueError(f"Invalid world-state JSONL row at line {line_number}.")
+                case_id = row.get("id") or row.get("case_id")
+                payload = row.get("world_state") or row.get("context")
+                if not isinstance(case_id, str) or not isinstance(payload, dict):
+                    raise ValueError(f"Invalid canonical world-state row at line {line_number}.")
+                yield case_id, payload
 
     def get(self, case_id: str) -> dict[str, Any] | None:
         assert self.connection is not None
@@ -1011,7 +1033,7 @@ def run_audit(
             },
             "artifacts": artifacts,
         }
-        manifest_schema_path = Path(__file__).resolve().parents[1] / "schemas" / "automated_consistency_audit.schema.json"
+        manifest_schema_path = Path(__file__).resolve().parents[1] / "schemas" / "automated-audit.schema.json"
         manifest_schema = json.loads(manifest_schema_path.read_text(encoding="utf-8"))
         Draft202012Validator.check_schema(manifest_schema)
         manifest_errors = list(Draft202012Validator(manifest_schema).iter_errors(manifest))

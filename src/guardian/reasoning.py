@@ -27,7 +27,6 @@ from guardian.patch_parser import load_schema as load_a_box_schema
 from guardian.patch_parser import normalize_proposal as normalize_a_box_proposal
 from guardian.prompts import get_prompt_template
 from guardian.tbox_parser import KNOWN_CONSTRAINT_TYPE_QIDS
-from guardian.tbox_parser import load_schema as load_t_box_schema
 from guardian.tbox_parser import normalize_proposal as normalize_t_box_proposal
 from guardian.tbox_taxonomy_patch_parser import normalize_tbox_taxonomy_patch
 from guardian.tbox_taxonomy_patch_run import (
@@ -37,9 +36,13 @@ from guardian.tbox_taxonomy_patch_run import (
 from guardian.track_parser import load_schema as load_track_schema
 from guardian.track_parser import normalize_diagnosis
 from lib.benchmark_selection import resolve_case_id_filter
-from lib.repair_state import pre_repair_target_state, reconstruct_properties_with_pre_repair_target
+from lib.repair_state import (
+    normalize_value_list,
+    pre_repair_target_state,
+    reconstruct_properties_with_pre_repair_target,
+)
+from lib.tbox_taxonomy_patch_gold import gold_patch_for_record
 from lib.utils import iter_jsonl, normalize_text
-from paper_prompt_profile import load_prompt_profile
 
 
 def _utc_now() -> str:
@@ -64,21 +67,20 @@ ALLOWED_ENTITY_TYPES_CONSTRAINT_QID = "Q52004125"
 UNROUTABLE_TRACK = "UNROUTABLE"
 RETRYABLE_BATCH_STATUS_CODES = {408, 409, 429}
 RUN_CONFIG_FILENAME = "run_config.json"
-TBOX_TASK_VERSION_STRICT = "strict_signature_after_v1"
 TBOX_TASK_VERSION_TAXONOMY_PATCH = "tbox_taxonomy_patch_v1"
-TBOX_TASK_VERSION = os.environ.get("TBOX_TASK_VERSION", TBOX_TASK_VERSION_STRICT)
+TBOX_TASK_VERSION = TBOX_TASK_VERSION_TAXONOMY_PATCH
 
 
 def configure_tbox_task_version(task_version: str) -> None:
     """Set the process-wide task contract before starting a reasoning run."""
-    if task_version not in {TBOX_TASK_VERSION_STRICT, TBOX_TASK_VERSION_TAXONOMY_PATCH}:
+    if task_version != TBOX_TASK_VERSION_TAXONOMY_PATCH:
         raise ValueError(f"Unsupported T-box task version: {task_version!r}")
     global TBOX_TASK_VERSION
     TBOX_TASK_VERSION = task_version
 
 
 def _uses_tbox_taxonomy_patch() -> bool:
-    return TBOX_TASK_VERSION == TBOX_TASK_VERSION_TAXONOMY_PATCH
+    return True
 
 
 def _slugify(value: str) -> str:
@@ -283,16 +285,10 @@ def _build_run_config_payload(
         "expected_request_count": expected_request_count,
         "skipped_diagnosis_count": skipped_diagnosis_count,
         "generation_strategy": generation_strategy,
-        "tbox_task_version": (
-            TBOX_TASK_VERSION_TAXONOMY_PATCH if _uses_tbox_taxonomy_patch() else TBOX_TASK_VERSION_STRICT
-        ),
-        "abox_task_version": "prompt_dev_v4_spec_only",
-        "prompt_version": (
-            "prompt_dev_v5_tbox_taxonomy_patch"
-            if _uses_tbox_taxonomy_patch()
-            else "reasoning_floor_v4_strict_tbox"
-        ),
-        "strict_tbox_signature_diagnostic": "not_run" if _uses_tbox_taxonomy_patch() else "legacy_task_output",
+        "tbox_task_version": TBOX_TASK_VERSION_TAXONOMY_PATCH,
+        "abox_task_version": "a_box_repair_v1",
+        "prompt_version": "paper_prompts_v1",
+        "strict_tbox_signature_diagnostic": "not_run",
         "selected_generation_records_path": (
             str(selected_generation_records_path.resolve())
             if isinstance(selected_generation_records_path, Path)
@@ -327,7 +323,7 @@ def _validate_resume_run_config(
         "abox_task_version",
         "prompt_version",
         "strict_tbox_signature_diagnostic",
-        "paper_prompt_profile",
+        "paper_protocol",
         "artifact_fingerprints",
         "inference_settings",
         "model_digest",
@@ -1401,12 +1397,10 @@ def build_prompt_bundle(
         visible_case_id=visible_case_id or prompt_visible_case_id(str(record.get("id") or "")),
     )
     effective_track = proposal_track or record.get("track")
-    if effective_track == "T_BOX" and _uses_tbox_taxonomy_patch():
+    if effective_track == "T_BOX":
         prompt_template_name = "reasoning_floor_t_box_taxonomy_patch_zero_shot"
     else:
-        prompt_template_name = (
-            "reasoning_floor_t_box_zero_shot" if effective_track == "T_BOX" else "reasoning_floor_a_box_zero_shot"
-        )
+        prompt_template_name = "reasoning_floor_a_box_zero_shot"
     prompt_template = get_prompt_template(prompt_template_name)
     return PromptBundle(
         ablation_bundle=bundle,
@@ -1441,6 +1435,214 @@ def build_track_diagnosis_prompt_bundle(
         response_format=prompt_template.response_format_copy(),
         context_audit=context_audit,
     )
+
+
+def _prepend_few_shot_examples(bundle: PromptBundle, examples: list[dict[str, Any]]) -> PromptBundle:
+    if not examples:
+        return bundle
+    blocks = ["Few-shot examples (use the same response contract):"]
+    for index, example in enumerate(examples, 1):
+        blocks.extend(
+            [
+                f"Example {index} input:",
+                json.dumps(example["input_payload"], ensure_ascii=False, indent=2, sort_keys=True),
+                f"Example {index} output:",
+                json.dumps(example["output_payload"], ensure_ascii=False, indent=2, sort_keys=True),
+            ]
+        )
+    examples_text = "\n".join(blocks) + "\n\n"
+    marker = "Input case:\n"
+    prompt = bundle.prompt.replace(marker, examples_text + marker, 1) if marker in bundle.prompt else examples_text + bundle.prompt
+    context_audit = dict(bundle.context_audit)
+    context_audit["few_shot_example_count"] = len(examples)
+    context_audit["few_shot_visible_example_ids"] = [example.get("visible_case_id") for example in examples]
+    return PromptBundle(
+        ablation_bundle=bundle.ablation_bundle,
+        prompt_name=f"{bundle.prompt_name}_static_{len(examples)}shot",
+        prompt=prompt,
+        system_prompt=bundle.system_prompt,
+        response_format=bundle.response_format,
+        context_audit=context_audit,
+    )
+
+
+def _load_support_bank_for_runner(path: str | Path) -> tuple[dict[str, Any], set[str]]:
+    payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    support_sets = payload.get("support_sets")
+    if not isinstance(support_sets, dict):
+        raise ValueError("Few-shot support bank has no support_sets object.")
+    adapted: dict[str, list[dict[str, Any]]] = {}
+    case_ids: set[str] = set()
+    task_schemas = {
+        "a_box_repair": "a_box_v4_spec_only",
+        "t_box_repair": "tbox_taxonomy_patch_v1",
+        "track_diagnosis": "track_diagnosis_v1",
+    }
+    for task, task_schema in task_schemas.items():
+        rows = support_sets.get(task)
+        if not isinstance(rows, list):
+            raise ValueError(f"Few-shot support bank is missing {task}.")
+        adapted_rows: list[dict[str, Any]] = []
+        for row in rows:
+            if not isinstance(row, dict):
+                raise ValueError(f"Invalid support-bank row for {task}.")
+            case_id = row.get("case_id") or row.get("raw_case_id")
+            if not isinstance(case_id, str) or not case_id:
+                raise ValueError(f"Support-bank row for {task} has no case_id.")
+            case_ids.add(case_id)
+            adapted_rows.append(
+                {
+                    "raw_case_id": case_id,
+                    "visible_example_id": row.get("visible_example_id"),
+                    "role": row.get("role"),
+                    "task_schema": task_schema,
+                }
+            )
+        adapted[task] = adapted_rows
+    return {"support_sets": adapted}, case_ids
+
+
+def _load_records_by_case_id(path: str | Path, case_ids: set[str]) -> dict[str, dict[str, Any]]:
+    records: dict[str, dict[str, Any]] = {}
+    for record in iter_jsonl(path):
+        case_id = record.get("id")
+        if isinstance(case_id, str) and case_id in case_ids:
+            records[case_id] = record
+            if len(records) == len(case_ids):
+                break
+    missing = sorted(case_ids - set(records))
+    if missing:
+        raise ValueError(f"Support-bank cases are absent from the classified dataset: {missing[:5]}")
+    return records
+
+
+def _replace_exact(value: Any, old: str, new: str) -> Any:
+    if value == old:
+        return new
+    if isinstance(value, dict):
+        return {key: _replace_exact(child, old, new) for key, child in value.items()}
+    if isinstance(value, list):
+        return [_replace_exact(child, old, new) for child in value]
+    return value
+
+
+def _few_shot_output(record: dict[str, Any], task: str, visible_case_id: str) -> dict[str, Any]:
+    raw_case_id = str(record.get("id") or "")
+    if task == "track_diagnosis":
+        output: dict[str, Any] | None = {
+            "case_id": visible_case_id,
+            "predicted_track": record.get("track") if record.get("track") in {"A_BOX", "T_BOX"} else "AMBIGUOUS",
+            "confidence": "high",
+            "rationale": "The visible evidence supports this repair locus.",
+        }
+    elif task == "a_box_repair":
+        pid = record.get("property")
+        qid = record.get("qid")
+        repair_target = record.get("repair_target") if isinstance(record.get("repair_target"), dict) else {}
+        values = normalize_value_list(repair_target.get("new_value"))
+        if not values and repair_target.get("action") in {"CREATE", "UPDATE"}:
+            values = normalize_value_list(repair_target.get("value"))
+        if not isinstance(pid, str) or not isinstance(qid, str):
+            raise ValueError(f"A-box support case {raw_case_id} has no target identifiers.")
+        if not values:
+            ops = [{"op": "DELETE_ALL", "pid": pid}]
+        elif len(values) == 1:
+            ops = [{"op": "SET", "pid": pid, "value": values[0], "rank": "normal"}]
+        else:
+            ops = [{"op": "DELETE_ALL", "pid": pid}]
+            ops.extend({"op": "ADD", "pid": pid, "value": value, "rank": "normal"} for value in values)
+        output = {
+            "case_id": visible_case_id,
+            "target": {"qid": qid, "pid": pid},
+            "ops": ops,
+            "rationale": "The example applies the demonstrated claim-value repair.",
+            "provenance": [{"kind": "OTHER", "snippet": "Visible evidence in the example."}],
+            "uncertainty": {"confidence": 0.95, "notes": "Demonstration answer."},
+        }
+    elif task == "t_box_repair":
+        stored = record.get("tbox_taxonomy_patch_gold") or record.get("gold")
+        output = dict(stored) if isinstance(stored, dict) else gold_patch_for_record(record)
+        if not isinstance(output, dict):
+            raise ValueError(f"T-box support case {raw_case_id} has no taxonomy-patch target.")
+        output = _replace_exact(output, raw_case_id, visible_case_id)
+        output["case_id"] = visible_case_id
+        output["rationale"] = "The example applies the demonstrated schema patch."
+        pid = record.get("property")
+        output["provenance"] = [
+            {"kind": "KG", "node_id": pid if isinstance(pid, str) else None, "snippet": "Visible schema evidence."}
+        ]
+        output["uncertainty"] = {"confidence": 0.95, "notes": "Demonstration answer."}
+    else:
+        raise ValueError(f"Unsupported few-shot task: {task}")
+    encoded = json.dumps(output, ensure_ascii=False)
+    if raw_case_id and raw_case_id in encoded:
+        raise ValueError(f"Few-shot output exposes raw case id {raw_case_id}.")
+    return output
+
+
+def _few_shot_examples_from_bank(
+    *,
+    support_manifest: dict[str, Any],
+    eval_record: dict[str, Any],
+    task: str,
+    records_by_id: dict[str, dict[str, Any]],
+    world_store: WorldStateStore,
+    context_bundle: str,
+    example_count: int,
+) -> list[dict[str, Any]]:
+    rows = support_manifest.get("support_sets", {}).get(task)
+    if not isinstance(rows, list):
+        raise ValueError(f"Support bank is missing {task}.")
+    eval_target = eval_record.get("repair_target") if isinstance(eval_record.get("repair_target"), dict) else {}
+    eval_revision = eval_target.get("property_revision_id") or eval_target.get("revision_id")
+    examples: list[dict[str, Any]] = []
+    for row in rows:
+        raw_case_id = row.get("raw_case_id") if isinstance(row, dict) else None
+        visible_case_id = row.get("visible_example_id") if isinstance(row, dict) else None
+        if not isinstance(raw_case_id, str) or not isinstance(visible_case_id, str):
+            raise ValueError(f"Support bank has an invalid {task} row.")
+        candidate = records_by_id.get(raw_case_id)
+        if candidate is None:
+            raise ValueError(f"Support case is absent from the dataset: {raw_case_id}")
+        candidate_target = candidate.get("repair_target") if isinstance(candidate.get("repair_target"), dict) else {}
+        candidate_revision = candidate_target.get("property_revision_id") or candidate_target.get("revision_id")
+        if raw_case_id == eval_record.get("id") or (
+            candidate.get("qid") == eval_record.get("qid") and candidate.get("qid")
+        ):
+            continue
+        if eval_revision is not None and candidate_revision == eval_revision and candidate.get("property") == eval_record.get("property"):
+            continue
+        if task == "track_diagnosis":
+            input_payload, _ = _bundle_payload_and_audit(
+                candidate,
+                world_store.get(raw_case_id),
+                context_bundle,
+                visible_case_id=visible_case_id,
+            )
+        else:
+            input_payload, _ = _bundle_payload_and_audit(
+                candidate,
+                world_store.get(raw_case_id),
+                context_bundle,
+                visible_case_id=visible_case_id,
+            )
+        encoded_input = json.dumps(input_payload, ensure_ascii=False)
+        if raw_case_id in encoded_input or any(key in encoded_input for key in ('"classification"', '"repair_target"')):
+            raise ValueError(f"Few-shot input exposes hidden support metadata for {raw_case_id}.")
+        examples.append(
+            {
+                "visible_case_id": visible_case_id,
+                "input_payload": input_payload,
+                "output_payload": _few_shot_output(candidate, task, visible_case_id),
+            }
+        )
+        if len(examples) == example_count:
+            break
+    if len(examples) != example_count:
+        raise ValueError(
+            f"Support bank provided {len(examples)} non-overlapping {task} examples; {example_count} required."
+        )
+    return examples
 
 
 @dataclass(frozen=True)
@@ -1694,9 +1896,9 @@ def _failure_taxonomy_from_traces(traces: Iterable[dict[str, Any]]) -> dict[str,
 
 
 def _proposal_output_name(track: str) -> str:
-    if track == "T_BOX" and _uses_tbox_taxonomy_patch():
+    if track == "T_BOX":
         return "t_box_taxonomy_patch_proposals.jsonl"
-    return "t_box_proposals.jsonl" if track == "T_BOX" else "a_box_proposals.jsonl"
+    return "a_box_proposals.jsonl"
 
 
 def _request_metadata(
@@ -1731,19 +1933,11 @@ def _request_metadata(
     if t_box_constraint_type_qids is not None:
         payload["t_box_constraint_type_qids"] = list(t_box_constraint_type_qids)
     if proposal_track_used == "T_BOX":
-        payload["tbox_task_version"] = (
-            TBOX_TASK_VERSION_TAXONOMY_PATCH if _uses_tbox_taxonomy_patch() else TBOX_TASK_VERSION_STRICT
-        )
-        payload["strict_tbox_signature_diagnostic"] = (
-            "not_run" if _uses_tbox_taxonomy_patch() else "legacy_task_output"
-        )
+        payload["tbox_task_version"] = TBOX_TASK_VERSION_TAXONOMY_PATCH
+        payload["strict_tbox_signature_diagnostic"] = "not_run"
     if proposal_track_used == "A_BOX":
-        payload["abox_task_version"] = "prompt_dev_v4_spec_only"
-    payload["prompt_version"] = (
-        "prompt_dev_v5_tbox_taxonomy_patch"
-        if _uses_tbox_taxonomy_patch()
-        else "reasoning_floor_v4_strict_tbox"
-    )
+        payload["abox_task_version"] = "a_box_repair_v1"
+    payload["prompt_version"] = "paper_prompts_v1"
     return payload
 
 
@@ -2057,7 +2251,7 @@ def run_reasoning_floor(
     seed: int | None = None,
     ollama_think: bool | str | None = None,
     max_retries: int | None = None,
-    prompt_profile_path: str | Path | None = None,
+    protocol_path: str | Path | None = None,
     model_digest: str | None = None,
     generation_cache_path: str | Path | None = None,
     ablation_bundles: Iterable[str] = ABLATION_BUNDLES,
@@ -2072,10 +2266,15 @@ def run_reasoning_floor(
     batch_sync_retry_fallback: bool = True,
     proposal_track_mode: str = "oracle",
     oracle_diagnosis_mode: str | None = None,
+    prompt_regime: str = "zero_shot",
+    support_bank_path: str | Path | None = None,
+    a_box_example_count: int = 4,
+    t_box_example_count: int = 4,
+    diagnosis_example_count: int = 2,
 ) -> dict[str, Any]:
     run_started_utc = _utc_now()
     run_started_at = time.perf_counter()
-    prompt_profile = load_prompt_profile(prompt_profile_path) if prompt_profile_path is not None else None
+    paper_protocol = json.loads(Path(protocol_path).read_text(encoding="utf-8")) if protocol_path is not None else None
     if provider is None:
         provider = create_model_provider(
             model_name,
@@ -2134,6 +2333,18 @@ def run_reasoning_floor(
         raise ValueError(f"Unsupported oracle_diagnosis_mode: {oracle_diagnosis_mode!r}")
     if normalized_proposal_track_mode != "oracle" and normalized_oracle_diagnosis_mode == "skip":
         raise ValueError("--oracle-diagnosis-mode=skip is only valid with proposal_track_mode=oracle.")
+    normalized_prompt_regime = (prompt_regime or "zero_shot").strip().lower()
+    if normalized_prompt_regime not in {"zero_shot", "static_few_shot"}:
+        raise ValueError(f"Unsupported prompt regime: {prompt_regime!r}")
+    example_counts = {
+        "a_box_repair": a_box_example_count,
+        "t_box_repair": t_box_example_count,
+        "track_diagnosis": diagnosis_example_count,
+    }
+    if any(not isinstance(value, int) or value < 0 for value in example_counts.values()):
+        raise ValueError("Few-shot example counts must be non-negative integers.")
+    if normalized_prompt_regime == "static_few_shot" and support_bank_path is None:
+        raise ValueError("--support-bank is required for --prompt-regime=static_few_shot.")
     should_run_track_diagnosis = (
         normalized_proposal_track_mode == "diagnosis_routed" or normalized_oracle_diagnosis_mode == "run"
     )
@@ -2171,7 +2382,10 @@ def run_reasoning_floor(
         )
     else:
         run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
-        run_dir_name = f"{run_id}_{_slugify(selected_provider)}_{_slugify(selected_model)}"
+        run_dir_name = (
+            f"{run_id}_{_slugify(selected_provider)}_{_slugify(selected_model)}_"
+            f"{_slugify(normalized_prompt_regime)}"
+        )
         out_dir = Path(output_dir) / run_dir_name
     out_dir.mkdir(parents=True, exist_ok=True)
     raw_log_path = out_dir / "raw_model_responses.jsonl"
@@ -2225,23 +2439,31 @@ def run_reasoning_floor(
         output_dir=out_dir,
     )
     selected_case_ids = generation_selection.case_ids
+    support_manifest: dict[str, Any] | None = None
+    support_records_by_id: dict[str, dict[str, Any]] = {}
+    if normalized_prompt_regime == "static_few_shot":
+        assert support_bank_path is not None
+        support_manifest, support_case_ids = _load_support_bank_for_runner(support_bank_path)
+        support_records_by_id = _load_records_by_case_id(classified_path, support_case_ids)
     visible_case_id_by_raw = {case_id: prompt_visible_case_id(case_id) for case_id in selected_case_ids}
     bundle_list = [bundle for bundle in ablation_bundles if bundle in ABLATION_BUNDLES]
     if not bundle_list:
         raise ValueError("At least one supported ablation bundle is required.")
-    if prompt_profile is not None:
-        expected_routing = prompt_profile["routing_policy"]
-        if normalized_proposal_track_mode != expected_routing["proposal_track_mode"]:
-            raise ValueError("The paper prompt profile requires oracle proposal routing.")
-        if normalized_oracle_diagnosis_mode != expected_routing["oracle_diagnosis_mode"]:
-            raise ValueError("The paper prompt profile requires track diagnosis to be skipped.")
-        if bundle_list != prompt_profile["context_bundles"]:
-            raise ValueError(
-                "The requested context bundles do not match the paper prompt profile: "
-                f"requested={bundle_list}, frozen={prompt_profile['context_bundles']}."
-            )
+    if paper_protocol is not None:
+        conditions = paper_protocol.get("conditions") if isinstance(paper_protocol, dict) else None
+        tasks = paper_protocol.get("tasks") if isinstance(paper_protocol, dict) else None
+        if not isinstance(conditions, dict) or not isinstance(tasks, dict):
+            raise ValueError("Paper protocol is missing tasks or conditions.")
+        if normalized_proposal_track_mode != tasks.get("repair_proposal", {}).get("routing"):
+            raise ValueError("Requested proposal routing does not match the paper protocol.")
+        if tasks.get("track_diagnosis", {}).get("routes_proposals") is not False:
+            raise ValueError("Paper protocol must keep track diagnosis separate from proposal routing.")
+        if normalized_prompt_regime not in conditions.get("prompt_regimes", []):
+            raise ValueError("Requested prompt regime is not registered in the paper protocol.")
+        if any(bundle not in conditions.get("context_bundles", []) for bundle in bundle_list):
+            raise ValueError("Requested context bundle is not registered in the paper protocol.")
         if not _uses_tbox_taxonomy_patch():
-            raise ValueError("The paper prompt profile requires tbox_taxonomy_patch_v1.")
+            raise ValueError("Paper protocol requires the taxonomy-patch T-box task.")
     total_instances = len(selected_case_ids) * len(bundle_list)
     planned_diagnosis_request_count = total_instances if should_run_track_diagnosis else 0
     planned_proposal_request_count = total_instances
@@ -2278,33 +2500,22 @@ def run_reasoning_floor(
         "classified_benchmark": _file_fingerprint(classified_path),
         "world_state": _file_fingerprint(world_state_path),
         "selection_manifest": _file_fingerprint(selection_manifest_path),
-        "a_box_schema": _file_fingerprint("schemas/verified_repair_proposal.schema.json"),
-        "t_box_schema": _file_fingerprint(
-            "schemas/tbox_taxonomy_patch_proposal.schema.json"
-            if _uses_tbox_taxonomy_patch()
-            else "schemas/tbox_reform_proposal.schema.json"
-        ),
-        "track_diagnosis_schema": _file_fingerprint("schemas/track_diagnosis.schema.json"),
-        "prompt_definitions": _file_fingerprint("src/guardian/prompts.py"),
-        "tbox_taxonomy_patch_evaluator": (
-            _file_fingerprint("src/guardian/tbox_taxonomy_patch_evaluator.py")
-            if _uses_tbox_taxonomy_patch()
-            else None
-        ),
-        "tbox_taxonomy_patch_gold_extractor": (
-            _file_fingerprint("src/lib/tbox_taxonomy_patch_gold.py")
-            if _uses_tbox_taxonomy_patch()
-            else None
-        ),
+        "a_box_schema": _file_fingerprint("schemas/abox-response.schema.json"),
+        "t_box_schema": _file_fingerprint("schemas/tbox-response.schema.json"),
+        "track_diagnosis_schema": _file_fingerprint("schemas/track-diagnosis-response.schema.json"),
+        "a_box_prompt": _file_fingerprint("paper/prompts/abox-repair.txt"),
+        "t_box_prompt": _file_fingerprint("paper/prompts/tbox-taxonomy-patch.txt"),
+        "track_diagnosis_prompt": _file_fingerprint("paper/prompts/track-diagnosis.txt"),
+        "tbox_taxonomy_patch_evaluator": _file_fingerprint("src/guardian/tbox_taxonomy_patch_evaluator.py"),
+        "tbox_taxonomy_patch_gold_extractor": _file_fingerprint("src/lib/tbox_taxonomy_patch_gold.py"),
     }
-    expected_run_config["paper_prompt_profile"] = (
+    expected_run_config["paper_protocol"] = (
         {
-            "path": str(Path(prompt_profile_path).resolve()),
-            "profile_id": prompt_profile["profile_id"],
-            "profile_sha256": prompt_profile["profile_sha256"],
-            "file": _file_fingerprint(prompt_profile_path),
+            "path": str(Path(protocol_path).resolve()),
+            "protocol_id": paper_protocol.get("protocol_id"),
+            "file": _file_fingerprint(protocol_path),
         }
-        if prompt_profile is not None
+        if paper_protocol is not None
         else None
     )
     expected_run_config["reasoning_effort"] = resolved_reasoning_effort
@@ -2316,6 +2527,11 @@ def run_reasoning_floor(
         "schema_version": CACHE_SCHEMA_VERSION if generation_cache_path is not None else None,
     }
     expected_run_config["batch_sync_retry_fallback"] = batch_sync_retry_fallback
+    expected_run_config["prompt_regime"] = normalized_prompt_regime
+    expected_run_config["few_shot"] = {
+        "support_bank": _file_fingerprint(support_bank_path),
+        "example_counts": example_counts,
+    }
     expected_run_config["code"] = {
         **_git_state(),
         "python": sys.version.split()[0],
@@ -2398,6 +2614,26 @@ def run_reasoning_floor(
         )
     batch_summary: dict[str, Any] | None = None
     try:
+        def few_shot_examples(
+            record: dict[str, Any],
+            bundle: str,
+            *,
+            task: str,
+            count: int,
+        ) -> list[dict[str, Any]]:
+            if normalized_prompt_regime != "static_few_shot" or count == 0:
+                return []
+            assert support_manifest is not None
+            return _few_shot_examples_from_bank(
+                support_manifest=support_manifest,
+                eval_record=record,
+                task=task,
+                records_by_id=support_records_by_id,
+                world_store=world_state_store,
+                context_bundle=bundle,
+                example_count=count,
+            )
+
         def build_diagnosis_request(
             record: dict[str, Any],
             bundle: str,
@@ -2409,6 +2645,15 @@ def run_reasoning_floor(
                 world_state_entry,
                 bundle,
                 visible_case_id=visible_case_id,
+            )
+            diagnosis_bundle = _prepend_few_shot_examples(
+                diagnosis_bundle,
+                few_shot_examples(
+                    record,
+                    bundle,
+                    task="track_diagnosis",
+                    count=example_counts["track_diagnosis"],
+                ),
             )
             diagnosis_metadata = _request_metadata(
                 run_id=run_id,
@@ -2440,6 +2685,16 @@ def run_reasoning_floor(
                 bundle,
                 proposal_track=proposal_track_used,
                 visible_case_id=visible_case_id,
+            )
+            proposal_task = "t_box_repair" if proposal_track_used == "T_BOX" else "a_box_repair"
+            proposal_bundle = _prepend_few_shot_examples(
+                proposal_bundle,
+                few_shot_examples(
+                    record,
+                    bundle,
+                    task=proposal_task,
+                    count=example_counts[proposal_task],
+                ),
             )
             proposal_metadata = _request_metadata(
                 run_id=run_id,
@@ -3175,9 +3430,9 @@ def run_reasoning_floor(
             )
         usage_manifest: list[dict[str, Any]] = list(existing_manifest_rows)
 
-        a_box_schema = load_a_box_schema(Path("schemas") / "verified_repair_proposal.schema.json")
-        t_box_schema = load_t_box_schema(Path("schemas") / "tbox_reform_proposal.schema.json")
-        track_schema = load_track_schema(Path("schemas") / "track_diagnosis.schema.json")
+        a_box_schema = load_a_box_schema(Path("schemas") / "abox-response.schema.json")
+        track_schema = load_track_schema(Path("schemas") / "track-diagnosis-response.schema.json")
+        t_box_schema = None
         del a_box_schema, t_box_schema, track_schema
 
         for bundle in bundle_list:
@@ -3956,11 +4211,7 @@ def run_reasoning_floor(
                 "memory_cache_case_threshold": EVALUATION_IN_MEMORY_CASE_THRESHOLD,
                 "filtered_classified_path": str(evaluation_filtered_path) if evaluation_filtered_path else None,
                 "filtered_record_count": evaluation_filtered_record_count,
-                "metric_families": (
-                    ["a_box_repair_v1", "tbox_taxonomy_patch_v1"]
-                    if taxonomy_gold is not None
-                    else ["a_box_repair_v1", "strict_signature_after_v1"]
-                ),
+                "metric_families": ["a_box_repair_v1", "tbox_taxonomy_patch_v1"],
                 "combined_repair_success_score": False,
             },
             "generation": {

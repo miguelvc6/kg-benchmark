@@ -1,0 +1,22 @@
+{
+  "manifest_type": "development_archive_pointer",
+  "manifest_version": 1,
+  "archive_tag": "archive/pre-paper-restructure-20260714",
+  "archived_commit": "bf9129bb05053925e03c4d780fe4fd3687d12698",
+  "external_archive": {
+    "status": "pending",
+    "uri": null,
+    "checksum_index": null
+  },
+  "invalidated_acquisitions": [
+    {
+      "id": "post_freeze_20260714T062500Z_wd20260706",
+      "reason": "Fail-open acquisition errors and an incomplete transitive methodology freeze."
+    },
+    {
+      "id": "post_freeze_20260714T064200Z_wd20260706",
+      "reason": "An interrupted Stage 2 JSONL could be compiled as complete and resume telemetry escaped isolation."
+    }
+  ],
+  "deletion_gate": "Do not delete the ignored baseline or scientific bulk until an external archive URI and checksum index are verified."
+}

@@ -1,0 +1,2 @@
+{"classification":{"class":"TypeA","subtype":"FORMAT_NORMALIZATION"},"id":"example-abox-1","property":"P1","qid":"Q1","repair_target":{"kind":"A_BOX","new_value":["Q3"],"old_value":["Q2"],"revision_id":2},"track":"A_BOX"}
+{"classification":{"class":"T_BOX","subtype":"SCHEMA_UPDATE"},"gold":{"repairs":[{"taxonomy_code":"CQ_PLUS"}],"schema_decision":"CAUSAL_SCHEMA_REPAIR"},"id":"example-tbox-1","property":"P2","qid":"Q4","repair_target":{"kind":"T_BOX","property_revision_id":3},"track":"T_BOX"}

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kg-benchmark.local/schemas/audit-disposition.schema.json",
+  "title": "Confirmatory Audit Final Disposition Row",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["case_id", "disposition"],
+  "properties": {
+    "case_id": {"type": "string", "minLength": 1},
+    "disposition": {
+      "enum": ["include", "diagnostic", "exclude", "exclude_pending_rerender", "unsupported", "disagreement", "malformed"]
+    },
+    "reasons": {"type": "array", "items": {"type": "string", "minLength": 1}}
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "manifest_type": "paper_protocol",
+  "manifest_version": 1,
+  "protocol_id": "paper_protocol_pending_refreeze",
+  "status": "restructure_draft",
+  "seed": 13,
+  "dataset": {
+    "manifest": "dataset/manifest.json",
+    "single_final_dataset": true,
+    "canonical_large_record_format": "jsonl",
+    "partial_artifacts_are_eligible": false
+  },
+  "tasks": {
+    "repair_proposal": {
+      "routing": "oracle",
+      "tracks": ["A_BOX", "T_BOX"]
+    },
+    "track_diagnosis": {
+      "labels": ["A_BOX", "T_BOX", "AMBIGUOUS"],
+      "routes_proposals": false
+    }
+  },
+  "conditions": {
+    "prompt_regimes": ["zero_shot", "static_few_shot"],
+    "context_bundles": ["logic_only", "local_graph"],
+    "external_retrieval": false,
+    "tools_disabled": true,
+    "semantic_retries": 0
+  },
+  "few_shot": {
+    "support_bank_capacity": {"A_BOX": 16, "T_BOX": 16},
+    "default_example_counts": {
+      "a_box_repair": 4,
+      "t_box_repair": 4,
+      "track_diagnosis": 2
+    },
+    "selection": "deterministic_prefix",
+    "support_groups_excluded_from_all_evaluation_populations": true
+  },
+  "selection_policy": "paper/selection-policy.json",
+  "model_configuration": "paper/models.json",
+  "analysis_plan": "paper/analysis-plan.md"
+}

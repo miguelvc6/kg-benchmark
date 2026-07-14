@@ -21,7 +21,7 @@ class TBoxTaxonomyPatchParserTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         repo_root = Path(__file__).resolve().parents[1]
-        cls.schema = load_schema(repo_root / "schemas" / "tbox_taxonomy_patch_proposal.schema.json")
+        cls.schema = load_schema(repo_root / "schemas" / "tbox-response.schema.json")
 
     def _repair(self, repair_op: str = "CONSTRAINT_QUALIFIER_ADD", taxonomy_code: str = "CQ_PLUS") -> dict:
         return {

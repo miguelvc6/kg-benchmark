@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kg-benchmark.local/schemas/dataset-manifest.schema.json",
+  "title": "Final paper dataset manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["manifest_type", "manifest_version", "dataset_id", "status", "protocol", "source_provenance", "artifacts"],
+  "properties": {
+    "manifest_type": {"const": "kg_benchmark_dataset"},
+    "manifest_version": {"const": 1},
+    "dataset_id": {"type": "string", "minLength": 1},
+    "status": {"const": "final"},
+    "protocol": {"$ref": "#/$defs/file_ref"},
+    "source_provenance": {"type": "object", "minProperties": 1},
+    "artifacts": {"type": "object", "minProperties": 1, "additionalProperties": {"$ref": "#/$defs/artifact"}},
+    "external_release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["uri", "sha256"],
+      "properties": {
+        "uri": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    }
+  },
+  "$defs": {
+    "file_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "bytes", "sha256"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "bytes": {"type": "integer", "minimum": 1},
+        "records": {"type": "integer", "minimum": 0},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    }
+  }
+}

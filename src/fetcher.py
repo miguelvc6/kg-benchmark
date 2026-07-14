@@ -94,6 +94,7 @@ def configure_runtime_paths(*, data_dir=None, cache_dir=None, dump_path=None):
     global REPAIR_CANDIDATES_FILE, WIKIDATA_REPAIRS, WIKIDATA_REPAIRS_JSONL
     global WORLD_STATE_FILE, POPULARITY_FILE, LATEST_DUMP_PATH, SNAPSHOT_FETCHER
     global REVISION_HISTORY_CACHE, _RUNTIME_LABEL_CACHE_DB
+    global STATS_FILE, SUMMARY_FILE, RESUME_DEFAULT_CHECKPOINT
 
     root = Path(data_dir or config.DATA_DIR)
     cache = Path(cache_dir or (root / "cache"))
@@ -112,12 +113,20 @@ def configure_runtime_paths(*, data_dir=None, cache_dir=None, dump_path=None):
     config.LABEL_CACHE_DB = cache / "labels_en.sqlite"
     config.ENTITY_SNAPSHOT_DB = cache / "entity_snapshots.sqlite"
     config.ENTITY_SNAPSHOT_CACHE_DIR = cache / "entity_snapshots"
+    config.LOG_DIR = root / "logs"
+    config.LOG_DIR.mkdir(parents=True, exist_ok=True)
+    config.STATS_FILE = config.LOG_DIR / f"fetcher_stats_{RUN_ID}.jsonl"
+    config.SUMMARY_FILE = config.LOG_DIR / f"run_summary_{RUN_ID}.json"
+    config.RESUME_DEFAULT_CHECKPOINT = config.LOG_DIR / f"resume_checkpoint_{RUN_ID}.json"
     REPAIR_CANDIDATES_FILE = config.REPAIR_CANDIDATES_FILE
     WIKIDATA_REPAIRS = config.WIKIDATA_REPAIRS
     WIKIDATA_REPAIRS_JSONL = config.WIKIDATA_REPAIRS_JSONL
     WORLD_STATE_FILE = config.WORLD_STATE_FILE
     POPULARITY_FILE = config.POPULARITY_FILE
     LATEST_DUMP_PATH = config.LATEST_DUMP_PATH
+    STATS_FILE = config.STATS_FILE
+    SUMMARY_FILE = config.SUMMARY_FILE
+    RESUME_DEFAULT_CHECKPOINT = config.RESUME_DEFAULT_CHECKPOINT
     _RUNTIME_LABEL_CACHE_DB = config.LABEL_CACHE_DB
     caching.SNAPSHOT_FETCHER = caching.SnapshotFetcher(cache_db=config.ENTITY_SNAPSHOT_DB)
     caching.REVISION_HISTORY_CACHE = (
@@ -206,6 +215,7 @@ class StatsLogger:
     def __init__(self, stats_path):
         """Initialize logger with target file and shared run_id."""
         self.stats_path = stats_path
+        self.stats_path.parent.mkdir(parents=True, exist_ok=True)
         self.run_id = RUN_ID
         self.buffer = []
 
@@ -414,19 +424,33 @@ def process_pipeline(
 
     label_resolver = LabelResolver(cache_path=_RUNTIME_LABEL_CACHE_DB)
     dataset = load_cached_repairs(WIKIDATA_REPAIRS)
+    resume_checkpoint_payload = load_resume_checkpoint(resume_checkpoint)
+    resume_requested = bool(resume_stats or resume_checkpoint)
     if dataset is None and WIKIDATA_REPAIRS_JSONL.exists():
-        logger.warning(
-            "[!] Cached repairs JSON is unavailable/invalid. Rebuilding %s from %s to skip Stage 2.",
-            WIKIDATA_REPAIRS,
-            WIKIDATA_REPAIRS_JSONL,
+        checkpoint_completed = bool(
+            resume_checkpoint_payload and resume_checkpoint_payload.get("completed") is True
         )
-        _run_with_heartbeat(
-            "Cached repairs rebuild (JSONL to JSON)",
-            compile_jsonl_to_json,
-            WIKIDATA_REPAIRS_JSONL,
-            WIKIDATA_REPAIRS,
-        )
-        dataset = load_cached_repairs(WIKIDATA_REPAIRS)
+        if checkpoint_completed:
+            logger.info(
+                "[*] Completed Stage 2 checkpoint supplied; compiling %s into %s.",
+                WIKIDATA_REPAIRS_JSONL,
+                WIKIDATA_REPAIRS,
+            )
+            _run_with_heartbeat(
+                "Completed repairs compile (JSONL to JSON)",
+                compile_jsonl_to_json,
+                WIKIDATA_REPAIRS_JSONL,
+                WIKIDATA_REPAIRS,
+            )
+            dataset = load_cached_repairs(WIKIDATA_REPAIRS)
+        elif not resume_requested:
+            raise RuntimeError(
+                f"Found {WIKIDATA_REPAIRS_JSONL} without a complete Stage 2 JSON artifact. "
+                "This may be partial output and will not be promoted. Resume with the matching "
+                "--resume-checkpoint/--resume-stats artifact, or start in a new empty work directory."
+            )
+        else:
+            logger.info("[*] Partial Stage 2 JSONL retained; continuing only under explicit resume state.")
 
     summary = None
     if dataset is not None:
@@ -464,7 +488,6 @@ def process_pipeline(
             "resume_skipped": 0,
         }
         resume_start_index = 0
-        resume_checkpoint_payload = load_resume_checkpoint(resume_checkpoint)
         if resume_checkpoint_payload and isinstance(resume_checkpoint_payload.get("last_index"), int):
             resume_start_index = resume_checkpoint_payload["last_index"] + 1
             resume_info["enabled"] = True
@@ -515,6 +538,12 @@ def process_pipeline(
         if resume_start_index >= len(candidates):
             logger.warning("[!] Resume start index exceeds candidate count; nothing to process.")
             return
+
+        if resume_info["enabled"] and not WIKIDATA_REPAIRS_JSONL.exists():
+            raise RuntimeError(
+                "Resume state skips processed candidates but the matching partial repairs JSONL is missing; "
+                "continuing would lose previously found repairs."
+            )
 
         if resume_info["enabled"] and not resume_info["start_index"]:
             resume_info["start_index"] = resume_start_index

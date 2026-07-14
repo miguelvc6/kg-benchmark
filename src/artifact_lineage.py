@@ -21,8 +21,8 @@ from typing import Any, Iterable, Iterator
 import ijson
 from jsonschema import Draft202012Validator
 
-from artifact_release import sha256_file
 from classifier import lean_repair_target
+from kg_benchmark.dataset.release import sha256_file
 from lib.utils import iter_jsonl, iter_repairs
 
 LINEAGE_VERSION = 3
@@ -830,7 +830,7 @@ def validate_lineage(
             "stage234_identity_and_projection": identity,
         },
     }
-    schema_path = Path(__file__).resolve().parents[1] / "schemas" / "artifact_lineage.schema.json"
+    schema_path = Path(__file__).resolve().parents[1] / "schemas" / "artifact-lineage.schema.json"
     Draft202012Validator(json.loads(schema_path.read_text(encoding="utf-8"))).validate(manifest)
     return manifest
 
@@ -850,7 +850,7 @@ def refresh_lineage_provenance(
     """
     prior_path = Path(prior_manifest_path)
     prior = json.loads(prior_path.read_text(encoding="utf-8"))
-    schema_path = Path(__file__).resolve().parents[1] / "schemas" / "artifact_lineage.schema.json"
+    schema_path = Path(__file__).resolve().parents[1] / "schemas" / "artifact-lineage.schema.json"
     errors = list(
         Draft202012Validator(json.loads(schema_path.read_text(encoding="utf-8"))).iter_errors(prior)
     )
@@ -927,7 +927,7 @@ def verify_bound_lineage_manifest(
     """Verify hashes before reusing a complete lineage result in another exhaustive gate."""
     path = Path(manifest_path)
     manifest = json.loads(path.read_text(encoding="utf-8"))
-    schema_path = Path(__file__).resolve().parents[1] / "schemas" / "artifact_lineage.schema.json"
+    schema_path = Path(__file__).resolve().parents[1] / "schemas" / "artifact-lineage.schema.json"
     errors = list(
         Draft202012Validator(json.loads(schema_path.read_text(encoding="utf-8"))).iter_errors(manifest)
     )

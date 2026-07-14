@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kg-benchmark.local/schemas/few-shot-support.schema.json",
+  "title": "Reserved few-shot support bank",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["manifest_type", "manifest_version", "capacity_per_locus", "support_sets"],
+  "properties": {
+    "manifest_type": {"const": "few_shot_support_bank"},
+    "manifest_version": {"const": 1},
+    "capacity_per_locus": {"type": "integer", "minimum": 4, "multipleOf": 4},
+    "support_sets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["a_box_repair", "t_box_repair", "track_diagnosis"],
+      "properties": {
+        "a_box_repair": {"type": "array", "items": {"$ref": "#/$defs/example"}},
+        "t_box_repair": {"type": "array", "items": {"$ref": "#/$defs/example"}},
+        "track_diagnosis": {"type": "array", "minItems": 2, "items": {"$ref": "#/$defs/example"}}
+      }
+    }
+  },
+  "$defs": {
+    "example": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_id", "group_key", "role", "visible_example_id"],
+      "properties": {
+        "case_id": {"type": "string", "minLength": 1},
+        "group_key": {"type": "string", "minLength": 1},
+        "role": {"type": "string", "minLength": 1},
+        "visible_example_id": {"type": "string", "pattern": "^example_[0-9]{6}$"}
+      }
+    }
+  }
+}

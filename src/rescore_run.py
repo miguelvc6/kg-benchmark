@@ -93,6 +93,8 @@ def rescore_run(
     run_config_path = source_run_dir / "run_config.json"
     run_config = _read_object(run_config_path)
     taxonomy_mode = run_config.get("tbox_task_version") == "tbox_taxonomy_patch_v1"
+    if not taxonomy_mode:
+        raise ValueError("Only taxonomy-patch paper runs are supported by the active evaluator.")
 
     output_dir = source_run_dir / "evaluations" / evaluation_id
     if output_dir.exists():
@@ -211,12 +213,8 @@ def rescore_run(
         "provider_calls": 0,
         "selected_case_count": len(selected_case_ids),
         "ablation_bundles": bundles,
-        "metric_families": (
-            ["a_box_repair_v1", "tbox_taxonomy_patch_v1"]
-            if taxonomy_mode
-            else ["a_box_repair_v1", "strict_signature_after_v1"]
-        ),
-        "combined_repair_success_score": False if taxonomy_mode else None,
+        "metric_families": ["a_box_repair_v1", "tbox_taxonomy_patch_v1"],
+        "combined_repair_success_score": False,
         "source_artifacts": source_artifacts,
         "evaluation_code": {
             "git": _git_state(),

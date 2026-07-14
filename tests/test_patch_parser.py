@@ -9,7 +9,7 @@ class PatchParserTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         repo_root = Path(__file__).resolve().parents[1]
-        cls.schema_path = repo_root / "schemas" / "verified_repair_proposal.schema.json"
+        cls.schema_path = repo_root / "schemas" / "abox-response.schema.json"
         cls.schema = load_schema(str(cls.schema_path))
 
     def _base_proposal(self) -> dict:

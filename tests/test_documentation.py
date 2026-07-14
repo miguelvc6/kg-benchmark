@@ -6,7 +6,7 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
-TECHNICAL_DOCS = ROOT / "docs-technical"
+DOC_ROOTS = (ROOT / "docs", ROOT / "docs-conceptual", ROOT / "docs-technical")
 MARKDOWN_LINK = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
 MACHINE_PATH_PATTERNS = (
     re.compile(r"/mnt/[A-Za-z]/"),
@@ -27,7 +27,7 @@ def _link_target(raw_target: str) -> str:
 
 class TechnicalDocumentationTests(unittest.TestCase):
     def _documents(self) -> list[Path]:
-        documents = sorted(TECHNICAL_DOCS.rglob("*.md"))
+        documents = sorted(path for root in DOC_ROOTS for path in root.rglob("*.md"))
         self.assertTrue(documents)
         return documents
 
@@ -67,12 +67,12 @@ class TechnicalDocumentationTests(unittest.TestCase):
         self.assertEqual(failures, [], "\n".join(failures))
 
     def test_current_protocol_is_unambiguous(self) -> None:
-        index = (TECHNICAL_DOCS / "README.md").read_text(encoding="utf-8")
-        historical = (TECHNICAL_DOCS / "Paper_Execution_Plan.md").read_text(encoding="utf-8")
-        self.assertIn("authoritative engineering protocol", index)
-        self.assertIn("Research_Release_Protocol.md", index)
-        self.assertIn("Historical and superseded", historical)
-        self.assertIn("Research_Release_Protocol.md", historical)
+        technical = (ROOT / "docs-technical" / "README.md").read_text(encoding="utf-8")
+        conceptual = (ROOT / "docs-conceptual" / "README.md").read_text(encoding="utf-8")
+        history = (ROOT / "docs-technical" / "Development_History.md").read_text(encoding="utf-8")
+        self.assertIn("active implementation", technical)
+        self.assertIn("research decisions", conceptual)
+        self.assertIn("archive/pre-paper-restructure-20260714", history)
 
 
 if __name__ == "__main__":
