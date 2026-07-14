@@ -1,0 +1,83 @@
+{
+  "manifest_type": "paper_analysis_configuration",
+  "manifest_version": 1,
+  "status": "freeze_candidate",
+  "seed": 13,
+  "confirmatory_population": "main-1200",
+  "calibration_population": "azure-600",
+  "pool_models": false,
+  "primary_contrasts": [
+    {
+      "contrast_id": "context_within_zero_shot",
+      "left": {"prompt_regime": "zero_shot", "context_bundle": "logic_only"},
+      "right": {"prompt_regime": "zero_shot", "context_bundle": "local_graph"}
+    },
+    {
+      "contrast_id": "context_within_few_shot",
+      "left": {"prompt_regime": "static_few_shot", "context_bundle": "logic_only"},
+      "right": {"prompt_regime": "static_few_shot", "context_bundle": "local_graph"}
+    },
+    {
+      "contrast_id": "few_shot_within_logic_only",
+      "left": {"prompt_regime": "zero_shot", "context_bundle": "logic_only"},
+      "right": {"prompt_regime": "static_few_shot", "context_bundle": "logic_only"}
+    },
+    {
+      "contrast_id": "few_shot_within_local_graph",
+      "left": {"prompt_regime": "zero_shot", "context_bundle": "local_graph"},
+      "right": {"prompt_regime": "static_few_shot", "context_bundle": "local_graph"}
+    }
+  ],
+  "inference": {
+    "case_micro": true,
+    "event_cluster_macro": true,
+    "cluster_units": {"A_BOX": "qid_property", "T_BOX": "property_revision"},
+    "bootstrap": {
+      "method": "percentile_cluster_bootstrap",
+      "samples": 5000,
+      "confidence_level": 0.95,
+      "seed": 13
+    },
+    "paired_binary_test": "exact_mcnemar",
+    "multiplicity_correction": "holm",
+    "multiplicity_family": "task_model_stratum_four_primary_contrasts"
+  },
+  "a_box": {
+    "primary_endpoint": "accepted_repair",
+    "strata": ["IC-L", "IC-G", "IC-E-elim"],
+    "report_case_micro_and_event_macro": true
+  },
+  "t_box": {
+    "primary_endpoints": [
+      "tbox_patch_schema_decision_match_rate",
+      "tbox_patch_taxonomy_code_exact_match_rate"
+    ],
+    "secondary_endpoints": [
+      "tbox_patch_repair_op_exact_match_rate",
+      "tbox_patch_qualifier_property_match_rate",
+      "tbox_patch_value_delta_f1_when_applicable",
+      "tbox_patch_evidence_level_exact_match_rate"
+    ],
+    "combined_with_a_box_score": false
+  },
+  "track_diagnosis": {
+    "primary_endpoint": "accuracy",
+    "secondary_endpoints": ["macro_f1", "confusion_matrix", "false_locus_rates", "ambiguous_prediction_rate"]
+  },
+  "failure_handling": {
+    "parse_or_schema_failure": "incorrect",
+    "provider_transport_failure": "incomplete_not_scored",
+    "missing_confirmatory_pair": "block_analysis",
+    "incomplete_condition_matrix": "block_release"
+  },
+  "azure_calibration": {
+    "role": "paired_calibration_reference",
+    "headline_population": false,
+    "cross_model_significance_tests": false
+  },
+  "extensions": {
+    "reported_separately": true,
+    "may_replace_confirmatory_results": false,
+    "parent_prefix_proof_required": true
+  }
+}

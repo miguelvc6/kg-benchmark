@@ -103,7 +103,7 @@ def main() -> int:
     parser.add_argument(
         "--batch-sync-retry-fallback",
         action=argparse.BooleanOptionalAction,
-        default=True,
+        default=False,
         help=(
             "Retry eligible failed batch requests synchronously. Disable for strict batch-only execution."
         ),

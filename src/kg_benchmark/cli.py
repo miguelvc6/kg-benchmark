@@ -15,6 +15,12 @@ from kg_benchmark.dataset.release import (
     verify_dataset,
     write_source_provenance,
 )
+from kg_benchmark.methodology import (
+    MethodologyError,
+    check_methodology,
+    create_methodology_lock,
+    require_frozen_methodology,
+)
 from kg_benchmark.selection.extensible import build_selection_artifacts, materialize_population
 
 LEGACY_COMMANDS = {
@@ -30,6 +36,8 @@ def _contains_option(argv: list[str], option: str) -> bool:
 
 
 def _run_acquire(argv: list[str]) -> int:
+    if not any(value in {"-h", "--help"} for value in argv):
+        require_frozen_methodology(Path.cwd())
     values = list(argv)
     if not _contains_option(values, "--data-dir"):
         values.extend(["--data-dir", "work/acquisition"])
@@ -48,6 +56,8 @@ def _run_acquire(argv: list[str]) -> int:
 
 
 def _run_build(argv: list[str]) -> int:
+    if not any(value in {"-h", "--help"} for value in argv):
+        require_frozen_methodology(Path.cwd())
     wrapper = argparse.ArgumentParser(add_help=False)
     wrapper.add_argument("--work-dir", type=Path, default=Path("work"))
     wrapper.add_argument("--acquisition-dir", type=Path, default=Path("work/acquisition"))
@@ -248,16 +258,46 @@ def _run_viewer(argv: list[str]) -> int:
     return subprocess.run(command, check=False).returncode
 
 
-def main(argv: list[str] | None = None) -> int:
+def _methodology_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="kg-benchmark methodology")
+    subparsers = parser.add_subparsers(dest="methodology_command", required=True)
+    check = subparsers.add_parser("check", help="Validate the methodology candidate and report freeze blockers.")
+    check.add_argument("--repo-root", type=Path, default=Path("."))
+    check.add_argument("--require-freeze-ready", action="store_true")
+    check.add_argument("--output", type=Path)
+    freeze = subparsers.add_parser("freeze", help="Create the final methodology lock after all blockers are resolved.")
+    freeze.add_argument("--repo-root", type=Path, default=Path("."))
+    freeze.add_argument("--output", type=Path)
+    return parser
+
+
+def _run_methodology(argv: list[str]) -> int:
+    args = _methodology_parser().parse_args(argv)
+    if args.methodology_command == "freeze":
+        lock = create_methodology_lock(args.repo_root, args.output)
+        print(json.dumps(lock, indent=2, sort_keys=True))
+        return 0
+    report = check_methodology(args.repo_root)
+    rendered = json.dumps(report, indent=2, sort_keys=True) + "\n"
+    if args.output is not None:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(rendered, encoding="utf-8")
+    print(rendered, end="")
+    return 0 if report["valid"] and (not args.require_freeze_ready or report["freeze_ready"]) else 1
+
+
+def _main(argv: list[str] | None = None) -> int:
     values = list(sys.argv[1:] if argv is None else argv)
     if not values or values[0] in {"-h", "--help"}:
         print(
-            "usage: kg-benchmark {acquire,build,audit,select,promote,fetch,verify,run,score,baseline,viewer} ...\n\n"
+            "usage: kg-benchmark {methodology,acquire,build,audit,select,promote,fetch,verify,run,score,baseline,viewer} ...\n\n"
             "One paper-facing command for dataset construction, verification, execution, and inspection."
         )
         return 0
     command = values[0]
     rest = values[1:]
+    if command == "methodology":
+        return _run_methodology(rest)
     if command == "select":
         return _run_selection(rest)
     if command == "acquire":
@@ -275,7 +315,16 @@ def main(argv: list[str] | None = None) -> int:
     module_name = LEGACY_COMMANDS.get(command)
     if module_name is None:
         raise SystemExit(f"Unknown command: {command}")
+    if command == "run" and not any(value in {"-h", "--help"} for value in rest):
+        require_frozen_methodology(Path.cwd())
     return _delegate(module_name, [command, *rest])
+
+
+def main(argv: list[str] | None = None) -> int:
+    try:
+        return _main(argv)
+    except MethodologyError as exc:
+        raise SystemExit(str(exc)) from exc
 
 
 if __name__ == "__main__":

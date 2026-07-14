@@ -138,3 +138,11 @@ The main LLM experiments should use local H100-runnable instruction models. A sm
 - Treat Type C as `EXTERNAL_BY_ELIMINATION`; the current no-human study does not confirm external-evidence necessity.
 - Treat historical repairs as historically accepted targets, not universal truth.
 - Compare future RAG or Guardian-style systems against the reasoning floor, not against an informal baseline.
+
+## Confirmatory Inference
+
+The four primary paired contrasts are the context effect within each prompt regime and the prompt-regime effect within
+each context bundle. Models are analyzed separately. The paper reports case-micro and independent event-cluster macro
+estimates with seed-13 5,000-sample percentile cluster-bootstrap intervals, exact McNemar tests for paired binary
+outcomes, and Holm adjustment over the four contrasts within each task × model × stratum family. Parse/schema failures
+count as incorrect, while missing transport outcomes block a confirmatory paired analysis rather than being imputed.

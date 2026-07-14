@@ -27,7 +27,10 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark --help
 ## Workflow
 
 ```bash
-# Build only after the paper protocol is frozen.
+# The candidate may be inspected now; acquisition requires freeze_ready=true.
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark methodology check
+
+# Run only after the final methodology lock has been committed.
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark acquire --refresh-candidates
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark build
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit ...
@@ -50,6 +53,9 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark viewer ...
 
 Construction is isolated under ignored `work/`. Promotion is atomic and refuses to overwrite the final dataset. Raw
 generations are content-addressed under ignored `runs/`; metric changes do not call providers again.
+
+The remaining implementation and operational gates are tracked in [checklist.md](checklist.md). Dataset generation is
+not part of repository maintenance and should begin only after the checklist's implementation section is complete.
 
 ## Repository map
 

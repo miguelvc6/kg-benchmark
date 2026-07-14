@@ -4,8 +4,13 @@ The model matrix is configured in `paper/models.json`; populations, tasks, promp
 The initial full factorial has repair proposal and track diagnosis under zero/static-few-shot and
 `logic_only`/`local_graph`: 9,600 calls per Ollama model and 4,800 Azure batch calls.
 
-Ollama models are `qwen3:30b`, `llama3.3:70b`, and `gpt-oss:120b`. Azure uses `gpt-5.6-sol`, high reasoning effort,
-batch execution, and disabled tools. Exact model/deployment revisions must be filled before methodology freeze.
+Ollama models are `qwen3:30b`, `llama3.3:70b`, and `gpt-oss:120b`. Qwen thinking is enabled, Llama thinking is
+disabled, and GPT-OSS uses high thinking. Ollama uses two exact-request transport retries. Azure uses `gpt-5.6-sol`,
+high reasoning effort, batch-only execution, no synchronous fallback, zero transport retries, and disabled tools.
+
+The installed GPT-OSS artifact is bound by its full Ollama digest. The Qwen, Llama, and immutable Azure deployment or
+snapshot revisions remain explicit freeze blockers until provisioned and resolved; mutable model tags are not accepted
+as final revision identity.
 
 `kg-benchmark run` writes immutable raw generations and run manifests under ignored `runs/`. Generation keys depend on
 the rendered request, model revision, and inference settings rather than population membership. A larger nested

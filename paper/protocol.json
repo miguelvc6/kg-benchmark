@@ -1,14 +1,65 @@
 {
   "manifest_type": "paper_protocol",
   "manifest_version": 1,
-  "protocol_id": "paper_protocol_pending_refreeze",
-  "status": "restructure_draft",
+  "protocol_id": "wikidata-repair-eval-paper-v1-candidate",
+  "status": "freeze_candidate",
   "seed": 13,
+  "freeze_policy": {
+    "acquisition_requires_frozen_lock": true,
+    "execution_requires_frozen_lock": true,
+    "final_freeze_requires_clean_git": true,
+    "unresolved_model_revisions_allowed": false,
+    "systemic_defect_action": "invalidate_freeze_fix_and_reacquire",
+    "scope": {
+      "files": [
+        "pyproject.toml",
+        "uv.lock",
+        "paper/protocol.json",
+        "paper/models.json",
+        "paper/selection-policy.json",
+        "paper/analysis.json",
+        "paper/analysis-plan.md",
+        "paper/prompts/abox-repair.txt",
+        "paper/prompts/tbox-taxonomy-patch.txt",
+        "paper/prompts/track-diagnosis.txt",
+        "src/classifier.py",
+        "src/artifact_lineage.py",
+        "src/automated_consistency_audit.py",
+        "src/automated_audit_codex.py",
+        "src/temporal_audit.py",
+        "src/fetcher.py",
+        "src/non_llm_baselines.py",
+        "src/reasoning_floor.py",
+        "src/rescore_run.py"
+      ],
+      "directories": ["schemas", "src/guardian", "src/kg_benchmark", "src/lib"]
+    }
+  },
   "dataset": {
     "manifest": "dataset/manifest.json",
     "single_final_dataset": true,
     "canonical_large_record_format": "jsonl",
     "partial_artifacts_are_eligible": false
+  },
+  "audit": {
+    "whole_dataset_deterministic": true,
+    "construct_review": {
+      "sample_size": 450,
+      "seed": 13,
+      "label_hidden": true,
+      "purpose": "error_discovery_only",
+      "reviewer_interface": "codex_cli",
+      "reviewer_model": "gpt-5.6-sol",
+      "exact_cli_and_model_versions_recorded_at_run": true
+    },
+    "temporal_review": {
+      "sample_size": 50,
+      "seed": 13,
+      "label_hidden": true
+    },
+    "selection_eligible_disposition": "include",
+    "complete_unique_disposition_coverage_required": true,
+    "unresolved_systemic_findings_allowed": false
   },
   "tasks": {
     "repair_proposal": {
@@ -37,7 +88,16 @@
     "selection": "deterministic_prefix",
     "support_groups_excluded_from_all_evaluation_populations": true
   },
+  "failure_policy": {
+    "transport_retries": "exact_request_only",
+    "semantic_retries": 0,
+    "batch_sync_retry_fallback": false,
+    "parse_or_schema_failure": "score_incorrect",
+    "missing_confirmatory_pair": "block_analysis",
+    "incomplete_matrix": "block_release"
+  },
   "selection_policy": "paper/selection-policy.json",
   "model_configuration": "paper/models.json",
+  "analysis_configuration": "paper/analysis.json",
   "analysis_plan": "paper/analysis-plan.md"
 }

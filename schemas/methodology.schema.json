@@ -1,0 +1,523 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kg-benchmark.local/schemas/methodology.schema.json",
+  "title": "Paper methodology configuration bundle",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocol", "models", "selection_policy", "analysis"],
+  "properties": {
+    "protocol": {"$ref": "#/$defs/protocol"},
+    "models": {"$ref": "#/$defs/models"},
+    "selection_policy": {"$ref": "#/$defs/selection"},
+    "analysis": {"$ref": "#/$defs/analysis"}
+  },
+  "$defs": {
+    "status": {"enum": ["freeze_candidate", "frozen"]},
+    "relative_path": {"type": "string", "pattern": "^(?!/)(?!.*\\.\\./).+"},
+    "quota": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["IC-L", "IC-G", "IC-E-elim", "TBOX"],
+      "properties": {
+        "IC-L": {"type": "integer", "minimum": 0},
+        "IC-G": {"type": "integer", "minimum": 0},
+        "IC-E-elim": {"type": "integer", "minimum": 0},
+        "TBOX": {"type": "integer", "minimum": 0}
+      }
+    },
+    "protocol": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "manifest_type",
+        "manifest_version",
+        "protocol_id",
+        "status",
+        "seed",
+        "freeze_policy",
+        "dataset",
+        "audit",
+        "tasks",
+        "conditions",
+        "few_shot",
+        "failure_policy",
+        "selection_policy",
+        "model_configuration",
+        "analysis_configuration",
+        "analysis_plan"
+      ],
+      "properties": {
+        "manifest_type": {"const": "paper_protocol"},
+        "manifest_version": {"const": 1},
+        "protocol_id": {"type": "string", "minLength": 1},
+        "status": {"$ref": "#/$defs/status"},
+        "seed": {"type": "integer", "minimum": 0},
+        "freeze_policy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "acquisition_requires_frozen_lock",
+            "execution_requires_frozen_lock",
+            "final_freeze_requires_clean_git",
+            "unresolved_model_revisions_allowed",
+            "systemic_defect_action",
+            "scope"
+          ],
+          "properties": {
+            "acquisition_requires_frozen_lock": {"const": true},
+            "execution_requires_frozen_lock": {"const": true},
+            "final_freeze_requires_clean_git": {"const": true},
+            "unresolved_model_revisions_allowed": {"const": false},
+            "systemic_defect_action": {"const": "invalidate_freeze_fix_and_reacquire"},
+            "scope": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["files", "directories"],
+              "properties": {
+                "files": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {"$ref": "#/$defs/relative_path"}
+                },
+                "directories": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {"$ref": "#/$defs/relative_path"}
+                }
+              }
+            }
+          }
+        },
+        "dataset": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["manifest", "single_final_dataset", "canonical_large_record_format", "partial_artifacts_are_eligible"],
+          "properties": {
+            "manifest": {"$ref": "#/$defs/relative_path"},
+            "single_final_dataset": {"const": true},
+            "canonical_large_record_format": {"const": "jsonl"},
+            "partial_artifacts_are_eligible": {"const": false}
+          }
+        },
+        "audit": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "whole_dataset_deterministic",
+            "construct_review",
+            "temporal_review",
+            "selection_eligible_disposition",
+            "complete_unique_disposition_coverage_required",
+            "unresolved_systemic_findings_allowed"
+          ],
+          "properties": {
+            "whole_dataset_deterministic": {"const": true},
+            "construct_review": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["sample_size", "seed", "label_hidden", "purpose", "reviewer_interface", "reviewer_model", "exact_cli_and_model_versions_recorded_at_run"],
+              "properties": {
+                "sample_size": {"type": "integer", "minimum": 1},
+                "seed": {"type": "integer", "minimum": 0},
+                "label_hidden": {"const": true},
+                "purpose": {"const": "error_discovery_only"},
+                "reviewer_interface": {"const": "codex_cli"},
+                "reviewer_model": {"type": "string", "minLength": 1},
+                "exact_cli_and_model_versions_recorded_at_run": {"const": true}
+              }
+            },
+            "temporal_review": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["sample_size", "seed", "label_hidden"],
+              "properties": {
+                "sample_size": {"type": "integer", "minimum": 1},
+                "seed": {"type": "integer", "minimum": 0},
+                "label_hidden": {"const": true}
+              }
+            },
+            "selection_eligible_disposition": {"const": "include"},
+            "complete_unique_disposition_coverage_required": {"const": true},
+            "unresolved_systemic_findings_allowed": {"const": false}
+          }
+        },
+        "tasks": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["repair_proposal", "track_diagnosis"],
+          "properties": {
+            "repair_proposal": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["routing", "tracks"],
+              "properties": {
+                "routing": {"const": "oracle"},
+                "tracks": {"const": ["A_BOX", "T_BOX"]}
+              }
+            },
+            "track_diagnosis": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["labels", "routes_proposals"],
+              "properties": {
+                "labels": {"const": ["A_BOX", "T_BOX", "AMBIGUOUS"]},
+                "routes_proposals": {"const": false}
+              }
+            }
+          }
+        },
+        "conditions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["prompt_regimes", "context_bundles", "external_retrieval", "tools_disabled", "semantic_retries"],
+          "properties": {
+            "prompt_regimes": {"const": ["zero_shot", "static_few_shot"]},
+            "context_bundles": {"const": ["logic_only", "local_graph"]},
+            "external_retrieval": {"const": false},
+            "tools_disabled": {"const": true},
+            "semantic_retries": {"const": 0}
+          }
+        },
+        "few_shot": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["support_bank_capacity", "default_example_counts", "selection", "support_groups_excluded_from_all_evaluation_populations"],
+          "properties": {
+            "support_bank_capacity": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["A_BOX", "T_BOX"],
+              "properties": {"A_BOX": {"const": 16}, "T_BOX": {"const": 16}}
+            },
+            "default_example_counts": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["a_box_repair", "t_box_repair", "track_diagnosis"],
+              "properties": {
+                "a_box_repair": {"const": 4},
+                "t_box_repair": {"const": 4},
+                "track_diagnosis": {"const": 2}
+              }
+            },
+            "selection": {"const": "deterministic_prefix"},
+            "support_groups_excluded_from_all_evaluation_populations": {"const": true}
+          }
+        },
+        "failure_policy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["transport_retries", "semantic_retries", "batch_sync_retry_fallback", "parse_or_schema_failure", "missing_confirmatory_pair", "incomplete_matrix"],
+          "properties": {
+            "transport_retries": {"const": "exact_request_only"},
+            "semantic_retries": {"const": 0},
+            "batch_sync_retry_fallback": {"const": false},
+            "parse_or_schema_failure": {"const": "score_incorrect"},
+            "missing_confirmatory_pair": {"const": "block_analysis"},
+            "incomplete_matrix": {"const": "block_release"}
+          }
+        },
+        "selection_policy": {"$ref": "#/$defs/relative_path"},
+        "model_configuration": {"$ref": "#/$defs/relative_path"},
+        "analysis_configuration": {"$ref": "#/$defs/relative_path"},
+        "analysis_plan": {"$ref": "#/$defs/relative_path"}
+      }
+    },
+    "models": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manifest_type", "manifest_version", "status", "request_dimensions", "generation_identity", "models"],
+      "properties": {
+        "manifest_type": {"const": "paper_model_matrix"},
+        "manifest_version": {"const": 1},
+        "status": {"$ref": "#/$defs/status"},
+        "request_dimensions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["tasks", "prompt_regimes", "context_bundles"],
+          "properties": {
+            "tasks": {"const": ["repair_proposal", "track_diagnosis"]},
+            "prompt_regimes": {"const": ["zero_shot", "static_few_shot"]},
+            "context_bundles": {"const": ["logic_only", "local_graph"]}
+          }
+        },
+        "generation_identity": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "models": {"type": "array", "minItems": 4, "items": {"$ref": "#/$defs/model"}}
+      }
+    },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model_id",
+        "provider",
+        "model",
+        "model_revision",
+        "revision_status",
+        "revision_resolution",
+        "population",
+        "execution_mode",
+        "max_output_tokens",
+        "max_transport_retries",
+        "tools_disabled",
+        "expected_calls"
+      ],
+      "properties": {
+        "model_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_]*$"},
+        "provider": {"enum": ["ollama", "azure"]},
+        "model": {"type": "string", "minLength": 1},
+        "deployment": {"type": "string", "minLength": 1},
+        "model_revision": {"oneOf": [{"type": "null"}, {"type": "string", "minLength": 1}]},
+        "revision_status": {"enum": ["resolved", "unresolved"]},
+        "revision_resolution": {"type": "string", "minLength": 1},
+        "population": {"type": "string", "minLength": 1},
+        "execution_mode": {"enum": ["sync", "batch"]},
+        "temperature": {"type": "number"},
+        "top_p": {"type": "number", "minimum": 0, "maximum": 1},
+        "seed": {"type": "integer", "minimum": 0},
+        "context_length": {"type": "integer", "minimum": 1},
+        "max_output_tokens": {"type": "integer", "minimum": 1},
+        "ollama_think": {"enum": ["enabled", "disabled", "low", "medium", "high", "max"]},
+        "reasoning_effort": {"enum": ["minimal", "low", "medium", "high", "xhigh"]},
+        "max_transport_retries": {"type": "integer", "minimum": 0},
+        "batch_completion_window": {"type": "string", "minLength": 1},
+        "batch_poll_interval_seconds": {"type": "number", "exclusiveMinimum": 0},
+        "batch_sync_retry_fallback": {"type": "boolean"},
+        "tools_disabled": {"const": true},
+        "expected_calls": {"type": "integer", "minimum": 1}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"provider": {"const": "ollama"}}},
+          "then": {"required": ["temperature", "top_p", "seed", "context_length", "ollama_think"]}
+        },
+        {
+          "if": {"properties": {"provider": {"const": "azure"}}},
+          "then": {"required": ["deployment", "reasoning_effort", "batch_completion_window", "batch_poll_interval_seconds", "batch_sync_retry_fallback"]}
+        }
+      ]
+    },
+    "selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manifest_type", "manifest_version", "status", "seed", "ranking", "sampling_unit", "eligibility", "support_bank", "populations", "tbox_main_target", "reserve_prompt_gate", "manifest_binding", "expansion"],
+      "properties": {
+        "manifest_type": {"const": "paper_selection_policy"},
+        "manifest_version": {"const": 1},
+        "status": {"$ref": "#/$defs/status"},
+        "seed": {"type": "integer", "minimum": 0},
+        "ranking": {"const": "sha256"},
+        "sampling_unit": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["A_BOX", "T_BOX"],
+          "properties": {"A_BOX": {"const": "qid_property"}, "T_BOX": {"const": "property_revision"}}
+        },
+        "eligibility": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["required_disposition", "allowed_strata", "diagnostic_ic_u_allowed", "support_bank_groups_allowed", "previously_used_groups_allowed"],
+          "properties": {
+            "required_disposition": {"const": "include"},
+            "allowed_strata": {"const": ["IC-L", "IC-G", "IC-E-elim", "TBOX"]},
+            "diagnostic_ic_u_allowed": {"const": false},
+            "support_bank_groups_allowed": {"const": false},
+            "previously_used_groups_allowed": {"const": false}
+          }
+        },
+        "support_bank": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["capacity_per_locus", "A_BOX_roles", "T_BOX_roles"],
+          "properties": {
+            "capacity_per_locus": {"const": 16},
+            "A_BOX_roles": {"type": "array", "minItems": 4, "uniqueItems": true, "items": {"type": "string"}},
+            "T_BOX_roles": {"type": "array", "minItems": 4, "uniqueItems": true, "items": {"type": "string"}}
+          }
+        },
+        "populations": {
+          "type": "object",
+          "additionalProperties": {"$ref": "#/$defs/quota"},
+          "required": ["reserve-1440", "main-1200", "azure-600"]
+        },
+        "tbox_main_target": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["relaxation_expansions", "restriction_contractions", "schema_updates", "allocation_role"],
+          "properties": {
+            "relaxation_expansions": {"type": "integer", "minimum": 0},
+            "restriction_contractions": {"type": "integer", "minimum": 0},
+            "schema_updates": {"type": "integer", "minimum": 0},
+            "allocation_role": {"const": "approximate_target_subject_to_eligible_prefix"}
+          }
+        },
+        "reserve_prompt_gate": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["render_every_reserve_case", "deterministic_scan_every_prompt", "temporal_review_sample_size", "failed_prompt_replacement", "finalize_only_after_all_failures_removed"],
+          "properties": {
+            "render_every_reserve_case": {"const": true},
+            "deterministic_scan_every_prompt": {"const": true},
+            "temporal_review_sample_size": {"const": 50},
+            "failed_prompt_replacement": {"const": "next_eligible_case_in_frozen_stratum_order"},
+            "finalize_only_after_all_failures_removed": {"const": true}
+          }
+        },
+        "manifest_binding": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["required_hashes"],
+          "properties": {
+            "required_hashes": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}}
+          }
+        },
+        "expansion": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["method", "require_nondecreasing_quotas_for_nested_parent", "tbox_underfill_policy", "other_underfill_policy", "overwrite_existing_manifest"],
+          "properties": {
+            "method": {"const": "per_stratum_prefix"},
+            "require_nondecreasing_quotas_for_nested_parent": {"const": true},
+            "tbox_underfill_policy": {"const": "transfer_to_abox_by_largest_remainder"},
+            "other_underfill_policy": {"const": "fail"},
+            "overwrite_existing_manifest": {"const": false}
+          }
+        }
+      }
+    },
+    "analysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manifest_type", "manifest_version", "status", "seed", "confirmatory_population", "calibration_population", "pool_models", "primary_contrasts", "inference", "a_box", "t_box", "track_diagnosis", "failure_handling", "azure_calibration", "extensions"],
+      "properties": {
+        "manifest_type": {"const": "paper_analysis_configuration"},
+        "manifest_version": {"const": 1},
+        "status": {"$ref": "#/$defs/status"},
+        "seed": {"type": "integer", "minimum": 0},
+        "confirmatory_population": {"const": "main-1200"},
+        "calibration_population": {"const": "azure-600"},
+        "pool_models": {"const": false},
+        "primary_contrasts": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["contrast_id", "left", "right"],
+            "properties": {
+              "contrast_id": {"type": "string", "minLength": 1},
+              "left": {"$ref": "#/$defs/condition"},
+              "right": {"$ref": "#/$defs/condition"}
+            }
+          }
+        },
+        "inference": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["case_micro", "event_cluster_macro", "cluster_units", "bootstrap", "paired_binary_test", "multiplicity_correction", "multiplicity_family"],
+          "properties": {
+            "case_micro": {"const": true},
+            "event_cluster_macro": {"const": true},
+            "cluster_units": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["A_BOX", "T_BOX"],
+              "properties": {"A_BOX": {"const": "qid_property"}, "T_BOX": {"const": "property_revision"}}
+            },
+            "bootstrap": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["method", "samples", "confidence_level", "seed"],
+              "properties": {
+                "method": {"const": "percentile_cluster_bootstrap"},
+                "samples": {"const": 5000},
+                "confidence_level": {"const": 0.95},
+                "seed": {"const": 13}
+              }
+            },
+            "paired_binary_test": {"const": "exact_mcnemar"},
+            "multiplicity_correction": {"const": "holm"},
+            "multiplicity_family": {"const": "task_model_stratum_four_primary_contrasts"}
+          }
+        },
+        "a_box": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["primary_endpoint", "strata", "report_case_micro_and_event_macro"],
+          "properties": {
+            "primary_endpoint": {"const": "accepted_repair"},
+            "strata": {"const": ["IC-L", "IC-G", "IC-E-elim"]},
+            "report_case_micro_and_event_macro": {"const": true}
+          }
+        },
+        "t_box": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["primary_endpoints", "secondary_endpoints", "combined_with_a_box_score"],
+          "properties": {
+            "primary_endpoints": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+            "secondary_endpoints": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+            "combined_with_a_box_score": {"const": false}
+          }
+        },
+        "track_diagnosis": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["primary_endpoint", "secondary_endpoints"],
+          "properties": {
+            "primary_endpoint": {"const": "accuracy"},
+            "secondary_endpoints": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}}
+          }
+        },
+        "failure_handling": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["parse_or_schema_failure", "provider_transport_failure", "missing_confirmatory_pair", "incomplete_condition_matrix"],
+          "properties": {
+            "parse_or_schema_failure": {"const": "incorrect"},
+            "provider_transport_failure": {"const": "incomplete_not_scored"},
+            "missing_confirmatory_pair": {"const": "block_analysis"},
+            "incomplete_condition_matrix": {"const": "block_release"}
+          }
+        },
+        "azure_calibration": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["role", "headline_population", "cross_model_significance_tests"],
+          "properties": {
+            "role": {"const": "paired_calibration_reference"},
+            "headline_population": {"const": false},
+            "cross_model_significance_tests": {"const": false}
+          }
+        },
+        "extensions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["reported_separately", "may_replace_confirmatory_results", "parent_prefix_proof_required"],
+          "properties": {
+            "reported_separately": {"const": true},
+            "may_replace_confirmatory_results": {"const": false},
+            "parent_prefix_proof_required": {"const": true}
+          }
+        }
+      }
+    },
+    "condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prompt_regime", "context_bundle"],
+      "properties": {
+        "prompt_regime": {"enum": ["zero_shot", "static_few_shot"]},
+        "context_bundle": {"enum": ["logic_only", "local_graph"]}
+      }
+    }
+  }
+}

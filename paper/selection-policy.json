@@ -1,6 +1,7 @@
 {
   "manifest_type": "paper_selection_policy",
   "manifest_version": 1,
+  "status": "freeze_candidate",
   "seed": 13,
   "ranking": "sha256",
   "sampling_unit": {
@@ -11,7 +12,8 @@
     "required_disposition": "include",
     "allowed_strata": ["IC-L", "IC-G", "IC-E-elim", "TBOX"],
     "diagnostic_ic_u_allowed": false,
-    "support_bank_groups_allowed": false
+    "support_bank_groups_allowed": false,
+    "previously_used_groups_allowed": false
   },
   "support_bank": {
     "capacity_per_locus": 16,
@@ -19,8 +21,34 @@
     "T_BOX_roles": ["cq_plus", "cq_minus_or_replace", "no_causal_empty", "other_or_family_only"]
   },
   "populations": {
+    "reserve-1440": {"IC-L": 276, "IC-G": 450, "IC-E-elim": 354, "TBOX": 360},
     "main-1200": {"IC-L": 230, "IC-G": 375, "IC-E-elim": 295, "TBOX": 300},
     "azure-600": {"IC-L": 115, "IC-G": 188, "IC-E-elim": 147, "TBOX": 150}
+  },
+  "tbox_main_target": {
+    "relaxation_expansions": 130,
+    "restriction_contractions": 50,
+    "schema_updates": 120,
+    "allocation_role": "approximate_target_subject_to_eligible_prefix"
+  },
+  "reserve_prompt_gate": {
+    "render_every_reserve_case": true,
+    "deterministic_scan_every_prompt": true,
+    "temporal_review_sample_size": 50,
+    "failed_prompt_replacement": "next_eligible_case_in_frozen_stratum_order",
+    "finalize_only_after_all_failures_removed": true
+  },
+  "manifest_binding": {
+    "required_hashes": [
+      "dataset",
+      "audit",
+      "exclusions",
+      "ranking",
+      "support_bank",
+      "eligibility_order",
+      "prompt_audit",
+      "per_case_eligibility"
+    ]
   },
   "expansion": {
     "method": "per_stratum_prefix",
