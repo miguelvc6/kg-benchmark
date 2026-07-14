@@ -1,7 +1,7 @@
 {
   "manifest_type": "paper_analysis_configuration",
   "manifest_version": 1,
-  "status": "freeze_candidate",
+  "status": "frozen",
   "seed": 13,
   "confirmatory_population": "main-1200",
   "calibration_population": "azure-600",

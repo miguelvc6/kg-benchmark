@@ -16,5 +16,6 @@ evidence was available or necessary.
 
 The confirmatory dataset is acquired only after methodology freeze, exhaustively audited, grouped by independent repair
 events, and selected deterministically. The 1,200-case population is evaluated by all local models; a nested 600-case
-view is evaluated by Azure. Larger nested populations are permitted as registered extensions and never overwrite the
-confirmatory population.
+view is evaluated by Azure as a sequential, no-tools calibration condition because batch deployment is unavailable for
+the selected external model. Execution mode does not change Azure's calibration-only analytical role. Larger nested
+populations are permitted as registered extensions and never overwrite the confirmatory population.

@@ -1,7 +1,7 @@
 {
   "manifest_type": "paper_selection_policy",
   "manifest_version": 1,
-  "status": "freeze_candidate",
+  "status": "frozen",
   "seed": 13,
   "ranking": "sha256",
   "sampling_unit": {

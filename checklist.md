@@ -55,7 +55,7 @@ acquisition and model calls are deliberately listed later as operational executi
 - [x] Read `paper/models.json` and materialize models × tasks × prompt regimes × contexts × populations.
 - [x] Add a no-call dry run reporting new requests, cache hits, missing revisions, and expected workload.
 - [x] Add resumable per-cell execution manifests and matrix completeness checks.
-- [x] Enforce the configured Ollama inference parameters and Azure batch-only/no-tools policy.
+- [x] Enforce the configured Ollama inference parameters and Azure sequential/no-tools policy.
 - [x] Prove that population extensions schedule only request keys absent from the generation cache.
 
 ### 6. Paper-level analysis and result packaging
@@ -80,9 +80,9 @@ acquisition and model calls are deliberately listed later as operational executi
 Complete this gate only after sections 2–7 are finished; otherwise later freeze-scoped implementation changes would
 immediately invalidate the lock.
 
-- [ ] Resolve and record the full `qwen3:30b` Ollama digest.
-- [ ] Resolve and record the full `llama3.3:70b` Ollama digest.
-- [ ] Resolve and record the immutable Azure `gpt-5.6-sol` deployment or snapshot revision.
+- [x] Resolve and record the full `qwen3:30b` Ollama digest.
+- [x] Resolve and record the full `llama3.3:70b` Ollama digest.
+- [x] Resolve and record the immutable Azure `gpt-5.6-sol-2026-07-09` snapshot revision.
 - [ ] Change all methodology component statuses to `frozen`, commit a clean source revision, create
   `paper/methodology.lock.json`, commit the lock alone, verify `freeze_ready: true`, and tag the freeze.
 
@@ -95,7 +95,7 @@ repository operator, not implicitly by an implementation agent.
 - [ ] Build, audit, review, reserve, finalize, and promote the final dataset.
 - [ ] Run deterministic non-LLM baselines.
 - [ ] Execute the complete Ollama matrix over the final 1,200 cases.
-- [ ] Execute the Azure batch matrix over the nested 600 cases.
+- [ ] Execute the sequential Azure matrix over the nested 600 cases.
 - [ ] Replay metrics, run the predeclared analysis, and generate compact paper results.
 - [ ] Transfer the historical development artifacts to the checksum-indexed external archive and update
   `paper/development-archive.json`; only then may the preserved local bulk be deleted.

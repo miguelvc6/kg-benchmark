@@ -22,32 +22,45 @@ class CleanCloneReproductionTests(unittest.TestCase):
             check=True,
             capture_output=True,
         ).stdout.split(b"\0")
+        source_is_clean = not subprocess.run(
+            ["git", "status", "--porcelain=v1"],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+        ).stdout
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             clone = root / "clone"
-            clone.mkdir()
-            for raw_path in tracked:
-                if not raw_path:
-                    continue
-                relative = Path(os.fsdecode(raw_path))
-                source = ROOT / relative
-                if not source.is_file():
-                    continue
-                destination = clone / relative
-                destination.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copyfile(source, destination)
+            if source_is_clean:
+                subprocess.run(
+                    ["git", "clone", "--quiet", "--no-local", str(ROOT), str(clone)],
+                    check=True,
+                )
+            else:
+                clone.mkdir()
+                for raw_path in tracked:
+                    if not raw_path:
+                        continue
+                    relative = Path(os.fsdecode(raw_path))
+                    source = ROOT / relative
+                    if not source.is_file():
+                        continue
+                    destination = clone / relative
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copyfile(source, destination)
 
             for excluded in (".env", ".venv", ".venv-wsl", "data", "data_post_freeze", "work", "runs"):
                 self.assertFalse((clone / excluded).exists(), excluded)
-            subprocess.run(["git", "init", "-q"], cwd=clone, check=True)
-            subprocess.run(["git", "config", "user.name", "Reproduction Smoke"], cwd=clone, check=True)
-            subprocess.run(["git", "config", "user.email", "smoke@example.invalid"], cwd=clone, check=True)
-            subprocess.run(["git", "add", "."], cwd=clone, check=True)
-            subprocess.run(
-                ["git", "commit", "-q", "-m", "clean clone fixture"],
-                cwd=clone,
-                check=True,
-            )
+            if not source_is_clean:
+                subprocess.run(["git", "init", "-q"], cwd=clone, check=True)
+                subprocess.run(["git", "config", "user.name", "Reproduction Smoke"], cwd=clone, check=True)
+                subprocess.run(["git", "config", "user.email", "smoke@example.invalid"], cwd=clone, check=True)
+                subprocess.run(["git", "add", "."], cwd=clone, check=True)
+                subprocess.run(
+                    ["git", "commit", "-q", "-m", "clean clone fixture"],
+                    cwd=clone,
+                    check=True,
+                )
 
             distribution = root / "dist"
             subprocess.run(

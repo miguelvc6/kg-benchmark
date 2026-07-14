@@ -47,7 +47,7 @@ rate are secondary.
 
 Parse or response-schema failures count as incorrect. Transport failures are incomplete rather than scored; incomplete
 confirmatory pairs or condition matrices block analysis and release. Transport retries replay only the exact request,
-Azure batch failures do not fall back to synchronous calls, and semantic retries are disabled.
+Azure is executed sequentially with at most two exact-request transport retries, and semantic retries are disabled.
 
 Raw generations are immutable and metric versions can be recomputed without provider calls. Azure results are a paired
 calibration reference and receive no cross-model significance tests. A population extension must reference a parent

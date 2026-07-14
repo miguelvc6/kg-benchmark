@@ -166,12 +166,10 @@ def _policy_validated_models(payload: dict[str, Any], schema_root: Path) -> list
             if any(key not in model for key in required):
                 raise MatrixWorkflowError(f"{model_id} is missing a frozen Ollama inference parameter.")
         else:
-            if model["execution_mode"] != "batch":
-                raise MatrixWorkflowError(f"{model_id} must use Azure batch execution.")
-            if model.get("batch_sync_retry_fallback") is not False or model["max_transport_retries"] != 0:
-                raise MatrixWorkflowError(f"{model_id} must disable Azure synchronous fallback and retries.")
             if not model.get("reasoning_effort") or not model.get("deployment"):
                 raise MatrixWorkflowError(f"{model_id} must freeze Azure deployment and reasoning effort.")
+            if model["execution_mode"] == "batch" and model.get("batch_sync_retry_fallback") is not False:
+                raise MatrixWorkflowError(f"{model_id} must explicitly disable Azure batch-to-sync fallback.")
     return models
 
 

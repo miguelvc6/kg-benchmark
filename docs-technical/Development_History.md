@@ -111,7 +111,10 @@ development archive; caches and derived indexes are not.
 The runner gained Ollama and external-provider adapters, exact-request transport retry, immutable raw generations,
 content-addressed caching, batch support, model/version provenance, resumption, and evaluator-only replay. The selected
 paper models became `qwen3:30b`, `llama3.3:70b`, `gpt-oss:120b`, and Azure `gpt-5.6-sol` with high reasoning effort,
-batch execution, and tools disabled.
+and tools disabled. The freeze candidate initially required Azure batch execution; when the selected deployment proved
+not to offer batch, the paper condition was changed before freeze to sequential synchronous execution with two exact-
+request transport retries. The Azure data-plane inventory exposed `gpt-5.6-sol-2026-07-09`, which became the immutable
+execution and cache revision. General batch support remains available for registered future experiments.
 
 The final matrix uses repair and diagnosis under zero/few-shot and logic/local conditions. Cache identity is based on
 case payload, rendered prompt, context, task, model revision, and inference parameters—not population membership—so

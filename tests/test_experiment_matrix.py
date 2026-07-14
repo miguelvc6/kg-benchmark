@@ -225,13 +225,10 @@ class ExperimentMatrixTests(unittest.TestCase):
                     "revision_status": "resolved",
                     "revision_resolution": "test",
                     "population": "api-2",
-                    "execution_mode": "batch",
+                    "execution_mode": "sync",
                     "reasoning_effort": "high",
                     "max_output_tokens": 512,
-                    "max_transport_retries": 0,
-                    "batch_completion_window": "24h",
-                    "batch_poll_interval_seconds": 60,
-                    "batch_sync_retry_fallback": False,
+                    "max_transport_retries": 2,
                     "tools_disabled": True,
                     "expected_calls": 16,
                 },
@@ -399,9 +396,8 @@ class ExperimentMatrixTests(unittest.TestCase):
                 azure["execution_mode"],
                 azure["reasoning_effort"],
                 azure["max_retries"],
-                azure["batch_sync_retry_fallback"],
             ),
-            ("batch", "high", 0, False),
+            ("sync", "high", 2),
         )
 
         cell_path = next((matrix_dir / "cells").glob("*.json"))

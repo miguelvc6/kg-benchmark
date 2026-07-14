@@ -67,7 +67,11 @@
         },
         {
           "if": {"properties": {"provider": {"const": "azure"}}},
-          "then": {"required": ["deployment", "reasoning_effort", "batch_completion_window", "batch_poll_interval_seconds", "batch_sync_retry_fallback"]}
+          "then": {"required": ["deployment", "reasoning_effort"]}
+        },
+        {
+          "if": {"properties": {"execution_mode": {"const": "batch"}}},
+          "then": {"required": ["batch_completion_window", "batch_poll_interval_seconds", "batch_sync_retry_fallback"]}
         }
       ]
     }

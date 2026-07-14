@@ -1,8 +1,8 @@
 {
   "manifest_type": "paper_protocol",
   "manifest_version": 1,
-  "protocol_id": "wikidata-repair-eval-paper-v1-candidate",
-  "status": "freeze_candidate",
+  "protocol_id": "wikidata-repair-eval-paper-v1",
+  "status": "frozen",
   "seed": 13,
   "freeze_policy": {
     "acquisition_requires_frozen_lock": true,
@@ -92,7 +92,6 @@
   "failure_policy": {
     "transport_retries": "exact_request_only",
     "semantic_retries": 0,
-    "batch_sync_retry_fallback": false,
     "parse_or_schema_failure": "score_incorrect",
     "missing_confirmatory_pair": "block_analysis",
     "incomplete_matrix": "block_release"

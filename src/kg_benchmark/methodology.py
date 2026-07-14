@@ -51,10 +51,9 @@ REQUIRED_MODEL_CONFIGURATION = {
         "provider": "azure",
         "model": "gpt-5.6-sol",
         "population": "azure-600",
-        "execution_mode": "batch",
+        "execution_mode": "sync",
         "reasoning_effort": "high",
-        "max_transport_retries": 0,
-        "batch_sync_retry_fallback": False,
+        "max_transport_retries": 2,
         "tools_disabled": True,
     },
 }
@@ -197,7 +196,6 @@ def validate_methodology_bundle(bundle: dict[str, dict[str, Any]]) -> tuple[list
     expected_failure_policy = {
         "transport_retries": "exact_request_only",
         "semantic_retries": 0,
-        "batch_sync_retry_fallback": False,
         "parse_or_schema_failure": "score_incorrect",
         "missing_confirmatory_pair": "block_analysis",
         "incomplete_matrix": "block_release",

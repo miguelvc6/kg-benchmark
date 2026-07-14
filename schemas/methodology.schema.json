@@ -209,11 +209,10 @@
         "failure_policy": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["transport_retries", "semantic_retries", "batch_sync_retry_fallback", "parse_or_schema_failure", "missing_confirmatory_pair", "incomplete_matrix"],
+          "required": ["transport_retries", "semantic_retries", "parse_or_schema_failure", "missing_confirmatory_pair", "incomplete_matrix"],
           "properties": {
             "transport_retries": {"const": "exact_request_only"},
             "semantic_retries": {"const": 0},
-            "batch_sync_retry_fallback": {"const": false},
             "parse_or_schema_failure": {"const": "score_incorrect"},
             "missing_confirmatory_pair": {"const": "block_analysis"},
             "incomplete_matrix": {"const": "block_release"}
@@ -301,7 +300,11 @@
         },
         {
           "if": {"properties": {"provider": {"const": "azure"}}},
-          "then": {"required": ["deployment", "reasoning_effort", "batch_completion_window", "batch_poll_interval_seconds", "batch_sync_retry_fallback"]}
+          "then": {"required": ["deployment", "reasoning_effort"]}
+        },
+        {
+          "if": {"properties": {"execution_mode": {"const": "batch"}}},
+          "then": {"required": ["batch_completion_window", "batch_poll_interval_seconds", "batch_sync_retry_fallback"]}
         }
       ]
     },

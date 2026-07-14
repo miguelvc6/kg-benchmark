@@ -2,15 +2,16 @@
 
 The model matrix is configured in `paper/models.json`; populations, tasks, prompt regimes, and contexts are data-driven.
 The initial full factorial has repair proposal and track diagnosis under zero/static-few-shot and
-`logic_only`/`local_graph`: 9,600 calls per Ollama model and 4,800 Azure batch calls.
+`logic_only`/`local_graph`: 9,600 calls per Ollama model and 4,800 sequential Azure calls.
 
 Ollama models are `qwen3:30b`, `llama3.3:70b`, and `gpt-oss:120b`. Qwen thinking is enabled, Llama thinking is
 disabled, and GPT-OSS uses high thinking. Ollama uses two exact-request transport retries. Azure uses `gpt-5.6-sol`,
-high reasoning effort, batch-only execution, no synchronous fallback, zero transport retries, and disabled tools.
+the dated `gpt-5.6-sol-2026-07-09` snapshot, high reasoning effort, sequential synchronous execution, two exact-request
+transport retries, and disabled tools.
 
-The installed GPT-OSS artifact is bound by its full Ollama digest. The Qwen, Llama, and immutable Azure deployment or
-snapshot revisions remain explicit freeze blockers until provisioned and resolved; mutable model tags are not accepted
-as final revision identity.
+Every installed Ollama artifact is bound by its full local-registry digest. The Azure execution target and cache identity
+are bound to the exact dated snapshot returned by the configured Azure data-plane model inventory; mutable model tags
+are not accepted as final revision identity.
 
 `kg-benchmark matrix plan` reads the final dataset, model configuration, protocol, and population manifests. It renders
 every request and writes a deterministic matrix under `runs/matrices/<matrix-id>/`. A logical cell is one
@@ -37,10 +38,10 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark matrix status \
 ```
 
 Execution is blocked unless the methodology lock is valid and every selected model has a stable revision. It passes the
-frozen Ollama settings exactly. Azure is forced through batch mode with high reasoning effort, tools disabled, zero
-transport retries, and no synchronous fallback. Each physical group resumes in its stable `executions/<group-id>/`
-directory. Each logical cell gets a hash-bound manifest under `cells/`; `matrix status` independently recomputes output
-coverage and generation-cache coverage rather than trusting a saved success flag.
+frozen Ollama settings exactly. Azure runs sequentially with high reasoning effort, tools disabled, and two exact-request
+transport retries. Each physical group resumes in its stable `executions/<group-id>/` directory. Each logical cell gets
+a hash-bound manifest under `cells/`; `matrix status` independently recomputes output coverage and generation-cache
+coverage rather than trusting a saved success flag.
 
 Generation keys depend on the rendered request, provider/deployment, model revision, and inference settings rather than
 population membership or provider endpoint. A larger nested population therefore reuses all matching earlier requests
