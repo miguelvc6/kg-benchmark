@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kg-benchmark.local/schemas/matrix-request.schema.json",
+  "title": "Materialized Matrix Request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "matrix_id", "cell_id", "execution_group_id", "model_id", "provider", "model", "population",
+    "case_id", "case_payload_sha256", "task", "prompt_regime", "rendered_prompt_sha256",
+    "context_bundle", "context_sha256", "model_revision", "inference_parameters_sha256", "request_key", "request_spec"
+  ],
+  "properties": {
+    "matrix_id": {"type": "string", "pattern": "^matrix_[0-9a-f]{20}$"},
+    "cell_id": {"type": "string", "pattern": "^cell_[0-9a-f]{20}$"},
+    "execution_group_id": {"type": "string", "pattern": "^group_[0-9a-f]{20}$"},
+    "model_id": {"type": "string", "minLength": 1},
+    "provider": {"enum": ["ollama", "azure"]},
+    "model": {"type": "string", "minLength": 1},
+    "population": {"type": "string", "minLength": 1},
+    "case_id": {"type": "string", "minLength": 1},
+    "case_payload_sha256": {"$ref": "#/$defs/sha256"},
+    "task": {"enum": ["repair_proposal", "track_diagnosis"]},
+    "prompt_regime": {"enum": ["zero_shot", "static_few_shot"]},
+    "rendered_prompt_sha256": {"$ref": "#/$defs/sha256"},
+    "context_bundle": {"enum": ["logic_only", "local_graph"]},
+    "context_sha256": {"$ref": "#/$defs/sha256"},
+    "model_revision": {"type": ["string", "null"]},
+    "inference_parameters_sha256": {"$ref": "#/$defs/sha256"},
+    "request_key": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+    "request_spec": {"type": ["object", "null"]}
+  },
+  "$defs": {"sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}

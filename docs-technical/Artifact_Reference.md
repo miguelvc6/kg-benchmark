@@ -40,5 +40,16 @@ Generation identity is independent of population membership. It contains case-pa
 model-revision, inference-parameter, and task hashes. Run manifests record which population requested those generation
 keys. This permits population expansion and metric replay without submitting existing requests again.
 
+Execution planning writes `runs/matrices/<matrix-id>/matrix.json` and `requests.jsonl`. The matrix binds the final
+dataset inputs, model and protocol files, every population, the complete logical-cell cross-product, physical execution
+groups, and workload totals. Each request row records the six audit identities plus the exact cache request
+specification; unresolved revisions have a null request key and cannot execute. The active contracts are
+`model-matrix.schema.json`, `experiment-matrix.schema.json`, and `matrix-request.schema.json`.
+
+Physical runner artifacts live under `executions/<group-id>/`. Hash-bound logical-cell manifests live under `cells/`
+and use `matrix-cell.schema.json`; they bind the matrix and request plan, runner configuration, runner manifest, summary,
+observed completion/failure counts, and cache coverage. These matrix artifacts and the shared SQLite generation cache
+are operational bulk under ignored `runs/`, not part of the published dataset.
+
 Bulk data and raw generations are distributed externally. Git contains manifests, retrieval metadata, compact results,
 schemas, protocol, code, documentation, and a tiny synthetic example.

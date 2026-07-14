@@ -208,8 +208,6 @@ def _git_state() -> dict[str, Any]:
 
 def _resolved_inference_settings(provider: ModelProvider) -> dict[str, Any]:
     fields = (
-        "base_url",
-        "timeout",
         "context_length",
         "max_output_tokens",
         "temperature",

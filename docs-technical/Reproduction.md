@@ -9,10 +9,9 @@ missing lock. `kg-benchmark methodology freeze` writes the deterministic lock on
 removed. Acquisition, build, and model execution refuse to run without a matching final lock.
 
 A clean clone obtains the published bulk release with `kg-benchmark fetch --manifest-url ... --manifest-sha256 ...`,
-validates every byte and record count with
-`kg-benchmark verify --dataset-dir dataset`, and uses `kg-benchmark run` and `kg-benchmark score` for execution and
-metric replay. Raw generations live under ignored `runs/`; compact aggregate outputs used in the paper live in
-`results/`.
+validates every byte and record count with `kg-benchmark verify --dataset-dir dataset`, plans and executes with
+`kg-benchmark matrix`, and uses `kg-benchmark score` for metric replay. Raw generations live under ignored `runs/`;
+compact aggregate outputs used in the paper live in `results/`.
 
 Dataset construction uses an empty ignored `work/` directory. Acquisition, build, audit, and selection must complete
 before the following command atomically creates the immutable `dataset/`:
@@ -62,6 +61,28 @@ selection directory instead of editing generated artifacts.
 The initial main/Azure sizes come from `paper/selection-policy.json`. Additional prompt-clean nested populations are
 materialized with `select expand` and explicit per-stratum quotas; this never repeats prompt review or provider calls and
 cannot exceed the audited reserve. Provider request deduplication is handled later by generation identity and cache.
+
+After promotion, materialize and inspect the exact execution matrix before any provider call:
+
+```bash
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark matrix plan
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark matrix dry-run \
+  --matrix-dir runs/matrices/<matrix-id>
+```
+
+The dry run must report no missing revisions before execution. Run or resume the matrix, then require complete cell
+coverage:
+
+```bash
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark matrix execute \
+  --matrix-dir runs/matrices/<matrix-id>
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark matrix status \
+  --matrix-dir runs/matrices/<matrix-id>
+```
+
+Planning and status are safe to repeat. Execution skips independently verified complete groups and resumes incomplete
+groups in place. To add a population later, first create it with `select expand`, then plan a matrix with explicit
+`--population` paths. The shared generation cache means parent cases are not submitted again.
 
 If the audit exposes a systemic implementation defect after methodology freeze, the protocol requires invalidating the
 freeze and acquired dataset, fixing the implementation, creating a new freeze, and acquiring again. Restarting only the

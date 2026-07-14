@@ -52,11 +52,11 @@ acquisition and model calls are deliberately listed later as operational executi
 
 ### 5. Experiment-matrix orchestration
 
-- [ ] Read `paper/models.json` and materialize models × tasks × prompt regimes × contexts × populations.
-- [ ] Add a no-call dry run reporting new requests, cache hits, missing revisions, and expected workload.
-- [ ] Add resumable per-cell execution manifests and matrix completeness checks.
-- [ ] Enforce the configured Ollama inference parameters and Azure batch-only/no-tools policy.
-- [ ] Prove that population extensions schedule only request keys absent from the generation cache.
+- [x] Read `paper/models.json` and materialize models × tasks × prompt regimes × contexts × populations.
+- [x] Add a no-call dry run reporting new requests, cache hits, missing revisions, and expected workload.
+- [x] Add resumable per-cell execution manifests and matrix completeness checks.
+- [x] Enforce the configured Ollama inference parameters and Azure batch-only/no-tools policy.
+- [x] Prove that population extensions schedule only request keys absent from the generation cache.
 
 ### 6. Paper-level analysis and result packaging
 

@@ -121,6 +121,23 @@ class GenerationCache:
             "created_at_utc": row[4],
         }
 
+    def existing_keys(self, request_keys: list[str] | set[str]) -> set[str]:
+        """Return cached keys without opening one SQLite connection per planned request."""
+        normalized = sorted({key for key in request_keys if isinstance(key, str) and key})
+        if not normalized:
+            return set()
+        found: set[str] = set()
+        with self._lock, self._connect() as connection:
+            for offset in range(0, len(normalized), 500):
+                batch = normalized[offset : offset + 500]
+                placeholders = ",".join("?" for _ in batch)
+                rows = connection.execute(
+                    f"SELECT request_key FROM generations WHERE request_key IN ({placeholders})",  # noqa: S608
+                    batch,
+                )
+                found.update(str(row[0]) for row in rows)
+        return found
+
     def put(
         self,
         specification: dict[str, Any],

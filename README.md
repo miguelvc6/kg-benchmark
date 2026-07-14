@@ -52,10 +52,14 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark fetch \
   --manifest-url <published-manifest-url> \
   --manifest-sha256 <published-manifest-sha256>
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark verify --dataset-dir dataset
-UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark run ...
-UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark score ...
-UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark baseline ...
-UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark viewer ...
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark matrix plan
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark matrix dry-run \
+  --matrix-dir runs/matrices/<matrix-id>
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark matrix execute \
+  --matrix-dir runs/matrices/<matrix-id>
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark matrix status \
+  --matrix-dir runs/matrices/<matrix-id>
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark viewer
 ```
 
 The audit and selection phases are hash-verified and resumable. `kg-benchmark audit run` executes or resumes the audit,

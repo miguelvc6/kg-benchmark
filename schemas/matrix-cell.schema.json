@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kg-benchmark.local/schemas/matrix-cell.schema.json",
+  "title": "Resumable Matrix Cell Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest_type", "manifest_version", "matrix_id", "matrix_sha256", "cell_id", "execution_group_id",
+    "dimensions", "status", "counts", "request_plan", "artifacts", "cache_validation"
+  ],
+  "properties": {
+    "manifest_type": {"const": "experiment_matrix_cell"},
+    "manifest_version": {"const": 1},
+    "matrix_id": {"type": "string", "pattern": "^matrix_[0-9a-f]{20}$"},
+    "matrix_sha256": {"$ref": "#/$defs/sha256"},
+    "cell_id": {"type": "string", "pattern": "^cell_[0-9a-f]{20}$"},
+    "execution_group_id": {"type": "string", "pattern": "^group_[0-9a-f]{20}$"},
+    "dimensions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model_id", "population", "task", "prompt_regime", "context_bundle"],
+      "properties": {
+        "model_id": {"type": "string", "minLength": 1},
+        "population": {"type": "string", "minLength": 1},
+        "task": {"enum": ["repair_proposal", "track_diagnosis"]},
+        "prompt_regime": {"enum": ["zero_shot", "static_few_shot"]},
+        "context_bundle": {"enum": ["logic_only", "local_graph"]}
+      }
+    },
+    "status": {"enum": ["complete", "failed", "incomplete"]},
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expected", "completed", "failed", "missing"],
+      "properties": {
+        "expected": {"type": "integer", "minimum": 1},
+        "completed": {"type": "integer", "minimum": 0},
+        "failed": {"type": "integer", "minimum": 0},
+        "missing": {"type": "integer", "minimum": 0}
+      }
+    },
+    "request_plan": {"$ref": "#/$defs/artifact"},
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run_config", "run_manifest", "summary"],
+      "properties": {
+        "run_config": {"$ref": "#/$defs/artifact"},
+        "run_manifest": {"$ref": "#/$defs/artifact"},
+        "summary": {"$ref": "#/$defs/artifact"}
+      }
+    },
+    "cache_validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["present", "missing", "all_present"],
+      "properties": {
+        "present": {"type": "integer", "minimum": 0},
+        "missing": {"type": "integer", "minimum": 0},
+        "all_present": {"type": "boolean"}
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "bytes", "sha256"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "bytes": {"type": "integer", "minimum": 0},
+        "records": {"type": "integer", "minimum": 0},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

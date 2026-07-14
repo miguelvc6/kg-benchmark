@@ -29,6 +29,13 @@ from kg_benchmark.dataset.release import (
     verify_dataset,
     write_source_provenance,
 )
+from kg_benchmark.matrix.workflow import (
+    MatrixWorkflowError,
+    dry_run_matrix,
+    execute_matrix,
+    matrix_status,
+    plan_matrix,
+)
 from kg_benchmark.methodology import (
     MethodologyError,
     check_methodology,
@@ -450,6 +457,73 @@ def _run_viewer(argv: list[str]) -> int:
     return subprocess.run(command, check=False).returncode
 
 
+def _matrix_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="kg-benchmark matrix")
+    subparsers = parser.add_subparsers(dest="matrix_command", required=True)
+    plan = subparsers.add_parser("plan", help="Materialize exact cells and requests without calling a provider.")
+    plan.add_argument("--dataset-dir", type=Path, default=Path("dataset"))
+    plan.add_argument("--models", type=Path, default=Path("paper/models.json"))
+    plan.add_argument("--protocol", type=Path, default=Path("paper/protocol.json"))
+    plan.add_argument("--output-root", type=Path, default=Path("runs/matrices"))
+    plan.add_argument("--model-id", action="append")
+    plan.add_argument(
+        "--population",
+        type=Path,
+        action="append",
+        help="Explicit population manifest; every selected model is crossed with every supplied population.",
+    )
+    for name, help_text in (
+        ("dry-run", "Report revisions and cache coverage without provider calls."),
+        ("execute", "Run or resume incomplete physical execution groups."),
+        ("status", "Verify per-cell artifacts, cache coverage, and completeness."),
+    ):
+        command = subparsers.add_parser(name, help=help_text)
+        command.add_argument("--matrix-dir", type=Path, required=True)
+        command.add_argument("--generation-cache", type=Path, default=Path("runs/generation-cache.sqlite"))
+        if name == "execute":
+            command.add_argument("--model-id", action="append")
+    return parser
+
+
+def _run_matrix(argv: list[str]) -> int:
+    args = _matrix_parser().parse_args(argv)
+    if args.matrix_command == "plan":
+        result = plan_matrix(
+            dataset_dir=args.dataset_dir,
+            models_path=args.models,
+            protocol_path=args.protocol,
+            output_root=args.output_root,
+            population_paths=args.population,
+            model_ids=args.model_id,
+        )
+        print(
+            json.dumps(
+                {
+                    "matrix_dir": result["matrix_dir"],
+                    "matrix_id": result["matrix"]["matrix_id"],
+                    "workload": result["matrix"]["workload"],
+                    "no_provider_calls": True,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+    if args.matrix_command == "dry-run":
+        result = dry_run_matrix(matrix_dir=args.matrix_dir, generation_cache_path=args.generation_cache)
+    elif args.matrix_command == "status":
+        result = matrix_status(matrix_dir=args.matrix_dir, generation_cache_path=args.generation_cache)
+    else:
+        result = execute_matrix(
+            matrix_dir=args.matrix_dir,
+            generation_cache_path=args.generation_cache,
+            repo_root=Path.cwd(),
+            model_ids=args.model_id,
+        )
+    print(json.dumps(result, indent=2, sort_keys=True))
+    return 0 if args.matrix_command != "status" or result["complete"] else 1
+
+
 def _methodology_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="kg-benchmark methodology")
     subparsers = parser.add_subparsers(dest="methodology_command", required=True)
@@ -482,7 +556,7 @@ def _main(argv: list[str] | None = None) -> int:
     values = list(sys.argv[1:] if argv is None else argv)
     if not values or values[0] in {"-h", "--help"}:
         print(
-            "usage: kg-benchmark {methodology,acquire,build,audit,select,promote,fetch,verify,run,score,baseline,viewer} ...\n\n"
+            "usage: kg-benchmark {methodology,acquire,build,audit,select,promote,fetch,verify,matrix,run,score,baseline,viewer} ...\n\n"
             "One paper-facing command for dataset construction, verification, execution, and inspection."
         )
         return 0
@@ -506,6 +580,8 @@ def _main(argv: list[str] | None = None) -> int:
         return _run_fetch(rest)
     if command == "viewer":
         return _run_viewer(rest)
+    if command == "matrix":
+        return _run_matrix(rest)
     module_name = LEGACY_COMMANDS.get(command)
     if module_name is None:
         raise SystemExit(f"Unknown command: {command}")
@@ -517,7 +593,7 @@ def _main(argv: list[str] | None = None) -> int:
 def main(argv: list[str] | None = None) -> int:
     try:
         return _main(argv)
-    except (MethodologyError, AuditWorkflowError, SelectionWorkflowError, DatasetGateError) as exc:
+    except (MethodologyError, AuditWorkflowError, SelectionWorkflowError, DatasetGateError, MatrixWorkflowError) as exc:
         raise SystemExit(str(exc)) from exc
 
 

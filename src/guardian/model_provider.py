@@ -899,6 +899,7 @@ class OllamaChatProvider:
     seed: int | None = None
     think: bool | str | None = None
     max_retries: int = 2
+    tools_disabled: bool = True
     retry_base_seconds: float = 2.0
     retry_max_seconds: float = 20.0
     provider_name: str = "ollama"
@@ -1202,7 +1203,7 @@ def create_model_provider(
             max_retries=max_retries if max_retries is not None else 0,
         )
     if provider_name == "ollama":
-        return OllamaChatProvider(
+        provider = OllamaChatProvider(
             model=model_name,
             context_length=context_length,
             max_output_tokens=max_output_tokens,
@@ -1212,6 +1213,10 @@ def create_model_provider(
             think=ollama_think,
             max_retries=max_retries if max_retries is not None else 2,
         )
+        # An explicit paper-run setting must win over ambient developer configuration.
+        if max_retries is not None:
+            provider.max_retries = max_retries
+        return provider
     if provider_name == "azure":
         return OpenAIChatProvider(
             api_key=os.getenv("AZURE_OPENAI_API_KEY"),

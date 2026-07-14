@@ -385,6 +385,16 @@ class OllamaChatProviderTests(unittest.TestCase):
             self.assertEqual(provider.model, "llama3.2")
             self.assertEqual(provider.base_url, "http://localhost:11434/api")
 
+    def test_explicit_factory_retry_policy_wins_over_environment(self) -> None:
+        with patch.dict(
+            os.environ,
+            {"OLLAMA_MODEL": "qwen3:8b", "OLLAMA_MAX_RETRIES": "9"},
+            clear=True,
+        ):
+            provider = create_model_provider(model_endpoint="ollama", max_retries=2)
+
+        self.assertEqual(provider.max_retries, 2)
+
     def test_maps_ollama_chat_response(self) -> None:
         response = MagicMock()
         response.json.return_value = {

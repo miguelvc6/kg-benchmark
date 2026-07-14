@@ -50,6 +50,7 @@ packages = [
     "kg_benchmark",
     "kg_benchmark.audit",
     "kg_benchmark.dataset",
+    "kg_benchmark.matrix",
     "kg_benchmark.selection",
 ]
 py-modules = [

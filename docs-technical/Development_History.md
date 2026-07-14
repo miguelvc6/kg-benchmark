@@ -117,6 +117,12 @@ The final matrix uses repair and diagnosis under zero/few-shot and logic/local c
 case payload, rendered prompt, context, task, model revision, and inference parameters—not population membership—so
 larger populations schedule only new requests and metric revisions require no provider queries.
 
+The paper-facing orchestration subsequently materialized that design instead of relying on handwritten runner command
+combinations. It introduced deterministic matrix and exact-request plans, provider-free cache/revision preflight,
+stable physical execution groups, per-logical-cell manifests, independent completeness replay, and explicit extension
+planning. Tests use fake executors to prove the frozen Ollama/Azure argument policies and that a nested population adds
+only generation keys absent from the parent cache.
+
 ## Release and freeze work
 
 Research-release tooling added schemas, manifests, artifact hashing, clean-clone acquisition, experiment registration,

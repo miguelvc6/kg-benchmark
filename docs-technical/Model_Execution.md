@@ -12,10 +12,47 @@ The installed GPT-OSS artifact is bound by its full Ollama digest. The Qwen, Lla
 snapshot revisions remain explicit freeze blockers until provisioned and resolved; mutable model tags are not accepted
 as final revision identity.
 
-`kg-benchmark run` writes immutable raw generations and run manifests under ignored `runs/`. Generation keys depend on
-the rendered request, model revision, and inference settings rather than population membership. A larger nested
-population therefore reuses all matching earlier requests and schedules only new cases. Changing few-shot count changes
-the rendered prompt and correctly defines new requests.
+`kg-benchmark matrix plan` reads the final dataset, model configuration, protocol, and population manifests. It renders
+every request and writes a deterministic matrix under `runs/matrices/<matrix-id>/`. A logical cell is one
+model × population × task × prompt regime × context bundle. Repair and diagnosis cells with the other dimensions equal
+share one physical execution group because the runner produces both task outputs in that pass.
+
+Planning and `matrix dry-run` never construct a provider or make a provider call. The dry run reports logical cells,
+physical groups, request memberships, unique requests, cache hits, new requests, and unresolved model revisions. A
+request membership records that a population needs a generation; unique counts remove overlap between nested
+populations.
+
+```bash
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark matrix plan
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark matrix dry-run \
+  --matrix-dir runs/matrices/<matrix-id>
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark matrix execute \
+  --matrix-dir runs/matrices/<matrix-id>
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark matrix status \
+  --matrix-dir runs/matrices/<matrix-id>
+```
+
+Execution is blocked unless the methodology lock is valid and every selected model has a stable revision. It passes the
+frozen Ollama settings exactly. Azure is forced through batch mode with high reasoning effort, tools disabled, zero
+transport retries, and no synchronous fallback. Each physical group resumes in its stable `executions/<group-id>/`
+directory. Each logical cell gets a hash-bound manifest under `cells/`; `matrix status` independently recomputes output
+coverage and generation-cache coverage rather than trusting a saved success flag.
+
+Generation keys depend on the rendered request, provider/deployment, model revision, and inference settings rather than
+population membership or provider endpoint. A larger nested population therefore reuses all matching earlier requests
+and schedules only new keys. To plan extensions, pass one or more explicit population manifests; every selected model
+is crossed with each supplied population:
+
+```bash
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark matrix plan \
+  --model-id ollama_qwen3_30b \
+  --population dataset/selections/main-1200.json \
+  --population dataset/selections/<expanded-population>.json
+```
+
+The dry run is the proof and preflight: shared parent keys appear as cache hits once the parent has run, while only keys
+for newly added cases appear under `unique_new_requests`. Changing a prompt, few-shot count, model revision, or inference
+setting correctly defines new requests.
 
 `kg-benchmark score` writes a new metric-version output without mutating or resubmitting generations. Confirmatory and
 extension populations remain separately identified even when they share cached responses.
