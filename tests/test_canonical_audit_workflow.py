@@ -116,6 +116,8 @@ class CanonicalAuditWorkflowTests(unittest.TestCase):
             inputs = self._inputs(root)
             stage2 = root / "stage2-placeholder.jsonl"
             stage2.write_text("{}\n", encoding="utf-8")
+            lineage = root / "lineage-placeholder.json"
+            lineage.write_text("{}\n", encoding="utf-8")
             work = root / "public-audit"
             result = _main(
                 [
@@ -127,6 +129,8 @@ class CanonicalAuditWorkflowTests(unittest.TestCase):
                     str(inputs["world"]),
                     "--stage2",
                     str(stage2),
+                    "--lineage-manifest",
+                    str(lineage),
                     "--stage4-schema",
                     str(inputs["schema"]),
                     "--protocol",

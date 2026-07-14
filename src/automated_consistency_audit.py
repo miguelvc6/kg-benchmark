@@ -928,6 +928,7 @@ def run_audit(
                     stage2_sha256=stage2_sha256,
                     stage3_sha256=world_state_sha256,
                     stage4_sha256=stage4_digest.hexdigest(),
+                    allow_exact_equivalent_stage2_jsonl=True,
                 )
                 lineage_validation = bound.get("identity")
                 if isinstance(lineage_validation, dict):

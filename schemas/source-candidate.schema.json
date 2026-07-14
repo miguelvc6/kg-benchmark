@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kg-benchmark.local/schemas/source-candidate.schema.json",
+  "title": "Canonical Repair Candidate Row",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["qid", "property_id", "violation_type", "fix_date", "report_revision_old", "report_revision_new"],
+  "properties": {
+    "qid": {"type": "string", "pattern": "^Q[1-9][0-9]*$"},
+    "property_id": {"type": "string", "pattern": "^P[1-9][0-9]*$"},
+    "violation_type": {"type": "string", "minLength": 1},
+    "fix_date": {"type": "string", "minLength": 1},
+    "report_revision_old": {"type": ["integer", "null"]},
+    "report_revision_new": {"type": ["integer", "null"]}
+  }
+}

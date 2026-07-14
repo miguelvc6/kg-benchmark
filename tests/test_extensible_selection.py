@@ -7,6 +7,7 @@ from kg_benchmark.selection.extensible import (
     DEFAULT_API_QUOTAS,
     DEFAULT_MAIN_QUOTAS,
     DEFAULT_TBOX_TARGET,
+    _support_role,
     _weighted_tbox_order,
     build_selection_artifacts,
     materialize_population,
@@ -42,6 +43,31 @@ def _tbox(case_id: str, index: int, role_index: int) -> dict:
 
 
 class ExtensibleSelectionTests(unittest.TestCase):
+    def test_tbox_support_role_is_reconstructed_from_the_lean_case(self) -> None:
+        record = {
+            "id": "tbox-lean",
+            "property": "P1",
+            "track": "T_BOX",
+            "repair_target": {
+                "property_revision_id": 2,
+                "constraint_delta": {"changed_constraint_types": ["Q21502404"]},
+            },
+            "classification": {
+                "class": "T_BOX",
+                "subtype": "RELAXATION_SET_EXPANSION",
+                "diagnostics": {
+                    "tbox_diff_summary": {
+                        "target_constraint_qid": "Q21502404",
+                        "changed_qualifier_properties": ["P2308"],
+                        "added_values": ["Q5"],
+                        "removed_values": [],
+                    }
+                },
+            },
+        }
+        self.assertNotIn("gold", record)
+        self.assertEqual(_support_role(record, "TBOX"), "cq_plus")
+
     def test_weighted_tbox_prefix_reaches_declared_main_target(self) -> None:
         rows = [
             {

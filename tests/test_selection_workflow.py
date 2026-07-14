@@ -237,6 +237,7 @@ class SelectionWorkflowTests(unittest.TestCase):
             self.assertEqual(state["phases"]["reserve"]["counts"]["reserve_cases"], 80)
             self.assertEqual(state["phases"]["reserve"]["counts"]["rendered_prompts"], 640)
             self.assertEqual(state["phases"]["reserve"]["counts"]["temporal_review_cases"], 50)
+            self.assertEqual((output / "group-exclusions.json").read_bytes(), inputs["exclusions"].read_bytes())
             self.assertEqual(
                 prepare_reserve(
                     cases_path=inputs["cases"],

@@ -9,7 +9,8 @@ Codex sample may discover new error patterns, but it does not certify ground tru
 The paper-facing interface is a resumable sequence:
 
 ```bash
-UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit prepare
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit prepare \
+  --lineage-manifest work/lineage.json
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit deterministic
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit review
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit finalize
@@ -18,6 +19,8 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit finalize
 `audit run` executes or resumes all four phases, while `audit status` performs only hash verification. A completed phase
 is reused only when every bound input and artifact still matches. A different dataset, protocol, schema, prompt source,
 sample, review file, or disposition file fails closed instead of being silently mixed into the existing run.
+`work/lineage.json` is the default lineage input; the explicit argument above documents the binding that final promotion
+requires in the audit summary.
 
 `prepare` ranks case IDs by SHA-256 using the protocol seed and writes a one-column, label-hidden 450-case construct
 sample. It streams the current paper prompt builders over every case for repair proposal and track diagnosis under both

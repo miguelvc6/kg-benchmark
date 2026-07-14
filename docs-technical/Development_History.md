@@ -123,6 +123,13 @@ Research-release tooling added schemas, manifests, artifact hashing, clean-clone
 protocol freezing, and paper-eligibility checks. Multiple methodology manifests accumulated during this process. The
 restructured repository replaces them with one current protocol and relies on Git tags for history.
 
+The final promotion boundary was then made independent of phase-local success flags. A version-2 release gate copies
+the frozen protocol, lock, active schemas, canonical source/case data, audit outputs, and selection evidence into a
+temporary dataset; revalidates every record; replays lineage and deterministic selection; checks original acquisition
+and cache provenance; requires complete dispositions with no unresolved systemic findings; enforces the exact nested
+1,200/600 populations; and reproduces the manifest bytes before the atomic rename. Synthetic mutations exercise each
+fail-closed boundary without generating the paper dataset or making model calls.
+
 The first post-freeze acquisition, `post_freeze_20260714T062500Z_wd20260706`, was invalidated after discovering that
 exhausted history, pageview, and dump errors could be interpreted as missing or partial data and that the methodology
 freeze omitted transitive modules. Commit `cba9349` made acquisition fail closed, and `bf9129b` created a broader freeze.

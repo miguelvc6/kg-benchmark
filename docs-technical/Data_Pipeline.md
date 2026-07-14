@@ -5,10 +5,21 @@ popularity, and extracts world state from a checksum-bound dump. All outputs, ca
 to `work/`. A partial JSONL is never treated as complete; completion state is explicit and resumable.
 
 `kg-benchmark build` classifies the acquired records and emits canonical JSONL. The release roles are popularity,
-candidates, repairs, world state, and cases. SQLite may be generated as a disposable read index but is never canonical
-or published alongside an equivalent JSON artifact.
+candidates, repairs, world state, and cases. It also records the completed acquisition arguments, methodology lock,
+original Stage 0–3 and dump hashes, cache inventory, Git revision, and a passing Stage 0–4 lineage manifest under
+`work/`. SQLite may be generated as a disposable read index but is never canonical or published alongside an equivalent
+JSON artifact.
 
 The audit and selection gates verify source provenance, record identity, Stage 2–4 projection, disposition coverage,
 support exclusions, and selection manifests before promotion. `kg-benchmark promote` then verifies that every canonical
-role is present and nonempty, copies only those roles to a temporary sibling, writes hashes/counts into the dataset
-manifest, re-verifies the release, and atomically renames it to `dataset/`.
+role is present, validates every JSON or JSONL record against the active schema, and independently reconstructs the
+lineage, eligibility order, support bank, reserve, prompt-clean order, replacements, and final populations. It copies
+only canonical roles, the frozen protocol and lock, and their active schemas to a temporary sibling; verifies original
+source/cache provenance while those construction inputs remain available; writes artifact hashes and counts into the
+version-2 dataset manifest; reproduces that manifest byte-for-byte; and atomically renames the candidate to `dataset/`.
+
+The released source representation is JSONL only. Stage 2 JSON and JSONL equivalence is proven during build; promotion
+also streams the canonical Stage 0, Stage 1, and Stage 3 rows against their provenance-bound construction JSON. The
+original acquisition JSON remains a construction input rather than a duplicate published dataset. Schema validation
+and representation comparison are streaming or disk-indexed, so the gate does not load the multi-gigabyte source roles
+into memory.

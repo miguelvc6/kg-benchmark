@@ -33,6 +33,24 @@ def _stage2(case_id: str = "repair_Q1_2") -> dict:
 
 
 class ArtifactLineageTests(unittest.TestCase):
+    def test_stage3_canonical_jsonl_identity_is_supported(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            row = _stage2()
+            paths = self._files(root, [row])
+            paths["s3.json"].unlink()
+            stage3 = root / "s3.jsonl"
+            stage3.write_text(json.dumps({"id": row["id"], "world_state": {}}) + "\n", encoding="utf-8")
+            result = validate_lineage(
+                stage0_path=paths["s0.json"],
+                stage1_path=paths["s1.json"],
+                stage2_json_path=paths["s2.json"],
+                stage2_jsonl_path=paths["s2.jsonl"],
+                stage3_path=stage3,
+                stage4_path=paths["s4.jsonl"],
+            )
+            self.assertTrue(result["validation"]["stage234_identity_and_projection"]["passed"])
+
     def _files(self, root: Path, rows: list[dict]) -> dict[str, Path]:
         paths = {name: root / name for name in ("s0.json", "s1.json", "s2.json", "s2.jsonl", "s3.json", "s4.jsonl")}
         paths["s0.json"].write_text(json.dumps({"Q1": {"score": 1.0}}), encoding="utf-8")

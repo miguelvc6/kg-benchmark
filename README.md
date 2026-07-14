@@ -33,6 +33,7 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark methodology check
 # Run only after the final methodology lock has been committed.
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark acquire --refresh-candidates
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark build
+# `build` writes canonical source JSONL, source provenance, and work/lineage.json.
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit prepare
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit deterministic
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit review
@@ -43,7 +44,8 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select review
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select finalize
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select status
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark promote \
-  --source-provenance work/source-provenance.json
+  --source-provenance work/source-provenance.json \
+  --lineage work/lineage.json
 
 # Clean-clone use after the external release is published.
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark fetch \
@@ -63,6 +65,11 @@ including its protocol-bound Codex review. Selection separately constructs and s
 
 Construction is isolated under ignored `work/`. Promotion is atomic and refuses to overwrite the final dataset. Raw
 generations are content-addressed under ignored `runs/`; metric changes do not call providers again.
+
+Promotion revalidates every published record and reconstructs lineage, audit coverage, independent eligibility,
+support and prior-group exclusions, reserve prompt QA, replacements, and both populations. It requires exactly 1,200
+main cases and a nested 600-case Azure population, then reproduces the release manifest byte-for-byte before the
+temporary directory can become `dataset/`.
 
 The remaining implementation and operational gates are tracked in [checklist.md](checklist.md). Dataset generation is
 not part of repository maintenance and should begin only after the checklist's implementation section is complete.

@@ -42,13 +42,13 @@ acquisition and model calls are deliberately listed later as operational executi
 
 ### 4. Final dataset promotion gates
 
-- [ ] Require a valid methodology lock and matching protocol hash.
-- [ ] Require exact Stage 2/3/4 identity, complete source provenance, and passing lineage validation.
-- [ ] Validate every published record against its active schema.
-- [ ] Require complete unique dispositions and zero unresolved systemic findings.
-- [ ] Verify independent groups, prior-group and support exclusions, reserve finalization, and prompt QA.
-- [ ] Require exactly 1,200 main cases and exactly 600 Azure cases nested within the main population.
-- [ ] Reproduce the dataset manifest byte-for-byte before promotion succeeds.
+- [x] Require a valid methodology lock and matching protocol hash.
+- [x] Require exact Stage 2/3/4 identity, complete source provenance, and passing lineage validation.
+- [x] Validate every published record against its active schema.
+- [x] Require complete unique dispositions and zero unresolved systemic findings.
+- [x] Verify independent groups, prior-group and support exclusions, reserve finalization, and prompt QA.
+- [x] Require exactly 1,200 main cases and exactly 600 Azure cases nested within the main population.
+- [x] Reproduce the dataset manifest byte-for-byte before promotion succeeds.
 
 ### 5. Experiment-matrix orchestration
 

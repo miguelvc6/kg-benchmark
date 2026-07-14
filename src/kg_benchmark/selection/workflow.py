@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import shutil
 import subprocess
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -53,6 +54,7 @@ WORKFLOW_FILENAME = "selection-workflow.json"
 RANKING_FILENAME = "ranking.json"
 ELIGIBILITY_FILENAME = "eligibility-order.jsonl"
 SUPPORT_FILENAME = "support-bank.json"
+EXCLUSIONS_FILENAME = "group-exclusions.json"
 RESERVE_FILENAME = "reserve.json"
 PROMPTS_FILENAME = "reserve-prompts.jsonl"
 RENDER_SUMMARY_FILENAME = "reserve-render-summary.json"
@@ -393,6 +395,10 @@ def prepare_reserve(
     protocol = _load_json(protocol_path)
     settings = _policy_settings(policy, protocol)
     exclusions = _load_exclusions(exclusions_path, repo_root / "schemas" / "group-exclusions.schema.json")
+    frozen_exclusions_path = output_dir / EXCLUSIONS_FILENAME
+    if exclusions_path.resolve() != frozen_exclusions_path.resolve():
+        shutil.copyfile(exclusions_path, frozen_exclusions_path)
+    exclusions_path = frozen_exclusions_path
     eligibility_rows, records_by_id = build_eligibility_order(
         cases_path=cases_path,
         dispositions_path=dispositions_path,

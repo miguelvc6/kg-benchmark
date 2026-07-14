@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kg-benchmark.local/schemas/source-popularity.schema.json",
+  "title": "Canonical Popularity Source Row",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["qid", "popularity"],
+  "properties": {
+    "qid": {"type": "string", "pattern": "^Q[1-9][0-9]*$"},
+    "popularity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["score", "components"],
+      "properties": {
+        "score": {"type": "number", "minimum": 0, "maximum": 1},
+        "components": {"type": "object"}
+      }
+    }
+  }
+}

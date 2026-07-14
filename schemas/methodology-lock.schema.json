@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kg-benchmark.local/schemas/methodology-lock.schema.json",
+  "title": "Frozen Paper Methodology Lock",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["manifest_type", "manifest_version", "protocol_id", "source_git_revision", "freeze_scope_sha256", "files"],
+  "properties": {
+    "manifest_type": {"const": "paper_methodology_lock"},
+    "manifest_version": {"const": 1},
+    "protocol_id": {"type": "string", "minLength": 1},
+    "source_git_revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "freeze_scope_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "files": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {"type": "string", "minLength": 1},
+      "additionalProperties": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+    }
+  }
+}

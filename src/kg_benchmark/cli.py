@@ -3,11 +3,15 @@ from __future__ import annotations
 import argparse
 import importlib
 import json
+import os
 import subprocess
 import sys
+import tempfile
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Callable
 
+from artifact_lineage import validate_lineage
 from kg_benchmark.audit.workflow import (
     AuditWorkflowError,
     audit_status,
@@ -16,10 +20,12 @@ from kg_benchmark.audit.workflow import (
     run_finalize_phase,
     run_review_phase,
 )
+from kg_benchmark.dataset.gates import DatasetGateError
 from kg_benchmark.dataset.release import (
     canonicalize_acquisition,
     fetch_dataset,
     promote_dataset,
+    sha256_file,
     verify_dataset,
     write_source_provenance,
 )
@@ -49,7 +55,7 @@ def _add_audit_prepare_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--cases", type=Path, default=Path("work/cases.jsonl"))
     parser.add_argument("--world-state", type=Path, default=Path("work/source/world-state.jsonl"))
     parser.add_argument("--stage2", type=Path, default=Path("work/source/repairs.jsonl"))
-    parser.add_argument("--lineage-manifest", type=Path)
+    parser.add_argument("--lineage-manifest", type=Path, default=Path("work/lineage.json"))
     parser.add_argument("--stage4-schema", type=Path, default=Path("schemas/dataset-case.schema.json"))
     parser.add_argument("--protocol", type=Path, default=Path("paper/protocol.json"))
     parser.add_argument("--work-dir", type=Path, default=Path("work/audit"))
@@ -143,9 +149,27 @@ def _contains_option(argv: list[str], option: str) -> bool:
     return any(value == option or value.startswith(f"{option}=") for value in argv)
 
 
+def _utc_now() -> str:
+    return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _write_json_atomic(path: Path, payload: object) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            json.dump(payload, handle, indent=2, ensure_ascii=False, sort_keys=True)
+            handle.write("\n")
+        os.replace(temporary_name, path)
+    except Exception:
+        Path(temporary_name).unlink(missing_ok=True)
+        raise
+
+
 def _run_acquire(argv: list[str]) -> int:
+    methodology = None
     if not any(value in {"-h", "--help"} for value in argv):
-        require_frozen_methodology(Path.cwd())
+        methodology = require_frozen_methodology(Path.cwd())
     values = list(argv)
     if not _contains_option(values, "--data-dir"):
         values.extend(["--data-dir", "work/acquisition"])
@@ -153,13 +177,33 @@ def _run_acquire(argv: list[str]) -> int:
         values.extend(["--cache-dir", "work/cache"])
     if not _contains_option(values, "--dump-path"):
         values.extend(["--dump-path", "work/latest-all.json.gz"])
-    result = _delegate("fetcher", ["acquire", *values])
     config_path = Path("work/acquisition-config.json")
-    config_path.parent.mkdir(parents=True, exist_ok=True)
-    config_path.write_text(
-        json.dumps({"command": "acquire", "arguments": values}, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
+    if methodology is not None:
+        lock_path = Path.cwd() / methodology["lock"]["path"]
+        config = {
+            "manifest_type": "dataset_acquisition",
+            "manifest_version": 1,
+            "status": "in_progress",
+            "started_at_utc": _utc_now(),
+            "command": "acquire",
+            "arguments": values,
+            "methodology": {
+                "freeze_scope_sha256": methodology["freeze_scope_sha256"],
+                "source_git_revision": methodology["lock"]["source_git_revision"],
+                "methodology_lock_sha256": sha256_file(lock_path),
+            },
+        }
+        _write_json_atomic(config_path, config)
+    try:
+        result = _delegate("fetcher", ["acquire", *values])
+    except BaseException:
+        if methodology is not None:
+            config.update({"status": "failed", "completed_at_utc": _utc_now()})
+            _write_json_atomic(config_path, config)
+        raise
+    if methodology is not None:
+        config.update({"status": "complete" if result == 0 else "failed", "completed_at_utc": _utc_now()})
+        _write_json_atomic(config_path, config)
     return result
 
 
@@ -170,6 +214,7 @@ def _run_build(argv: list[str]) -> int:
     wrapper.add_argument("--work-dir", type=Path, default=Path("work"))
     wrapper.add_argument("--acquisition-dir", type=Path, default=Path("work/acquisition"))
     wrapper.add_argument("--dump-path", type=Path, default=Path("work/latest-all.json.gz"))
+    wrapper.add_argument("--cache-dir", type=Path, default=Path("work/cache"))
     wrapper.add_argument("--acquisition-config", type=Path, default=Path("work/acquisition-config.json"))
     wrapper_args, classifier_args = wrapper.parse_known_args(argv)
     acquisition = wrapper_args.acquisition_dir
@@ -196,10 +241,30 @@ def _run_build(argv: list[str]) -> int:
         work_dir=work,
         dump_path=wrapper_args.dump_path,
         acquisition_config_path=wrapper_args.acquisition_config,
+        cache_dir=wrapper_args.cache_dir,
     )
+    source_provenance = json.loads(provenance.read_text(encoding="utf-8"))
+    lineage = validate_lineage(
+        stage0_path=acquisition / "00_entity_popularity.json",
+        stage1_path=acquisition / "01_repair_candidates.json",
+        stage2_json_path=acquisition / "02_wikidata_repairs.json",
+        stage2_jsonl_path=work / "source" / "repairs.jsonl",
+        stage3_path=work / "source" / "world-state.jsonl",
+        stage4_path=work / "cases.jsonl",
+        source_provenance=[source_provenance],
+    )
+    lineage_path = work / "lineage.json"
+    _write_json_atomic(lineage_path, lineage)
+    if lineage["validation"]["passed"] is not True:
+        raise ValueError("Canonical Stage 0-4 lineage validation failed; the dataset cannot proceed to audit.")
     print(
         json.dumps(
-            {"built": True, "canonicalized_records": summary, "source_provenance": str(provenance)},
+            {
+                "built": True,
+                "canonicalized_records": summary,
+                "source_provenance": str(provenance),
+                "lineage": str(lineage_path),
+            },
             indent=2,
             sort_keys=True,
         )
@@ -318,12 +383,15 @@ def _run_promote(argv: list[str]) -> int:
     parser.add_argument("--dataset-dir", type=Path, default=Path("dataset"))
     parser.add_argument("--protocol", type=Path, default=Path("paper/protocol.json"))
     parser.add_argument("--source-provenance", type=Path, required=True)
+    parser.add_argument("--lineage", type=Path, default=Path("work/lineage.json"))
     args = parser.parse_args(argv)
     manifest = promote_dataset(
         work_dir=args.work_dir,
         dataset_dir=args.dataset_dir,
         protocol_path=args.protocol,
         source_provenance_path=args.source_provenance,
+        lineage_manifest_path=args.lineage,
+        repo_root=Path.cwd(),
     )
     print(json.dumps({"promoted": True, "dataset_id": manifest["dataset_id"]}, indent=2))
     return 0
@@ -449,7 +517,7 @@ def _main(argv: list[str] | None = None) -> int:
 def main(argv: list[str] | None = None) -> int:
     try:
         return _main(argv)
-    except (MethodologyError, AuditWorkflowError, SelectionWorkflowError) as exc:
+    except (MethodologyError, AuditWorkflowError, SelectionWorkflowError, DatasetGateError) as exc:
         raise SystemExit(str(exc)) from exc
 
 

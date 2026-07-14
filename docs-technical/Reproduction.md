@@ -15,13 +15,23 @@ metric replay. Raw generations live under ignored `runs/`; compact aggregate out
 `results/`.
 
 Dataset construction uses an empty ignored `work/` directory. Acquisition, build, audit, and selection must complete
-before `kg-benchmark promote --source-provenance work/source-provenance.json` atomically creates the immutable
-`dataset/`. Promotion requires source provenance and refuses to overwrite an existing dataset.
+before the following command atomically creates the immutable `dataset/`:
+
+```bash
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark promote \
+  --source-provenance work/source-provenance.json \
+  --lineage work/lineage.json
+```
+
+`build` creates both required manifests after canonicalizing the acquired Stage 0–3 artifacts and classifying Stage 4.
+Promotion requires the canonical paths shown above, verifies their bindings, and refuses to overwrite an existing
+dataset.
 
 After `kg-benchmark build`, run the canonical audit as four explicit resumable phases:
 
 ```bash
-UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit prepare
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit prepare \
+  --lineage-manifest work/lineage.json
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit deterministic
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit review
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit finalize
@@ -29,9 +39,10 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit status
 ```
 
 The equivalent one-command form is `kg-benchmark audit run`. It performs Codex calls during the review phase; `status`
-never calls a model. If a bound artifact changes, preserve the failed workflow for diagnosis, remediate the source or
-implementation defect, remove the invalid `work/audit/` run, and restart from `audit prepare`. Do not edit a sample,
-review, disposition, or summary in place.
+never calls a model. The displayed lineage argument is also the default, but spelling it out makes the release binding
+visible in reproduction logs. If a bound artifact changes, preserve the failed workflow for diagnosis, remediate the
+source or implementation defect, remove the invalid `work/audit/` run, and restart from `audit prepare`. Do not edit a
+sample, review, disposition, or summary in place.
 
 After audit finalization, freeze a complete event-group exclusion artifact and run selection:
 
@@ -56,3 +67,9 @@ If the audit exposes a systemic implementation defect after methodology freeze, 
 freeze and acquired dataset, fixing the implementation, creating a new freeze, and acquiring again. Restarting only the
 audit is appropriate for damaged audit outputs or non-systemic case-level dispositions, not for a changed methodology
 or construction rule.
+
+Final promotion is deliberately stricter than phase-local status commands. It validates all source, case, disposition,
+ordering, replacement, and population records against the schemas copied into the release; replays Stage 2/3/4 lineage
+and deterministic selection; checks complete source and cache provenance against the construction inputs; requires zero
+unresolved systemic findings; and proves the 1,200/600 population sizes and nesting. It writes into a temporary sibling,
+rebuilds `manifest.json` from the copied bytes, requires an exact byte match, and only then performs the atomic rename.

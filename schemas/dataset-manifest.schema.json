@@ -1,36 +1,63 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://kg-benchmark.local/schemas/dataset-manifest.schema.json",
-  "title": "Final paper dataset manifest",
+  "title": "Final Paper Dataset Manifest",
   "type": "object",
   "additionalProperties": false,
-  "required": ["manifest_type", "manifest_version", "dataset_id", "status", "protocol", "source_provenance", "artifacts"],
+  "required": [
+    "manifest_type",
+    "manifest_version",
+    "dataset_id",
+    "status",
+    "protocol",
+    "methodology",
+    "source_provenance",
+    "lineage",
+    "release_validation",
+    "artifacts"
+  ],
   "properties": {
     "manifest_type": {"const": "kg_benchmark_dataset"},
-    "manifest_version": {"const": 1},
-    "dataset_id": {"type": "string", "minLength": 1},
+    "manifest_version": {"const": 2},
+    "dataset_id": {"const": "wikidata-repair-eval-paper"},
     "status": {"const": "final"},
     "protocol": {"$ref": "#/$defs/file_ref"},
-    "source_provenance": {"type": "object", "minProperties": 1},
-    "artifacts": {"type": "object", "minProperties": 1, "additionalProperties": {"$ref": "#/$defs/artifact"}},
-    "external_release": {
+    "methodology": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["uri", "sha256"],
+      "required": ["lock", "freeze_scope_sha256", "source_git_revision"],
       "properties": {
-        "uri": {"type": "string", "minLength": 1},
-        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+        "lock": {"$ref": "#/$defs/file_ref"},
+        "freeze_scope_sha256": {"$ref": "#/$defs/sha256"},
+        "source_git_revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"}
       }
+    },
+    "source_provenance": {"$ref": "#/$defs/file_ref"},
+    "lineage": {"$ref": "#/$defs/file_ref"},
+    "release_validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["semantic_gates_passed", "manifest_byte_reproduction_passed"],
+      "properties": {
+        "semantic_gates_passed": {"const": true},
+        "manifest_byte_reproduction_passed": {"const": true}
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {"$ref": "#/$defs/artifact"}
     }
   },
   "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "file_ref": {
       "type": "object",
       "additionalProperties": false,
       "required": ["path", "sha256"],
       "properties": {
         "path": {"type": "string", "minLength": 1},
-        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+        "sha256": {"$ref": "#/$defs/sha256"}
       }
     },
     "artifact": {
@@ -39,9 +66,9 @@
       "required": ["path", "bytes", "sha256"],
       "properties": {
         "path": {"type": "string", "minLength": 1},
-        "bytes": {"type": "integer", "minimum": 1},
+        "bytes": {"type": "integer", "minimum": 0},
         "records": {"type": "integer", "minimum": 0},
-        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+        "sha256": {"$ref": "#/$defs/sha256"}
       }
     }
   }

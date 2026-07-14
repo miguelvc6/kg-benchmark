@@ -6,6 +6,8 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Iterable
 
+from lib.tbox_taxonomy_patch_gold import gold_patch_for_record
+
 STRATA = ("IC-L", "IC-G", "IC-E-elim", "TBOX")
 DEFAULT_MAIN_QUOTAS = {"IC-L": 230, "IC-G": 375, "IC-E-elim": 295, "TBOX": 300}
 DEFAULT_API_QUOTAS = {"IC-L": 115, "IC-G": 188, "IC-E-elim": 147, "TBOX": 150}
@@ -274,6 +276,8 @@ def _support_role(record: dict[str, Any], stratum: str) -> str | None:
     if stratum == "IC-E-elim":
         return "ic_e_elim"
     gold = record.get("tbox_taxonomy_patch_gold") or record.get("gold")
+    if not isinstance(gold, dict):
+        gold = gold_patch_for_record(record)
     if not isinstance(gold, dict):
         return None
     repairs = gold.get("repairs") if isinstance(gold.get("repairs"), list) else []

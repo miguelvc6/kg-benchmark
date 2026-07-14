@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kg-benchmark.local/schemas/source-repair.schema.json",
+  "title": "Canonical Stage 2 Repair Row",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["id", "qid", "property", "track", "violation_context", "repair_target", "persistence_check", "popularity"],
+  "properties": {
+    "id": {"type": "string", "minLength": 1},
+    "qid": {"type": "string", "pattern": "^Q[1-9][0-9]*$"},
+    "property": {"type": "string", "pattern": "^P[1-9][0-9]*$"},
+    "track": {"enum": ["A_BOX", "T_BOX"]},
+    "violation_context": {"type": "object"},
+    "repair_target": {"type": "object", "required": ["kind", "author"]},
+    "persistence_check": {"type": "object", "required": ["status", "current_value_2026"]},
+    "popularity": {"type": "object", "required": ["score", "components"]}
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kg-benchmark.local/schemas/eligibility-order.schema.json",
+  "title": "Independent Eligibility Order Row",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["case_id", "group_key", "stratum", "rank", "stratum_position"],
+  "properties": {
+    "case_id": {"type": "string", "minLength": 1},
+    "group_key": {"type": "string", "pattern": "^(ABOX\\|Q[1-9][0-9]*\\|P[1-9][0-9]*|TBOX\\|P[1-9][0-9]*\\|[^|]+)$"},
+    "stratum": {"enum": ["IC-L", "IC-G", "IC-E-elim", "TBOX"]},
+    "rank": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "stratum_position": {"type": "integer", "minimum": 1},
+    "prompt_clean_stratum_position": {"type": "integer", "minimum": 1},
+    "tbox_category": {"enum": ["relaxation_expansions", "restriction_contractions", "schema_updates"]}
+  }
+}

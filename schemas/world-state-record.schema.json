@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kg-benchmark.local/schemas/world-state-record.schema.json",
+  "title": "Canonical World-State Row",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "world_state"],
+  "properties": {
+    "id": {"type": "string", "minLength": 1},
+    "world_state": {
+      "type": "object",
+      "required": ["L1_ego_node", "L2_labels", "L3_neighborhood", "L4_constraints"],
+      "properties": {
+        "L1_ego_node": {"type": "object"},
+        "L2_labels": {"type": "object"},
+        "L3_neighborhood": {"type": "object"},
+        "L4_constraints": {"type": "object"}
+      }
+    }
+  }
+}

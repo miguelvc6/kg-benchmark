@@ -527,6 +527,13 @@ def _validate_stage0_stage1(stage0_path: Path, stage1_path: Path, stage2_path: P
 
 
 def _world_ids(path: Path) -> Iterator[str]:
+    if path.suffix == ".jsonl":
+        with path.open("rb") as handle:
+            for row in ijson.items(handle, "", multiple_values=True):
+                case_id = row.get("id") if isinstance(row, dict) else None
+                if isinstance(case_id, str) and case_id:
+                    yield case_id
+        return
     found = False
     root_key = re.compile(rb'^"((?:[^"\\]|\\.)+)"\s*:')
     with path.open("rb") as handle:
@@ -923,6 +930,7 @@ def verify_bound_lineage_manifest(
     stage2_sha256: str | None = None,
     stage3_sha256: str | None = None,
     stage4_sha256: str | None = None,
+    allow_exact_equivalent_stage2_jsonl: bool = False,
 ) -> dict[str, Any]:
     """Verify hashes before reusing a complete lineage result in another exhaustive gate."""
     path = Path(manifest_path)
@@ -934,10 +942,24 @@ def verify_bound_lineage_manifest(
     artifacts = manifest.get("artifacts", {})
     stage2 = Path(stage2_path)
     stage2_role = "stage2_jsonl" if stage2.suffix == ".jsonl" else "stage2_json"
+    declared_stage2 = manifest.get("validation", {}).get("authoritative_stage2_artifact", "stage2_json")
+    relationship = manifest.get("validation", {}).get("stage2_relationship")
+    representation = manifest.get("validation", {}).get("stage2_representation_equivalence")
+    exact_equivalent_jsonl = (
+        allow_exact_equivalent_stage2_jsonl
+        and stage2_role == "stage2_jsonl"
+        and declared_stage2 == "stage2_json"
+        and isinstance(relationship, dict)
+        and relationship.get("mode") == "exact_representation_equivalence"
+        and relationship.get("passed") is True
+        and isinstance(representation, dict)
+        and representation.get("passed") is True
+    )
     checks = {
         "schema_valid": not errors,
-        "stage2_is_declared_authoritative_artifact": stage2_role
-        == manifest.get("validation", {}).get("authoritative_stage2_artifact", "stage2_json"),
+        "stage2_is_declared_authoritative_artifact": stage2_role == declared_stage2,
+        "stage2_is_exact_equivalent_canonical_jsonl": exact_equivalent_jsonl,
+        "stage2_release_binding_passed": stage2_role == declared_stage2 or exact_equivalent_jsonl,
         "stage2_hash_matches": artifacts.get(stage2_role, {}).get("sha256")
         == (stage2_sha256 or sha256_file(stage2)),
         "stage3_hash_matches": artifacts.get("stage3", {}).get("sha256")
@@ -947,7 +969,6 @@ def verify_bound_lineage_manifest(
         "complete_lineage_passed": manifest.get("validation", {}).get("passed") is True,
     }
     identity = manifest.get("validation", {}).get("stage234_identity_and_projection")
-    relationship = manifest.get("validation", {}).get("stage2_relationship")
     if manifest.get("manifest_version", 0) >= 3:
         checks["stage2_relationship_passed"] = (
             isinstance(relationship, dict) and relationship.get("passed") is True
@@ -958,8 +979,13 @@ def verify_bound_lineage_manifest(
             isinstance(representation, dict) and representation.get("passed") is True
         )
     checks["identity_result_present"] = isinstance(identity, dict)
+    required_checks = {
+        key: value
+        for key, value in checks.items()
+        if key not in {"stage2_is_declared_authoritative_artifact", "stage2_is_exact_equivalent_canonical_jsonl"}
+    }
     return {
-        "passed": all(checks.values()) and bool(identity.get("passed")) if isinstance(identity, dict) else False,
+        "passed": all(required_checks.values()) and bool(identity.get("passed")) if isinstance(identity, dict) else False,
         "checks": checks,
         "identity": identity,
         "manifest_path": str(path.resolve()),

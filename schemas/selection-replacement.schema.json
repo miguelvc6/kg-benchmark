@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kg-benchmark.local/schemas/selection-replacement.schema.json",
+  "title": "Prompt-Failure Replacement Row",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["stratum", "failed_case_id", "failed_group_key", "replacement_case_id", "replacement_group_key"],
+  "properties": {
+    "stratum": {"enum": ["IC-L", "IC-G", "IC-E-elim", "TBOX"]},
+    "failed_case_id": {"type": "string", "minLength": 1},
+    "failed_group_key": {"type": "string", "minLength": 1},
+    "replacement_case_id": {"type": "string", "minLength": 1},
+    "replacement_group_key": {"type": "string", "minLength": 1}
+  }
+}
