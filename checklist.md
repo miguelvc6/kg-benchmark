@@ -16,11 +16,6 @@ acquisition and model calls are deliberately listed later as operational executi
 - [x] Add `kg-benchmark methodology check` with deterministic freeze-scope hashes and workload calculations.
 - [x] Add `kg-benchmark methodology freeze` for the eventual immutable lock.
 - [x] Prevent dataset acquisition/build and model execution without a valid frozen lock.
-- [ ] Resolve and record the full `qwen3:30b` Ollama digest.
-- [ ] Resolve and record the full `llama3.3:70b` Ollama digest.
-- [ ] Resolve and record the immutable Azure `gpt-5.6-sol` deployment or snapshot revision.
-- [ ] After all freeze-scoped implementations below are complete, change all component statuses to `frozen`, commit a
-  clean source revision, create `paper/methodology.lock.json`, commit the lock alone, and tag the freeze.
 
 ### 2. Canonical audit workflow
 
@@ -79,16 +74,23 @@ acquisition and model calls are deliberately listed later as operational executi
 - [ ] Add a clean-clone reproduction smoke test.
 - [ ] Replace remaining workflow ellipses with executable commands after their public interfaces exist.
 - [ ] Run the complete test/schema/documentation suite and verify byte-reproducible manifests.
-- [ ] Complete and verify the final methodology lock and freeze tag.
+
+### 8. Final methodology freeze gate
+
+Complete this gate only after sections 2–7 are finished; otherwise later freeze-scoped implementation changes would
+immediately invalidate the lock.
+
+- [ ] Resolve and record the full `qwen3:30b` Ollama digest.
+- [ ] Resolve and record the full `llama3.3:70b` Ollama digest.
+- [ ] Resolve and record the immutable Azure `gpt-5.6-sol` deployment or snapshot revision.
+- [ ] Change all methodology component statuses to `frozen`, commit a clean source revision, create
+  `paper/methodology.lock.json`, commit the lock alone, verify `freeze_ready: true`, and tag the freeze.
 
 ## Operational paper execution
 
 Run these only after implementation readiness is complete. The long-running dataset commands should be executed by the
 repository operator, not implicitly by an implementation agent.
 
-- [ ] Pull or otherwise provision the two unresolved Ollama models and record their full digests.
-- [ ] Resolve the Azure deployment revision without issuing benchmark queries.
-- [ ] Freeze and tag the methodology.
 - [ ] Acquire the single final Wikidata dataset into ignored `work/`.
 - [ ] Build, audit, review, reserve, finalize, and promote the final dataset.
 - [ ] Run deterministic non-LLM baselines.
