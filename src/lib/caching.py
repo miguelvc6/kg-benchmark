@@ -12,6 +12,7 @@ import zstandard as zstd
 from . import config
 from .cache_sqlite import SQLiteLabelCache, SQLiteSnapshotCache
 from .utils import (
+    TransientAPIError,
     chunked,
     get_json,
     is_entity_or_property_id,
@@ -20,6 +21,10 @@ from .utils import (
     pick_label,
     summarize_claims,
 )
+
+
+class SnapshotFetchError(TransientAPIError):
+    """Raised when a historical entity snapshot cannot be fetched reliably."""
 
 
 class RateLimiter:
@@ -269,12 +274,14 @@ class SnapshotFetcher:
     def _fetch_snapshot_network(self, qid, revision_id):
         endpoint = config.ENTITY_DATA_URL.format(qid=qid)
         params = {"revision": revision_id}
+        last_failure = "unknown upstream failure"
         for attempt in range(self.max_retries):
             self._rate_limiter.acquire()
             try:
                 response = requests.get(endpoint, headers=config.HEADERS, params=params, timeout=config.API_TIMEOUT)
-            except Exception:
+            except Exception as exc:
                 self.stats["network_errors"] += 1
+                last_failure = f"request exception: {exc}"
                 time.sleep(0.5 * (2**attempt))
                 continue
             self.stats["network_calls"] += 1
@@ -284,17 +291,27 @@ class SnapshotFetcher:
             if status == 200:
                 try:
                     return status, response.json(), content_type
-                except Exception:
+                except Exception as exc:
                     self.stats["network_errors"] += 1
-                    return status, None, content_type
+                    last_failure = f"invalid JSON response: {exc}"
+                    if attempt < self.max_retries - 1:
+                        time.sleep(0.5 * (2**attempt))
+                        continue
+                    break
             if status in {429, 500, 502, 503, 504}:
+                last_failure = f"HTTP {status}"
                 if attempt < self.max_retries - 1:
                     time.sleep(0.5 * (2**attempt))
                     continue
+                break
+            # A terminal 4xx represents an unavailable revision/entity rather
+            # than a transient transport failure. Preserve the negative result.
             self.stats["network_errors"] += 1
             return status, None, content_type
         self.stats["network_errors"] += 1
-        return None, None, None
+        raise SnapshotFetchError(
+            f"Historical snapshot fetch exhausted retries for {qid}@{revision_id}: {last_failure}"
+        )
 
     def _parse_snapshot(self, data, qid):
         if not data or "entities" not in data:
@@ -487,7 +504,7 @@ def get_current_state(qid, property_id):
         "ids": qid,
         "props": "claims",
     }
-    data = get_json(params)
+    data = get_json(params, raise_on_failure=True)
     if not data or "entities" not in data:
         return None
     entity = data["entities"].get(qid)
@@ -524,6 +541,7 @@ def fetch_revision_history(qid, start_time, end_time):
             params=params if next_endpoint == endpoint else None,
             endpoint=next_endpoint,
             with_format=False,
+            raise_on_failure=True,
         )
         if not data or "revisions" not in data:
             break

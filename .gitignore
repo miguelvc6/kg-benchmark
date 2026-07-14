@@ -1,4 +1,6 @@
 data/*
+data_post_freeze/*
+!data_post_freeze/README.md
 data_sample/*
 !data_sample/README.md
 !data_sample/02_wikidata_repairs.json

@@ -5,6 +5,10 @@
   "restored_baseline_write_policy": "read_only",
   "candidate_policy": "refresh_after_methodology_freeze",
   "api_policy": "resumable_wikidata_api",
+  "upstream_failure_policy": "fail_closed_after_bounded_retries",
+  "historical_snapshot_failure_policy": "abort_without_interpreting_failure_as_missing_claims",
+  "pageview_failure_policy": "abort_and_resume_from_snapshot_local_cache",
+  "dump_stream_failure_policy": "abort_without_emitting_partial_world_state",
   "cache_policy": "snapshot_local_isolated_cache",
   "dump_policy": "fresh_download_with_sha256_before_stage3",
   "required_fetcher_controls": [

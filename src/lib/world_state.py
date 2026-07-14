@@ -307,13 +307,16 @@ class WorldStateBuilder:
                         )
                         last_heartbeat = now
         except Exception as exc:
-            logger.warning(
-                "[!] Dump stream error after scanning %s entities and finding %s/%s targets: %s",
+            logger.error(
+                "[!] Dump stream failed after scanning %s entities and finding %s/%s targets: %s",
                 f"{scanned:,}",
                 len(found),
                 len(target_ids),
                 exc,
             )
+            raise RuntimeError(
+                f"Wikidata dump stream failed after {scanned:,} entities; partial context is invalid."
+            ) from exc
         return found
 
     def _collect_neighbor_targets(self, entities):

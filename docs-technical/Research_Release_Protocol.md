@@ -158,7 +158,16 @@ acquiring candidates. This methodology protocol has `protocol_phase=methodology`
 digests to remain unresolved. Use a post-freeze
 benchmark snapshot; code-level exclusions on the existing snapshot are not sufficient to establish untouchedness.
 
+The freeze must cover the transitive implementation. Build the repeated arguments from every Python module and JSON schema
+so a helper imported by a top-level CLI cannot change outside the boundary:
+
 ```bash
+FREEZE_ARGS=()
+while IFS= read -r path; do FREEZE_ARGS+=(--schema "$path"); done \
+  < <(find schemas -type f -name '*.json' -print | sort)
+while IFS= read -r path; do FREEZE_ARGS+=(--methodology-file "$path"); done \
+  < <(find src -type f -name '*.py' -print | sort)
+
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-protocol-freeze build \
   --protocol-root . \
   --protocol-id methodology_v1 \
@@ -170,8 +179,10 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-protocol-freeze build \
   --condition logic_only \
   --condition local_graph \
   --prompt experiments/paper_prompt_profile_v1.json \
-  --schema schemas/verified_repair_proposal.schema.json \
-  --schema schemas/tbox_taxonomy_patch_proposal.schema.json \
+  --prompt src/guardian/prompts.py \
+  "${FREEZE_ARGS[@]}" \
+  --methodology-file pyproject.toml \
+  --methodology-file uv.lock \
   --methodology-file experiments/paper_execution_models_v1.json \
   --methodology-file protocols/post_freeze_acquisition_v1.json \
   --methodology-file protocols/selection_policy_v1.json \

@@ -101,10 +101,12 @@ class PageviewClient:
             start=start,
             end=end,
         )
+        last_failure = "unknown upstream failure"
         for attempt in range(4):
             try:
                 response = requests.get(url, headers=config.HEADERS, timeout=config.API_TIMEOUT)
             except Exception as exc:
+                last_failure = f"request exception: {exc}"
                 print(f"    [!] Pageviews request failed for {article_title}: {exc}")
                 time.sleep(0.5)
                 continue
@@ -115,11 +117,13 @@ class PageviewClient:
                 return sum(item.get("views", 0) or 0 for item in items)
             if status in {204, 404}:
                 return 0
+            last_failure = f"HTTP {status}"
             sleep_for = 2**attempt
             print(f"    [!] Pageviews HTTP {status} for {article_title}. Sleeping {sleep_for}s...")
             time.sleep(sleep_for)
-        print(f"    [!] Pageviews permanently failed for {article_title}. Defaulting to 0.")
-        return 0
+        raise RuntimeError(
+            f"Pageviews request exhausted retries for {article_title}: {last_failure}"
+        )
 
 
 def _percentile_map(value_pairs):
@@ -178,25 +182,32 @@ class PopularityCalculator:
         start_time = time.monotonic()
         last_heartbeat = start_time
         total_qids = len(focus_ids)
-        for idx, qid in enumerate(focus_ids, start=1):
-            entity = focus_entities.get(qid)
-            components = self._compute_components(qid, entity, start_str, end_str)
-            raw_components[qid] = components
-            log_pairs["pageviews"].append((math.log1p(components["pageviews_365d"]), qid))
-            log_pairs["degree"].append((math.log1p(components["out_degree"]), qid))
-            log_pairs["sitelinks"].append((math.log1p(components["sitelinks_count"]), qid))
-            now = time.monotonic()
-            if now - last_heartbeat >= heartbeat_every_seconds:
-                elapsed = now - start_time
-                rate = idx / elapsed if elapsed > 0 else 0.0
-                logger.info(
-                    "[*] Popularity heartbeat: computed %s/%s entities in %.0fs (%.2f entities/s).",
-                    idx,
-                    total_qids,
-                    elapsed,
-                    rate,
-                )
-                last_heartbeat = now
+        try:
+            for idx, qid in enumerate(focus_ids, start=1):
+                entity = focus_entities.get(qid)
+                components = self._compute_components(qid, entity, start_str, end_str)
+                raw_components[qid] = components
+                log_pairs["pageviews"].append((math.log1p(components["pageviews_365d"]), qid))
+                log_pairs["degree"].append((math.log1p(components["out_degree"]), qid))
+                log_pairs["sitelinks"].append((math.log1p(components["sitelinks_count"]), qid))
+                if idx % max(1, int(config.PAGEVIEWS_BATCH_SIZE)) == 0:
+                    self.pageviews.persist()
+                now = time.monotonic()
+                if now - last_heartbeat >= heartbeat_every_seconds:
+                    elapsed = now - start_time
+                    rate = idx / elapsed if elapsed > 0 else 0.0
+                    logger.info(
+                        "[*] Popularity heartbeat: computed %s/%s entities in %.0fs (%.2f entities/s).",
+                        idx,
+                        total_qids,
+                        elapsed,
+                        rate,
+                    )
+                    last_heartbeat = now
+        finally:
+            # Preserve successful requests so a fail-closed rerun does not
+            # repeat already completed provider queries.
+            self.pageviews.persist()
 
         pageviews_norm = _percentile_map(log_pairs["pageviews"])
         degree_norm = _percentile_map(log_pairs["degree"])

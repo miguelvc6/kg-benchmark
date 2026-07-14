@@ -68,6 +68,16 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-fetcher \
   --refresh-candidates
 ```
 
+Acquisition is fail-closed. Exhausted report, history, historical-snapshot, or pageview retries must terminate the run;
+they must never be interpreted as an empty report, missing claims, no repair, or zero popularity. Resume Stage 2 from its
+last snapshot-local run checkpoint after the upstream service recovers. Successful pageview responses are persisted in
+batches so Stage 0 can resume without repeating them. A gzip/JSON/CRC error while scanning the dump invalidates the whole
+Stage 3 build; partial world state is never selection eligible.
+
+The methodology freeze must bind the complete transitive acquisition and evaluation implementation, not only top-level
+entry points. The current freeze enumerates all repository Python modules under `src/`, all JSON schemas, `pyproject.toml`,
+and `uv.lock`; adding or changing any of them requires a new pre-acquisition freeze.
+
 The dump is acquired separately, checksummed before use, and never placed in the restored `data/` directory. Classify into
 `04_classified_benchmark.jsonl`, then build a v2 snapshot manifest with `--stage0`, `--stage1`, `--stage2`, `--dump-path`,
 `--world-state`, `--stage4`, `--freeze-manifest`, `--configuration`, and `--cache-provenance`. Source entries should include

@@ -531,12 +531,17 @@ def classify_action(previous_signature, current_signature):
     return "UPDATE"
 
 
-def get_json(params=None, *, endpoint=config.API_ENDPOINT, with_format=True):
+class TransientAPIError(RuntimeError):
+    """Raised when an upstream JSON request exhausts its retry budget."""
+
+
+def get_json(params=None, *, endpoint=config.API_ENDPOINT, with_format=True, raise_on_failure=False):
     """Wrapper around requests.get with retries and default MediaWiki params."""
     query = dict(params or {})
     if with_format:
         query.setdefault("format", "json")
         query.setdefault("formatversion", 2)
+    last_failure = "unknown upstream failure"
     for attempt in range(4):
         try:
             response = requests.get(
@@ -546,16 +551,27 @@ def get_json(params=None, *, endpoint=config.API_ENDPOINT, with_format=True):
                 timeout=config.API_TIMEOUT,
             )
             if response.status_code == 200:
-                return response.json()
+                try:
+                    return response.json()
+                except Exception as exc:
+                    last_failure = f"invalid JSON response: {exc}"
+                    print(f"    [!] Invalid JSON response from {endpoint}: {exc}")
+                    time.sleep(0.1)
+                    continue
             if response.status_code == 429:
+                last_failure = "HTTP 429"
                 sleep_for = 2**attempt
                 print(f"    [!] Rate limited. Sleeping {sleep_for}s...")
                 time.sleep(sleep_for)
             else:
+                last_failure = f"HTTP {response.status_code}"
                 print(f"    [!] HTTP {response.status_code} for {endpoint}")
         except Exception as exc:
+            last_failure = f"request exception: {exc}"
             print(f"    [!] Exception: {exc}")
         time.sleep(0.1)
+    if raise_on_failure:
+        raise TransientAPIError(f"Upstream JSON request failed for {endpoint}: {last_failure}")
     return None
 
 

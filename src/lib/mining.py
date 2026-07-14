@@ -1,6 +1,7 @@
 import json
 import re
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -55,17 +56,21 @@ def fetch_all_active_properties():
     try:
         site = get_wikidata_site()
     except RuntimeError as exc:
-        print(f"[!] Cannot auto-discover properties: {exc}")
-        return []
+        raise RuntimeError(f"Cannot auto-discover properties: {exc}") from exc
     summary_page = site.pages["Wikidata:Database reports/Constraint violations/Summary"]
     if not summary_page.exists:
-        print("[!] Summary page not found. Defaulting to empty property list.")
-        return []
-    try:
-        text = summary_page.text()
-    except Exception as exc:
-        print(f"[!] Failed to read summary page: {exc}")
-        return []
+        raise RuntimeError("Constraint-violation summary page was not found.")
+    text = None
+    last_error = None
+    for attempt in range(4):
+        try:
+            text = summary_page.text()
+            break
+        except Exception as exc:
+            last_error = exc
+            time.sleep(0.5 * (2**attempt))
+    if text is None:
+        raise RuntimeError(f"Failed to read constraint-violation summary page: {last_error}")
     found_props = sorted(set(re.findall(r"P\d+", text)))
     print(f"[*] Auto-discovered {len(found_props)} properties with active reports.")
     return found_props
@@ -115,12 +120,19 @@ def mine_repairs(property_id, max_items=100):
     """Inspect report page history and return candidates with violation type context."""
     site = get_wikidata_site()
     print(f"[*] Mining history for {property_id}...")
-    try:
-        page = site.pages[get_report_page_title(property_id)]
-        revisions = list(page.revisions(max_items=max_items, prop="content|timestamp|ids"))
-    except Exception as exc:
-        print(f"    [!] Failed to fetch report page for {property_id}: {exc}")
-        return []
+    page = site.pages[get_report_page_title(property_id)]
+    revisions = None
+    last_error = None
+    for attempt in range(4):
+        try:
+            revisions = list(page.revisions(max_items=max_items, prop="content|timestamp|ids"))
+            break
+        except Exception as exc:
+            last_error = exc
+            print(f"    [!] Report fetch attempt {attempt + 1}/4 failed for {property_id}: {exc}")
+            time.sleep(0.5 * (2**attempt))
+    if revisions is None:
+        raise RuntimeError(f"Failed to fetch report page for {property_id}: {last_error}")
 
     print(f"    Found {len(revisions)} revisions to analyze.")
     candidates = []
