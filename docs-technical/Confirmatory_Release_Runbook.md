@@ -49,10 +49,11 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-experiment-plan validate
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-paper-prompt-profile
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-experiment-plan validate --require-methodology-frozen
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-protocol-freeze verify \
-  --manifest protocols/methodology_v1.json --protocol-root .
+  --manifest protocols/methodology_v2.json --protocol-root .
 ```
 
-Both methodology checks must pass before acquisition.
+Both methodology checks must pass before acquisition. `methodology_v1.json` is retained as historical evidence but was
+invalidated by the first aborted acquisition; `methodology_v2.json` is the active fail-closed boundary.
 
 Use an unused snapshot directory and an isolated cache. Candidate
 refresh is explicit; resume statistics and checkpoints remain supported.

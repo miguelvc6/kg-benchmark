@@ -170,7 +170,7 @@ while IFS= read -r path; do FREEZE_ARGS+=(--methodology-file "$path"); done \
 
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-protocol-freeze build \
   --protocol-root . \
-  --protocol-id methodology_v1 \
+  --protocol-id methodology_v2 \
   --protocol-phase methodology \
   --model qwen3:30b \
   --model llama3.3:70b \
@@ -190,7 +190,7 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-protocol-freeze build \
   --expected-selected-count 1200 \
   --expected-main-score-count 1200 \
   --status frozen \
-  --output protocols/methodology_v1.json
+  --output protocols/methodology_v2.json
 ```
 
 After acquisition and audit, build a **dataset** release without a selection manifest, then create the allocation protocol. Every model must use

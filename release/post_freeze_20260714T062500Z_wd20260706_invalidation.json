@@ -22,5 +22,10 @@
     "The methodology freeze omitted transitive acquisition modules from its file-hash boundary."
   ],
   "disposition": "invalid_for_confirmatory_use",
+  "replacement_freeze": {
+    "manifest": "protocols/methodology_v2.json",
+    "manifest_sha256": "1de30d40a2f3873ddab9f29557cb45ff940e443363ff53dea7f18652268c6d0d",
+    "git_revision": "cba9349454f3bba89fcab5e24816aba51881f216"
+  },
   "reuse_policy": "No candidate, cache, dump byte, or derived artifact from this attempt may seed the replacement snapshot."
 }
