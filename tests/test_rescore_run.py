@@ -16,7 +16,7 @@ class RescoreRunTests(unittest.TestCase):
             benchmark = root / "classified.jsonl"
             world = root / "world.json"
             selection = root / "selection.json"
-            benchmark.write_text('{"id":"case-1"}\n', encoding="utf-8")
+            benchmark.write_text('{"id":"case-1","track":"A_BOX"}\n', encoding="utf-8")
             world.write_text("{}\n", encoding="utf-8")
             selection.write_text('{"selected_case_ids":["case-1"]}\n', encoding="utf-8")
             (run_dir / "run_manifest.jsonl").write_text("", encoding="utf-8")
@@ -147,13 +147,27 @@ class RescoreRunTests(unittest.TestCase):
             )
 
             self.assertEqual(manifest["provider_calls"], 0)
-            self.assertEqual(manifest["metric_families"], ["a_box_repair_v1", "tbox_taxonomy_patch_v1"])
+            self.assertEqual(
+                manifest["metric_families"],
+                ["a_box_repair_v1", "tbox_taxonomy_patch_v1", "track_diagnosis_v1"],
+            )
             self.assertIsNone(combined["logic_only"]["combined_repair_success_score"])
             self.assertEqual(
                 combined["logic_only"]["tbox_taxonomy_patch"]["metric_family"],
                 "tbox_taxonomy_patch_v1",
             )
             self.assertEqual(combined["logic_only"]["a_box"]["counts"].get("cases", 0), 0)
+            diagnosis_rows = [
+                json.loads(line)
+                for line in (
+                    run_dir
+                    / "evaluations"
+                    / "taxonomy_metrics_v2"
+                    / "logic_only"
+                    / "diagnosis_evaluation_traces.jsonl"
+                ).read_text(encoding="utf-8").splitlines()
+            ]
+            self.assertEqual([row["case_id"] for row in diagnosis_rows], ["tbox-1"])
 
 
 if __name__ == "__main__":

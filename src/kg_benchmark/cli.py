@@ -12,6 +12,12 @@ from pathlib import Path
 from typing import Callable
 
 from artifact_lineage import validate_lineage
+from kg_benchmark.analysis.workflow import (
+    AnalysisWorkflowError,
+    build_paper_results,
+    replay_matrix_evaluations,
+    verify_paper_results,
+)
 from kg_benchmark.audit.workflow import (
     AuditWorkflowError,
     audit_status,
@@ -524,6 +530,49 @@ def _run_matrix(argv: list[str]) -> int:
     return 0 if args.matrix_command != "status" or result["complete"] else 1
 
 
+def _analysis_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="kg-benchmark analyze")
+    subparsers = parser.add_subparsers(dest="analysis_command", required=True)
+    for name, help_text in (
+        ("replay", "Replay the evaluator across every matrix group without provider calls."),
+        ("run", "Build the predeclared compact paper result package."),
+    ):
+        command = subparsers.add_parser(name, help=help_text)
+        command.add_argument("--matrix-dir", type=Path, required=True)
+        command.add_argument("--evaluation-id", required=True)
+        command.add_argument("--generation-cache", type=Path, default=Path("runs/generation-cache.sqlite"))
+        if name == "run":
+            command.add_argument("--analysis-config", type=Path, default=Path("paper/analysis.json"))
+            command.add_argument("--output-root", type=Path, default=Path("results"))
+    status = subparsers.add_parser("status", help="Verify a compact result package and every bound hash.")
+    status.add_argument("--result-dir", type=Path, required=True)
+    return parser
+
+
+def _run_analysis(argv: list[str]) -> int:
+    args = _analysis_parser().parse_args(argv)
+    if args.analysis_command == "status":
+        result = verify_paper_results(result_dir=args.result_dir)
+    else:
+        require_frozen_methodology(Path.cwd())
+        if args.analysis_command == "replay":
+            result = replay_matrix_evaluations(
+                matrix_dir=args.matrix_dir,
+                evaluation_id=args.evaluation_id,
+                generation_cache_path=args.generation_cache,
+            )
+        else:
+            result = build_paper_results(
+                matrix_dir=args.matrix_dir,
+                evaluation_id=args.evaluation_id,
+                generation_cache_path=args.generation_cache,
+                analysis_config_path=args.analysis_config,
+                output_root=args.output_root,
+            )
+    print(json.dumps(result, indent=2, sort_keys=True))
+    return 0
+
+
 def _methodology_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="kg-benchmark methodology")
     subparsers = parser.add_subparsers(dest="methodology_command", required=True)
@@ -556,7 +605,7 @@ def _main(argv: list[str] | None = None) -> int:
     values = list(sys.argv[1:] if argv is None else argv)
     if not values or values[0] in {"-h", "--help"}:
         print(
-            "usage: kg-benchmark {methodology,acquire,build,audit,select,promote,fetch,verify,matrix,run,score,baseline,viewer} ...\n\n"
+            "usage: kg-benchmark {methodology,acquire,build,audit,select,promote,fetch,verify,matrix,analyze,run,score,baseline,viewer} ...\n\n"
             "One paper-facing command for dataset construction, verification, execution, and inspection."
         )
         return 0
@@ -582,6 +631,8 @@ def _main(argv: list[str] | None = None) -> int:
         return _run_viewer(rest)
     if command == "matrix":
         return _run_matrix(rest)
+    if command == "analyze":
+        return _run_analysis(rest)
     module_name = LEGACY_COMMANDS.get(command)
     if module_name is None:
         raise SystemExit(f"Unknown command: {command}")
@@ -593,7 +644,14 @@ def _main(argv: list[str] | None = None) -> int:
 def main(argv: list[str] | None = None) -> int:
     try:
         return _main(argv)
-    except (MethodologyError, AuditWorkflowError, SelectionWorkflowError, DatasetGateError, MatrixWorkflowError) as exc:
+    except (
+        MethodologyError,
+        AuditWorkflowError,
+        SelectionWorkflowError,
+        DatasetGateError,
+        MatrixWorkflowError,
+        AnalysisWorkflowError,
+    ) as exc:
         raise SystemExit(str(exc)) from exc
 
 

@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kg-benchmark.local/schemas/analysis-summary.schema.json",
+  "title": "Compact paper analysis summary",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest_type", "manifest_version", "analysis_id", "scope", "matrix_id", "evaluation_id", "provider_calls",
+    "roles", "populations", "models", "tasks", "estimate_rows", "primary_estimate_rows", "contrast_rows",
+    "holm_families", "diagnosis_rows", "interpretation"
+  ],
+  "properties": {
+    "manifest_type": {"const": "paper_analysis_summary"},
+    "manifest_version": {"const": 1},
+    "analysis_id": {"type": "string", "pattern": "^analysis_[0-9a-f]{20}$"},
+    "scope": {"enum": ["confirmatory_and_calibration", "extension"]},
+    "matrix_id": {"type": "string", "pattern": "^matrix_[0-9a-f]{20}$"},
+    "evaluation_id": {"type": "string", "minLength": 1},
+    "provider_calls": {"const": 0},
+    "roles": {"type": "array", "uniqueItems": true, "items": {"enum": ["confirmatory", "azure_calibration", "extension"]}},
+    "populations": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "models": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "tasks": {"type": "array", "uniqueItems": true, "items": {"enum": ["a_box_repair", "t_box_repair", "track_diagnosis"]}},
+    "estimate_rows": {"type": "integer", "minimum": 1},
+    "primary_estimate_rows": {"type": "integer", "minimum": 1},
+    "contrast_rows": {"type": "integer", "minimum": 4},
+    "holm_families": {"type": "integer", "minimum": 1},
+    "diagnosis_rows": {"type": "integer", "minimum": 1},
+    "interpretation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["confirmatory", "azure_calibration", "extension"],
+      "properties": {
+        "confirmatory": {"type": "string", "minLength": 1},
+        "azure_calibration": {"type": "string", "minLength": 1},
+        "extension": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

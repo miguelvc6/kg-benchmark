@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kg-benchmark.local/schemas/analysis-contrast.schema.json",
+  "title": "Predeclared paired paper contrast",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "analysis_id", "family_id", "role", "population", "model_id", "provider", "task", "locus", "stratum",
+    "endpoint", "contrast_id", "left", "right", "effect_direction", "pair_count", "cluster_count",
+    "case_micro_difference", "event_cluster_macro_difference", "bootstrap", "mcnemar", "holm_adjusted_p_value",
+    "holm_reject_at_0_05"
+  ],
+  "properties": {
+    "analysis_id": {"type": "string", "pattern": "^analysis_[0-9a-f]{20}$"},
+    "family_id": {"type": "string", "minLength": 1},
+    "role": {"enum": ["confirmatory", "azure_calibration", "extension"]},
+    "population": {"type": "string", "minLength": 1},
+    "model_id": {"type": "string", "minLength": 1},
+    "provider": {"enum": ["ollama", "azure"]},
+    "task": {"enum": ["a_box_repair", "t_box_repair", "track_diagnosis"]},
+    "locus": {"enum": ["A_BOX", "T_BOX", "ALL"]},
+    "stratum": {"type": "string", "minLength": 1},
+    "endpoint": {"type": "string", "minLength": 1},
+    "contrast_id": {"type": "string", "minLength": 1},
+    "left": {"$ref": "#/$defs/condition"},
+    "right": {"$ref": "#/$defs/condition"},
+    "effect_direction": {"const": "right_minus_left"},
+    "pair_count": {"type": "integer", "minimum": 1},
+    "cluster_count": {"type": "integer", "minimum": 1},
+    "case_micro_difference": {"$ref": "#/$defs/interval"},
+    "event_cluster_macro_difference": {"$ref": "#/$defs/interval"},
+    "bootstrap": {"type": "object"},
+    "mcnemar": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["left_correct_right_incorrect", "left_incorrect_right_correct", "discordant_pairs", "p_value_exact_two_sided"],
+      "properties": {
+        "left_correct_right_incorrect": {"type": "integer", "minimum": 0},
+        "left_incorrect_right_correct": {"type": "integer", "minimum": 0},
+        "discordant_pairs": {"type": "integer", "minimum": 0},
+        "p_value_exact_two_sided": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "holm_adjusted_p_value": {"type": "number", "minimum": 0, "maximum": 1},
+    "holm_reject_at_0_05": {"type": "boolean"}
+  },
+  "$defs": {
+    "condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prompt_regime", "context_bundle"],
+      "properties": {
+        "prompt_regime": {"enum": ["zero_shot", "static_few_shot"]},
+        "context_bundle": {"enum": ["logic_only", "local_graph"]}
+      }
+    },
+    "interval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["estimate", "ci_lower", "ci_upper"],
+      "properties": {"estimate": {"type": "number"}, "ci_lower": {"type": "number"}, "ci_upper": {"type": "number"}}
+    }
+  }
+}

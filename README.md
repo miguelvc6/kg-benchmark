@@ -59,6 +59,14 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark matrix execute \
   --matrix-dir runs/matrices/<matrix-id>
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark matrix status \
   --matrix-dir runs/matrices/<matrix-id>
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark analyze replay \
+  --matrix-dir runs/matrices/<matrix-id> \
+  --evaluation-id paper-metrics-v1
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark analyze run \
+  --matrix-dir runs/matrices/<matrix-id> \
+  --evaluation-id paper-metrics-v1
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark analyze status \
+  --result-dir results/<analysis-id>
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark viewer
 ```
 
@@ -68,7 +76,8 @@ including its protocol-bound Codex review. Selection separately constructs and s
 `select status` verify stored artifacts and their semantic bindings without calling a model.
 
 Construction is isolated under ignored `work/`. Promotion is atomic and refuses to overwrite the final dataset. Raw
-generations are content-addressed under ignored `runs/`; metric changes do not call providers again.
+generations and evaluation traces are content-addressed under ignored `runs/`; metric changes and paper analysis do not
+call providers again. Compact hash-bound aggregate packages are written under `results/`.
 
 Promotion revalidates every published record and reconstructs lineage, audit coverage, independent eligibility,
 support and prior-group exclusions, reserve prompt QA, replacements, and both populations. It requires exactly 1,200

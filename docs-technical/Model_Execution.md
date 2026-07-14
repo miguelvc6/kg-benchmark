@@ -54,8 +54,10 @@ The dry run is the proof and preflight: shared parent keys appear as cache hits 
 for newly added cases appear under `unique_new_requests`. Changing a prompt, few-shot count, model revision, or inference
 setting correctly defines new requests.
 
-`kg-benchmark score` writes a new metric-version output without mutating or resubmitting generations. Confirmatory and
-extension populations remain separately identified even when they share cached responses.
+`kg-benchmark score` writes a new metric-version output for one physical run without mutating or resubmitting
+generations. The paper-facing `kg-benchmark analyze replay` applies that replay across a complete matrix and additionally
+scores diagnosis for every selected A- and T-box case. Confirmatory and extension populations remain separately
+identified even when they share cached responses. See [paper analysis](./Paper_Analysis.md).
 
 `kg-benchmark baseline` retains the deterministic non-LLM comparisons. The Reasoning-floor Streamlit application is
 launched with `kg-benchmark viewer` and reads the same dataset and run layout.

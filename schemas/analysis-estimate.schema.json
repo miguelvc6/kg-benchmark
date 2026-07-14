@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kg-benchmark.local/schemas/analysis-estimate.schema.json",
+  "title": "Paper analysis endpoint estimate",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "analysis_id", "role", "population", "model_id", "provider", "task", "locus", "stratum",
+    "endpoint", "primary", "prompt_regime", "context_bundle", "applicable_case_count", "excluded_case_count",
+    "cluster_unit", "estimate"
+  ],
+  "properties": {
+    "analysis_id": {"type": "string", "pattern": "^analysis_[0-9a-f]{20}$"},
+    "role": {"enum": ["confirmatory", "azure_calibration", "extension"]},
+    "population": {"type": "string", "minLength": 1},
+    "model_id": {"type": "string", "minLength": 1},
+    "provider": {"enum": ["ollama", "azure"]},
+    "task": {"enum": ["a_box_repair", "t_box_repair", "track_diagnosis"]},
+    "locus": {"enum": ["A_BOX", "T_BOX", "ALL"]},
+    "stratum": {"type": "string", "minLength": 1},
+    "endpoint": {"type": "string", "minLength": 1},
+    "primary": {"type": "boolean"},
+    "prompt_regime": {"enum": ["zero_shot", "static_few_shot"]},
+    "context_bundle": {"enum": ["logic_only", "local_graph"]},
+    "applicable_case_count": {"type": "integer", "minimum": 1},
+    "excluded_case_count": {"type": "integer", "minimum": 0},
+    "cluster_unit": {"enum": ["qid_property", "property_revision", "event_group"]},
+    "estimate": {"$ref": "#/$defs/cluster_estimate"}
+  },
+  "$defs": {
+    "interval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["estimate", "ci_lower", "ci_upper"],
+      "properties": {
+        "estimate": {"type": "number"},
+        "ci_lower": {"type": "number"},
+        "ci_upper": {"type": "number"}
+      }
+    },
+    "cluster_estimate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_count", "cluster_count", "case_micro", "event_cluster_macro", "bootstrap"],
+      "properties": {
+        "case_count": {"type": "integer", "minimum": 1},
+        "cluster_count": {"type": "integer", "minimum": 1},
+        "case_micro": {"$ref": "#/$defs/interval"},
+        "event_cluster_macro": {"$ref": "#/$defs/interval"},
+        "bootstrap": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["method", "samples", "confidence_level", "seed"],
+          "properties": {
+            "method": {"const": "percentile_cluster_bootstrap"},
+            "samples": {"type": "integer", "minimum": 1},
+            "confidence_level": {"type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1},
+            "seed": {"type": "integer"}
+          }
+        }
+      }
+    }
+  }
+}

@@ -1153,6 +1153,99 @@ def evaluate_track_diagnosis(
     }
 
 
+def evaluate_track_diagnosis_bundle(
+    *,
+    classified_path: str | Path,
+    track_diagnoses_path: str | Path | None,
+    run_manifest_path: str | Path,
+    ablation_bundle: str,
+    case_ids: Iterable[str],
+    out_traces_path: str | Path,
+    out_summary_path: str | Path,
+) -> dict[str, Any]:
+    """Evaluate the independently scored diagnosis task for every selected A- and T-box case."""
+    selected = [case_id for case_id in case_ids if isinstance(case_id, str) and case_id]
+    if len(selected) != len(set(selected)):
+        raise ValueError("Diagnosis evaluation case IDs must be unique.")
+    selected_set = set(selected)
+    diagnoses = _load_track_diagnoses(track_diagnoses_path)
+    run_manifest = _load_run_manifest(run_manifest_path)
+    traces: list[dict[str, Any]] = []
+    observed: set[str] = set()
+    for record in _iter_records(classified_path, selected_set):
+        case_id = record["id"]
+        truth = record.get("track")
+        if truth not in {"A_BOX", "T_BOX"}:
+            raise ValueError(f"Diagnosis truth is invalid for selected case {case_id}: {truth!r}")
+        observed.add(case_id)
+        manifest_record = _manifest_record(run_manifest, case_id, ablation_bundle, "track_diagnosis")
+        traces.append(
+            {
+                "case_id": case_id,
+                "ablation_bundle": ablation_bundle,
+                **evaluate_track_diagnosis(record, diagnoses.get(case_id), manifest_record),
+            }
+        )
+    missing = sorted(selected_set - observed)
+    if missing:
+        raise ValueError(f"Diagnosis evaluation is missing selected cases: {missing[:10]}")
+    traces.sort(key=lambda row: row["case_id"])
+    trace_path = Path(out_traces_path)
+    trace_path.parent.mkdir(parents=True, exist_ok=True)
+    with trace_path.open("w", encoding="utf-8") as handle:
+        for trace in traces:
+            handle.write(json.dumps(trace, ensure_ascii=False, sort_keys=True) + "\n")
+
+    labels = ("A_BOX", "T_BOX")
+    confusion: Counter[tuple[str, str]] = Counter()
+    for trace in traces:
+        predicted = trace.get("predicted_track")
+        confusion[(trace["historical_track"], predicted if predicted in {*labels, "AMBIGUOUS"} else "__MISSING__")] += 1
+    per_locus: dict[str, dict[str, Any]] = {}
+    f1_values: list[float] = []
+    for label in labels:
+        true_count = sum(value for (truth, _), value in confusion.items() if truth == label)
+        predicted_count = sum(value for (_, predicted), value in confusion.items() if predicted == label)
+        true_positive = confusion[(label, label)]
+        denominator = true_count + predicted_count
+        f1 = 2 * true_positive / denominator if denominator else None
+        if f1 is not None:
+            f1_values.append(f1)
+        per_locus[label] = {
+            "support": true_count,
+            "precision": true_positive / predicted_count if predicted_count else None,
+            "recall": true_positive / true_count if true_count else None,
+            "f1": f1,
+        }
+    total = len(traces)
+    correct = sum(bool(trace["exact_track_match"]) for trace in traces)
+    ambiguous = sum(trace.get("predicted_track") == "AMBIGUOUS" for trace in traces)
+    false_locus = sum(
+        trace.get("predicted_track") in labels and trace.get("predicted_track") != trace.get("historical_track")
+        for trace in traces
+    )
+    request_errors = sum(trace.get("parse_status") == "request_error" for trace in traces)
+    summary = {
+        "metric_family": "track_diagnosis_v1",
+        "count": total,
+        "accuracy": correct / total if total else None,
+        "macro_f1": sum(f1_values) / len(f1_values) if f1_values else None,
+        "ambiguous_prediction_rate": ambiguous / total if total else None,
+        "false_locus_rate": false_locus / total if total else None,
+        "request_error_count": request_errors,
+        "confusion_matrix": {
+            truth: {
+                predicted: confusion[(truth, predicted)]
+                for predicted in (*labels, "AMBIGUOUS", "__MISSING__")
+            }
+            for truth in labels
+        },
+        "per_locus": per_locus,
+    }
+    write_json(out_summary_path, summary)
+    return summary
+
+
 def summarize_traces(
     traces: list[dict[str, Any]],
     inputs: dict[str, Any],

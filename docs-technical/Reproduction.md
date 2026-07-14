@@ -84,6 +84,25 @@ Planning and status are safe to repeat. Execution skips independently verified c
 groups in place. To add a population later, first create it with `select expand`, then plan a matrix with explicit
 `--population` paths. The shared generation cache means parent cases are not submitted again.
 
+After `matrix status` reports complete, replay the frozen evaluator across every physical group and build the paper
+package:
+
+```bash
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark analyze replay \
+  --matrix-dir runs/matrices/<matrix-id> \
+  --evaluation-id paper-metrics-v1
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark analyze run \
+  --matrix-dir runs/matrices/<matrix-id> \
+  --evaluation-id paper-metrics-v1
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark analyze status \
+  --result-dir results/<analysis-id>
+```
+
+Use a new evaluation ID when evaluator metrics change. Replay and analysis make zero provider calls. The result package
+binds all evaluation manifests and analysis code, so rerunning the same inputs reproduces the same analysis ID and
+manifest bytes. Extension analysis requires the parent and expanded population manifests in the same matrix plan; its
+outputs remain separate from the base confirmatory/calibration package.
+
 If the audit exposes a systemic implementation defect after methodology freeze, the protocol requires invalidating the
 freeze and acquired dataset, fixing the implementation, creating a new freeze, and acquiring again. Restarting only the
 audit is appropriate for damaged audit outputs or non-systemic case-level dispositions, not for a changed methodology

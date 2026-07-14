@@ -12,7 +12,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from guardian.evaluator import evaluate_benchmark
+from jsonschema import Draft202012Validator
+
+from guardian.evaluator import evaluate_benchmark, evaluate_track_diagnosis_bundle
 from guardian.tbox_taxonomy_patch_run import (
     evaluate_tbox_taxonomy_patch_bundle,
     prepare_tbox_taxonomy_gold,
@@ -180,6 +182,15 @@ def rescore_run(
             classified_records=None if standard_evaluation_case_ids else [],
             classified_input_path=benchmark,
         )
+        diagnosis_summary = evaluate_track_diagnosis_bundle(
+            classified_path=benchmark,
+            track_diagnoses_path=diagnoses_path if diagnoses_path.is_file() else None,
+            run_manifest_path=run_manifest_path,
+            ablation_bundle=bundle,
+            case_ids=selected_case_ids,
+            out_traces_path=bundle_output / "diagnosis_evaluation_traces.jsonl",
+            out_summary_path=bundle_output / "diagnosis_evaluation_summary.json",
+        )
         if taxonomy_gold is not None:
             taxonomy_summary = evaluate_tbox_taxonomy_patch_bundle(
                 prepared_gold=taxonomy_gold,
@@ -190,10 +201,11 @@ def rescore_run(
             bundle_summaries[bundle] = {
                 "a_box": summary,
                 "tbox_taxonomy_patch": taxonomy_summary,
+                "track_diagnosis": diagnosis_summary,
                 "combined_repair_success_score": None,
             }
         else:
-            bundle_summaries[bundle] = summary
+            bundle_summaries[bundle] = {"a_box": summary, "track_diagnosis": diagnosis_summary}
 
     evaluator_path = Path(__file__).resolve().parent / "guardian" / "evaluator.py"
     taxonomy_evaluator_path = (
@@ -213,7 +225,7 @@ def rescore_run(
         "provider_calls": 0,
         "selected_case_count": len(selected_case_ids),
         "ablation_bundles": bundles,
-        "metric_families": ["a_box_repair_v1", "tbox_taxonomy_patch_v1"],
+        "metric_families": ["a_box_repair_v1", "tbox_taxonomy_patch_v1", "track_diagnosis_v1"],
         "combined_repair_success_score": False,
         "source_artifacts": source_artifacts,
         "evaluation_code": {
@@ -238,6 +250,8 @@ def rescore_run(
         manifest["outputs"][bundle] = {
             "traces": _fingerprint(bundle_output / "evaluation_traces.jsonl"),
             "summary": _fingerprint(bundle_output / "evaluation_summary.json"),
+            "diagnosis_traces": _fingerprint(bundle_output / "diagnosis_evaluation_traces.jsonl"),
+            "diagnosis_summary": _fingerprint(bundle_output / "diagnosis_evaluation_summary.json"),
             "tbox_taxonomy_patch_traces": (
                 _fingerprint(bundle_output / "tbox_taxonomy_patch_evaluation_traces.jsonl")
                 if taxonomy_mode
@@ -250,6 +264,11 @@ def rescore_run(
             ),
         }
     manifest_path = output_dir / "evaluation_manifest.json"
+    schema_path = Path(__file__).resolve().parents[1] / "schemas" / "evaluation-replay.schema.json"
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    errors = list(Draft202012Validator(schema).iter_errors(manifest))
+    if errors:
+        raise ValueError(f"Evaluation replay manifest fails its schema: {errors[0].message}")
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
     return manifest
 

@@ -1240,6 +1240,7 @@ analysis = [
     { name = "seaborn" },
 ]
 dev = [
+    { name = "numpy" },
     { name = "pytest" },
     { name = "ruff" },
 ]
@@ -1261,6 +1262,7 @@ requires-dist = [
     { name = "matplotlib", marker = "extra == 'analysis'", specifier = ">=3.8" },
     { name = "mwclient", specifier = ">=0.11" },
     { name = "numpy", marker = "extra == 'analysis'", specifier = ">=2.0" },
+    { name = "numpy", marker = "extra == 'dev'", specifier = ">=2.0" },
     { name = "openai", specifier = ">=2.38.0" },
     { name = "pandas", marker = "extra == 'analysis'", specifier = ">=2.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },

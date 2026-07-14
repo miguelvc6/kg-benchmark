@@ -187,6 +187,12 @@ class TBoxTaxonomyPatchEvaluatorTests(unittest.TestCase):
         summary = evaluate_tbox_taxonomy_patch_predictions(gold_rows=[patch("case-1")], prediction_rows=[])
         self.assertEqual(self.metric(summary, "tbox_patch_parse_rate")["rate"], 0.0)
         self.assertEqual(self.metric(summary, "tbox_patch_parse_error_rate")["rate"], 1.0)
+        self.assertEqual(self.metric(summary, "tbox_patch_schema_decision_match_rate")["rate"], 0.0)
+        self.assertEqual(self.metric(summary, "tbox_patch_taxonomy_code_exact_match_rate")["rate"], 0.0)
+        self.assertEqual(
+            self.metric(summary, "tbox_patch_schema_decision_match_rate")["applicable_denominator"],
+            1,
+        )
 
     def test_diagnostic_reports_include_confusions_value_delta_display_and_macros(self) -> None:
         gold = [

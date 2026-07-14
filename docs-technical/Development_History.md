@@ -123,6 +123,12 @@ stable physical execution groups, per-logical-cell manifests, independent comple
 planning. Tests use fake executors to prove the frozen Ollama/Azure argument policies and that a nested population adds
 only generation keys absent from the parent cache.
 
+The final analysis layer closed the replay-to-paper boundary. Replay gained an all-selected-cases diagnosis artifact so
+T-box diagnosis was no longer lost behind the separate taxonomy evaluator, and taxonomy parse failures were included as
+incorrect rather than silently removed from endpoint denominators. A provider-free matrix replay command, predeclared
+cluster inference, exact McNemar/Holm contrasts, extension-prefix enforcement, compact role-specific tables, and
+content-addressed result manifests replaced manual aggregation notebooks.
+
 ## Release and freeze work
 
 Research-release tooling added schemas, manifests, artifact hashing, clean-clone acquisition, experiment registration,

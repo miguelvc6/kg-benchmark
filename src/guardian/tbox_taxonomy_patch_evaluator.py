@@ -170,24 +170,29 @@ def _row_metrics(
     prediction: NormalizedTBoxTaxonomyPatch | None,
 ) -> dict[str, Any]:
     if prediction is None:
+        gold_has_value_delta = _has_value_delta(gold)
         return {
-            "target_pid_match": None,
-            "primary_constraint_family_match": None,
-            "any_changed_family_hit": None,
-            "schema_decision_match": None,
-            "no_causal_schema_repair_match": None,
-            "unclear_schema_evidence_match": None,
-            "repair_op_exact_match": None,
-            "taxonomy_code_exact_match": None,
-            "qualifier_property_match": None,
-            "evidence_level_exact_match": None,
-            "value_delta_claimed_when_gold_absent": None,
-            "family_only_when_value_delta_gold_present": None,
-            "family_level_success": None,
-            "decision_level_success": None,
-            "taxonomy_level_success": None,
-            "value_delta_success": None,
-            "gold_has_value_delta": _has_value_delta(gold),
+            "target_pid_match": False,
+            "primary_constraint_family_match": False,
+            "any_changed_family_hit": False,
+            "schema_decision_match": False,
+            "no_causal_schema_repair_match": (
+                False if gold.schema_decision == "NO_CAUSAL_SCHEMA_REPAIR" else None
+            ),
+            "unclear_schema_evidence_match": (
+                False if gold.schema_decision == "UNCLEAR_SCHEMA_EVIDENCE" else None
+            ),
+            "repair_op_exact_match": False,
+            "taxonomy_code_exact_match": False,
+            "qualifier_property_match": False if gold_has_value_delta else None,
+            "evidence_level_exact_match": False,
+            "value_delta_claimed_when_gold_absent": False if not gold_has_value_delta else None,
+            "family_only_when_value_delta_gold_present": False if gold_has_value_delta else None,
+            "family_level_success": False,
+            "decision_level_success": False,
+            "taxonomy_level_success": False,
+            "value_delta_success": False,
+            "gold_has_value_delta": gold_has_value_delta,
         }
 
     gold_families = _constraint_family_counter(gold)
@@ -706,16 +711,14 @@ def _counter_overlap_size(left: Counter[Any], right: Counter[Any]) -> int:
 
 
 def _metric_detail(gold: NormalizedTBoxTaxonomyPatch, prediction: NormalizedTBoxTaxonomyPatch | None) -> dict[str, int]:
-    if prediction is None:
-        return {}
     gold_families = _constraint_family_counter(gold)
-    pred_families = _constraint_family_counter(prediction)
+    pred_families = _constraint_family_counter(prediction) if prediction is not None else Counter()
     gold_ops = _repair_counter(gold, "repair_op")
-    pred_ops = _repair_counter(prediction, "repair_op")
+    pred_ops = _repair_counter(prediction, "repair_op") if prediction is not None else Counter()
     gold_added = _value_counter(gold, "added_values")
-    pred_added = _value_counter(prediction, "added_values")
+    pred_added = _value_counter(prediction, "added_values") if prediction is not None else Counter()
     gold_removed = _value_counter(gold, "removed_values")
-    pred_removed = _value_counter(prediction, "removed_values")
+    pred_removed = _value_counter(prediction, "removed_values") if prediction is not None else Counter()
     gold_value = gold_added + gold_removed
     pred_value = pred_added + pred_removed
     return {

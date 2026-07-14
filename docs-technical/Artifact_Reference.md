@@ -51,5 +51,16 @@ and use `matrix-cell.schema.json`; they bind the matrix and request plan, runner
 observed completion/failure counts, and cache coverage. These matrix artifacts and the shared SQLite generation cache
 are operational bulk under ignored `runs/`, not part of the published dataset.
 
+Each physical group may contain immutable `evaluations/<evaluation-id>/` directories. Their
+`evaluation_manifest.json` uses `evaluation-replay.schema.json`, declares zero provider calls, and binds the source run,
+evaluator implementation, separate A-box/T-box/diagnosis traces and summaries, and combined display summary. A new
+metric definition creates a new evaluation ID rather than mutating an existing directory.
+
+Compact paper outputs live under `results/<analysis-id>/`. `analysis-result-manifest.schema.json` binds the matrix,
+evaluation manifests, `paper/analysis.json`, analysis workflow/statistics code, dependency lock, machine-readable rows,
+and Markdown tables. `analysis-estimate.schema.json`, `analysis-contrast.schema.json`,
+`analysis-diagnosis.schema.json`, and `analysis-summary.schema.json` validate the output rows. Raw generations and
+evaluation traces remain under ignored `runs/` and are never copied into `results/`.
+
 Bulk data and raw generations are distributed externally. Git contains manifests, retrieval metadata, compact results,
 schemas, protocol, code, documentation, and a tiny synthetic example.

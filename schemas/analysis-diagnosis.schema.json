@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kg-benchmark.local/schemas/analysis-diagnosis.schema.json",
+  "title": "Track-diagnosis condition summary",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "role", "population", "model_id", "provider", "prompt_regime", "context_bundle", "case_count", "accuracy",
+    "macro_f1", "false_locus_rate", "ambiguous_prediction_rate", "confusion_matrix", "per_locus"
+  ],
+  "properties": {
+    "role": {"enum": ["confirmatory", "azure_calibration", "extension"]},
+    "population": {"type": "string", "minLength": 1},
+    "model_id": {"type": "string", "minLength": 1},
+    "provider": {"enum": ["ollama", "azure"]},
+    "prompt_regime": {"enum": ["zero_shot", "static_few_shot"]},
+    "context_bundle": {"enum": ["logic_only", "local_graph"]},
+    "case_count": {"type": "integer", "minimum": 1},
+    "accuracy": {"type": "number", "minimum": 0, "maximum": 1},
+    "macro_f1": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+    "false_locus_rate": {"type": "number", "minimum": 0, "maximum": 1},
+    "ambiguous_prediction_rate": {"type": "number", "minimum": 0, "maximum": 1},
+    "confusion_matrix": {"type": "object"},
+    "per_locus": {"type": "object"}
+  }
+}

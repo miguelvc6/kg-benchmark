@@ -60,12 +60,12 @@ acquisition and model calls are deliberately listed later as operational executi
 
 ### 6. Paper-level analysis and result packaging
 
-- [ ] Aggregate immutable run/evaluation manifests across models and conditions without provider calls.
-- [ ] Implement case-micro and event-cluster macro estimates.
-- [ ] Implement the 5,000-sample seed-13 percentile cluster bootstrap.
-- [ ] Implement exact McNemar tests and Holm adjustment for the four predeclared contrasts.
-- [ ] Keep A-box, T-box, diagnosis, models, confirmatory results, Azure calibration, and extensions separate.
-- [ ] Generate compact paper tables, machine-readable summaries, and provenance manifests under `results/`.
+- [x] Aggregate immutable run/evaluation manifests across models and conditions without provider calls.
+- [x] Implement case-micro and event-cluster macro estimates.
+- [x] Implement the 5,000-sample seed-13 percentile cluster bootstrap.
+- [x] Implement exact McNemar tests and Holm adjustment for the four predeclared contrasts.
+- [x] Keep A-box, T-box, diagnosis, models, confirmatory results, Azure calibration, and extensions separate.
+- [x] Generate compact paper tables, machine-readable summaries, and provenance manifests under `results/`.
 
 ### 7. Acceptance and reproduction
 
