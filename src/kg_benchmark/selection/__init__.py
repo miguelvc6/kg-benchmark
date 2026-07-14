@@ -1,4 +1,4 @@
-"""Deterministic support-bank and evaluation-population selection."""
+"""Deterministic reserve, prompt-QA, and nested-population selection."""
 
 from .extensible import build_selection_artifacts, materialize_population
 

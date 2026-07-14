@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kg-benchmark.local/schemas/reserve-manifest.schema.json",
+  "title": "Prompt-QA Reserve",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest_type",
+    "manifest_version",
+    "name",
+    "requested_quotas",
+    "quotas",
+    "case_count",
+    "selected_case_ids",
+    "selected_group_keys",
+    "support_groups_excluded",
+    "tbox_composition"
+  ],
+  "properties": {
+    "manifest_type": {"const": "selection_reserve"},
+    "manifest_version": {"const": 1},
+    "name": {"const": "reserve-1440"},
+    "requested_quotas": {"$ref": "#/$defs/quota"},
+    "quotas": {"$ref": "#/$defs/quota"},
+    "case_count": {"type": "integer", "minimum": 1},
+    "selected_case_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "selected_group_keys": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/group_key"}},
+    "support_groups_excluded": {"type": "integer", "minimum": 0},
+    "tbox_composition": {"$ref": "#/$defs/tbox"}
+  },
+  "$defs": {
+    "quota": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["IC-L", "IC-G", "IC-E-elim", "TBOX"],
+      "properties": {
+        "IC-L": {"type": "integer", "minimum": 0},
+        "IC-G": {"type": "integer", "minimum": 0},
+        "IC-E-elim": {"type": "integer", "minimum": 0},
+        "TBOX": {"type": "integer", "minimum": 0}
+      }
+    },
+    "tbox": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relaxation_expansions", "restriction_contractions", "schema_updates"],
+      "properties": {
+        "relaxation_expansions": {"type": "integer", "minimum": 0},
+        "restriction_contractions": {"type": "integer", "minimum": 0},
+        "schema_updates": {"type": "integer", "minimum": 0}
+      }
+    },
+    "group_key": {
+      "type": "string",
+      "pattern": "^(ABOX\\|Q[1-9][0-9]*\\|P[1-9][0-9]*|TBOX\\|P[1-9][0-9]*\\|[^|]+)$"
+    }
+  }
+}

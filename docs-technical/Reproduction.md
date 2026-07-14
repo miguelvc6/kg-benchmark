@@ -33,6 +33,25 @@ never calls a model. If a bound artifact changes, preserve the failed workflow f
 implementation defect, remove the invalid `work/audit/` run, and restart from `audit prepare`. Do not edit a sample,
 review, disposition, or summary in place.
 
+After audit finalization, freeze a complete event-group exclusion artifact and run selection:
+
+```bash
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select reserve \
+  --exclusions <frozen-event-group-exclusions.json>
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select review
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select finalize
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select status
+```
+
+`select reserve` renders and scans every reserve prompt. `select review` performs the fixed 50-case Codex temporal
+review; the other three commands make no model calls. The resumable manifest is `work/selections/selection-workflow.json`.
+If any bound input differs, reuse fails closed. Preserve an invalid workflow for diagnosis and restart in a fresh empty
+selection directory instead of editing generated artifacts.
+
+The initial main/Azure sizes come from `paper/selection-policy.json`. Additional prompt-clean nested populations are
+materialized with `select expand` and explicit per-stratum quotas; this never repeats prompt review or provider calls and
+cannot exceed the audited reserve. Provider request deduplication is handled later by generation identity and cache.
+
 If the audit exposes a systemic implementation defect after methodology freeze, the protocol requires invalidating the
 freeze and acquired dataset, fixing the implementation, creating a new freeze, and acquiring again. Restarting only the
 audit is appropriate for damaged audit outputs or non-systemic case-level dispositions, not for a changed methodology

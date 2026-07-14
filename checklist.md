@@ -28,17 +28,17 @@ acquisition and model calls are deliberately listed later as operational executi
 
 ### 3. Reserve, prompt-quality gate, and selection finalization
 
-- [ ] Implement `select reserve` with quotas 276 IC-L, 450 IC-G, 354 IC-E-elim, and up to 360 T-box.
-- [ ] Accept and hash a previously-used event-group exclusion artifact.
-- [ ] Render and deterministically scan every reserve prompt.
-- [ ] Require the fixed seed-13 50-case temporal prompt review.
-- [ ] Replace failed prompts with the next eligible case in the frozen per-stratum order.
-- [ ] Implement `select finalize`; only prompt-clean final disposition `include` cases may enter evaluation.
-- [ ] Target the T-box main composition of 130 relaxation expansions, 50 restriction contractions, and 120 schema
+- [x] Implement `select reserve` with quotas 276 IC-L, 450 IC-G, 354 IC-E-elim, and up to 360 T-box.
+- [x] Accept and hash a previously-used event-group exclusion artifact.
+- [x] Render and deterministically scan every reserve prompt.
+- [x] Require the fixed seed-13 50-case temporal prompt review.
+- [x] Replace failed prompts with the next eligible case in the frozen per-stratum order.
+- [x] Implement `select finalize`; only prompt-clean final disposition `include` cases may enter evaluation.
+- [x] Target the T-box main composition of 130 relaxation expansions, 50 restriction contractions, and 120 schema
   updates, subject to the declared eligible-prefix rule.
-- [ ] Bind dataset, audit, exclusions, ranking, support bank, eligibility order, prompt audit, and per-case eligibility
+- [x] Bind dataset, audit, exclusions, ranking, support bank, eligibility order, prompt audit, and per-case eligibility
   hashes in selection manifests.
-- [ ] Apply the declared T-box deficit redistribution rule to initial and extension populations.
+- [x] Apply the declared T-box deficit redistribution rule to initial and extension populations.
 
 ### 4. Final dataset promotion gates
 

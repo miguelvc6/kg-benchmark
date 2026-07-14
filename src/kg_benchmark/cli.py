@@ -29,7 +29,14 @@ from kg_benchmark.methodology import (
     create_methodology_lock,
     require_frozen_methodology,
 )
-from kg_benchmark.selection.extensible import build_selection_artifacts, materialize_population
+from kg_benchmark.selection.workflow import (
+    SelectionWorkflowError,
+    expand_population,
+    finalize_selection,
+    prepare_reserve,
+    review_reserve,
+    selection_status,
+)
 
 LEGACY_COMMANDS = {
     "baseline": "non_llm_baselines",
@@ -217,75 +224,91 @@ def _delegate(module_name: str, argv: list[str]) -> int:
 def _selection_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="kg-benchmark select")
     subparsers = parser.add_subparsers(dest="selection_command", required=True)
-    build = subparsers.add_parser("build", help="Build ordering, support bank, and frozen 1,200/600 populations.")
-    build.add_argument("--cases", type=Path, required=True)
-    build.add_argument("--dispositions", type=Path, required=True)
-    build.add_argument("--output-dir", type=Path, default=Path("work/selections"))
-    build.add_argument("--seed", type=int, default=13)
-    build.add_argument("--support-capacity", type=int, default=16)
-    build.add_argument("--main-quota-ic-l", type=int, default=230)
-    build.add_argument("--main-quota-ic-g", type=int, default=375)
-    build.add_argument("--main-quota-ic-e-elim", type=int, default=295)
-    build.add_argument("--main-quota-tbox", type=int, default=300)
-    build.add_argument("--api-quota-ic-l", type=int, default=115)
-    build.add_argument("--api-quota-ic-g", type=int, default=188)
-    build.add_argument("--api-quota-ic-e-elim", type=int, default=147)
-    build.add_argument("--api-quota-tbox", type=int, default=150)
+    reserve = subparsers.add_parser("reserve", help="Build the independent reserve and render/scan every prompt.")
+    reserve.add_argument("--cases", type=Path, default=Path("work/cases.jsonl"))
+    reserve.add_argument("--world-state", type=Path, default=Path("work/source/world-state.jsonl"))
+    reserve.add_argument("--dispositions", type=Path, default=Path("work/audit/dispositions.jsonl"))
+    reserve.add_argument("--audit-summary", type=Path, default=Path("work/audit/summary.json"))
+    reserve.add_argument("--exclusions", type=Path, required=True)
+    reserve.add_argument("--protocol", type=Path, default=Path("paper/protocol.json"))
+    reserve.add_argument("--policy", type=Path, default=Path("paper/selection-policy.json"))
+    reserve.add_argument("--output-dir", type=Path, default=Path("work/selections"))
 
-    expand = subparsers.add_parser("expand", help="Materialize a nested population from the frozen eligibility order.")
-    expand.add_argument("--eligibility-order", type=Path, required=True)
-    expand.add_argument("--support-bank", type=Path, required=True)
-    expand.add_argument("--parent", type=Path)
+    review = subparsers.add_parser("review", help="Run the fixed 50-case reserve temporal review with Codex.")
+    review.add_argument("--output-dir", type=Path, default=Path("work/selections"))
+    review.add_argument("--batch-size", type=int, default=10)
+    review.add_argument("--workers", type=int, default=1)
+    review.add_argument("--retries", type=int, default=2)
+    review.add_argument("--timeout-seconds", type=float, default=600)
+
+    finalize = subparsers.add_parser("finalize", help="Replace prompt failures and seal the 1,200/600 populations.")
+    finalize.add_argument("--output-dir", type=Path, default=Path("work/selections"))
+
+    expand = subparsers.add_parser("expand", help="Materialize a larger nested prompt-clean population.")
+    expand.add_argument("--output-dir", type=Path, default=Path("work/selections"))
+    expand.add_argument("--parent", type=Path, required=True)
     expand.add_argument("--name", required=True)
     expand.add_argument("--quota-ic-l", type=int, required=True)
     expand.add_argument("--quota-ic-g", type=int, required=True)
     expand.add_argument("--quota-ic-e-elim", type=int, required=True)
     expand.add_argument("--quota-tbox", type=int, required=True)
-    expand.add_argument("--output", type=Path, required=True)
+    expand.add_argument("--destination", type=Path, required=True)
+
+    status = subparsers.add_parser("status", help="Verify reserve, review, and finalization artifact hashes.")
+    status.add_argument("--output-dir", type=Path, default=Path("work/selections"))
     return parser
 
 
 def _run_selection(argv: list[str]) -> int:
     args = _selection_parser().parse_args(argv)
-    if args.selection_command == "build":
-        summary = build_selection_artifacts(
+    repo_root = Path.cwd()
+    if args.selection_command == "reserve":
+        state = prepare_reserve(
             cases_path=args.cases,
+            world_state_path=args.world_state,
             dispositions_path=args.dispositions,
+            audit_summary_path=args.audit_summary,
+            exclusions_path=args.exclusions,
+            protocol_path=args.protocol,
+            policy_path=args.policy,
             output_dir=args.output_dir,
-            seed=args.seed,
-            support_capacity=args.support_capacity,
-            main_quotas={
-                "IC-L": args.main_quota_ic_l,
-                "IC-G": args.main_quota_ic_g,
-                "IC-E-elim": args.main_quota_ic_e_elim,
-                "TBOX": args.main_quota_tbox,
-            },
-            api_quotas={
-                "IC-L": args.api_quota_ic_l,
-                "IC-G": args.api_quota_ic_g,
-                "IC-E-elim": args.api_quota_ic_e_elim,
-                "TBOX": args.api_quota_tbox,
-            },
+            repo_root=repo_root,
         )
-        print(json.dumps(summary, indent=2, sort_keys=True))
+        print(json.dumps({"phase": "reserve", "counts": state["phases"]["reserve"]["counts"]}, indent=2))
         return 0
-    eligibility = [json.loads(line) for line in args.eligibility_order.read_text(encoding="utf-8").splitlines() if line]
-    support_bank = json.loads(args.support_bank.read_text(encoding="utf-8"))
-    parent = json.loads(args.parent.read_text(encoding="utf-8")) if args.parent else None
-    manifest = materialize_population(
+    if args.selection_command == "review":
+        require_frozen_methodology(repo_root)
+        state = review_reserve(
+            output_dir=args.output_dir,
+            repo_root=repo_root,
+            batch_size=args.batch_size,
+            workers=args.workers,
+            retries=args.retries,
+            timeout_seconds=args.timeout_seconds,
+        )
+        print(json.dumps({"phase": "review", "reviewer": state["phases"]["review"]["reviewer"]}, indent=2))
+        return 0
+    if args.selection_command == "finalize":
+        state = finalize_selection(output_dir=args.output_dir, repo_root=repo_root)
+        print(json.dumps({"phase": "finalize", "counts": state["phases"]["finalize"]["counts"]}, indent=2))
+        return 0
+    if args.selection_command == "status":
+        print(json.dumps(selection_status(output_dir=args.output_dir, repo_root=repo_root), indent=2, sort_keys=True))
+        return 0
+    manifest = expand_population(
+        output_dir=args.output_dir,
+        parent_path=args.parent,
         name=args.name,
-        quotas={
+        requested_quotas={
             "IC-L": args.quota_ic_l,
             "IC-G": args.quota_ic_g,
             "IC-E-elim": args.quota_ic_e_elim,
             "TBOX": args.quota_tbox,
         },
-        eligibility_rows=eligibility,
-        support_bank=support_bank,
-        parent_manifest=parent,
+        destination=args.destination,
+        repo_root=repo_root,
     )
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    print(json.dumps({"name": manifest["name"], "case_count": manifest["case_count"], "quotas": manifest["quotas"]}, indent=2))
     return 0
 
 
@@ -426,7 +449,7 @@ def _main(argv: list[str] | None = None) -> int:
 def main(argv: list[str] | None = None) -> int:
     try:
         return _main(argv)
-    except (MethodologyError, AuditWorkflowError) as exc:
+    except (MethodologyError, AuditWorkflowError, SelectionWorkflowError) as exc:
         raise SystemExit(str(exc)) from exc
 
 

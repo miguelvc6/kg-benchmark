@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kg-benchmark.local/schemas/selection-workflow.schema.json",
+  "title": "Reserve and Selection Workflow",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["manifest_type", "manifest_version", "settings", "inputs", "phases"],
+  "properties": {
+    "manifest_type": {"const": "selection_workflow"},
+    "manifest_version": {"const": 1},
+    "settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "seed",
+        "reserve_quotas",
+        "main_quotas",
+        "azure_quotas",
+        "tbox_targets",
+        "support_capacity",
+        "temporal_review_size",
+        "prompt_regimes",
+        "context_bundles",
+        "few_shot_counts",
+        "reviewer_model"
+      ],
+      "properties": {
+        "seed": {"const": 13},
+        "reserve_quotas": {"$ref": "#/$defs/quota"},
+        "main_quotas": {"$ref": "#/$defs/quota"},
+        "azure_quotas": {"$ref": "#/$defs/quota"},
+        "tbox_targets": {"$ref": "#/$defs/tbox"},
+        "support_capacity": {"type": "integer", "minimum": 4},
+        "temporal_review_size": {"const": 50},
+        "prompt_regimes": {"const": ["zero_shot", "static_few_shot"]},
+        "context_bundles": {"const": ["logic_only", "local_graph"]},
+        "few_shot_counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["a_box_repair", "t_box_repair", "track_diagnosis"],
+          "properties": {
+            "a_box_repair": {"type": "integer", "minimum": 1},
+            "t_box_repair": {"type": "integer", "minimum": 1},
+            "track_diagnosis": {"type": "integer", "minimum": 1}
+          }
+        },
+        "reviewer_model": {"type": "string", "minLength": 1}
+      }
+    },
+    "inputs": {"type": "object", "minProperties": 1, "additionalProperties": {"$ref": "#/$defs/artifact"}},
+    "phases": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reserve"],
+      "properties": {
+        "reserve": {"$ref": "#/$defs/phase"},
+        "review": {"$ref": "#/$defs/phase"},
+        "finalize": {"$ref": "#/$defs/phase"}
+      }
+    }
+  },
+  "$defs": {
+    "quota": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["IC-L", "IC-G", "IC-E-elim", "TBOX"],
+      "properties": {
+        "IC-L": {"type": "integer", "minimum": 0},
+        "IC-G": {"type": "integer", "minimum": 0},
+        "IC-E-elim": {"type": "integer", "minimum": 0},
+        "TBOX": {"type": "integer", "minimum": 0}
+      }
+    },
+    "tbox": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relaxation_expansions", "restriction_contractions", "schema_updates"],
+      "properties": {
+        "relaxation_expansions": {"type": "integer", "minimum": 0},
+        "restriction_contractions": {"type": "integer", "minimum": 0},
+        "schema_updates": {"type": "integer", "minimum": 0}
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "size_bytes"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "size_bytes": {"type": "integer", "minimum": 0},
+        "records": {"type": "integer", "minimum": 0}
+      }
+    },
+    "phase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "artifacts"],
+      "properties": {
+        "status": {"const": "complete"},
+        "artifacts": {"type": "object", "minProperties": 1, "additionalProperties": {"$ref": "#/$defs/artifact"}},
+        "counts": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+        "reviewer": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["interface", "model", "cli_version"],
+          "properties": {
+            "interface": {"const": "codex_cli"},
+            "model": {"type": "string", "minLength": 1},
+            "cli_version": {"type": "string", "minLength": 1}
+          }
+        }
+      }
+    }
+  }
+}

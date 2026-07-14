@@ -7,7 +7,7 @@
   "required": ["manifest_type", "manifest_version", "name", "quotas", "case_count", "selected_case_ids", "selected_group_keys", "support_groups_excluded", "parent"],
   "properties": {
     "manifest_type": {"const": "evaluation_population"},
-    "manifest_version": {"const": 1},
+    "manifest_version": {"enum": [1, 2]},
     "name": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"},
     "quotas": {
       "type": "object",
@@ -20,10 +20,64 @@
         "TBOX": {"type": "integer", "minimum": 0}
       }
     },
+    "requested_quotas": {"$ref": "#/$defs/quota"},
     "case_count": {"type": "integer", "minimum": 1},
     "selected_case_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
-    "selected_group_keys": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "selected_group_keys": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/group_key"}},
     "support_groups_excluded": {"type": "integer", "minimum": 0},
+    "tbox_composition": {"$ref": "#/$defs/tbox"},
+    "case_eligibility_sha256": {
+      "type": "object",
+      "propertyNames": {"minLength": 1},
+      "additionalProperties": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dataset",
+        "audit",
+        "audit_dispositions",
+        "exclusions",
+        "ranking",
+        "support_bank",
+        "eligibility_order",
+        "prompt_audit",
+        "per_case_eligibility"
+      ],
+      "properties": {
+        "dataset": {"$ref": "#/$defs/artifact"},
+        "audit": {"$ref": "#/$defs/artifact"},
+        "audit_dispositions": {"$ref": "#/$defs/artifact"},
+        "exclusions": {"$ref": "#/$defs/artifact"},
+        "ranking": {"$ref": "#/$defs/artifact"},
+        "support_bank": {"$ref": "#/$defs/artifact"},
+        "eligibility_order": {"$ref": "#/$defs/artifact"},
+        "prompt_audit": {"$ref": "#/$defs/artifact"},
+        "per_case_eligibility": {"$ref": "#/$defs/artifact"},
+        "parent_population": {"$ref": "#/$defs/artifact"}
+      }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "prompt_clean_only",
+        "include_disposition_only",
+        "independent_groups",
+        "prior_groups_excluded",
+        "support_groups_excluded",
+        "nested_subset_proven"
+      ],
+      "properties": {
+        "prompt_clean_only": {"const": true},
+        "include_disposition_only": {"const": true},
+        "independent_groups": {"const": true},
+        "prior_groups_excluded": {"const": true},
+        "support_groups_excluded": {"const": true},
+        "nested_subset_proven": {"const": true}
+      }
+    },
     "parent": {
       "oneOf": [
         {"type": "null"},
@@ -31,9 +85,64 @@
           "type": "object",
           "additionalProperties": false,
           "required": ["name", "nesting_proven"],
-          "properties": {"name": {"type": "string", "minLength": 1}, "nesting_proven": {"const": true}}
+          "properties": {
+            "name": {"type": "string", "minLength": 1},
+            "nesting_proven": {"const": true},
+            "relationship": {"enum": ["subset_of_parent", "nested_extension_of_parent"]}
+          }
         }
       ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"manifest_version": {"const": 2}}},
+      "then": {"required": ["requested_quotas", "tbox_composition", "case_eligibility_sha256", "provenance", "validation"]}
+    },
+    {
+      "if": {
+        "required": ["manifest_version", "parent"],
+        "properties": {"manifest_version": {"const": 2}, "parent": {"type": "object"}}
+      },
+      "then": {"properties": {"parent": {"required": ["relationship"]}}}
+    }
+  ],
+  "$defs": {
+    "quota": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["IC-L", "IC-G", "IC-E-elim", "TBOX"],
+      "properties": {
+        "IC-L": {"type": "integer", "minimum": 0},
+        "IC-G": {"type": "integer", "minimum": 0},
+        "IC-E-elim": {"type": "integer", "minimum": 0},
+        "TBOX": {"type": "integer", "minimum": 0}
+      }
+    },
+    "tbox": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relaxation_expansions", "restriction_contractions", "schema_updates"],
+      "properties": {
+        "relaxation_expansions": {"type": "integer", "minimum": 0},
+        "restriction_contractions": {"type": "integer", "minimum": 0},
+        "schema_updates": {"type": "integer", "minimum": 0}
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "size_bytes"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "size_bytes": {"type": "integer", "minimum": 0},
+        "records": {"type": "integer", "minimum": 0}
+      }
+    },
+    "group_key": {
+      "type": "string",
+      "pattern": "^(ABOX\\|Q[1-9][0-9]*\\|P[1-9][0-9]*|TBOX\\|P[1-9][0-9]*\\|[^|]+)$"
     }
   }
 }

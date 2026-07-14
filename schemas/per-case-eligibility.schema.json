@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kg-benchmark.local/schemas/per-case-eligibility.schema.json",
+  "title": "Final Per-Case Selection Eligibility",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "case_id",
+    "disposition",
+    "group_key",
+    "stratum",
+    "independent_group_representative",
+    "in_reserve",
+    "prompt_clean",
+    "selection_eligible",
+    "reasons",
+    "eligibility_sha256"
+  ],
+  "properties": {
+    "case_id": {"type": "string", "minLength": 1},
+    "disposition": {"enum": ["include", "diagnostic", "exclude", "exclude_pending_rerender", "unsupported", "disagreement", "malformed"]},
+    "group_key": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "string", "pattern": "^(ABOX\\|Q[1-9][0-9]*\\|P[1-9][0-9]*|TBOX\\|P[1-9][0-9]*\\|[^|]+)$"}
+      ]
+    },
+    "stratum": {"enum": ["IC-L", "IC-G", "IC-E-elim", "TBOX", null]},
+    "independent_group_representative": {"type": "boolean"},
+    "in_reserve": {"type": "boolean"},
+    "prompt_clean": {"type": ["boolean", "null"]},
+    "selection_eligible": {"type": "boolean"},
+    "reasons": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "eligibility_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

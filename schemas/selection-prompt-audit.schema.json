@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kg-benchmark.local/schemas/selection-prompt-audit.schema.json",
+  "title": "Reserve Prompt Quality Audit",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "report_type",
+    "report_version",
+    "seed",
+    "reserve_cases",
+    "rendered_prompts",
+    "deterministically_scanned_prompts",
+    "temporal_review_cases",
+    "failed_reserve_cases",
+    "prompt_clean_reserve_cases",
+    "replacement_count",
+    "failed_case_ids",
+    "failure_reasons",
+    "validation",
+    "reviewer"
+  ],
+  "properties": {
+    "report_type": {"const": "selection_prompt_audit"},
+    "report_version": {"const": 1},
+    "seed": {"const": 13},
+    "reserve_cases": {"type": "integer", "minimum": 1},
+    "rendered_prompts": {"type": "integer", "minimum": 1},
+    "deterministically_scanned_prompts": {"type": "integer", "minimum": 1},
+    "temporal_review_cases": {"const": 50},
+    "failed_reserve_cases": {"type": "integer", "minimum": 0},
+    "prompt_clean_reserve_cases": {"type": "integer", "minimum": 1},
+    "replacement_count": {"type": "integer", "minimum": 0},
+    "failed_case_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "failure_reasons": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "minItems": 1,
+        "uniqueItems": true,
+        "items": {"type": "string", "minLength": 1}
+      }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "all_reserve_prompts_attempted",
+        "all_rendered_prompts_scanned",
+        "fixed_temporal_review_complete",
+        "all_main_cases_prompt_clean",
+        "all_azure_cases_prompt_clean"
+      ],
+      "properties": {
+        "all_reserve_prompts_attempted": {"const": true},
+        "all_rendered_prompts_scanned": {"const": true},
+        "fixed_temporal_review_complete": {"const": true},
+        "all_main_cases_prompt_clean": {"const": true},
+        "all_azure_cases_prompt_clean": {"const": true}
+      }
+    },
+    "reviewer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["interface", "model", "cli_version"],
+      "properties": {
+        "interface": {"const": "codex_cli"},
+        "model": {"type": "string", "minLength": 1},
+        "cli_version": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

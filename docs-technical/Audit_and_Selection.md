@@ -48,5 +48,58 @@ nondecreasing quotas must prove that the parent population is a subset.
 
 The frozen policy first constructs a reserve of 276 IC-L, 450 IC-G, 354 IC-E-elim, and up to 360 T-box groups. Every
 reserve prompt must pass deterministic scanning and a fixed 50-case temporal review. Failed prompts are replaced by the
-next case in the frozen stratum order before finalization. The implementation of this reserve/finalize interface is
-tracked in the repository-root checklist and must be complete before the final methodology lock.
+next clean case in the frozen stratum order before finalization.
+
+## Reserve and finalization workflow
+
+The public sequence is:
+
+```bash
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select reserve \
+  --exclusions <frozen-event-group-exclusions.json>
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select review
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select finalize
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select status
+```
+
+The exclusions file must validate against `group-exclusions.schema.json`. It may be empty only when no earlier study,
+development run, or publication used a group; the selector hashes it even when it contains zero keys. A-box keys are
+`ABOX|<QID>|<PID>` and T-box keys are `TBOX|<PID>|<revision>`.
+
+`select reserve` validates the whole-data audit binding and complete final dispositions, applies prior-group
+exclusions, chooses one representative per event group, and creates the independent support bank. It then materializes
+the reserve and renders eight prompt cells per case: repair and diagnosis under both prompt regimes and both context
+bundles. Every successfully rendered row is scanned deterministically; a render failure makes that case prompt-failed.
+The temporal scanner selects 50 distinct cases by seed-13 ranking and writes blinded review packets.
+
+`select review` is the only selection phase that calls Codex. It requires the final methodology lock and records the
+reviewer model, Codex CLI version, run report, normalized reviews, and hashes. Any temporal verdict other than `pass` is
+conservatively treated as a prompt failure. `select finalize` combines render, deterministic-scan, and review failures,
+then advances through the audited reserve until every requested slot is filled by a clean `include` case. It fails
+rather than reducing the declared 1,200/600 totals.
+
+T-box ranks are frozen independently within relaxation-expansion, restriction-contraction, and schema-update queues.
+After prompt failures are removed, their deterministic weighted merge restores the declared 130/50/120 main prefix
+whenever each category has sufficient clean capacity. If the total T-box prefix underfills, the deficit transfers to
+the three A-box strata by the configured weights and largest-remainder rounding. The same total-preserving rule applies
+to Azure and later extensions.
+
+The workflow lives under `work/selections/`. Its final population manifests bind the dataset, audit summary and
+dispositions, prior-group exclusions, ranking, support bank, eligibility ordering, prompt audit, and complete per-case
+eligibility artifact. They additionally embed the eligibility-record SHA-256 for every selected case. The Azure 600 is
+proved to be a subset of the main 1,200. `select status` recomputes per-case eligibility digests, validates population
+schemas and provenance, and rechecks prompt-clean membership and Azure nesting in addition to verifying file hashes.
+
+Larger experiments use only the already prompt-audited clean reserve:
+
+```bash
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select expand \
+  --parent work/selections/main-1200.json \
+  --name main-expanded \
+  --quota-ic-l <N> --quota-ic-g <N> --quota-ic-e-elim <N> --quota-tbox <N> \
+  --destination work/selections/main-expanded.json
+```
+
+Every requested quota must be nondecreasing from the parent after redistribution, the parent cases must remain nested,
+and the destination must not already exist. Extending beyond the audited reserve requires a new, larger predeclared
+reserve and repetition of the prompt-quality gate; unreviewed cases are never appended directly.

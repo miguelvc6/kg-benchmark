@@ -1,0 +1,6 @@
+{
+  "description": "Synthetic example with no previously used event groups.",
+  "group_keys": [],
+  "manifest_type": "event_group_exclusions",
+  "manifest_version": 1
+}

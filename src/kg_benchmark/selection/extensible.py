@@ -9,6 +9,13 @@ from typing import Any, Iterable
 STRATA = ("IC-L", "IC-G", "IC-E-elim", "TBOX")
 DEFAULT_MAIN_QUOTAS = {"IC-L": 230, "IC-G": 375, "IC-E-elim": 295, "TBOX": 300}
 DEFAULT_API_QUOTAS = {"IC-L": 115, "IC-G": 188, "IC-E-elim": 147, "TBOX": 150}
+DEFAULT_RESERVE_QUOTAS = {"IC-L": 276, "IC-G": 450, "IC-E-elim": 354, "TBOX": 360}
+TBOX_CATEGORIES = ("relaxation_expansions", "restriction_contractions", "schema_updates")
+DEFAULT_TBOX_TARGET = {
+    "relaxation_expansions": 130,
+    "restriction_contractions": 50,
+    "schema_updates": 120,
+}
 A_BOX_SUPPORT_ROLES = (
     "ic_l_rule",
     "ic_l_normalization",
@@ -85,6 +92,53 @@ def group_key_for_record(record: dict[str, Any]) -> str:
     return f"ABOX|{qid}|{pid}"
 
 
+def tbox_category_for_record(record: dict[str, Any]) -> str | None:
+    if stratum_for_record(record) != "TBOX":
+        return None
+    _, subtype = _classification(record)
+    if subtype in {"RELAXATION_SET_EXPANSION", "RELAXATION_RANGE_WIDENED"}:
+        return "relaxation_expansions"
+    if subtype in {"RESTRICTION_SET_CONTRACTION", "RESTRICTION_RANGE_NARROWED"}:
+        return "restriction_contractions"
+    return "schema_updates"
+
+
+def _weighted_tbox_order(rows: list[dict[str, Any]], targets: dict[str, int]) -> list[dict[str, Any]]:
+    if set(targets) != set(TBOX_CATEGORIES) or any(not isinstance(value, int) or value < 0 for value in targets.values()):
+        raise ValueError(f"T-box targets must provide non-negative integers for exactly {TBOX_CATEGORIES}.")
+    target_total = sum(targets.values())
+    if target_total <= 0:
+        raise ValueError("T-box targets must have a positive total.")
+    queues = {
+        category: sorted(
+            (row for row in rows if row.get("tbox_category") == category),
+            key=lambda row: (row["rank"], row["case_id"]),
+        )
+        for category in TBOX_CATEGORIES
+    }
+    selected_counts = {category: 0 for category in TBOX_CATEGORIES}
+    ordered: list[dict[str, Any]] = []
+    while any(queues.values()):
+        position = len(ordered) + 1
+        if position <= target_total:
+            available = [category for category in TBOX_CATEGORIES if queues[category]]
+            category = max(
+                available,
+                key=lambda name: (
+                    position * targets[name] / target_total - selected_counts[name],
+                    -TBOX_CATEGORIES.index(name),
+                ),
+            )
+        else:
+            category = min(
+                (name for name in TBOX_CATEGORIES if queues[name]),
+                key=lambda name: (queues[name][0]["rank"], TBOX_CATEGORIES.index(name)),
+            )
+        ordered.append(queues[category].pop(0))
+        selected_counts[category] += 1
+    return ordered
+
+
 def _dispositions(dispositions_path: Path) -> dict[str, str]:
     dispositions: dict[str, str] = {}
     seen: set[str] = set()
@@ -107,9 +161,12 @@ def build_eligibility_order(
     cases_path: Path,
     dispositions_path: Path,
     seed: int,
+    excluded_group_keys: set[str] | None = None,
+    tbox_targets: dict[str, int] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]]]:
     dispositions = _dispositions(dispositions_path)
     included = {case_id for case_id, disposition in dispositions.items() if disposition == "include"}
+    excluded_groups = set(excluded_group_keys or ())
     by_group: dict[str, list[tuple[str, dict[str, Any]]]] = defaultdict(list)
     records_by_id: dict[str, dict[str, Any]] = {}
     all_case_ids: set[str] = set()
@@ -126,6 +183,8 @@ def build_eligibility_order(
         if stratum is None:
             continue
         group_key = group_key_for_record(record)
+        if group_key in excluded_groups:
+            continue
         records_by_id[case_id] = record
         by_group[group_key].append((case_id, record))
 
@@ -143,19 +202,65 @@ def build_eligibility_order(
         case_id, record = candidates[0]
         stratum = stratum_for_record(record)
         assert stratum is not None
-        rows.append(
-            {
-                "case_id": case_id,
-                "group_key": group_key,
-                "stratum": stratum,
-                "rank": _stable_rank(seed, "group", stratum, group_key),
-            }
-        )
-    rows.sort(key=lambda row: (STRATA.index(row["stratum"]), row["rank"], row["case_id"]))
+        row = {
+            "case_id": case_id,
+            "group_key": group_key,
+            "stratum": stratum,
+            "rank": _stable_rank(seed, "group", stratum, group_key),
+        }
+        category = tbox_category_for_record(record)
+        if category is not None:
+            row["tbox_category"] = category
+        rows.append(row)
+    abox_rows = sorted(
+        (row for row in rows if row["stratum"] != "TBOX"),
+        key=lambda row: (STRATA.index(row["stratum"]), row["rank"], row["case_id"]),
+    )
+    tbox_rows = _weighted_tbox_order(
+        [row for row in rows if row["stratum"] == "TBOX"],
+        dict(tbox_targets or DEFAULT_TBOX_TARGET),
+    )
+    rows = [*abox_rows, *tbox_rows]
     for stratum in STRATA:
         for index, row in enumerate((row for row in rows if row["stratum"] == stratum), 1):
             row["stratum_position"] = index
     return rows, records_by_id
+
+
+def reserve_quotas(
+    *,
+    requested: dict[str, int],
+    eligibility_rows: list[dict[str, Any]],
+    support_bank: dict[str, Any],
+) -> dict[str, int]:
+    if set(requested) != set(STRATA) or any(not isinstance(value, int) or value < 0 for value in requested.values()):
+        raise ValueError(f"Reserve quotas must provide non-negative integers for exactly {STRATA}.")
+    blocked_groups = _support_group_keys(support_bank)
+    available = {
+        stratum: sum(
+            row["stratum"] == stratum and row["group_key"] not in blocked_groups for row in eligibility_rows
+        )
+        for stratum in STRATA
+    }
+    quotas = dict(requested)
+    quotas["TBOX"] = min(quotas["TBOX"], available["TBOX"])
+    for stratum in STRATA[:-1]:
+        if quotas[stratum] > available[stratum]:
+            raise ValueError(
+                f"Reserve requests {quotas[stratum]} {stratum} groups; only {available[stratum]} available."
+            )
+    return quotas
+
+
+def tbox_composition(rows: list[dict[str, Any]], selected_case_ids: Iterable[str]) -> dict[str, int]:
+    selected = set(selected_case_ids)
+    counts = {category: 0 for category in TBOX_CATEGORIES}
+    for row in rows:
+        if row.get("case_id") in selected and row.get("stratum") == "TBOX":
+            category = row.get("tbox_category")
+            if category in counts:
+                counts[str(category)] += 1
+    return counts
 
 
 def _support_role(record: dict[str, Any], stratum: str) -> str | None:

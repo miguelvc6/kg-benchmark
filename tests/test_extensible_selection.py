@@ -6,6 +6,8 @@ from pathlib import Path
 from kg_benchmark.selection.extensible import (
     DEFAULT_API_QUOTAS,
     DEFAULT_MAIN_QUOTAS,
+    DEFAULT_TBOX_TARGET,
+    _weighted_tbox_order,
     build_selection_artifacts,
     materialize_population,
 )
@@ -40,6 +42,25 @@ def _tbox(case_id: str, index: int, role_index: int) -> dict:
 
 
 class ExtensibleSelectionTests(unittest.TestCase):
+    def test_weighted_tbox_prefix_reaches_declared_main_target(self) -> None:
+        rows = [
+            {
+                "case_id": f"{category}-{index}",
+                "group_key": f"TBOX|P{category}|{index}",
+                "stratum": "TBOX",
+                "tbox_category": category,
+                "rank": f"{index:064x}",
+            }
+            for category, target in DEFAULT_TBOX_TARGET.items()
+            for index in range(target + 20)
+        ]
+        prefix = _weighted_tbox_order(rows, DEFAULT_TBOX_TARGET)[:300]
+        counts = {
+            category: sum(row["tbox_category"] == category for row in prefix)
+            for category in DEFAULT_TBOX_TARGET
+        }
+        self.assertEqual(counts, DEFAULT_TBOX_TARGET)
+
     def _write_population(self, root: Path, *, tbox_count: int = 330) -> tuple[Path, Path]:
         records = []
         index = 1

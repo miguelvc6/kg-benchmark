@@ -6,3 +6,4 @@ not research data and not large enough to satisfy paper selection quotas.
 - `cases.jsonl`: one A-box case and one T-box case.
 - `world-state.jsonl`: canonical keyed context rows.
 - `dispositions.jsonl`: complete final-disposition coverage for the example cases.
+- `event-group-exclusions.json`: valid empty prior-use manifest for synthetic inspection only.

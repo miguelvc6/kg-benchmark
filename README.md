@@ -37,9 +37,11 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit prepare
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit deterministic
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit review
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit finalize
-UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select build \
-  --cases work/cases.jsonl \
-  --dispositions work/audit/dispositions.jsonl
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select reserve \
+  --exclusions <frozen-event-group-exclusions.json>
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select review
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select finalize
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select status
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark promote \
   --source-provenance work/source-provenance.json
 
@@ -54,9 +56,10 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark baseline ...
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark viewer ...
 ```
 
-The four audit phases are hash-verified and resumable. `kg-benchmark audit run` executes or resumes the same sequence,
-including the protocol-bound Codex review. `kg-benchmark audit status` verifies stored phase artifacts without calling
-a model.
+The audit and selection phases are hash-verified and resumable. `kg-benchmark audit run` executes or resumes the audit,
+including its protocol-bound Codex review. Selection separately constructs and scans the full reserve, runs the fixed
+50-case temporal review, replaces failures, and seals the main and nested Azure populations. Both `audit status` and
+`select status` verify stored artifacts and their semantic bindings without calling a model.
 
 Construction is isolated under ignored `work/`. Promotion is atomic and refuses to overwrite the final dataset. Raw
 generations are content-addressed under ignored `runs/`; metric changes do not call providers again.

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kg-benchmark.local/schemas/group-exclusions.schema.json",
+  "title": "Previously Used Event-Group Exclusions",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["manifest_type", "manifest_version", "group_keys"],
+  "properties": {
+    "manifest_type": {"const": "event_group_exclusions"},
+    "manifest_version": {"const": 1},
+    "description": {"type": "string"},
+    "group_keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/group_key"}
+    }
+  },
+  "$defs": {
+    "group_key": {
+      "type": "string",
+      "pattern": "^(ABOX\\|Q[1-9][0-9]*\\|P[1-9][0-9]*|TBOX\\|P[1-9][0-9]*\\|[^|]+)$"
+    }
+  }
+}
