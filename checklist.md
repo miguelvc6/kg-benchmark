@@ -83,7 +83,7 @@ immediately invalidate the lock.
 - [x] Resolve and record the full `qwen3:30b` Ollama digest.
 - [x] Resolve and record the full `llama3.3:70b` Ollama digest.
 - [x] Resolve and record the immutable Azure `gpt-5.6-sol-2026-07-09` snapshot revision.
-- [ ] Change all methodology component statuses to `frozen`, commit a clean source revision, create
+- [x] Change all methodology component statuses to `frozen`, commit a clean source revision, create
   `paper/methodology.lock.json`, commit the lock alone, verify `freeze_ready: true`, and tag the freeze.
 
 ## Operational paper execution

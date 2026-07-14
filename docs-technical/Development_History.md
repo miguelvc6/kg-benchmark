@@ -160,6 +160,12 @@ publishes `source/world-state.jsonl`. Finally, frozen prompt files and schemas w
 they are now installed as package data and resolved through one repository-or-installation resource lookup. Regression
 tests preserve all three fixes.
 
+The final paper methodology was frozen after the complete offline acceptance suite passed with 363 tests and 124
+subtests. Source commit `adbfa0fc037bb536554b291f886f0ccd923dec3e` resolves all four model revisions and binds the
+sequential Azure policy. Lock-only commit `e3d9059` adds `paper/methodology.lock.json`, whose freeze-scope digest is
+`aa8d9c8d3e0ac2219921cd91450e984eb626db698d1c7f2861790742e3216323`. The annotated Git tag
+`paper-methodology-v1` identifies the completed freeze state from which the single final dataset must be acquired.
+
 The first post-freeze acquisition, `post_freeze_20260714T062500Z_wd20260706`, was invalidated after discovering that
 exhausted history, pageview, and dump errors could be interpreted as missing or partial data and that the methodology
 freeze omitted transitive modules. Commit `cba9349` made acquisition fail closed, and `bf9129b` created a broader freeze.
