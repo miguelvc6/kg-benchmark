@@ -175,6 +175,16 @@ Wikidata dump and began a fresh report crawl. It was stopped during Stage 1 when
 Stage 2 JSONL could be compiled and treated as complete on restart. Resume telemetry also remained outside the isolated
 data directory. This attempt is invalid and contributes no paper cases.
 
+The next clean acquisition under `/run/kg-benchmark-paper-v1` stopped during Stage 1 at property `P11029` after the
+Wikidata Action API returned HTTP 429. Candidate mining had short fixed retries, did not honor `Retry-After`, did not
+pace the metadata request hidden in each `mwclient` page construction, and retained all Stage 1 progress only in memory.
+Source commit `20664a3dc12abf7aa91f79b207271477da3182eb` adds process-wide request pacing, rate-aware retry with
+exponential fallback, and an atomic append-only Stage 1 checkpoint after every completed property. Lock-only commit
+`c06a2ca9a9eb34ffc8044c79871e3ef90d4d0566` binds the replacement freeze to scope digest
+`3b4fca75d3eac67cb5567db83f9def185e1c5152d5c0ab58840c3c3a0a50c04b`; annotated tag `paper-methodology-v2`
+identifies the restartable paper acquisition state. The earlier `paper-methodology-v1` tag remains unchanged as the
+historical pre-repair freeze.
+
 ## Repository simplification
 
 By July 2026 the working tree mixed 96 GB of baseline data, 41 GB of reports, 2.6 GB of logs, hundreds of prompt and
