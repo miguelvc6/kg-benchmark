@@ -1,8 +1,12 @@
 import json
+import os
+import random
 import re
 import sys
+import tempfile
 import time
 from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 
 import mwclient
@@ -12,6 +16,78 @@ from . import config
 
 # Lazy MediaWiki site handle (initialized on first use)
 SITE = None
+_LAST_REPORT_REQUEST_MONOTONIC = None
+_CANDIDATE_CHECKPOINT_VERSION = 1
+
+
+def _write_json_atomic(path, payload, *, indent=2):
+    """Write JSON without exposing a partially written artifact."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            json.dump(payload, fh, indent=indent, ensure_ascii=False)
+            fh.write("\n")
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(temporary_name, path)
+    except Exception:
+        Path(temporary_name).unlink(missing_ok=True)
+        raise
+
+
+def _candidate_checkpoint_paths(path):
+    path = Path(path)
+    return (
+        path.with_name(f"{path.stem}.checkpoint.json"),
+        path.with_name(f"{path.stem}.partial.jsonl"),
+    )
+
+
+def _wait_for_report_request_slot():
+    """Enforce a process-wide minimum interval between report API requests."""
+    global _LAST_REPORT_REQUEST_MONOTONIC
+    interval = max(0.0, float(config.REPORT_REQUEST_INTERVAL_SECONDS))
+    now = time.monotonic()
+    if _LAST_REPORT_REQUEST_MONOTONIC is not None:
+        remaining = interval - (now - _LAST_REPORT_REQUEST_MONOTONIC)
+        if remaining > 0:
+            time.sleep(remaining)
+            now = time.monotonic()
+    _LAST_REPORT_REQUEST_MONOTONIC = now
+
+
+def _retry_after_seconds(exc):
+    """Return the delay requested by an HTTP Retry-After header, if present."""
+    response = getattr(exc, "response", None)
+    headers = getattr(response, "headers", None)
+    if not headers:
+        return None
+    value = headers.get("Retry-After") or headers.get("retry-after")
+    if value is None:
+        return None
+    try:
+        return max(0.0, float(value))
+    except (TypeError, ValueError):
+        try:
+            retry_at = parsedate_to_datetime(str(value))
+        except (TypeError, ValueError, OverflowError):
+            return None
+        if retry_at.tzinfo is None:
+            retry_at = retry_at.replace(tzinfo=timezone.utc)
+        return max(0.0, (retry_at - datetime.now(timezone.utc)).total_seconds())
+
+
+def _report_retry_delay(exc, attempt):
+    requested = _retry_after_seconds(exc)
+    if requested is None:
+        requested = min(
+            float(config.REPORT_RETRY_BASE_SECONDS) * (2**attempt),
+            float(config.REPORT_RETRY_MAX_SECONDS),
+        )
+    jitter_limit = max(0.0, float(config.REPORT_RETRY_JITTER_SECONDS))
+    return requested + random.uniform(0.0, jitter_limit)
 
 
 def is_valid_violation_section(section):
@@ -42,7 +118,25 @@ def get_wikidata_site():
         )
     global SITE
     if SITE is None:
-        SITE = mwclient.Site("www.wikidata.org", clients_useragent=config.HEADERS["User-Agent"])
+        attempts = max(1, int(config.REPORT_FETCH_ATTEMPTS))
+        last_error = None
+        for attempt in range(attempts):
+            try:
+                _wait_for_report_request_slot()
+                SITE = mwclient.Site("www.wikidata.org", clients_useragent=config.HEADERS["User-Agent"])
+                break
+            except Exception as exc:
+                last_error = exc
+                if attempt + 1 >= attempts:
+                    break
+                delay = _report_retry_delay(exc, attempt)
+                print(
+                    f"    [!] Wikidata client initialization attempt {attempt + 1}/{attempts} failed: {exc}. "
+                    f"Retrying in {delay:.1f}s."
+                )
+                time.sleep(delay)
+        if SITE is None:
+            raise RuntimeError(f"Failed to initialize the Wikidata client: {last_error}")
     return SITE
 
 
@@ -57,18 +151,30 @@ def fetch_all_active_properties():
         site = get_wikidata_site()
     except RuntimeError as exc:
         raise RuntimeError(f"Cannot auto-discover properties: {exc}") from exc
-    summary_page = site.pages["Wikidata:Database reports/Constraint violations/Summary"]
-    if not summary_page.exists:
-        raise RuntimeError("Constraint-violation summary page was not found.")
+    summary_page = None
     text = None
     last_error = None
-    for attempt in range(4):
+    attempts = max(1, int(config.REPORT_FETCH_ATTEMPTS))
+    for attempt in range(attempts):
         try:
+            if summary_page is None:
+                _wait_for_report_request_slot()
+                summary_page = site.pages["Wikidata:Database reports/Constraint violations/Summary"]
+                if not summary_page.exists:
+                    raise RuntimeError("Constraint-violation summary page was not found.")
+            _wait_for_report_request_slot()
             text = summary_page.text()
             break
         except Exception as exc:
             last_error = exc
-            time.sleep(0.5 * (2**attempt))
+            if attempt + 1 >= attempts:
+                break
+            delay = _report_retry_delay(exc, attempt)
+            print(
+                f"    [!] Summary fetch attempt {attempt + 1}/{attempts} failed: {exc}. "
+                f"Retrying in {delay:.1f}s."
+            )
+            time.sleep(delay)
     if text is None:
         raise RuntimeError(f"Failed to read constraint-violation summary page: {last_error}")
     found_props = sorted(set(re.findall(r"P\d+", text)))
@@ -120,17 +226,29 @@ def mine_repairs(property_id, max_items=100):
     """Inspect report page history and return candidates with violation type context."""
     site = get_wikidata_site()
     print(f"[*] Mining history for {property_id}...")
-    page = site.pages[get_report_page_title(property_id)]
+    page = None
     revisions = None
     last_error = None
-    for attempt in range(4):
+    attempts = max(1, int(config.REPORT_FETCH_ATTEMPTS))
+    for attempt in range(attempts):
         try:
+            if page is None:
+                _wait_for_report_request_slot()
+                page = site.pages[get_report_page_title(property_id)]
+            _wait_for_report_request_slot()
             revisions = list(page.revisions(max_items=max_items, prop="content|timestamp|ids"))
             break
         except Exception as exc:
             last_error = exc
-            print(f"    [!] Report fetch attempt {attempt + 1}/4 failed for {property_id}: {exc}")
-            time.sleep(0.5 * (2**attempt))
+            if attempt + 1 >= attempts:
+                print(f"    [!] Report fetch attempt {attempt + 1}/{attempts} failed for {property_id}: {exc}")
+                break
+            delay = _report_retry_delay(exc, attempt)
+            print(
+                f"    [!] Report fetch attempt {attempt + 1}/{attempts} failed for {property_id}: {exc}. "
+                f"Retrying in {delay:.1f}s."
+            )
+            time.sleep(delay)
     if revisions is None:
         raise RuntimeError(f"Failed to fetch report page for {property_id}: {last_error}")
 
@@ -175,11 +293,104 @@ def mine_repairs(property_id, max_items=100):
     return candidates
 
 
+def _new_candidate_checkpoint(target_properties, history_limit):
+    return {
+        "manifest_type": "repair_candidate_mining_checkpoint",
+        "manifest_version": _CANDIDATE_CHECKPOINT_VERSION,
+        "target_properties": list(target_properties),
+        "history_limit": int(history_limit),
+        "next_property_index": 0,
+        "candidate_count": 0,
+        "partial_bytes": 0,
+    }
+
+
+def _load_candidate_checkpoint(checkpoint_path, partial_path, history_limit):
+    try:
+        checkpoint = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"Stage 1 checkpoint is unreadable: {checkpoint_path}: {exc}") from exc
+    if (
+        not isinstance(checkpoint, dict)
+        or checkpoint.get("manifest_type") != "repair_candidate_mining_checkpoint"
+        or checkpoint.get("manifest_version") != _CANDIDATE_CHECKPOINT_VERSION
+    ):
+        raise RuntimeError(f"Stage 1 checkpoint has an unsupported format: {checkpoint_path}")
+    if checkpoint.get("history_limit") != int(history_limit):
+        raise RuntimeError(
+            f"Stage 1 checkpoint history limit {checkpoint.get('history_limit')!r} does not match "
+            f"the requested limit {int(history_limit)}."
+        )
+    properties = checkpoint.get("target_properties")
+    next_index = checkpoint.get("next_property_index")
+    candidate_count = checkpoint.get("candidate_count")
+    partial_bytes = checkpoint.get("partial_bytes")
+    if (
+        not isinstance(properties, list)
+        or not properties
+        or not all(isinstance(prop, str) and re.fullmatch(r"P\d+", prop) for prop in properties)
+        or not isinstance(next_index, int)
+        or not 0 <= next_index <= len(properties)
+        or not isinstance(candidate_count, int)
+        or candidate_count < 0
+        or not isinstance(partial_bytes, int)
+        or partial_bytes < 0
+    ):
+        raise RuntimeError(f"Stage 1 checkpoint is malformed: {checkpoint_path}")
+    if not partial_path.is_file():
+        raise RuntimeError(f"Stage 1 checkpoint is missing its partial candidate file: {partial_path}")
+    actual_size = partial_path.stat().st_size
+    if actual_size < partial_bytes:
+        raise RuntimeError(
+            f"Stage 1 partial candidate file is shorter than its checkpoint ({actual_size} < {partial_bytes} bytes)."
+        )
+    if actual_size != partial_bytes:
+        with partial_path.open("r+b") as fh:
+            fh.truncate(partial_bytes)
+        print(f"[*] Discarded an uncheckpointed Stage 1 tail from {partial_path}.")
+
+    candidates = []
+    line_number = 0
+    try:
+        with partial_path.open("r", encoding="utf-8") as fh:
+            for line_number, line in enumerate(fh, start=1):
+                if line.strip():
+                    candidate = json.loads(line)
+                    if not isinstance(candidate, dict):
+                        raise ValueError("candidate record is not an object")
+                    candidates.append(candidate)
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
+        raise RuntimeError(
+            f"Stage 1 partial candidate file is invalid at or before line {line_number}: {partial_path}: {exc}"
+        ) from exc
+    if len(candidates) != candidate_count:
+        raise RuntimeError(
+            f"Stage 1 partial candidate count does not match its checkpoint "
+            f"({len(candidates)} != {candidate_count})."
+        )
+    return checkpoint, candidates
+
+
+def _append_candidate_checkpoint(partial_path, checkpoint_path, checkpoint, candidates):
+    with partial_path.open("ab") as fh:
+        for candidate in candidates:
+            line = json.dumps(candidate, ensure_ascii=False, separators=(",", ":")) + "\n"
+            fh.write(line.encode("utf-8"))
+        fh.flush()
+        os.fsync(fh.fileno())
+        partial_bytes = fh.tell()
+    checkpoint["next_property_index"] += 1
+    checkpoint["candidate_count"] += len(candidates)
+    checkpoint["partial_bytes"] = partial_bytes
+    _write_json_atomic(checkpoint_path, checkpoint)
+
+
 def ensure_repair_candidates_file(filename, history_limit=config.REPORT_HISTORY_DEPTH, *, force_refresh=False):
     """Load cached repair candidates or rebuild the file."""
 
     # Load from disk if available
     path = Path(filename)
+    checkpoint_path, partial_path = _candidate_checkpoint_paths(path)
     if path.exists() and not force_refresh:
         with open(path, "r", encoding="utf-8") as fh:
             cached = json.load(fh)
@@ -188,25 +399,43 @@ def ensure_repair_candidates_file(filename, history_limit=config.REPORT_HISTORY_
             return cached
         print(f"[!] {filename} is empty or malformed. Rebuilding...")
 
-    if not config.TARGET_PROPERTIES:
-        print("[*] No TARGET_PROPERTIES defined. Auto-discovering from summary page...")
-        discovered = fetch_all_active_properties()
-        if discovered:
-            config.TARGET_PROPERTIES[:] = discovered
-    if not config.TARGET_PROPERTIES:
-        print("[!] Failed to identify any properties to mine.")
-        return []
+    checkpoint = None
+    fresh_candidates = []
+    if checkpoint_path.exists():
+        checkpoint, fresh_candidates = _load_candidate_checkpoint(checkpoint_path, partial_path, history_limit)
+        target_properties = checkpoint["target_properties"]
+        print(
+            f"[*] Resuming Stage 1 after {checkpoint['next_property_index']}/"
+            f"{len(target_properties)} properties with {len(fresh_candidates)} checkpointed candidates."
+        )
+    else:
+        if not config.TARGET_PROPERTIES:
+            print("[*] No TARGET_PROPERTIES defined. Auto-discovering from summary page...")
+            discovered = fetch_all_active_properties()
+            if discovered:
+                config.TARGET_PROPERTIES[:] = discovered
+        if not config.TARGET_PROPERTIES:
+            print("[!] Failed to identify any properties to mine.")
+            return []
+        target_properties = list(config.TARGET_PROPERTIES)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with partial_path.open("wb") as fh:
+            fh.flush()
+            os.fsync(fh.fileno())
+        checkpoint = _new_candidate_checkpoint(target_properties, history_limit)
+        _write_json_atomic(checkpoint_path, checkpoint)
 
     # Rebuild candidate list
     print(f"[!] {'Refreshing' if force_refresh else 'Missing'} {filename}. Mining fresh candidate list...")
-    fresh_candidates = []
-    for prop in config.TARGET_PROPERTIES:
-        fresh_candidates.extend(mine_repairs(prop, max_items=history_limit))
+    for prop in target_properties[checkpoint["next_property_index"] :]:
+        property_candidates = mine_repairs(prop, max_items=history_limit)
+        _append_candidate_checkpoint(partial_path, checkpoint_path, checkpoint, property_candidates)
+        fresh_candidates.extend(property_candidates)
 
     # Save to disk
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", encoding="utf-8") as fh:
-        json.dump(fresh_candidates, fh, indent=2)
+    _write_json_atomic(path, fresh_candidates)
+    checkpoint_path.unlink(missing_ok=True)
+    partial_path.unlink(missing_ok=True)
     print(f"[+] Done. Found {len(fresh_candidates)} candidates. Saved to {filename}.")
     return fresh_candidates
 

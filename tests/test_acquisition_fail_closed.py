@@ -4,9 +4,12 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
+import requests
+
 import fetcher
+from lib import config
 from lib.caching import SnapshotFetcher, SnapshotFetchError
-from lib.mining import mine_repairs
+from lib.mining import ensure_repair_candidates_file, mine_repairs
 from lib.popularity import PageviewClient
 from lib.utils import TransientAPIError, get_json
 from lib.world_state import WorldStateBuilder
@@ -79,10 +82,96 @@ class AcquisitionFailClosedTests(unittest.TestCase):
         site.pages.__getitem__.return_value = page
         with (
             patch("lib.mining.get_wikidata_site", return_value=site),
-            patch("lib.mining.time.sleep"),
+            patch("lib.mining._wait_for_report_request_slot"),
+            patch("lib.mining.random.uniform", return_value=0.0),
+            patch("lib.mining.time.sleep") as sleep,
             self.assertRaisesRegex(RuntimeError, "Failed to fetch report page"),
         ):
             mine_repairs("P1", max_items=2)
+        self.assertEqual([call.args[0] for call in sleep.call_args_list], [5.0, 10.0, 20.0, 40.0, 80.0])
+
+    def test_report_page_retry_honors_retry_after_header(self) -> None:
+        response = requests.Response()
+        response.status_code = 429
+        response.headers["Retry-After"] = "17"
+        error = requests.HTTPError("rate limited", response=response)
+        page = Mock()
+        page.revisions.side_effect = [error, []]
+        site = MagicMock()
+        site.pages.__getitem__.return_value = page
+        with (
+            patch("lib.mining.get_wikidata_site", return_value=site),
+            patch("lib.mining._wait_for_report_request_slot"),
+            patch("lib.mining.random.uniform", return_value=0.25),
+            patch("lib.mining.time.sleep") as sleep,
+        ):
+            self.assertEqual(mine_repairs("P1", max_items=2), [])
+        sleep.assert_called_once_with(17.25)
+
+    def test_report_page_lookup_is_throttled_and_retried(self) -> None:
+        response = requests.Response()
+        response.status_code = 429
+        response.headers["Retry-After"] = "9"
+        error = requests.HTTPError("rate limited", response=response)
+        page = Mock()
+        page.revisions.return_value = []
+        site = MagicMock()
+        site.pages.__getitem__.side_effect = [error, page]
+        with (
+            patch("lib.mining.get_wikidata_site", return_value=site),
+            patch("lib.mining._wait_for_report_request_slot") as throttle,
+            patch("lib.mining.random.uniform", return_value=0.0),
+            patch("lib.mining.time.sleep") as sleep,
+        ):
+            self.assertEqual(mine_repairs("P1", max_items=2), [])
+        sleep.assert_called_once_with(9.0)
+        self.assertEqual(throttle.call_count, 3)
+
+    def test_stage1_checkpoint_resumes_after_last_completed_property(self) -> None:
+        first_candidate = {
+            "qid": "Q1",
+            "property_id": "P1",
+            "violation_type": "Single value",
+            "fix_date": "2026-01-01T00:00:00",
+            "report_revision_old": 1,
+            "report_revision_new": 2,
+        }
+        second_candidate = {
+            "qid": "Q2",
+            "property_id": "P2",
+            "violation_type": "Format",
+            "fix_date": "2026-01-02T00:00:00",
+            "report_revision_old": 3,
+            "report_revision_new": 4,
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary) / "01_repair_candidates.json"
+            with (
+                patch.object(config, "TARGET_PROPERTIES", ["P1", "P2"]),
+                patch("lib.mining.mine_repairs", side_effect=[[first_candidate], OSError("interrupted")]),
+                self.assertRaisesRegex(OSError, "interrupted"),
+            ):
+                ensure_repair_candidates_file(target, history_limit=2, force_refresh=True)
+
+            checkpoint = target.with_name("01_repair_candidates.checkpoint.json")
+            partial = target.with_name("01_repair_candidates.partial.jsonl")
+            self.assertTrue(checkpoint.is_file())
+            self.assertTrue(partial.is_file())
+            self.assertFalse(target.exists())
+            with partial.open("ab") as fh:
+                fh.write(b'{"uncheckpointed":')
+
+            with (
+                patch.object(config, "TARGET_PROPERTIES", []),
+                patch("lib.mining.mine_repairs", return_value=[second_candidate]) as mine,
+            ):
+                candidates = ensure_repair_candidates_file(target, history_limit=2, force_refresh=True)
+
+            mine.assert_called_once_with("P2", max_items=2)
+            self.assertEqual(candidates, [first_candidate, second_candidate])
+            self.assertEqual(json.loads(target.read_text(encoding="utf-8")), candidates)
+            self.assertFalse(checkpoint.exists())
+            self.assertFalse(partial.exists())
 
 
 if __name__ == "__main__":

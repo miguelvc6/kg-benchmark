@@ -1136,7 +1136,10 @@ def parse_args():
     parser.add_argument(
         "--refresh-candidates",
         action="store_true",
-        help="Mine a new Stage 1 candidate list even when the target file already exists.",
+        help=(
+            "Mine a new Stage 1 candidate list even when the target file already exists; "
+            "resume an interrupted Stage 1 refresh when its checkpoint is present."
+        ),
     )
     parser.add_argument(
         "--max-candidates",
