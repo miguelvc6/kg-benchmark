@@ -12,6 +12,7 @@ import zstandard as zstd
 from . import config
 from .cache_sqlite import SQLiteLabelCache, SQLiteSnapshotCache
 from .utils import (
+    TerminalAPIError,
     TransientAPIError,
     chunked,
     get_json,
@@ -535,14 +536,22 @@ def fetch_revision_history(qid, start_time, end_time):
     truncated_by_window = False
     reached_page_limit = False
     api_calls = 0
+    terminal_missing = False
 
     while next_endpoint and batches < config.MAX_HISTORY_PAGES:
-        data = get_json(
-            params=params if next_endpoint == endpoint else None,
-            endpoint=next_endpoint,
-            with_format=False,
-            raise_on_failure=True,
-        )
+        try:
+            data = get_json(
+                params=params if next_endpoint == endpoint else None,
+                endpoint=next_endpoint,
+                with_format=False,
+                raise_on_failure=True,
+            )
+        except TerminalAPIError as exc:
+            if exc.status_code == 404 and next_endpoint == endpoint:
+                terminal_missing = True
+                next_endpoint = None
+                break
+            raise
         if not data or "revisions" not in data:
             break
         api_calls += 1
@@ -607,6 +616,7 @@ def fetch_revision_history(qid, start_time, end_time):
         "reached_page_limit": reached_page_limit,
         "carry_revision_used": carry_revision is not None,
         "truncated": truncated_by_window or reached_page_limit,
+        "terminal_missing": terminal_missing,
     }
     history_meta["cache_hit"] = False
 

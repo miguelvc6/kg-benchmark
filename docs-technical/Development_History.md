@@ -185,6 +185,14 @@ exponential fallback, and an atomic append-only Stage 1 checkpoint after every c
 identifies the restartable paper acquisition state. The earlier `paper-methodology-v1` tag remains unchanged as the
 historical pre-repair freeze.
 
+The first v2 Stage 2 pass then exposed two additional acquisition defects. A deleted focus entity returned a terminal
+REST history 404, but the generic JSON helper retried it and raised `TransientAPIError`, aborting the run. More
+importantly, Stage 1 treated report-bot revisions with comments such as `error while update`—including full report pages
+collapsing to roughly one hundred bytes—as if every disappeared QID represented a repaired violation. This inflated the
+candidate list with millions of false report-disappearance events. The corrective implementation classifies an initial
+history 404 as a terminal missing entity, excludes explicit report-update errors, and conservatively rejects unmarked
+large-to-tiny report collapses. All other upstream failures remain fail-closed.
+
 ## Repository simplification
 
 By July 2026 the working tree mixed 96 GB of baseline data, 41 GB of reports, 2.6 GB of logs, hundreds of prompt and

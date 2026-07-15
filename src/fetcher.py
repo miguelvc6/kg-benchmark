@@ -568,6 +568,7 @@ def process_pipeline(
             "ambiguous_both_changed": 0,
             "no_diff": 0,
             "no_history": 0,
+            "entity_missing": 0,
             "truncated_by_window": 0,
             "reached_page_limit": 0,
             "duplicates_skipped": 0,
@@ -738,6 +739,21 @@ def process_pipeline(
                         start_time=start_time,
                         end_time=end_time,
                     )
+                    if history_meta.get("terminal_missing"):
+                        log_candidate("    [x] Dropped: Entity is missing from Wikidata (terminal HTTP 404).")
+                        summary["entity_missing"] += 1
+                        stats_logger.log(
+                            {
+                                **record_base,
+                                "result": "entity_missing",
+                                "reason": "terminal_history_404",
+                                "history": history_meta,
+                                "history_entity": history_meta,
+                            }
+                        )
+                        record_history_stats(history_meta)
+                        finish_candidate()
+                        continue
                     tbox_event = None
                     tbox_history_meta = None
                     ambiguous_history_meta = None

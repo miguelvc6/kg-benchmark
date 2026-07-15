@@ -222,6 +222,37 @@ def extract_qids_with_context(text):
     return qid_map
 
 
+def _revision_content_size(revision):
+    size = revision.get("size")
+    if isinstance(size, int) and size >= 0:
+        return size
+    return len((revision.get("*") or "").encode("utf-8"))
+
+
+def invalid_report_transition_reason(older_revision, newer_revision, qids_old_map, qids_new_map):
+    """Explain why a report transition must not be interpreted as resolved violations."""
+    for label, revision in (("older", older_revision), ("newer", newer_revision)):
+        comment = str(revision.get("comment") or "").strip().lower()
+        if "error while update" in comment:
+            return f"{label}_revision_error_comment"
+
+    old_qid_count = len(qids_old_map)
+    if old_qid_count < int(config.REPORT_COLLAPSE_MIN_PRIOR_QIDS):
+        return None
+    new_qid_count = len(qids_new_map)
+    retained_ratio = new_qid_count / old_qid_count
+    old_size = _revision_content_size(older_revision)
+    new_size = _revision_content_size(newer_revision)
+    size_ratio = (new_size / old_size) if old_size else 1.0
+    if (
+        retained_ratio <= float(config.REPORT_COLLAPSE_MAX_RETAINED_RATIO)
+        and new_size <= int(config.REPORT_COLLAPSE_MAX_NEW_BYTES)
+        and size_ratio <= float(config.REPORT_COLLAPSE_MAX_SIZE_RATIO)
+    ):
+        return "suspicious_tiny_report_collapse"
+    return None
+
+
 def mine_repairs(property_id, max_items=100):
     """Inspect report page history and return candidates with violation type context."""
     site = get_wikidata_site()
@@ -236,7 +267,7 @@ def mine_repairs(property_id, max_items=100):
                 _wait_for_report_request_slot()
                 page = site.pages[get_report_page_title(property_id)]
             _wait_for_report_request_slot()
-            revisions = list(page.revisions(max_items=max_items, prop="content|timestamp|ids"))
+            revisions = list(page.revisions(max_items=max_items, prop="content|timestamp|ids|comment|size|user"))
             break
         except Exception as exc:
             last_error = exc
@@ -254,6 +285,7 @@ def mine_repairs(property_id, max_items=100):
 
     print(f"    Found {len(revisions)} revisions to analyze.")
     candidates = []
+    skipped_transitions = 0
     revision_pairs = range(len(revisions) - 1)
 
     for i in tqdm(revision_pairs, desc=f"Diffing {property_id}", unit="pair", disable=not sys.stderr.isatty()):
@@ -263,6 +295,17 @@ def mine_repairs(property_id, max_items=100):
         # Parse both revisions to get {QID: {Violations}}
         qids_old_map = extract_qids_with_context(older_rev.get("*", ""))
         qids_new_map = extract_qids_with_context(newer_rev.get("*", ""))
+
+        invalid_reason = invalid_report_transition_reason(older_rev, newer_rev, qids_old_map, qids_new_map)
+        if invalid_reason:
+            skipped_transitions += 1
+            print(
+                f"    [!] Skipping report transition {older_rev.get('revid')} -> {newer_rev.get('revid')} "
+                f"for {property_id}: {invalid_reason} "
+                f"({len(qids_old_map)} -> {len(qids_new_map)} QIDs, "
+                f"{_revision_content_size(older_rev)} -> {_revision_content_size(newer_rev)} bytes)."
+            )
+            continue
 
         # Find QIDs that disappeared from a specific section
         for qid, old_constraints in qids_old_map.items():
@@ -290,6 +333,8 @@ def mine_repairs(property_id, max_items=100):
                             "report_revision_new": newer_rev["revid"],
                         }
                     )
+    if skipped_transitions:
+        print(f"    Skipped {skipped_transitions} invalid report transition(s) for {property_id}.")
     return candidates
 
 

@@ -8,10 +8,10 @@ import requests
 
 import fetcher
 from lib import config
-from lib.caching import SnapshotFetcher, SnapshotFetchError
-from lib.mining import ensure_repair_candidates_file, mine_repairs
+from lib.caching import SnapshotFetcher, SnapshotFetchError, fetch_revision_history
+from lib.mining import ensure_repair_candidates_file, invalid_report_transition_reason, mine_repairs
 from lib.popularity import PageviewClient
-from lib.utils import TransientAPIError, get_json
+from lib.utils import TerminalAPIError, TransientAPIError, get_json
 from lib.world_state import WorldStateBuilder
 
 
@@ -40,6 +40,30 @@ class AcquisitionFailClosedTests(unittest.TestCase):
             self.assertRaises(TransientAPIError),
         ):
             get_json(endpoint="https://example.invalid/api", raise_on_failure=True)
+
+    def test_json_api_terminal_404_is_not_retried(self) -> None:
+        response = Mock(status_code=404)
+        with (
+            patch("lib.utils.requests.get", return_value=response) as request,
+            patch("lib.utils.time.sleep") as sleep,
+            self.assertRaisesRegex(TerminalAPIError, "terminal HTTP 404"),
+        ):
+            get_json(endpoint="https://example.invalid/missing", raise_on_failure=True)
+        request.assert_called_once()
+        sleep.assert_not_called()
+
+    def test_missing_entity_history_returns_terminal_metadata(self) -> None:
+        error = TerminalAPIError("https://example.invalid/Q1/history", 404)
+        with (
+            patch("lib.caching.get_json", side_effect=error),
+            patch.object(config, "ENABLE_HISTORY_CACHE", False),
+        ):
+            revisions, metadata = fetch_revision_history(
+                "Q1", "2026-01-01T00:00:00Z", "2026-01-02T00:00:00Z"
+            )
+        self.assertEqual(revisions, [])
+        self.assertTrue(metadata["terminal_missing"])
+        self.assertEqual(metadata["api_calls"], 0)
 
     def test_snapshot_transient_exhaustion_is_not_missing_data(self) -> None:
         fetcher = SnapshotFetcher(enable_cache=False, max_retries=2, max_qps=0)
@@ -126,6 +150,69 @@ class AcquisitionFailClosedTests(unittest.TestCase):
             self.assertEqual(mine_repairs("P1", max_items=2), [])
         sleep.assert_called_once_with(9.0)
         self.assertEqual(throttle.call_count, 3)
+
+    def test_report_error_revision_does_not_generate_candidates(self) -> None:
+        older = {
+            "*": "== Allowed qualifiers ==\n[[Q110404588]]",
+            "revid": 2461550294,
+            "timestamp": (2026, 2, 7, 16, 17, 23),
+            "size": 521775,
+            "comment": "report update for [[Property:P166]]",
+        }
+        newer = {
+            "*": "Report update failed",
+            "revid": 2462103772,
+            "timestamp": (2026, 2, 9, 20, 57, 2),
+            "size": 108,
+            "comment": "error while update for [[Property:P166]]",
+        }
+        page = Mock()
+        page.revisions.return_value = [newer, older]
+        site = MagicMock()
+        site.pages.__getitem__.return_value = page
+        with (
+            patch("lib.mining.get_wikidata_site", return_value=site),
+            patch("lib.mining._wait_for_report_request_slot"),
+        ):
+            self.assertEqual(mine_repairs("P166", max_items=2), [])
+        self.assertIn("comment", page.revisions.call_args.kwargs["prop"])
+        self.assertIn("size", page.revisions.call_args.kwargs["prop"])
+
+    def test_unmarked_tiny_report_collapse_is_rejected(self) -> None:
+        old_map = {f"Q{qid}": {"Format"} for qid in range(1, 101)}
+        older = {"*": "full report", "size": 100000, "comment": "report update"}
+        newer = {"*": "small error page", "size": 500, "comment": "report update"}
+        self.assertEqual(
+            invalid_report_transition_reason(older, newer, old_map, {}),
+            "suspicious_tiny_report_collapse",
+        )
+
+    def test_normal_report_disappearance_remains_a_candidate(self) -> None:
+        older = {
+            "*": "== Format ==\n[[Q1]]",
+            "revid": 10,
+            "timestamp": (2026, 1, 1, 0, 0, 0),
+            "size": 5000,
+            "comment": "report update for [[Property:P1]]",
+        }
+        newer = {
+            "*": "== Format ==\n",
+            "revid": 11,
+            "timestamp": (2026, 1, 2, 0, 0, 0),
+            "size": 4900,
+            "comment": "report update for [[Property:P1]]",
+        }
+        page = Mock()
+        page.revisions.return_value = [newer, older]
+        site = MagicMock()
+        site.pages.__getitem__.return_value = page
+        with (
+            patch("lib.mining.get_wikidata_site", return_value=site),
+            patch("lib.mining._wait_for_report_request_slot"),
+        ):
+            candidates = mine_repairs("P1", max_items=2)
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0]["qid"], "Q1")
 
     def test_stage1_checkpoint_resumes_after_last_completed_property(self) -> None:
         first_candidate = {

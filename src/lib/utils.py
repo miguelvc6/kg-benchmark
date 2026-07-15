@@ -535,6 +535,15 @@ class TransientAPIError(RuntimeError):
     """Raised when an upstream JSON request exhausts its retry budget."""
 
 
+class TerminalAPIError(RuntimeError):
+    """Raised for a definitive upstream response that retries cannot repair."""
+
+    def __init__(self, endpoint, status_code):
+        self.endpoint = endpoint
+        self.status_code = status_code
+        super().__init__(f"Upstream JSON request returned terminal HTTP {status_code} for {endpoint}")
+
+
 def get_json(params=None, *, endpoint=config.API_ENDPOINT, with_format=True, raise_on_failure=False):
     """Wrapper around requests.get with retries and default MediaWiki params."""
     query = dict(params or {})
@@ -563,9 +572,16 @@ def get_json(params=None, *, endpoint=config.API_ENDPOINT, with_format=True, rai
                 sleep_for = 2**attempt
                 print(f"    [!] Rate limited. Sleeping {sleep_for}s...")
                 time.sleep(sleep_for)
+            elif response.status_code == 404:
+                print(f"    [!] HTTP 404 for {endpoint}")
+                if raise_on_failure:
+                    raise TerminalAPIError(endpoint, response.status_code)
+                return None
             else:
                 last_failure = f"HTTP {response.status_code}"
                 print(f"    [!] HTTP {response.status_code} for {endpoint}")
+        except TerminalAPIError:
+            raise
         except Exception as exc:
             last_failure = f"request exception: {exc}"
             print(f"    [!] Exception: {exc}")
