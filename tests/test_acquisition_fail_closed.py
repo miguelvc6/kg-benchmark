@@ -9,7 +9,13 @@ import requests
 import fetcher
 from lib import config
 from lib.caching import SnapshotFetcher, SnapshotFetchError, fetch_revision_history
-from lib.mining import ensure_repair_candidates_file, invalid_report_transition_reason, mine_repairs
+from lib.mining import (
+    build_report_provenance,
+    ensure_repair_candidates_file,
+    invalid_report_transition_reason,
+    mine_repairs,
+    sample_candidates_by_report_event,
+)
 from lib.popularity import PageviewClient
 from lib.utils import TerminalAPIError, TransientAPIError, get_json
 from lib.world_state import WorldStateBuilder
@@ -213,6 +219,67 @@ class AcquisitionFailClosedTests(unittest.TestCase):
             candidates = mine_repairs("P1", max_items=2)
         self.assertEqual(len(candidates), 1)
         self.assertEqual(candidates[0]["qid"], "Q1")
+
+    def test_report_event_sampling_is_deterministic_and_idempotent(self) -> None:
+        large_event = [
+            {
+                "qid": f"Q{qid}",
+                "property_id": "P1",
+                "violation_type": "Format",
+                "fix_date": "2026-01-02T00:00:00",
+                "report_revision_old": 10,
+                "report_revision_new": 11,
+            }
+            for qid in range(1, 151)
+        ]
+        small_event = [
+            {
+                "qid": f"Q{qid}",
+                "property_id": "P2",
+                "violation_type": "Single value",
+                "fix_date": "2026-01-03T00:00:00",
+                "report_revision_old": 20,
+                "report_revision_new": 21,
+            }
+            for qid in range(151, 154)
+        ]
+        sampled, stats = sample_candidates_by_report_event(large_event + small_event, cap=100, seed=13)
+        reversed_sampled, _ = sample_candidates_by_report_event(
+            list(reversed(large_event + small_event)), cap=100, seed=13
+        )
+
+        self.assertEqual([row["qid"] for row in sampled], [row["qid"] for row in reversed_sampled])
+        self.assertEqual(len(sampled), 103)
+        self.assertEqual(stats["events"], 2)
+        self.assertEqual(stats["capped_events"], 1)
+        self.assertEqual(stats["candidates_removed"], 50)
+
+        large_rows = [row for row in sampled if row["property_id"] == "P1"]
+        self.assertEqual(len(large_rows), 100)
+        self.assertEqual(
+            [row["report_event_sampling"]["rank"] for row in large_rows],
+            list(range(1, 101)),
+        )
+        self.assertTrue(all(row["report_event_sampling"]["event_candidate_count"] == 150 for row in large_rows))
+        self.assertTrue(all(row["report_event_sampling"]["capped"] for row in large_rows))
+
+        reused, reused_stats = sample_candidates_by_report_event(sampled, cap=100, seed=13)
+        self.assertEqual(reused, sampled)
+        self.assertTrue(reused_stats["reused_sampled_artifact"])
+        self.assertEqual(reused_stats["pre_cap_candidates"], 153)
+
+    def test_report_event_sampling_propagates_to_report_provenance(self) -> None:
+        candidate = {
+            "qid": "Q1",
+            "property_id": "P1",
+            "violation_type": "Format",
+            "fix_date": "2026-01-02T00:00:00",
+            "report_revision_old": 10,
+            "report_revision_new": 11,
+        }
+        sampled, _ = sample_candidates_by_report_event([candidate], cap=100, seed=13)
+        provenance = build_report_provenance(sampled[0], "P1")
+        self.assertEqual(provenance["report_event_sampling"], sampled[0]["report_event_sampling"])
 
     def test_stage1_checkpoint_resumes_after_last_completed_property(self) -> None:
         first_candidate = {

@@ -228,6 +228,16 @@ class DatasetPromotionGateTests(unittest.TestCase):
                 "fix_date": row["violation_context"]["report_fix_date"],
                 "report_revision_old": row["violation_context"]["report_revision_old"],
                 "report_revision_new": row["violation_context"]["report_revision_new"],
+                "report_event_sampling": {
+                    "method": "sha256_qid_rank_v1",
+                    "seed": 13,
+                    "cap": 100,
+                    "event_key_sha256": f"{int(row['qid'][1:]):064x}",
+                    "event_candidate_count": 1,
+                    "selected_candidate_count": 1,
+                    "rank": 1,
+                    "capped": False,
+                },
             }
             for row in stage2_rows
         ]

@@ -39,7 +39,16 @@
     "manifest": "dataset/manifest.json",
     "single_final_dataset": true,
     "canonical_large_record_format": "jsonl",
-    "partial_artifacts_are_eligible": false
+    "partial_artifacts_are_eligible": false,
+    "candidate_sampling": {
+      "sampling_unit": "report_event",
+      "event_key": ["property_id", "report_revision_old", "report_revision_new", "fix_date"],
+      "method": "sha256_qid_rank_v1",
+      "seed": 13,
+      "max_qids_per_event": 100,
+      "retain_all_at_or_below_cap": true,
+      "record_per_candidate_provenance": true
+    }
   },
   "audit": {
     "whole_dataset_deterministic": true,

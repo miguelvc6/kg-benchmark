@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 import random
@@ -5,6 +6,7 @@ import re
 import sys
 import tempfile
 import time
+from collections import defaultdict
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
@@ -18,6 +20,7 @@ from . import config
 SITE = None
 _LAST_REPORT_REQUEST_MONOTONIC = None
 _CANDIDATE_CHECKPOINT_VERSION = 1
+_REPORT_EVENT_SAMPLE_METHOD = "sha256_qid_rank_v1"
 
 
 def _write_json_atomic(path, payload, *, indent=2):
@@ -537,6 +540,139 @@ def deduplicate_candidates(candidates):
     )
 
 
+def _report_event_key(candidate):
+    return (
+        candidate.get("property_id"),
+        candidate.get("report_revision_old"),
+        candidate.get("report_revision_new"),
+        candidate.get("fix_date"),
+    )
+
+
+def _report_event_key_sha256(event_key):
+    encoded = json.dumps(event_key, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _report_event_candidate_rank(event_key, candidate, seed):
+    payload = [
+        _REPORT_EVENT_SAMPLE_METHOD,
+        int(seed),
+        *event_key,
+        candidate.get("qid"),
+    ]
+    encoded = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def sample_candidates_by_report_event(
+    candidates,
+    *,
+    cap=config.REPORT_EVENT_CANDIDATE_CAP,
+    seed=config.REPORT_EVENT_SAMPLE_SEED,
+):
+    """Deterministically retain at most ``cap`` QIDs per report revision event."""
+    if not candidates:
+        return [], {
+            "method": _REPORT_EVENT_SAMPLE_METHOD,
+            "seed": int(seed),
+            "cap": int(cap),
+            "events": 0,
+            "capped_events": 0,
+            "pre_cap_candidates": 0,
+            "post_cap_candidates": 0,
+            "candidates_removed": 0,
+        }
+    cap = int(cap)
+    seed = int(seed)
+    if cap <= 0:
+        raise ValueError("Report-event candidate cap must be a positive integer.")
+
+    annotations = [candidate.get("report_event_sampling") for candidate in candidates]
+    if any(annotation is not None for annotation in annotations):
+        if not all(isinstance(annotation, dict) for annotation in annotations):
+            raise RuntimeError("Stage 1 candidates mix sampled and unsampled report-event records.")
+        event_sizes = {}
+        selected_counts = defaultdict(int)
+        for candidate, annotation in zip(candidates, annotations):
+            if (
+                annotation.get("method") != _REPORT_EVENT_SAMPLE_METHOD
+                or annotation.get("seed") != seed
+                or annotation.get("cap") != cap
+            ):
+                raise RuntimeError("Stage 1 candidate sampling provenance does not match the active policy.")
+            event_key = _report_event_key(candidate)
+            event_size = annotation.get("event_candidate_count")
+            if not isinstance(event_size, int) or event_size <= 0:
+                raise RuntimeError("Stage 1 candidate has malformed report-event sampling provenance.")
+            previous_size = event_sizes.setdefault(event_key, event_size)
+            if previous_size != event_size:
+                raise RuntimeError("Stage 1 candidates disagree about their original report-event size.")
+            selected_counts[event_key] += 1
+        if any(count > cap for count in selected_counts.values()):
+            raise RuntimeError("Stage 1 candidate artifact exceeds the active report-event cap.")
+        pre_cap = sum(event_sizes.values())
+        capped_events = sum(1 for size in event_sizes.values() if size > cap)
+        return candidates, {
+            "method": _REPORT_EVENT_SAMPLE_METHOD,
+            "seed": seed,
+            "cap": cap,
+            "events": len(event_sizes),
+            "capped_events": capped_events,
+            "pre_cap_candidates": pre_cap,
+            "post_cap_candidates": len(candidates),
+            "candidates_removed": pre_cap - len(candidates),
+            "reused_sampled_artifact": True,
+        }
+
+    grouped = defaultdict(list)
+    for candidate in candidates:
+        grouped[_report_event_key(candidate)].append(candidate)
+
+    sampled = []
+    capped_events = 0
+    ordered_event_keys = sorted(
+        grouped,
+        key=lambda event_key: json.dumps(event_key, ensure_ascii=False, separators=(",", ":")),
+    )
+    for event_key in ordered_event_keys:
+        event_candidates = grouped[event_key]
+        event_size = len(event_candidates)
+        event_hash = _report_event_key_sha256(event_key)
+        ranked = sorted(
+            event_candidates,
+            key=lambda candidate: (_report_event_candidate_rank(event_key, candidate, seed), candidate.get("qid") or ""),
+        )
+        selected = ranked[:cap]
+        if event_size > cap:
+            capped_events += 1
+        for rank, candidate in enumerate(selected, start=1):
+            annotated = dict(candidate)
+            annotated["report_event_sampling"] = {
+                "method": _REPORT_EVENT_SAMPLE_METHOD,
+                "seed": seed,
+                "cap": cap,
+                "event_key_sha256": event_hash,
+                "event_candidate_count": event_size,
+                "selected_candidate_count": len(selected),
+                "rank": rank,
+                "capped": event_size > cap,
+            }
+            sampled.append(annotated)
+
+    return sampled, {
+        "method": _REPORT_EVENT_SAMPLE_METHOD,
+        "seed": seed,
+        "cap": cap,
+        "events": len(grouped),
+        "capped_events": capped_events,
+        "pre_cap_candidates": len(candidates),
+        "post_cap_candidates": len(sampled),
+        "candidates_removed": len(candidates) - len(sampled),
+        "reused_sampled_artifact": False,
+    }
+
+
 def build_report_provenance(candidate, property_id):
     """Return report metadata fields captured during Stage 1 mining."""
     provenance = {
@@ -549,4 +685,7 @@ def build_report_provenance(candidate, property_id):
         page_title = get_report_page_title(property_id)
     if page_title:
         provenance["report_page_title"] = page_title
+    sampling = candidate.get("report_event_sampling")
+    if isinstance(sampling, dict):
+        provenance["report_event_sampling"] = dict(sampling)
     return provenance

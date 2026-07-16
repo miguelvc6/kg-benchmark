@@ -93,12 +93,42 @@
         "dataset": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["manifest", "single_final_dataset", "canonical_large_record_format", "partial_artifacts_are_eligible"],
+          "required": [
+            "manifest",
+            "single_final_dataset",
+            "canonical_large_record_format",
+            "partial_artifacts_are_eligible",
+            "candidate_sampling"
+          ],
           "properties": {
             "manifest": {"$ref": "#/$defs/relative_path"},
             "single_final_dataset": {"const": true},
             "canonical_large_record_format": {"const": "jsonl"},
-            "partial_artifacts_are_eligible": {"const": false}
+            "partial_artifacts_are_eligible": {"const": false},
+            "candidate_sampling": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "sampling_unit",
+                "event_key",
+                "method",
+                "seed",
+                "max_qids_per_event",
+                "retain_all_at_or_below_cap",
+                "record_per_candidate_provenance"
+              ],
+              "properties": {
+                "sampling_unit": {"const": "report_event"},
+                "event_key": {
+                  "const": ["property_id", "report_revision_old", "report_revision_new", "fix_date"]
+                },
+                "method": {"const": "sha256_qid_rank_v1"},
+                "seed": {"const": 13},
+                "max_qids_per_event": {"const": 100},
+                "retain_all_at_or_below_cap": {"const": true},
+                "record_per_candidate_provenance": {"const": true}
+              }
+            }
           }
         },
         "audit": {

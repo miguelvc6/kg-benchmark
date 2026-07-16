@@ -193,6 +193,15 @@ candidate list with millions of false report-disappearance events. The correctiv
 history 404 as a terminal missing entity, excludes explicit report-update errors, and conservatively rejects unmarked
 large-to-tiny report collapses. All other upstream failures remain fail-closed.
 
+The v3 crawl removed roughly one million explicit error-page rows, but its remaining 2,813,427 deduplicated candidates
+were still dominated by correlated bulk events: 83.5% came from 664 report transitions containing at least 1,000 QIDs.
+After 51,299 Stage 2 candidates, the observed throughput projected a five-to-six-week acquisition even though final
+selection requires only 1,200 cases and treats T-box property/revision groups as the independent sampling unit. The v3
+attempt was stopped and archived without contributing paper cases. The replacement policy preserves every report event
+and every candidate from events of at most 100 QIDs, while larger events retain a seed-13 SHA-256-ranked sample of 100.
+This reduces the observed v3 candidate universe to approximately 267,000 candidates without globally truncating the
+source stream or discarding bulk T-box events.
+
 ## Repository simplification
 
 By July 2026 the working tree mixed 96 GB of baseline data, 41 GB of reports, 2.6 GB of logs, hundreds of prompt and

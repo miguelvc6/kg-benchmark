@@ -47,6 +47,7 @@ from lib.mining import (
     deduplicate_candidates,
     ensure_repair_candidates_file,
     normalize_report_violation_type,
+    sample_candidates_by_report_event,
 )
 from lib.popularity import attach_entity_popularity, ensure_entity_popularity, load_popularity_artifact
 from lib.utils import (
@@ -413,6 +414,10 @@ def process_pipeline(
         return
     raw_candidate_count = len(candidates)
     candidates, dedup_stats = deduplicate_candidates(candidates)
+    deduplicated_candidate_count = len(candidates)
+    candidates, event_sample_stats = sample_candidates_by_report_event(candidates)
+    if not event_sample_stats.get("reused_sampled_artifact"):
+        write_json_atomic(input_file, candidates, indent=2, ensure_ascii=False)
     random.seed(42)
     random.shuffle(candidates)
     if dedup_stats.get("duplicates_skipped"):
@@ -421,6 +426,18 @@ def process_pipeline(
             dedup_stats["duplicates_skipped"],
             dedup_stats["violation_type_merges"],
         )
+    logger.info(
+        "[*] Report-event sampling: retained %s/%s candidates across %s events; "
+        "%s events capped at %s (%s removed, method=%s, seed=%s).",
+        event_sample_stats["post_cap_candidates"],
+        event_sample_stats["pre_cap_candidates"],
+        event_sample_stats["events"],
+        event_sample_stats["capped_events"],
+        event_sample_stats["cap"],
+        event_sample_stats["candidates_removed"],
+        event_sample_stats["method"],
+        event_sample_stats["seed"],
+    )
 
     label_resolver = LabelResolver(cache_path=_RUNTIME_LABEL_CACHE_DB)
     dataset = load_cached_repairs(WIKIDATA_REPAIRS)
@@ -553,10 +570,17 @@ def process_pipeline(
             "lookback_days": REVISION_LOOKBACK_DAYS,
             "max_history_pages": MAX_HISTORY_PAGES,
             "total_candidates_raw": raw_candidate_count,
+            "total_candidates_deduplicated": deduplicated_candidate_count,
             "total_candidates": len(candidates),
             "candidate_duplicates_skipped": dedup_stats.get("duplicates_skipped", 0),
             "candidate_violation_type_merges": dedup_stats.get("violation_type_merges", 0),
             "candidate_exact_duplicates": dedup_stats.get("exact_duplicates", 0),
+            "candidate_event_sampling_method": event_sample_stats["method"],
+            "candidate_event_sampling_seed": event_sample_stats["seed"],
+            "candidate_event_cap": event_sample_stats["cap"],
+            "candidate_report_events": event_sample_stats["events"],
+            "candidate_report_events_capped": event_sample_stats["capped_events"],
+            "candidate_event_candidates_removed": event_sample_stats["candidates_removed"],
             "repairs_jsonl_existing": 0,
             "repairs_jsonl_written": 0,
             "processed": 0,
@@ -713,6 +737,7 @@ def process_pipeline(
                         "fix_date": item.get("fix_date"),
                         "report_revision_old": item.get("report_revision_old"),
                         "report_revision_new": item.get("report_revision_new"),
+                        "report_event_sampling": item.get("report_event_sampling"),
                     }
                     report_metadata = build_report_provenance(item, pid)
 

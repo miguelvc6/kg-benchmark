@@ -59,6 +59,30 @@
           "items": {"$ref": "#/$defs/qid"},
           "uniqueItems": true
         },
+        "report_event_sampling": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "method",
+            "seed",
+            "cap",
+            "event_key_sha256",
+            "event_candidate_count",
+            "selected_candidate_count",
+            "rank",
+            "capped"
+          ],
+          "properties": {
+            "method": {"const": "sha256_qid_rank_v1"},
+            "seed": {"const": 13},
+            "cap": {"const": 100},
+            "event_key_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+            "event_candidate_count": {"type": "integer", "minimum": 1},
+            "selected_candidate_count": {"type": "integer", "minimum": 1, "maximum": 100},
+            "rank": {"type": "integer", "minimum": 1, "maximum": 100},
+            "capped": {"type": "boolean"}
+          }
+        },
         "value": {},
         "value_current_2026": {}
       }
