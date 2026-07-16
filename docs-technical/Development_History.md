@@ -206,6 +206,23 @@ source stream or discarding bulk T-box events. Source commit
 `c56a69be441c3eb0d56a6cc7d7b57e4b02331a1ceb1cfe9a80966123ebcb93f9`; annotated tag
 `paper-methodology-v4` identifies the event-balanced acquisition state.
 
+The v4 Stage 2 run then stopped after 1,130 completed candidates when historical snapshot `P888@2483634740` exhausted
+four 30-second read attempts. The revision remained valid and returned immediately on a later probe, so the failure was
+transient; however, `SnapshotFetchError` escaped the T-box scan and terminated the entire acquisition. The replacement
+policy treats exhausted transient Stage 2 access as explicit reconstruction nonresponse. It records the candidate,
+phase, and error in a durable exclusion artifact, never maps the failure to missing/no-history/no-diff evidence, flushes
+and checkpoints the exclusion immediately, and writes ordinary checkpoints every 100 processed candidates. Source
+provenance binds the completed exclusion array and its count.
+
+The 1,130 v4 stats rows form a contiguous unique-key prefix with zero transient exclusions, and the failed P888
+candidate has no completed stats row or repair output. The v5 resume therefore reuses only completed outcomes and binds
+the prior acquisition configuration, candidate artifact, partial repairs, and supplied resume stats in the new
+acquisition configuration. Source commit `95f64af4f69c70303b715ba8a4ae62f438a978c8` implements the exclusion and
+compatible-prefix policy. Lock-only commit `61950263de185ab39dd2b7cd80139c69fd281622` binds freeze-scope digest
+`030930ba71ec7ecd407dc8ed9009fb37a2ba740130a2d013cef858414690024f`; the lock SHA-256 is
+`6c26ad28e27c12ea5614cbf190a348aa6c7a13a806b8eff7f02f812beabc32e3`. The complete acceptance suite passed with
+376 tests and 125 subtests. Annotated tag `paper-methodology-v5` identifies the transient-safe acquisition state.
+
 ## Repository simplification
 
 By July 2026 the working tree mixed 96 GB of baseline data, 41 GB of reports, 2.6 GB of logs, hundreds of prompt and
