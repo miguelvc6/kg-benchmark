@@ -200,7 +200,11 @@ selection requires only 1,200 cases and treats T-box property/revision groups as
 attempt was stopped and archived without contributing paper cases. The replacement policy preserves every report event
 and every candidate from events of at most 100 QIDs, while larger events retain a seed-13 SHA-256-ranked sample of 100.
 This reduces the observed v3 candidate universe to approximately 267,000 candidates without globally truncating the
-source stream or discarding bulk T-box events.
+source stream or discarding bulk T-box events. Source commit
+`a755959a62ae2d4adf97447a729b33e4ba7831c6` implements and documents the event cap; lock-only commit
+`d09ddfd1e04c5bddcd04fefac0976052456d0dcd` binds freeze-scope digest
+`c56a69be441c3eb0d56a6cc7d7b57e4b02331a1ceb1cfe9a80966123ebcb93f9`; annotated tag
+`paper-methodology-v4` identifies the event-balanced acquisition state.
 
 ## Repository simplification
 
