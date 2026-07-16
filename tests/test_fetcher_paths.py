@@ -20,6 +20,11 @@ class FetcherPathTests(unittest.TestCase):
                 resolved = fetcher.configure_runtime_paths(data_dir=root, cache_dir=cache, dump_path=dump)
                 self.assertEqual(resolved, {"data_dir": root, "cache_dir": cache, "dump_path": dump})
                 self.assertEqual(fetcher.WIKIDATA_REPAIRS, root / "02_wikidata_repairs.json")
+                self.assertEqual(fetcher.STAGE2_EXCLUSIONS, root / "02_stage2_exclusions.json")
+                self.assertEqual(
+                    fetcher.STAGE2_EXCLUSIONS_JSONL,
+                    root / "02_stage2_exclusions.jsonl",
+                )
                 self.assertEqual(fetcher.REPAIR_CANDIDATES_FILE, root / "01_repair_candidates.json")
                 self.assertEqual(config.ENTITY_SNAPSHOT_DB, cache / "entity_snapshots.sqlite")
                 self.assertEqual(fetcher.LATEST_DUMP_PATH, dump)

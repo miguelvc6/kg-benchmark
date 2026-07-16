@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kg-benchmark.local/schemas/stage2-candidate-exclusion.schema.json",
+  "title": "Stage-2 Candidate Exclusion",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest_type",
+    "manifest_version",
+    "run_id",
+    "qid",
+    "property",
+    "violation_type",
+    "candidate_key",
+    "candidate_index",
+    "fix_date",
+    "report_revision_old",
+    "report_revision_new",
+    "report_event_sampling",
+    "result",
+    "exclusion_reason",
+    "phase",
+    "error_type",
+    "error_message",
+    "excluded_at_utc"
+  ],
+  "properties": {
+    "manifest_type": {"const": "stage2_candidate_exclusion"},
+    "manifest_version": {"const": 1},
+    "run_id": {"type": "string", "minLength": 1},
+    "qid": {"type": "string", "pattern": "^Q[0-9]+$"},
+    "property": {"type": "string", "pattern": "^P[0-9]+$"},
+    "violation_type": {"type": ["string", "null"]},
+    "candidate_key": {"type": "string", "minLength": 1},
+    "candidate_index": {"type": "integer", "minimum": 0},
+    "fix_date": {"type": ["string", "null"]},
+    "report_revision_old": {"type": ["integer", "null"]},
+    "report_revision_new": {"type": ["integer", "null"]},
+    "report_event_sampling": {"type": ["object", "null"]},
+    "result": {"const": "upstream_unavailable"},
+    "exclusion_reason": {"const": "transient_api_retry_exhausted"},
+    "phase": {
+      "enum": [
+        "entity_history",
+        "a_box_persistence",
+        "ambiguity_probe",
+        "t_box_history",
+        "t_box_persistence"
+      ]
+    },
+    "error_type": {"type": "string", "minLength": 1},
+    "error_message": {"type": "string", "minLength": 1},
+    "excluded_at_utc": {"type": "string", "format": "date-time"}
+  }
+}

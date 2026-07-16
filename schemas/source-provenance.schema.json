@@ -47,6 +47,55 @@
                 "source_git_revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
                 "methodology_lock_sha256": {"$ref": "#/$defs/sha256"}
               }
+            },
+            "resume_provenance": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "policy",
+                "reuse_scope",
+                "prior_acquisition_config",
+                "prior_methodology",
+                "current_source_git_revision",
+                "methodology_changed",
+                "artifacts"
+              ],
+              "properties": {
+                "policy": {"const": "compatible_completed_prefix_v1"},
+                "reuse_scope": {"const": "completed_candidate_outcomes_only"},
+                "prior_acquisition_config": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["path", "bytes", "sha256", "status"],
+                  "properties": {
+                    "path": {"type": "string", "minLength": 1},
+                    "bytes": {"type": "integer", "minimum": 1},
+                    "sha256": {"$ref": "#/$defs/sha256"},
+                    "status": {"enum": ["in_progress", "failed", "complete"]}
+                  }
+                },
+                "prior_methodology": {"$ref": "#/$defs/methodology_binding"},
+                "current_source_git_revision": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{40}$"
+                },
+                "methodology_changed": {"type": "boolean"},
+                "artifacts": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["candidates", "partial_repairs"],
+                  "properties": {
+                    "candidates": {"$ref": "#/$defs/resume_artifact"},
+                    "partial_repairs": {"$ref": "#/$defs/resume_jsonl_artifact"},
+                    "resume_stats": {"$ref": "#/$defs/resume_jsonl_artifact"},
+                    "resume_checkpoint": {"$ref": "#/$defs/resume_artifact"}
+                  },
+                  "anyOf": [
+                    {"required": ["resume_stats"]},
+                    {"required": ["resume_checkpoint"]}
+                  ]
+                }
+              }
             }
           }
         }
@@ -55,11 +104,19 @@
     "sources": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["popularity", "candidates", "repairs", "world_state", "wikidata_dump"],
+      "required": [
+        "popularity",
+        "candidates",
+        "repairs",
+        "stage2_exclusions",
+        "world_state",
+        "wikidata_dump"
+      ],
       "properties": {
         "popularity": {"$ref": "#/$defs/source"},
         "candidates": {"$ref": "#/$defs/source"},
         "repairs": {"$ref": "#/$defs/source"},
+        "stage2_exclusions": {"$ref": "#/$defs/source"},
         "world_state": {"$ref": "#/$defs/source"},
         "wikidata_dump": {"$ref": "#/$defs/source"}
       }
@@ -91,6 +148,48 @@
   },
   "$defs": {
     "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "methodology_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["freeze_scope_sha256", "source_git_revision", "methodology_lock_sha256"],
+      "properties": {
+        "freeze_scope_sha256": {"$ref": "#/$defs/sha256"},
+        "source_git_revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "methodology_lock_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "resume_artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "bytes", "sha256"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "bytes": {"type": "integer", "minimum": 0},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "resume_jsonl_artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "bytes",
+        "sha256",
+        "records",
+        "unique_candidate_keys",
+        "candidate_indices_contiguous_segment",
+        "upstream_exclusions"
+      ],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "bytes": {"type": "integer", "minimum": 0},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "records": {"type": "integer", "minimum": 0},
+        "unique_candidate_keys": {"type": "integer", "minimum": 0},
+        "candidate_indices_contiguous_segment": {"type": "boolean"},
+        "upstream_exclusions": {"type": "integer", "minimum": 0}
+      }
+    },
     "source": {
       "type": "object",
       "additionalProperties": false,
@@ -98,7 +197,8 @@
       "properties": {
         "path": {"type": "string", "minLength": 1},
         "bytes": {"type": "integer", "minimum": 1},
-        "sha256": {"$ref": "#/$defs/sha256"}
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "records": {"type": "integer", "minimum": 0}
       }
     }
   }

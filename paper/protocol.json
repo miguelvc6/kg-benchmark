@@ -48,6 +48,15 @@
       "max_qids_per_event": 100,
       "retain_all_at_or_below_cap": true,
       "record_per_candidate_provenance": true
+    },
+    "reconstruction_failure_policy": {
+      "retry_exhaustion_disposition": "exclude_candidate",
+      "count_as_negative_evidence": false,
+      "durable_exclusion_artifact": "02_stage2_exclusions.json",
+      "record_candidate_phase_and_error": true,
+      "resume_treats_exclusion_as_processed": true,
+      "compatible_completed_prefix_reuse": true,
+      "prefix_reuse_requires_bound_artifacts": true
     }
   },
   "audit": {

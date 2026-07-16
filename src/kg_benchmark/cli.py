@@ -9,7 +9,7 @@ import sys
 import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable
 
 from artifact_lineage import validate_lineage
 from kg_benchmark.analysis.workflow import (
@@ -163,6 +163,118 @@ def _contains_option(argv: list[str], option: str) -> bool:
     return any(value == option or value.startswith(f"{option}=") for value in argv)
 
 
+def _option_value(argv: list[str], option: str) -> str | None:
+    for index, value in enumerate(argv):
+        if value == option and index + 1 < len(argv):
+            return argv[index + 1]
+        if value.startswith(f"{option}="):
+            return value.split("=", 1)[1]
+    return None
+
+
+def _bound_file_record(path: Path, *, jsonl=False) -> dict[str, object]:
+    if not path.is_file():
+        raise FileNotFoundError(f"Resume artifact is missing: {path}")
+    record: dict[str, object] = {
+        "path": str(path.resolve()),
+        "bytes": path.stat().st_size,
+        "sha256": sha256_file(path),
+    }
+    if jsonl:
+        records = 0
+        invalid_records = 0
+        candidate_keys: set[str] = set()
+        candidate_indices: list[int] = []
+        upstream_exclusions = 0
+        with path.open(encoding="utf-8") as handle:
+            for line in handle:
+                if not line.strip():
+                    continue
+                records += 1
+                try:
+                    row = json.loads(line)
+                except json.JSONDecodeError:
+                    invalid_records += 1
+                    continue
+                if not isinstance(row, dict):
+                    invalid_records += 1
+                    continue
+                candidate_key = row.get("candidate_key")
+                if isinstance(candidate_key, str) and candidate_key:
+                    candidate_keys.add(candidate_key)
+                candidate_index = row.get("candidate_index")
+                if isinstance(candidate_index, int):
+                    candidate_indices.append(candidate_index)
+                if row.get("result") == "upstream_unavailable":
+                    upstream_exclusions += 1
+        if invalid_records:
+            raise ValueError(f"Resume JSONL contains {invalid_records} invalid records: {path}")
+        ordered_indices = sorted(candidate_indices)
+        contiguous_segment = bool(ordered_indices) and ordered_indices == list(
+            range(ordered_indices[0], ordered_indices[-1] + 1)
+        )
+        record.update(
+            {
+                "records": records,
+                "unique_candidate_keys": len(candidate_keys),
+                "candidate_indices_contiguous_segment": contiguous_segment,
+                "upstream_exclusions": upstream_exclusions,
+            }
+        )
+    return record
+
+
+def _build_resume_provenance(
+    argv: list[str],
+    *,
+    config_path: Path,
+    current_methodology: dict[str, Any],
+) -> dict[str, object] | None:
+    resume_stats = _option_value(argv, "--resume-stats")
+    resume_checkpoint = _option_value(argv, "--resume-checkpoint")
+    if not resume_stats and not resume_checkpoint:
+        return None
+    if not config_path.is_file():
+        raise FileNotFoundError(
+            "Cannot bind completed-prefix reuse because the prior acquisition configuration is missing."
+        )
+    prior_config = json.loads(config_path.read_text(encoding="utf-8"))
+    if not isinstance(prior_config, dict) or prior_config.get("manifest_type") != "dataset_acquisition":
+        raise ValueError("Prior acquisition configuration is malformed.")
+    prior_methodology = prior_config.get("methodology")
+    if not isinstance(prior_methodology, dict):
+        raise ValueError("Prior acquisition configuration has no methodology binding.")
+    prior_status = prior_config.get("status")
+    if prior_status not in {"in_progress", "failed", "complete"}:
+        raise ValueError("Prior acquisition configuration has no valid status.")
+
+    data_dir = Path(_option_value(argv, "--data-dir") or "work/acquisition")
+    artifacts: dict[str, object] = {
+        "candidates": _bound_file_record(data_dir / "01_repair_candidates.json"),
+        "partial_repairs": _bound_file_record(data_dir / "02_wikidata_repairs.jsonl", jsonl=True),
+    }
+    if resume_stats:
+        artifacts["resume_stats"] = _bound_file_record(Path(resume_stats), jsonl=True)
+    if resume_checkpoint:
+        artifacts["resume_checkpoint"] = _bound_file_record(Path(resume_checkpoint))
+
+    current_source = current_methodology["lock"]["source_git_revision"]
+    return {
+        "policy": "compatible_completed_prefix_v1",
+        "reuse_scope": "completed_candidate_outcomes_only",
+        "prior_acquisition_config": {
+            "path": str(config_path.resolve()),
+            "bytes": config_path.stat().st_size,
+            "sha256": sha256_file(config_path),
+            "status": prior_status,
+        },
+        "prior_methodology": prior_methodology,
+        "current_source_git_revision": current_source,
+        "methodology_changed": prior_methodology.get("source_git_revision") != current_source,
+        "artifacts": artifacts,
+    }
+
+
 def _utc_now() -> str:
     return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
@@ -193,6 +305,11 @@ def _run_acquire(argv: list[str]) -> int:
         values.extend(["--dump-path", "work/latest-all.json.gz"])
     config_path = Path("work/acquisition-config.json")
     if methodology is not None:
+        resume_provenance = _build_resume_provenance(
+            values,
+            config_path=config_path,
+            current_methodology=methodology,
+        )
         lock_path = Path.cwd() / methodology["lock"]["path"]
         config = {
             "manifest_type": "dataset_acquisition",
@@ -207,6 +324,8 @@ def _run_acquire(argv: list[str]) -> int:
                 "methodology_lock_sha256": sha256_file(lock_path),
             },
         }
+        if resume_provenance is not None:
+            config["resume_provenance"] = resume_provenance
         _write_json_atomic(config_path, config)
     try:
         result = _delegate("fetcher", ["acquire", *values])

@@ -245,6 +245,7 @@ class DatasetPromotionGateTests(unittest.TestCase):
         _write_json(acquisition / "00_entity_popularity.json", stage0)
         _write_json(acquisition / "01_repair_candidates.json", stage1)
         _write_json(acquisition / "02_wikidata_repairs.json", stage2_rows)
+        _write_json(acquisition / "02_stage2_exclusions.json", [])
         _write_json(acquisition / "03_world_state.json", stage3)
         dump = work / "latest-all.json.gz"
         dump.write_bytes(b"synthetic wikidata dump")

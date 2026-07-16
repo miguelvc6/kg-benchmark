@@ -10,6 +10,13 @@ SHA-256 ranking. This preserves every observed report event and all small events
 recalculations from dominating reconstruction cost. The candidate artifact records the original event size, selected
 count, deterministic rank, cap, seed, and event-key hash for every retained QID.
 
+Stage 2 treats exhausted transient API access as reconstruction nonresponse, not evidence that no repair occurred.
+After the frozen request-level retries are exhausted, the affected candidate is excluded from the eligible source
+records and recorded with its candidate identity, reconstruction phase, and error class. These exclusions are reported
+separately from missing entities, empty histories, and clean no-diff outcomes, so upstream availability cannot silently
+change the benchmark labels. A completed prefix may be reused after a compatible robustness-only freeze change when
+the prior candidate, stats, and partial-repair artifacts are hash-bound in the resumed acquisition provenance.
+
 The fixed construct-review sample is selected by seed-13 SHA-256 ranking over case IDs and exposes no class, track,
 subtype, or label columns. It is used only to discover possible implementation errors; exhaustive deterministic gates
 and conservative dispositions, rather than the sampled reviewer, determine selection eligibility.

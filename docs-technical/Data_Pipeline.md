@@ -9,6 +9,19 @@ date. It retains every QID from groups of at most 100 and deterministically sele
 seed-13 SHA-256 QID ranking. The sampled `01_repair_candidates.json` replaces the temporary full candidate array
 atomically before Stage 2 begins. Per-candidate sampling provenance makes the operation idempotent on Stage 2 resume.
 
+Stage 2 retries transient history, snapshot, and persistence requests under the frozen transport policy. If those
+retries are exhausted, the candidate is appended to `02_stage2_exclusions.jsonl` as `upstream_unavailable`, flushed,
+and checkpointed immediately; it is never logged as `no_history`, `no_diff`, or a terminally missing entity. The final
+`02_stage2_exclusions.json` is hash-bound in source provenance with its record count. Exclusion candidate keys are
+loaded as completed work on resume. Ordinary progress flushes stats, repairs, exclusions, and an atomic checkpoint every
+100 processed candidates, while an upstream exclusion forces an immediate checkpoint.
+
+When Stage 2 resumes from an earlier acquisition attempt, `work/acquisition-config.json` binds the prior acquisition
+configuration, sampled candidate artifact, partial repair JSONL, supplied stats/checkpoint, and their hashes under the
+`compatible_completed_prefix_v1` policy. This permits the current v4 completed prefix to be reused under a
+robustness-only replacement freeze without presenting the prefix as newly computed or reusing the incomplete failing
+candidate.
+
 `kg-benchmark build` classifies the acquired records and emits canonical JSONL. The release roles are popularity,
 candidates, repairs, world state, and cases. It also records the completed acquisition arguments, methodology lock,
 original Stage 0–3 and dump hashes, cache inventory, Git revision, and a passing Stage 0–4 lineage manifest under

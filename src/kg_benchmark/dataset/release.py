@@ -179,6 +179,7 @@ def write_source_provenance(
         "popularity": acquisition_dir / "00_entity_popularity.json",
         "candidates": acquisition_dir / "01_repair_candidates.json",
         "repairs": acquisition_dir / "02_wikidata_repairs.json",
+        "stage2_exclusions": acquisition_dir / "02_stage2_exclusions.json",
         "world_state": acquisition_dir / "03_world_state.json",
         "wikidata_dump": dump_path,
     }
@@ -212,15 +213,23 @@ def write_source_provenance(
             cache_aggregate.update(b"\0")
             cache_aggregate.update(digest.encode("ascii"))
             cache_aggregate.update(b"\0")
+    source_records: dict[str, dict[str, Any]] = {}
+    for role, path in source_paths.items():
+        record: dict[str, Any] = {
+            "path": str(path.resolve()),
+            "bytes": path.stat().st_size,
+            "sha256": sha256_file(path),
+        }
+        if role == "stage2_exclusions":
+            record["records"] = sum(1 for _ in _array_items(path))
+        source_records[role] = record
+
     payload: dict[str, Any] = {
         "manifest_type": "source_provenance",
         "manifest_version": 2,
         "recorded_at_utc": datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
         "git_revision": git_revision,
-        "sources": {
-            role: {"path": str(path.resolve()), "bytes": path.stat().st_size, "sha256": sha256_file(path)}
-            for role, path in source_paths.items()
-        },
+        "sources": source_records,
         "acquisition_config": {
             "path": str(acquisition_config_path.resolve()),
             "bytes": acquisition_config_path.stat().st_size,

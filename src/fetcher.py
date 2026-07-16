@@ -32,6 +32,8 @@ from lib.config import (
     REVISION_LOOKBACK_DAYS,
     RUN_ID,
     SNAPSHOT_PREFETCH,
+    STAGE2_EXCLUSIONS,
+    STAGE2_EXCLUSIONS_JSONL,
     STAGE2_LOG_EVERY,
     STATS_FILE,
     STATS_FLUSH_EVERY,
@@ -51,6 +53,7 @@ from lib.mining import (
 )
 from lib.popularity import attach_entity_popularity, ensure_entity_popularity, load_popularity_artifact
 from lib.utils import (
+    TransientAPIError,
     _build_constraint_delta,
     append_jsonl_record,
     build_candidate_key,
@@ -93,6 +96,7 @@ def configure_runtime_paths(*, data_dir=None, cache_dir=None, dump_path=None):
     from lib import caching, config
 
     global REPAIR_CANDIDATES_FILE, WIKIDATA_REPAIRS, WIKIDATA_REPAIRS_JSONL
+    global STAGE2_EXCLUSIONS, STAGE2_EXCLUSIONS_JSONL
     global WORLD_STATE_FILE, POPULARITY_FILE, LATEST_DUMP_PATH, SNAPSHOT_FETCHER
     global REVISION_HISTORY_CACHE, _RUNTIME_LABEL_CACHE_DB
     global STATS_FILE, SUMMARY_FILE, RESUME_DEFAULT_CHECKPOINT
@@ -107,6 +111,8 @@ def configure_runtime_paths(*, data_dir=None, cache_dir=None, dump_path=None):
     config.REPAIR_CANDIDATES_FILE = root / "01_repair_candidates.json"
     config.WIKIDATA_REPAIRS = root / "02_wikidata_repairs.json"
     config.WIKIDATA_REPAIRS_JSONL = root / "02_wikidata_repairs.jsonl"
+    config.STAGE2_EXCLUSIONS = root / "02_stage2_exclusions.json"
+    config.STAGE2_EXCLUSIONS_JSONL = root / "02_stage2_exclusions.jsonl"
     config.WORLD_STATE_FILE = root / "03_world_state.json"
     config.POPULARITY_FILE = root / "00_entity_popularity.json"
     config.LATEST_DUMP_PATH = dump
@@ -122,6 +128,8 @@ def configure_runtime_paths(*, data_dir=None, cache_dir=None, dump_path=None):
     REPAIR_CANDIDATES_FILE = config.REPAIR_CANDIDATES_FILE
     WIKIDATA_REPAIRS = config.WIKIDATA_REPAIRS
     WIKIDATA_REPAIRS_JSONL = config.WIKIDATA_REPAIRS_JSONL
+    STAGE2_EXCLUSIONS = config.STAGE2_EXCLUSIONS
+    STAGE2_EXCLUSIONS_JSONL = config.STAGE2_EXCLUSIONS_JSONL
     WORLD_STATE_FILE = config.WORLD_STATE_FILE
     POPULARITY_FILE = config.POPULARITY_FILE
     LATEST_DUMP_PATH = config.LATEST_DUMP_PATH
@@ -166,6 +174,34 @@ def _run_with_heartbeat(label, func, *args, **kwargs):
     finally:
         stop_event.set()
         thread.join(timeout=0.1)
+
+
+def _run_stage2_api_phase(label, phase, func, *args, **kwargs):
+    """Run one Stage-2 API phase and classify exhausted transient failures."""
+    try:
+        return _run_with_heartbeat(label, func, *args, **kwargs), None
+    except TransientAPIError as exc:
+        return None, {
+            "phase": phase,
+            "error_type": type(exc).__name__,
+            "error_message": str(exc),
+        }
+
+
+def _build_stage2_exclusion_record(record_base, failure, *, run_id):
+    """Build a durable candidate-level exclusion without treating failure as negative evidence."""
+    return {
+        "manifest_type": "stage2_candidate_exclusion",
+        "manifest_version": 1,
+        "run_id": run_id,
+        **record_base,
+        "result": "upstream_unavailable",
+        "exclusion_reason": "transient_api_retry_exhausted",
+        "phase": failure["phase"],
+        "error_type": failure["error_type"],
+        "error_message": failure["error_message"],
+        "excluded_at_utc": datetime.now(UTC).isoformat(),
+    }
 
 
 def _write_world_state_atomic(path, world_state_items, expected_ids):
@@ -448,6 +484,7 @@ def process_pipeline(
             resume_checkpoint_payload and resume_checkpoint_payload.get("completed") is True
         )
         if checkpoint_completed:
+            STAGE2_EXCLUSIONS_JSONL.touch(exist_ok=True)
             logger.info(
                 "[*] Completed Stage 2 checkpoint supplied; compiling %s into %s.",
                 WIKIDATA_REPAIRS_JSONL,
@@ -459,6 +496,12 @@ def process_pipeline(
                 WIKIDATA_REPAIRS_JSONL,
                 WIKIDATA_REPAIRS,
             )
+            _run_with_heartbeat(
+                "Completed Stage 2 exclusions compile (JSONL to JSON)",
+                compile_jsonl_to_json,
+                STAGE2_EXCLUSIONS_JSONL,
+                STAGE2_EXCLUSIONS,
+            )
             dataset = load_cached_repairs(WIKIDATA_REPAIRS)
         elif not resume_requested:
             raise RuntimeError(
@@ -468,6 +511,15 @@ def process_pipeline(
             )
         else:
             logger.info("[*] Partial Stage 2 JSONL retained; continuing only under explicit resume state.")
+
+    if dataset is not None and not STAGE2_EXCLUSIONS.is_file():
+        STAGE2_EXCLUSIONS_JSONL.touch(exist_ok=True)
+        _run_with_heartbeat(
+            "Stage 2 exclusions compile (JSONL to JSON)",
+            compile_jsonl_to_json,
+            STAGE2_EXCLUSIONS_JSONL,
+            STAGE2_EXCLUSIONS,
+        )
 
     summary = None
     if dataset is not None:
@@ -552,6 +604,13 @@ def process_pipeline(
                     )
                 else:
                     logger.warning("[!] Resume stats last record did not match any candidate.")
+        exclusion_resume_data = load_resume_stats(STAGE2_EXCLUSIONS_JSONL, include_coarse=False)
+        if exclusion_resume_data["processed_keys"]:
+            resume_info["skip_keys"].update(exclusion_resume_data["processed_keys"])
+            logger.info(
+                "[*] Loaded %s durable upstream-exclusion keys.",
+                len(exclusion_resume_data["processed_keys"]),
+            )
         if resume_start_index >= len(candidates):
             logger.warning("[!] Resume start index exceeds candidate count; nothing to process.")
             return
@@ -593,6 +652,9 @@ def process_pipeline(
             "no_diff": 0,
             "no_history": 0,
             "entity_missing": 0,
+            "upstream_unavailable": 0,
+            "upstream_unavailable_existing": exclusion_resume_data["line_count"],
+            "upstream_unavailable_by_phase": {},
             "truncated_by_window": 0,
             "reached_page_limit": 0,
             "duplicates_skipped": 0,
@@ -676,7 +738,10 @@ def process_pipeline(
             total_to_process = min(total_to_process, max_candidates)
             remaining_candidates = remaining_candidates[:total_to_process]
         try:
-            with open(WIKIDATA_REPAIRS_JSONL, "a", encoding="utf-8") as repairs_file:
+            with (
+                open(WIKIDATA_REPAIRS_JSONL, "a", encoding="utf-8") as repairs_file,
+                open(STAGE2_EXCLUSIONS_JSONL, "a", encoding="utf-8") as exclusions_file,
+            ):
                 progress = tqdm(
                     total=total_to_process,
                     desc="Processing candidates",
@@ -689,9 +754,60 @@ def process_pipeline(
                 last_pid = None
                 last_violation = None
 
-                def finish_candidate():
+                def persist_stage2_progress(*, completed=False):
+                    if last_index is None:
+                        return
+                    stats_logger.flush()
+                    repairs_file.flush()
+                    exclusions_file.flush()
+                    checkpoint_payload = {
+                        "run_id": stats_logger.run_id,
+                        "processed_count": summary["processed"],
+                        "last_index": last_index,
+                        "last_candidate_key": last_candidate_key,
+                        "last_qid": last_qid,
+                        "last_property": last_pid,
+                        "last_violation_type": last_violation,
+                        "upstream_unavailable_total": (
+                            summary["upstream_unavailable_existing"] + summary["upstream_unavailable"]
+                        ),
+                        "timestamp_utc": datetime.now(UTC).isoformat(),
+                    }
+                    if completed:
+                        checkpoint_payload["completed"] = True
+                    write_resume_checkpoint(RESUME_DEFAULT_CHECKPOINT, checkpoint_payload)
+
+                def finish_candidate(*, processed=True, force_checkpoint=False):
                     progress.update(1)
                     log_stage2_progress(summary["processed"])
+                    if processed and (
+                        force_checkpoint
+                        or (
+                            summary["processed"] > 0
+                            and summary["processed"] % RESUME_CHECKPOINT_EVERY == 0
+                        )
+                    ):
+                        persist_stage2_progress()
+
+                def exclude_upstream_failure(record_base, failure):
+                    exclusion = _build_stage2_exclusion_record(
+                        record_base,
+                        failure,
+                        run_id=stats_logger.run_id,
+                    )
+                    summary["upstream_unavailable"] += 1
+                    phase_counts = summary["upstream_unavailable_by_phase"]
+                    phase_counts[failure["phase"]] = phase_counts.get(failure["phase"], 0) + 1
+                    append_jsonl_record(exclusions_file, exclusion)
+                    exclusions_file.flush()
+                    os.fsync(exclusions_file.fileno())
+                    stats_logger.log(exclusion)
+                    stats_logger.flush()
+                    progress.write(
+                        "    [!] Excluded candidate after transient upstream retries were exhausted "
+                        f"(phase={failure['phase']}, error={failure['error_type']})."
+                    )
+                    finish_candidate(force_checkpoint=True)
 
                 for offset, item in enumerate(remaining_candidates):
                     i = resume_start_index + offset
@@ -714,15 +830,15 @@ def process_pipeline(
 
                     if resume_info["skip_keys"] and candidate_key in resume_info["skip_keys"]:
                         summary["resume_skipped"] += 1
-                        finish_candidate()
+                        finish_candidate(processed=False)
                         continue
 
                     if not qid.startswith("Q"):
-                        finish_candidate()
+                        finish_candidate(processed=False)
                         continue
 
                     if TARGET_PROPERTIES and pid not in TARGET_PROPERTIES:
-                        finish_candidate()
+                        finish_candidate(processed=False)
                         continue
 
                     log_candidate(f"[{i + 1}/{total_to_process}] Analyzing {qid} ({pid})...")
@@ -756,14 +872,19 @@ def process_pipeline(
                         finish_candidate()
                         continue
 
-                    fix_event, history_meta = _run_with_heartbeat(
+                    phase_result, upstream_failure = _run_stage2_api_phase(
                         f"Stage-2 entity history scan for {qid} {pid}",
+                        "entity_history",
                         find_repair_revision,
                         qid,
                         pid,
                         start_time=start_time,
                         end_time=end_time,
                     )
+                    if upstream_failure:
+                        exclude_upstream_failure(record_base, upstream_failure)
+                        continue
+                    fix_event, history_meta = phase_result
                     if history_meta.get("terminal_missing"):
                         log_candidate("    [x] Dropped: Entity is missing from Wikidata (terminal HTTP 404).")
                         summary["entity_missing"] += 1
@@ -787,9 +908,18 @@ def process_pipeline(
                         log_candidate(
                             f"    [+] FOUND A-BOX REPAIR! {fix_event['old_value']} -> {fix_event['new_value']}"
                         )
+                        current_values_live, upstream_failure = _run_stage2_api_phase(
+                            f"Stage-2 A-box persistence check for {qid} {pid}",
+                            "a_box_persistence",
+                            get_current_state,
+                            qid,
+                            pid,
+                        )
+                        if upstream_failure:
+                            exclude_upstream_failure(record_base, upstream_failure)
+                            continue
                         summary["repairs_found"] += 1
                         summary["repairs_found_a_box"] += 1
-                        current_values_live = get_current_state(qid, pid)
                         if current_values_live is None and STRICT_PERSISTENCE and fix_event["action"] != "DELETE":
                             log_candidate("    [x] Dropped: Persistence check failed (Entity/Prop missing).")
                             summary["persistence_failed"] += 1
@@ -837,8 +967,9 @@ def process_pipeline(
                             },
                         }
                         # Re-run constraint diffing without heavy payloads to flag ambiguous cases.
-                        cheap_tbox_event, ambiguous_history_meta = _run_with_heartbeat(
+                        phase_result, upstream_failure = _run_stage2_api_phase(
                             f"Stage-2 ambiguity probe for property {pid}",
+                            "ambiguity_probe",
                             find_tbox_reform_revision,
                             pid,
                             start_time=start_time,
@@ -847,6 +978,12 @@ def process_pipeline(
                             scan_from_end=True,
                             max_revisions=25,
                         )
+                        if upstream_failure:
+                            summary["repairs_found"] -= 1
+                            summary["repairs_found_a_box"] -= 1
+                            exclude_upstream_failure(record_base, upstream_failure)
+                            continue
+                        cheap_tbox_event, ambiguous_history_meta = phase_result
                         if cheap_tbox_event:
                             entry["ambiguous"] = True
                             entry["ambiguous_reasons"] = ["A_BOX_CHANGED", "T_BOX_CHANGED"]
@@ -888,15 +1025,29 @@ def process_pipeline(
                             stats_logger.log(stats_payload)
                     else:
                         # Reformer (T-box) path: fall back to constraint evolution when the A-box stayed untouched.
-                        tbox_event, tbox_history_meta = _run_with_heartbeat(
+                        phase_result, upstream_failure = _run_stage2_api_phase(
                             f"Stage-2 property history scan for {pid}",
+                            "t_box_history",
                             find_tbox_reform_revision,
                             pid,
                             start_time=start_time,
                             end_time=end_time,
                         )
+                        if upstream_failure:
+                            exclude_upstream_failure(record_base, upstream_failure)
+                            continue
+                        tbox_event, tbox_history_meta = phase_result
                         if tbox_event:
-                            current_values_live = get_current_state(qid, pid)
+                            current_values_live, upstream_failure = _run_stage2_api_phase(
+                                f"Stage-2 T-box persistence check for {qid} {pid}",
+                                "t_box_persistence",
+                                get_current_state,
+                                qid,
+                                pid,
+                            )
+                            if upstream_failure:
+                                exclude_upstream_failure(record_base, upstream_failure)
+                                continue
                             if current_values_live is None and STRICT_PERSISTENCE:
                                 log_candidate("    [x] Dropped: Persistence check failed (Entity/Prop missing).")
                                 summary["persistence_failed"] += 1
@@ -1010,35 +1161,15 @@ def process_pipeline(
 
                     finish_candidate()
 
-                    if summary["processed"] % RESUME_CHECKPOINT_EVERY == 0:
-                        checkpoint_payload = {
-                            "run_id": stats_logger.run_id,
-                            "processed_count": summary["processed"],
-                            "last_index": last_index,
-                            "last_candidate_key": last_candidate_key,
-                            "last_qid": last_qid,
-                            "last_property": last_pid,
-                            "last_violation_type": last_violation,
-                            "timestamp_utc": datetime.now(UTC).isoformat(),
-                        }
-                        write_resume_checkpoint(RESUME_DEFAULT_CHECKPOINT, checkpoint_payload)
                 progress.close()
                 if last_index is not None:
-                    checkpoint_payload = {
-                        "run_id": stats_logger.run_id,
-                        "processed_count": summary["processed"],
-                        "last_index": last_index,
-                        "last_candidate_key": last_candidate_key,
-                        "last_qid": last_qid,
-                        "last_property": last_pid,
-                        "last_violation_type": last_violation,
-                        "timestamp_utc": datetime.now(UTC).isoformat(),
-                        "completed": True,
-                    }
-                    write_resume_checkpoint(RESUME_DEFAULT_CHECKPOINT, checkpoint_payload)
+                    persist_stage2_progress(completed=True)
         finally:
             stats_logger.flush()
         if summary:
+            summary["upstream_unavailable_total"] = (
+                summary["upstream_unavailable_existing"] + summary["upstream_unavailable"]
+            )
             snapshot_stats = SNAPSHOT_FETCHER.stats
             summary["entity_snapshot_cache_hits"] = snapshot_stats.get("cache_hits", 0)
             summary["entity_snapshot_cache_misses"] = snapshot_stats.get("cache_misses", 0)
@@ -1056,6 +1187,12 @@ def process_pipeline(
                 compile_jsonl_to_json,
                 WIKIDATA_REPAIRS_JSONL,
                 WIKIDATA_REPAIRS,
+            )
+            _run_with_heartbeat(
+                "Stage 2 compile exclusions JSONL to JSON",
+                compile_jsonl_to_json,
+                STAGE2_EXCLUSIONS_JSONL,
+                STAGE2_EXCLUSIONS,
             )
             dataset = load_cached_repairs(WIKIDATA_REPAIRS) or []
         else:

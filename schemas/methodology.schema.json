@@ -98,7 +98,8 @@
             "single_final_dataset",
             "canonical_large_record_format",
             "partial_artifacts_are_eligible",
-            "candidate_sampling"
+            "candidate_sampling",
+            "reconstruction_failure_policy"
           ],
           "properties": {
             "manifest": {"$ref": "#/$defs/relative_path"},
@@ -127,6 +128,28 @@
                 "max_qids_per_event": {"const": 100},
                 "retain_all_at_or_below_cap": {"const": true},
                 "record_per_candidate_provenance": {"const": true}
+              }
+            },
+            "reconstruction_failure_policy": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "retry_exhaustion_disposition",
+                "count_as_negative_evidence",
+                "durable_exclusion_artifact",
+                "record_candidate_phase_and_error",
+                "resume_treats_exclusion_as_processed",
+                "compatible_completed_prefix_reuse",
+                "prefix_reuse_requires_bound_artifacts"
+              ],
+              "properties": {
+                "retry_exhaustion_disposition": {"const": "exclude_candidate"},
+                "count_as_negative_evidence": {"const": false},
+                "durable_exclusion_artifact": {"const": "02_stage2_exclusions.json"},
+                "record_candidate_phase_and_error": {"const": true},
+                "resume_treats_exclusion_as_processed": {"const": true},
+                "compatible_completed_prefix_reuse": {"const": true},
+                "prefix_reuse_requires_bound_artifacts": {"const": true}
               }
             }
           }

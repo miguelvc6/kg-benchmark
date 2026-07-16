@@ -8,6 +8,10 @@ manifests; the frozen protocol and methodology lock; and every schema needed to 
 SHA-256. Manifest version 2 also binds the protocol, methodology freeze scope and source revision, source provenance,
 lineage, and successful semantic and byte-reproduction gates.
 
+Source provenance additionally binds the Stage-2 upstream-exclusion artifact and its record count. This construction
+diagnostic remains separate from the repair and case populations: each row documents a candidate that could not be
+reconstructed after transient API retries were exhausted, and no row is treated as negative repair evidence.
+
 During construction, `work/audit/workflow.json` is the resumable audit control manifest. Preparation writes
 `construct-sample.csv`, `rendered-prompts.jsonl`, and `render-summary.json`. Deterministic evidence and blinded review
 packets live under `work/audit/deterministic/`. Finalization writes the only promotion-facing audit artifacts directly

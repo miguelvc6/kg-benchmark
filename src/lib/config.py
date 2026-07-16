@@ -67,6 +67,8 @@ ENTITY_SNAPSHOT_DB = CACHE_DIR / "entity_snapshots.sqlite"
 REPAIR_CANDIDATES_FILE = DATA_DIR / "01_repair_candidates.json"
 WIKIDATA_REPAIRS = DATA_DIR / "02_wikidata_repairs.json"
 WIKIDATA_REPAIRS_JSONL = DATA_DIR / "02_wikidata_repairs.jsonl"
+STAGE2_EXCLUSIONS = DATA_DIR / "02_stage2_exclusions.json"
+STAGE2_EXCLUSIONS_JSONL = DATA_DIR / "02_stage2_exclusions.jsonl"
 
 # Popularity and pageview enrichment configuration
 POPULARITY_FILE = DATA_DIR / "00_entity_popularity.json"
@@ -107,7 +109,7 @@ STATS_FILE = LOG_DIR / f"fetcher_stats_{RUN_ID}.jsonl"
 SUMMARY_FILE = LOG_DIR / f"run_summary_{RUN_ID}.json"
 STATS_FLUSH_EVERY = 10000
 STAGE2_LOG_EVERY = 1000
-RESUME_CHECKPOINT_EVERY = 5000
+RESUME_CHECKPOINT_EVERY = 100
 RESUME_DEFAULT_CHECKPOINT = LOG_DIR / f"resume_checkpoint_{RUN_ID}.json"
 
 # Labels and world-state validation constants

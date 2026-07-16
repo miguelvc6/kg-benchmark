@@ -5,8 +5,10 @@ from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import requests
+from jsonschema import Draft202012Validator
 
 import fetcher
+from kg_benchmark import cli as benchmark_cli
 from lib import config
 from lib.caching import SnapshotFetcher, SnapshotFetchError, fetch_revision_history
 from lib.mining import (
@@ -85,6 +87,183 @@ class AcquisitionFailClosedTests(unittest.TestCase):
         fetcher = SnapshotFetcher(enable_cache=False, max_retries=2, max_qps=0)
         with patch("lib.caching.requests.get", return_value=response):
             self.assertIsNone(fetcher.get_snapshot("Q1", 123))
+
+    def test_stage2_transient_exhaustion_becomes_explicit_exclusion(self) -> None:
+        def fail_snapshot():
+            raise SnapshotFetchError("Historical snapshot fetch exhausted retries for P1@123")
+
+        result, failure = fetcher._run_stage2_api_phase(
+            "synthetic Stage-2 phase",
+            "t_box_history",
+            fail_snapshot,
+        )
+        self.assertIsNone(result)
+        self.assertEqual(failure["phase"], "t_box_history")
+        self.assertEqual(failure["error_type"], "SnapshotFetchError")
+
+        record = fetcher._build_stage2_exclusion_record(
+            {
+                "qid": "Q1",
+                "property": "P1",
+                "violation_type": "Format",
+                "candidate_key": "Q1|P1|2026-01-01T00:00:00|1|2",
+                "candidate_index": 7,
+                "fix_date": "2026-01-01T00:00:00",
+                "report_revision_old": 1,
+                "report_revision_new": 2,
+                "report_event_sampling": None,
+            },
+            failure,
+            run_id="test-run",
+        )
+        schema_path = Path(__file__).resolve().parents[1] / "schemas" / "stage2-candidate-exclusion.schema.json"
+        Draft202012Validator(json.loads(schema_path.read_text(encoding="utf-8"))).validate(record)
+        self.assertEqual(record["result"], "upstream_unavailable")
+        self.assertEqual(record["exclusion_reason"], "transient_api_retry_exhausted")
+
+    def test_cross_freeze_resume_binds_completed_prefix_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            data_dir = root / "acquisition"
+            data_dir.mkdir()
+            (data_dir / "01_repair_candidates.json").write_text("[]\n", encoding="utf-8")
+            (data_dir / "02_wikidata_repairs.jsonl").write_text(
+                json.dumps({"id": "repair_Q1_2"}) + "\n",
+                encoding="utf-8",
+            )
+            stats = data_dir / "fetcher_stats.jsonl"
+            stats.write_text(
+                json.dumps(
+                    {
+                        "candidate_key": "Q1|P1|2026-01-01T00:00:00|1|2",
+                        "candidate_index": 0,
+                        "result": "no_diff",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            config_path = root / "acquisition-config.json"
+            prior_methodology = {
+                "freeze_scope_sha256": "a" * 64,
+                "source_git_revision": "b" * 40,
+                "methodology_lock_sha256": "c" * 64,
+            }
+            config_path.write_text(
+                json.dumps(
+                    {
+                        "manifest_type": "dataset_acquisition",
+                        "manifest_version": 1,
+                        "status": "failed",
+                        "methodology": prior_methodology,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            provenance = benchmark_cli._build_resume_provenance(
+                [
+                    "--data-dir",
+                    str(data_dir),
+                    "--resume-stats",
+                    str(stats),
+                ],
+                config_path=config_path,
+                current_methodology={"lock": {"source_git_revision": "d" * 40}},
+            )
+
+        self.assertTrue(provenance["methodology_changed"])
+        self.assertEqual(provenance["prior_methodology"], prior_methodology)
+        self.assertEqual(provenance["artifacts"]["resume_stats"]["records"], 1)
+        self.assertTrue(
+            provenance["artifacts"]["resume_stats"]["candidate_indices_contiguous_segment"]
+        )
+
+    def test_process_pipeline_skips_transient_candidate_and_checkpoints_it(self) -> None:
+        candidate = {
+            "qid": "Q1",
+            "property_id": "P1",
+            "violation_type": "Format",
+            "fix_date": "2026-01-01T00:00:00",
+            "report_revision_old": 1,
+            "report_revision_new": 2,
+            "report_event_sampling": None,
+        }
+        event_stats = {
+            "method": "sha256_qid_rank_v1",
+            "seed": 13,
+            "cap": 100,
+            "events": 1,
+            "capped_events": 0,
+            "candidates_removed": 0,
+            "post_cap_candidates": 1,
+            "pre_cap_candidates": 1,
+            "reused_sampled_artifact": True,
+        }
+        dedup_stats = {
+            "duplicates_skipped": 0,
+            "violation_type_merges": 0,
+            "exact_duplicates": 0,
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repairs_json = root / "02_wikidata_repairs.json"
+            repairs_jsonl = root / "02_wikidata_repairs.jsonl"
+            exclusions_json = root / "02_stage2_exclusions.json"
+            exclusions_jsonl = root / "02_stage2_exclusions.jsonl"
+            stats_path = root / "logs" / "stats.jsonl"
+            summary_path = root / "logs" / "summary.json"
+            checkpoint_path = root / "logs" / "checkpoint.json"
+            label_resolver = Mock(stats={"db_hits": 0, "db_misses": 0})
+            with (
+                patch.object(fetcher, "REPAIR_CANDIDATES_FILE", root / "01_repair_candidates.json"),
+                patch.object(fetcher, "WIKIDATA_REPAIRS", repairs_json),
+                patch.object(fetcher, "WIKIDATA_REPAIRS_JSONL", repairs_jsonl),
+                patch.object(fetcher, "STAGE2_EXCLUSIONS", exclusions_json),
+                patch.object(fetcher, "STAGE2_EXCLUSIONS_JSONL", exclusions_jsonl),
+                patch.object(fetcher, "STATS_FILE", stats_path),
+                patch.object(fetcher, "SUMMARY_FILE", summary_path),
+                patch.object(fetcher, "RESUME_DEFAULT_CHECKPOINT", checkpoint_path),
+                patch.object(fetcher, "ensure_repair_candidates_file", return_value=[candidate]),
+                patch.object(
+                    fetcher,
+                    "deduplicate_candidates",
+                    return_value=([candidate], dedup_stats),
+                ),
+                patch.object(
+                    fetcher,
+                    "sample_candidates_by_report_event",
+                    return_value=([candidate], event_stats),
+                ),
+                patch.object(fetcher, "LabelResolver", return_value=label_resolver),
+                patch.object(fetcher, "load_cached_repairs", side_effect=[None, []]),
+                patch.object(
+                    fetcher,
+                    "find_repair_revision",
+                    side_effect=SnapshotFetchError("synthetic timeout"),
+                ),
+            ):
+                fetcher.process_pipeline()
+
+            exclusions = json.loads(exclusions_json.read_text(encoding="utf-8"))
+            summary = json.loads(summary_path.read_text(encoding="utf-8"))
+            checkpoint = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+            stats_rows = [
+                json.loads(line)
+                for line in stats_path.read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+
+        self.assertEqual(len(exclusions), 1)
+        self.assertEqual(exclusions[0]["result"], "upstream_unavailable")
+        self.assertEqual(exclusions[0]["phase"], "entity_history")
+        self.assertEqual(summary["upstream_unavailable_total"], 1)
+        self.assertEqual(summary["no_diff"], 0)
+        self.assertEqual(summary["no_history"], 0)
+        self.assertEqual(stats_rows[0]["candidate_key"], exclusions[0]["candidate_key"])
+        self.assertTrue(checkpoint["completed"])
+        self.assertEqual(checkpoint["last_index"], 0)
+        self.assertEqual(checkpoint["upstream_unavailable_total"], 1)
 
     def test_corrupt_dump_cannot_produce_partial_world_state(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
