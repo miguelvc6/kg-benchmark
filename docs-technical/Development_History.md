@@ -223,6 +223,27 @@ compatible-prefix policy. Lock-only commit `61950263de185ab39dd2b7cd80139c69fd28
 `6c26ad28e27c12ea5614cbf190a348aa6c7a13a806b8eff7f02f812beabc32e3`. The complete acceptance suite passed with
 376 tests and 125 subtests. Annotated tag `paper-methodology-v5` identifies the transient-safe acquisition state.
 
+The completed v5 acquisition subsequently rendered 138,312 audit prompts for 34,578 cases, but the temporal gate
+treated any target-token coincidence as future leakage. That incorrectly blocked retained values and aliases during
+mixed updates, shared historical aliases, target-required focus identity, format-normalized substrings embedded in
+historical literals, and Type B values backed by model-visible independent local evidence. The failed v5 audit remains
+an archived construction artifact and is never promoted.
+
+Methodology v6 replaces that gate with occurrence-level source/span classification. It distinguishes unexplained
+future or hidden values from expected historical, rule-derived, local-evidence, and diagnostic matches; only the first
+category blocks. It retains positive detection for future-only identifiers and aliases, encoded values, revision and
+author metadata, after-signatures, and uncovered normalized occurrences. The temporal report contract is version 3 and
+records raw hits plus unique-case counts for every severity. Deterministic and temporal phases now emit starts,
+completions, and 60-second heartbeats. `PopularityCalculator` also resolves the runtime dump path when instantiated, so
+the checkpoint replay honors `--dump-path` directly.
+
+Source commit `93f335d63b04cfb24ba14ac090b4d56f36aeaa2f` implements the repair and removes the v5 lock. Lock-only commit
+`f6640eb5dd3578125d955a3d32ef8e6b07fde67a` binds freeze-scope digest
+`9b3b23ca5184ecf8f149803ec9b180710ccb8253e2b4536f3e79e6691575d7b6`; the lock SHA-256 is
+`269e14b0855f40cdd7f5c3945d78e9d44842ceef825c93785859a851ad29324d`. The complete acceptance suite passed with
+380 tests and 125 subtests. Annotated tag `paper-methodology-v6` identifies the source-aware temporal-audit state. The
+publication replay resumes the completed Stage 2 checkpoint and does not repeat candidate discovery.
+
 ## Repository simplification
 
 By July 2026 the working tree mixed 96 GB of baseline data, 41 GB of reports, 2.6 GB of logs, hundreds of prompt and

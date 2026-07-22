@@ -90,6 +90,11 @@ Construction is isolated under ignored `work/`. Promotion is atomic and refuses 
 generations and evaluation traces are content-addressed under ignored `runs/`; metric changes and paper analysis do not
 call providers again. Compact hash-bound aggregate packages are written under `results/`.
 
+The methodology-v6 recovery path for the completed v5 Stage 2 run is documented in
+[Reproduction](docs-technical/Reproduction.md#methodology-v6-restart-from-the-completed-stage-2-checkpoint). It resumes
+the bound checkpoint without `--refresh-candidates`, archives the failed v5 audit, rebuilds downstream lineage under
+the v6 lock, and then runs a fresh canonical audit.
+
 Promotion revalidates every published record and reconstructs lineage, audit coverage, independent eligibility,
 support and prior-group exclusions, reserve prompt QA, replacements, and both populations. It requires exactly 1,200
 main cases and a nested 600-case Azure population, then reproduces the release manifest byte-for-byte before the

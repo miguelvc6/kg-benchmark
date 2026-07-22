@@ -34,6 +34,25 @@ Codex model with ephemeral, read-only, no-rules, no-user-config execution and re
 applies the conservative disposition precedence without relabeling and writes the canonical
 `work/audit/dispositions.jsonl`, `work/audit/summary.json`, and repository-root `audit.md`.
 
+The temporal report contract is version 3. It evaluates individual occurrence spans rather than treating every token
+coincidence as leakage:
+
+| Severity | Meaning | Gate effect |
+| --- | --- | --- |
+| `high` | Unexplained future-only value or hidden metadata | Blocks the deterministic phase |
+| `expected_historical` | Covered by a visible pre-repair value, alias, description, focus identity, retained value, or report field | Reported only |
+| `expected_rule_derived` | Covered by a deterministic transformation of visible historical input | Reported only |
+| `expected_local_evidence` | A Type B target is supported by its recorded independent evidence trace and that source is visible in this bundle | Reported only |
+| `diagnostic` | Class/track vocabulary or another non-target diagnostic match | Reported only |
+
+Coverage is span-aware: a normalized target substring inside its historical literal is explained, while a second copy
+outside that literal is still `high`. Type B evidence is accepted only in a bundle that exposes the recorded source;
+for example, neighborhood evidence cannot excuse a match in `logic_only`. The report includes raw-hit and unique-case
+counts for every severity. There is no canonical `allow-hits` escape hatch.
+
+The deterministic and temporal scanners print phase starts, phase completions, and 60-second heartbeats to stderr.
+Long `audit run` executions therefore show progress without changing the JSON artifacts written to disk.
+
 The workflow manifest is `work/audit/workflow.json`. It binds all source inputs, active schemas, prompt sources,
 samples, deterministic evidence, reviewer packets, Codex run report, normalized reviews, final dispositions, summary,
 and release report by size and SHA-256. Lower-level evidence remains under `work/audit/deterministic/`; it is not a

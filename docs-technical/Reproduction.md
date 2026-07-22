@@ -144,6 +144,42 @@ freeze and acquired dataset, fixing the implementation, creating a new freeze, a
 audit is appropriate for damaged audit outputs or non-systemic case-level dispositions, not for a changed methodology
 or construction rule.
 
+## Methodology v6 restart from the completed Stage 2 checkpoint
+
+The v5 temporal audit exposed a systemic scanner defect after Stage 2 had completed. Preserve that failed audit as
+historical evidence, then resume acquisition from the completed checkpoint under the v6 lock. This replay must not use
+`--refresh-candidates`: the checkpoint reuses the completed 267,401-candidate Stage 2 scan and recomputes downstream
+Stage 3 plus the acquisition configuration binding.
+
+```bash
+: "${SOURCE_REPO:?Set SOURCE_REPO to the v6 checkout}"
+: "${RUN_ROOT:?Set RUN_ROOT to the retained construction run}"
+: "${DUMP_PATH:?Set DUMP_PATH to the 2026 dump}"
+
+cd "$SOURCE_REPO"
+test -d "$RUN_ROOT/work/audit"
+test ! -e "$RUN_ROOT/audit-v5-failed"
+mv "$RUN_ROOT/work/audit" "$RUN_ROOT/audit-v5-failed"
+
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark acquire \
+  --dump-path "$DUMP_PATH" \
+  --resume-checkpoint "$RUN_ROOT/work/acquisition/logs/resume_checkpoint_20260716T172918.json"
+
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark build --dump-path "$DUMP_PATH"
+
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit run \
+  --lineage-manifest work/lineage.json \
+  --report work/audit/audit.md
+
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit status | tee "$RUN_ROOT/audit-status.json"
+```
+
+`audit run` includes the external Codex review phase. Run the corrected version-3 temporal scanner against the retained
+138,312 v5 prompt render in a temporary output directory before the replay if an isolated deterministic comparison is
+needed. Acceptance requires 138,312 prompts, 34,578 matched cases, zero `high` hits, every mutation-sensitivity check
+true, and unchanged lineage, render-coverage, and integrity outcomes. Any remaining `high` hit is a blocker to inspect
+at its recorded source/span; do not add a whitelist.
+
 Final promotion is deliberately stricter than phase-local status commands. It validates all source, case, disposition,
 ordering, replacement, and population records against the schemas copied into the release; replays Stage 2/3/4 lineage
 and deterministic selection; checks complete source and cache provenance against the construction inputs; requires zero
