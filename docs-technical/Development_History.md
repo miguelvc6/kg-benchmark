@@ -244,6 +244,21 @@ Source commit `93f335d63b04cfb24ba14ac090b4d56f36aeaa2f` implements the repair a
 380 tests and 125 subtests. Annotated tag `paper-methodology-v6` identifies the source-aware temporal-audit state. The
 publication replay resumes the completed Stage 2 checkpoint and does not repeat candidate discovery.
 
+The v6 dry-run then found two narrower source-classification defects: JSON-escaped historical descriptions were not
+recognized as covering spans, and labels aligned to trace-backed Type B values were not connected to their visible
+local scalar. After those corrections, 75 of 34,578 cases still contained genuinely uncovered future-value aliases or
+distinctive hidden-author strings. Because evaluation uses only a small deterministic subset, methodology v7 retains
+all Stage 0–4 rows for exact lineage but permanently assigns those cases disposition `exclude`; only `include` remains
+selection eligible. The temporal report contract is version 4 and separately reports its zero-high clean-inclusion
+gate and its exhaustive case-exclusion gate.
+
+Source commit `4e8c1e80d89ddeeaf2bd06eba4024d4a75bd44a3` implements and documents the temporal-exclusion policy and removes
+the v6 lock. Lock-only commit `73c1f15c966535bda4f3f15662b1caf3af93809d` binds freeze-scope digest
+`99cab40dc0ebf111d7880627d0a7f58ff16a8920b9df9019afc6eef704bedbac`; the lock SHA-256 is
+`91098e985de63c7532e512cfd6356ab2c14e4bbd917751a44b4cc1bd44f1703b`. The complete acceptance suite passed with
+384 tests and 125 subtests. Annotated tag `paper-methodology-v7` identifies the deterministic temporal-exclusion state.
+The publication replay still resumes the completed Stage 2 checkpoint and does not repeat candidate discovery.
+
 ## Repository simplification
 
 By July 2026 the working tree mixed 96 GB of baseline data, 41 GB of reports, 2.6 GB of logs, hundreds of prompt and
