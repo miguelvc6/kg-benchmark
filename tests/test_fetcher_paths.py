@@ -5,6 +5,7 @@ from unittest.mock import Mock, patch
 
 import fetcher
 from lib import config
+from lib.popularity import PopularityCalculator
 
 
 class FetcherPathTests(unittest.TestCase):
@@ -28,6 +29,8 @@ class FetcherPathTests(unittest.TestCase):
                 self.assertEqual(fetcher.REPAIR_CANDIDATES_FILE, root / "01_repair_candidates.json")
                 self.assertEqual(config.ENTITY_SNAPSHOT_DB, cache / "entity_snapshots.sqlite")
                 self.assertEqual(fetcher.LATEST_DUMP_PATH, dump)
+                calculator = PopularityCalculator(pageview_client=Mock())
+                self.assertEqual(calculator.dump_path, dump)
                 self.assertEqual(fetcher.STATS_FILE.parent, root / "logs")
                 self.assertEqual(fetcher.SUMMARY_FILE.parent, root / "logs")
                 self.assertEqual(fetcher.RESUME_DEFAULT_CHECKPOINT.parent, root / "logs")

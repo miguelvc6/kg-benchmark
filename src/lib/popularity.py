@@ -153,12 +153,15 @@ class PopularityCalculator:
 
     def __init__(
         self,
-        dump_path=config.LATEST_DUMP_PATH,
+        dump_path=None,
         window_days=config.POPULARITY_WINDOW_DAYS,
         wiki=config.POPULARITY_WIKI,
         pageview_client=None,
     ):
-        self.dump_path = Path(dump_path)
+        # Runtime acquisition configuration may rebind LATEST_DUMP_PATH after
+        # this module is imported. Resolve it when the calculator is created,
+        # not when Python evaluates this function definition.
+        self.dump_path = Path(config.LATEST_DUMP_PATH if dump_path is None else dump_path)
         self.window_days = window_days
         self.wiki = wiki
         self.pageviews = pageview_client or PageviewClient()

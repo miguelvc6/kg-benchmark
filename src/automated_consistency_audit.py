@@ -9,6 +9,8 @@ import json
 import re
 import sqlite3
 import subprocess
+import sys
+import time
 from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
@@ -23,6 +25,7 @@ from kg_benchmark.dataset.release import sha256_file
 from temporal_audit import audit_rendered_prompts
 
 AUDIT_VERSION = 2
+AUDIT_HEARTBEAT_SECONDS = 60.0
 CASE_STATUS_PRIORITY = {"pass": 0, "unsupported": 1, "disagreement": 2, "error": 3}
 INTEGRITY_CODES = {
     "duplicate_case_id",
@@ -54,6 +57,29 @@ REVIEW_PACKET_SCHEMA: dict[str, Any] = {
         "instructions": {"type": "string", "minLength": 1},
     },
 }
+
+
+def _audit_progress(message: str) -> None:
+    print(f"[deterministic-audit] {message}", file=sys.stderr, flush=True)
+
+
+class _AuditHeartbeat:
+    def __init__(self, phase: str) -> None:
+        self.phase = phase
+        self.started = time.monotonic()
+        self.last = self.started
+
+    def update(self, completed: int) -> None:
+        now = time.monotonic()
+        if now - self.last < AUDIT_HEARTBEAT_SECONDS:
+            return
+        elapsed = now - self.started
+        rate = completed / elapsed if elapsed else 0.0
+        _audit_progress(
+            f"heartbeat: phase={self.phase} completed={completed} "
+            f"elapsed={elapsed:.0f}s rate={rate:.1f}/s"
+        )
+        self.last = now
 
 
 def _utc_now() -> str:
@@ -728,6 +754,7 @@ def run_audit(
     lineage_manifest_path: str | Path | None = None,
     cache_dir: str | Path = ".cache/automated_audit",
 ) -> dict[str, Any]:
+    _audit_progress("audit start")
     starting_git_state = _git_state()
     output = Path(output_dir)
     if output.exists() and any(output.iterdir()):
@@ -742,8 +769,11 @@ def run_audit(
     sample_ids = _read_sample_ids(construct_path, construct_review_size)
     sample_id_set = set(sample_ids)
     prompt_case_ids: set[str] = set()
+    _audit_progress(f"phase start: index rendered prompts path={prompts_path}")
+    prompt_heartbeat = _AuditHeartbeat("index_rendered_prompts")
     with prompts_path.open("r", encoding="utf-8") as handle:
         for line_number, line in enumerate(handle, start=1):
+            prompt_heartbeat.update(line_number)
             if not line.strip():
                 continue
             try:
@@ -752,6 +782,7 @@ def run_audit(
                 raise ValueError(f"Invalid rendered prompt JSON at line {line_number}") from exc
             if isinstance(prompt, dict) and isinstance(prompt.get("case_id"), str):
                 prompt_case_ids.add(prompt["case_id"])
+    _audit_progress(f"phase complete: index rendered prompts cases={len(prompt_case_ids)}")
     capture_ids = sample_id_set | prompt_case_ids
 
     schema = json.loads(schema_path.read_text(encoding="utf-8"))
@@ -774,11 +805,14 @@ def run_audit(
     stage2_sha256: str | None = None
     world_state_sha256: str | None = None
 
+    _audit_progress(f"phase start: validate Stage 4 path={stage4_path}")
+    stage4_heartbeat = _AuditHeartbeat("validate_stage4")
     with WorldStateLookup(world_path, Path(cache_dir)) as world_lookup:
         with findings_path.open("w", encoding="utf-8") as findings_handle, statuses_path.open(
             "w", encoding="utf-8"
         ) as statuses_handle:
             for line_number, record, parse_error, raw_line in _iter_jsonl_with_errors(stage4_path):
+                stage4_heartbeat.update(line_number)
                 stage4_digest.update(raw_line)
                 rows_total += 1
                 if parse_error is not None or record is None:
@@ -881,15 +915,22 @@ def run_audit(
                     if world_state is not None:
                         selected_world[str(record["id"])] = world_state
 
+        _audit_progress(f"phase complete: validate Stage 4 rows={rows_total}")
+
         missing_sample = sorted(sample_id_set - selected_records.keys())
         if missing_sample:
             raise ValueError(f"Stage 4 is missing {len(missing_sample)} construct sample cases.")
 
+        _audit_progress("phase start: temporal prompt audit")
         temporal_report = audit_rendered_prompts(
             rendered_prompts_path=prompts_path,
             classified_benchmark_path=stage4_path,
             sample_size=temporal_review_size,
             seed=seed,
+        )
+        _audit_progress(
+            "phase complete: temporal prompt audit "
+            f"high_hits={temporal_report['counts']['high_risk_hits']}"
         )
         _write_json(output / "temporal_audit.json", temporal_report)
         temporal_case_ids = {str(row["case_id"]) for row in temporal_report.get("manual_review_sample", [])}
@@ -1056,6 +1097,9 @@ def run_audit(
             raise ValueError(f"Generated audit manifest is invalid: {manifest_errors[0].message}")
         manifest_path = output / "manifest.json"
         _write_json(manifest_path, manifest)
+        _audit_progress(
+            f"audit complete: rows={rows_total} passed={manifest['validation']['passed']}"
+        )
         return manifest
 
 

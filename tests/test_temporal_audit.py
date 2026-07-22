@@ -60,7 +60,7 @@ class TemporalAuditTests(unittest.TestCase):
         label_claim = next(claim for claim in claims if claim["field"] == "repair_target.new_value_labels_en")
         self.assertEqual(label_claim["severity"], "expected_rule_derived")
 
-    def test_retained_target_label_is_not_a_post_repair_claim(self) -> None:
+    def test_retained_target_label_in_mixed_update_is_expected_historical(self) -> None:
         claims = forbidden_claims(
             {
                 "id": "repair_Q9_123456",
@@ -69,16 +69,24 @@ class TemporalAuditTests(unittest.TestCase):
                 "repair_target": {
                     "old_value": ["Q1", "Q2"],
                     "old_value_labels_en": ["Removed label", "Retained label"],
-                    "new_value": ["Q2"],
-                    "new_value_labels_en": ["Retained label"],
+                    "new_value": ["Q2", "Q3"],
+                    "new_value_labels_en": ["Retained label", "Added label"],
                 },
                 "classification": {"class": "TypeA", "subtype": "SET_MEMBERSHIP_REJECTION"},
             }
         )
-        self.assertNotIn(
-            ("repair_target.new_value_labels_en", "Retained label"),
-            {(claim["field"], claim["token"]) for claim in claims},
+        retained = next(
+            claim
+            for claim in claims
+            if claim["field"] == "repair_target.new_value_labels_en" and claim["token"] == "Retained label"
         )
+        added = next(
+            claim
+            for claim in claims
+            if claim["field"] == "repair_target.new_value_labels_en" and claim["token"] == "Added label"
+        )
+        self.assertEqual(retained["severity"], "expected_historical")
+        self.assertEqual(added["severity"], "high")
 
     def test_audit_fails_high_risk_leak_and_emits_stratified_manual_sample(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -184,7 +192,7 @@ class TemporalAuditTests(unittest.TestCase):
             self.assertFalse(report["passed_automated_gate"])
             self.assertEqual(report["counts"]["high_risk_hits"], 1)
 
-    def test_version_suffix_and_cross_qid_label_aliases_are_detected(self) -> None:
+    def test_future_version_alias_is_high_but_shared_cross_qid_label_is_historical(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)
             benchmark = root / "stage4.jsonl"
@@ -223,7 +231,9 @@ class TemporalAuditTests(unittest.TestCase):
             self.assertFalse(report["passed_automated_gate"])
             modes = {hit["match_mode"] for hit in report["hits"] if hit["severity"] == "high"}
             self.assertIn("semantic_alias", modes)
-            self.assertGreaterEqual(report["counts"]["high_risk_hits"], 2)
+            self.assertEqual(report["counts"]["high_risk_hits"], 1)
+            alias_hit = next(hit for hit in report["hits"] if hit["case_id"] == "repair_alias")
+            self.assertEqual(alias_hit["severity"], "expected_historical")
 
     def test_audit_passes_sanitized_prompts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -304,6 +314,144 @@ class TemporalAuditTests(unittest.TestCase):
             )
 
             self.assertEqual(report["counts"]["high_risk_hits"], 0)
+
+    def test_format_normalization_only_explains_occurrence_inside_historical_literal(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            benchmark = root / "stage4.jsonl"
+            prompts = root / "prompts.jsonl"
+            self._write_jsonl(benchmark, [{
+                "id": "repair_format", "track": "A_BOX",
+                "violation_context": {"value": ["uk.bl.ethos.490072"]},
+                "repair_target": {
+                    "old_value": ["uk.bl.ethos.490072"],
+                    "new_value": ["490072"],
+                },
+                "classification": {"class": "TypeA", "subtype": "FORMAT_NORMALIZATION"},
+            }])
+            self._write_jsonl(prompts, [{
+                "matrix_id": "format", "case_id": "repair_format", "task": "a_box_repair",
+                "context_bundle": "logic_only", "historical_track": "A_BOX", "system_prompt": "neutral",
+                "user_prompt": "Historical value uk.bl.ethos.490072; leaked result 490072.",
+            }])
+
+            report = audit_rendered_prompts(
+                rendered_prompts_path=prompts, classified_benchmark_path=benchmark, sample_size=1
+            )
+
+            target_hits = [hit for hit in report["hits"] if hit["field"] == "repair_target.new_value"]
+            self.assertEqual(
+                [hit["severity"] for hit in target_hits],
+                ["expected_rule_derived", "high"],
+            )
+            self.assertEqual(report["counts"]["high_risk_hits"], 1)
+
+    def test_focus_qid_current_value_overlap_is_expected_rule_derived(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            benchmark = root / "stage4.jsonl"
+            prompts = root / "prompts.jsonl"
+            self._write_jsonl(benchmark, [{
+                "id": "repair_focus", "qid": "Q9", "track": "A_BOX",
+                "repair_target": {"old_value": ["MISSING"], "new_value": ["Q9"]},
+                "persistence_check": {"current_value_2026": ["Q9"]},
+                "classification": {"class": "TypeA", "subtype": "TARGET_REQUIRED_CLAIM"},
+            }])
+            self._write_jsonl(prompts, [{
+                "matrix_id": "focus", "case_id": "repair_focus", "task": "a_box_repair",
+                "context_bundle": "logic_only", "historical_track": "A_BOX", "system_prompt": "neutral",
+                "user_prompt": "Input case:\n{\"qid\": \"Q9\"}",
+            }])
+
+            report = audit_rendered_prompts(
+                rendered_prompts_path=prompts, classified_benchmark_path=benchmark, sample_size=1
+            )
+
+            self.assertTrue(report["passed_automated_gate"])
+            self.assertGreaterEqual(report["counts"]["expected_rule_derived_hits"], 2)
+            self.assertEqual(report["counts"]["high_risk_hits"], 0)
+
+    def test_type_b_local_evidence_is_expected_only_in_visible_bundle(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            benchmark = root / "stage4.jsonl"
+            prompts = root / "prompts.jsonl"
+            record = {
+                "id": "repair_local", "track": "A_BOX",
+                "repair_target": {"old_value": ["Q1"], "new_value": ["Q999"]},
+                "classification": {
+                    "class": "TypeB", "subtype": "LOCAL_NEIGHBOR_IDS",
+                    "decision_trace": [{
+                        "step": "local_availability", "result": True,
+                        "evidence": {"matches": [{
+                            "token": "Q999", "kind": "id_exact", "source": "NEIGHBOR_ID",
+                            "independent_of_target_property": True,
+                        }]},
+                    }],
+                },
+            }
+            self._write_jsonl(benchmark, [record])
+            self._write_jsonl(prompts, [
+                {
+                    "matrix_id": "local", "case_id": "repair_local", "task": "a_box_repair",
+                    "context_bundle": "local_graph", "historical_track": "A_BOX", "system_prompt": "neutral",
+                    "user_prompt": "Input case:\n{\"local_context\": {\"neighbor\": \"Q999\"}}",
+                },
+                {
+                    "matrix_id": "logic", "case_id": "repair_local", "task": "a_box_repair",
+                    "context_bundle": "logic_only", "historical_track": "A_BOX", "system_prompt": "neutral",
+                    "user_prompt": "Input case:\n{\"logic_context\": {\"unexpected\": \"Q999\"}}",
+                },
+            ])
+
+            report = audit_rendered_prompts(
+                rendered_prompts_path=prompts, classified_benchmark_path=benchmark, sample_size=1
+            )
+
+            severities = {
+                hit["matrix_id"]: hit["severity"]
+                for hit in report["hits"]
+                if hit["field"] == "repair_target.new_value"
+            }
+            self.assertEqual(severities["local"], "expected_local_evidence")
+            self.assertEqual(severities["logic"], "high")
+
+    def test_future_only_alias_and_hidden_revision_author_metadata_remain_high(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            benchmark = root / "stage4.jsonl"
+            prompts = root / "prompts.jsonl"
+            self._write_jsonl(benchmark, [{
+                "id": "repair_metadata", "track": "A_BOX",
+                "repair_target": {
+                    "old_value": ["Q1"], "new_value": ["Q2"],
+                    "new_value_aliases_en": [["Future-only alias"]],
+                    "author": "HiddenEditor", "revision_id": 987654,
+                    "constraint_delta": {"signature_after": [{"constraint_qid": "Q777777"}]},
+                },
+                "classification": {"class": "TypeC", "subtype": "EXTERNAL_BY_ELIMINATION"},
+            }])
+            self._write_jsonl(prompts, [{
+                "matrix_id": "metadata", "case_id": "repair_metadata", "task": "a_box_repair",
+                "context_bundle": "local_graph", "historical_track": "A_BOX", "system_prompt": "neutral",
+                "user_prompt": "Future-only alias by HiddenEditor at revision 987654 with Q777777.",
+            }])
+
+            report = audit_rendered_prompts(
+                rendered_prompts_path=prompts, classified_benchmark_path=benchmark, sample_size=1
+            )
+
+            high_fields = {hit["field"] for hit in report["hits"] if hit["severity"] == "high"}
+            self.assertIn("repair_target.new_value_aliases_en", high_fields)
+            self.assertIn("repair_target.author", high_fields)
+            self.assertIn("repair_target.revision_id", high_fields)
+            self.assertIn("repair_target.constraint_delta.signature_after", high_fields)
+            self.assertEqual(report["report_version"], 3)
+            for severity in (
+                "high", "expected_historical", "expected_rule_derived", "expected_local_evidence", "diagnostic"
+            ):
+                self.assertIn(severity, report["raw_hits_by_severity"])
+                self.assertIn(severity, report["unique_cases_by_severity"])
 
 
 if __name__ == "__main__":
