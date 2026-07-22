@@ -185,7 +185,7 @@ class AutomatedAuditCodexTest(unittest.TestCase):
             self.assertEqual(dispositions["case-construct"]["disposition"], "diagnostic")
             self.assertEqual(dispositions["case-temporal"]["disposition"], "exclude_pending_rerender")
             self.assertEqual(
-                dispositions["case-deterministic-temporal"]["disposition"], "exclude_pending_rerender"
+                dispositions["case-deterministic-temporal"]["disposition"], "exclude"
             )
             self.assertEqual(dispositions["case-pass"]["disposition"], "include")
             serialized = json.dumps(dispositions)

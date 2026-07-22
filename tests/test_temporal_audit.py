@@ -143,6 +143,7 @@ class TemporalAuditTests(unittest.TestCase):
             )
 
             self.assertFalse(report["passed_automated_gate"])
+            self.assertTrue(report["passed_case_exclusion_gate"])
             self.assertEqual(report["counts"]["high_risk_hits"], 2)
             self.assertEqual(len(report["manual_review_sample"]), 2)
             self.assertTrue(all(row["review_status"] == "pending_ai_review" for row in report["manual_review_sample"]))
@@ -346,6 +347,108 @@ class TemporalAuditTests(unittest.TestCase):
             )
             self.assertEqual(report["counts"]["high_risk_hits"], 1)
 
+    def test_json_escaped_historical_description_covers_nested_match(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            benchmark = root / "stage4.jsonl"
+            prompts = root / "prompts.jsonl"
+            historical = 'actor in a production; use "voice actor" for voice roles'
+            self._write_jsonl(benchmark, [{
+                "id": "reform_escaped", "track": "T_BOX",
+                "labels_en": {"property": {"description": historical}},
+                "persistence_check": {"current_value_2026_descriptions_en": ["actor"]},
+                "classification": {"class": "T_BOX", "subtype": "SCHEMA_UPDATE"},
+            }])
+            self._write_jsonl(prompts, [{
+                "matrix_id": "escaped", "case_id": "reform_escaped", "task": "t_box_repair",
+                "context_bundle": "logic_only", "historical_track": "T_BOX", "system_prompt": "neutral",
+                "user_prompt": "Input case:\n" + json.dumps({
+                    "labels_en": {"property": {"description": historical}},
+                }, indent=2),
+            }])
+
+            report = audit_rendered_prompts(
+                rendered_prompts_path=prompts, classified_benchmark_path=benchmark, sample_size=1
+            )
+
+            self.assertTrue(report["passed_automated_gate"])
+            self.assertEqual(report["counts"]["high_risk_hits"], 0)
+            self.assertEqual(report["counts"]["expected_historical_hits"], 2)
+
+    def test_short_author_word_inside_visible_phrase_is_diagnostic(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            benchmark = root / "stage4.jsonl"
+            prompts = root / "prompts.jsonl"
+            self._write_jsonl(benchmark, [{
+                "id": "repair_author_collision", "track": "A_BOX",
+                "repair_target": {"author": "Trade"},
+                "classification": {"class": "TypeA", "subtype": "DELETE_AMBIGUOUS"},
+            }])
+            self._write_jsonl(prompts, [{
+                "matrix_id": "author", "case_id": "repair_author_collision", "task": "a_box_repair",
+                "context_bundle": "local_graph", "historical_track": "A_BOX", "system_prompt": "neutral",
+                "user_prompt": "Input case:\n" + json.dumps({
+                    "local_context": {"label": "World Trade Center"},
+                }, indent=2),
+            }])
+
+            report = audit_rendered_prompts(
+                rendered_prompts_path=prompts, classified_benchmark_path=benchmark, sample_size=1
+            )
+
+            self.assertTrue(report["passed_automated_gate"])
+            self.assertEqual(report["counts"]["high_risk_hits"], 0)
+            self.assertEqual(report["hits"][0]["severity"], "diagnostic")
+
+    def test_type_b_aligned_label_uses_recorded_local_value_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            benchmark = root / "stage4.jsonl"
+            prompts = root / "prompts.jsonl"
+            self._write_jsonl(benchmark, [{
+                "id": "repair_local_label", "track": "A_BOX",
+                "repair_target": {
+                    "old_value": ["Q1"], "new_value": ["Q999"],
+                    "new_value_labels_en": ["Farhan Rana Rajpoot"],
+                },
+                "classification": {
+                    "class": "TypeB", "subtype": "LOCAL_FOCUS_NON_TARGET_PROPERTY",
+                    "decision_trace": [{
+                        "step": "local_availability", "result": True,
+                        "evidence": {"matches": [{
+                            "token": "Q999", "source": "FOCUS_NON_TARGET_PROPERTY",
+                            "independent_of_target_property": True,
+                        }]},
+                    }],
+                },
+            }])
+            self._write_jsonl(prompts, [{
+                "matrix_id": "local-label", "case_id": "repair_local_label", "task": "a_box_repair",
+                "context_bundle": "local_graph", "historical_track": "A_BOX", "system_prompt": "neutral",
+                "user_prompt": "Input case:\n" + json.dumps({
+                    "local_context": {
+                        "description": "film directed by Farhan Rana Rajpoot",
+                        "properties": {"P57": ["Q999"]},
+                    },
+                }, indent=2),
+            }])
+
+            report = audit_rendered_prompts(
+                rendered_prompts_path=prompts, classified_benchmark_path=benchmark, sample_size=1
+            )
+
+            severities = {
+                hit["field"]: hit["severity"]
+                for hit in report["hits"]
+                if hit["field"].startswith("repair_target.new_value")
+            }
+            self.assertTrue(report["passed_automated_gate"])
+            self.assertEqual(severities["repair_target.new_value"], "expected_local_evidence")
+            self.assertEqual(
+                severities["repair_target.new_value_labels_en"], "expected_local_evidence"
+            )
+
     def test_focus_qid_current_value_overlap_is_expected_rule_derived(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)
@@ -446,7 +549,8 @@ class TemporalAuditTests(unittest.TestCase):
             self.assertIn("repair_target.author", high_fields)
             self.assertIn("repair_target.revision_id", high_fields)
             self.assertIn("repair_target.constraint_delta.signature_after", high_fields)
-            self.assertEqual(report["report_version"], 3)
+            self.assertEqual(report["report_version"], 4)
+            self.assertEqual(report["excluded_case_ids"], ["repair_metadata"])
             for severity in (
                 "high", "expected_historical", "expected_rule_derived", "expected_local_evidence", "diagnostic"
             ):

@@ -26,6 +26,10 @@ few-shot support bank, the main 1,200 selection, and the nested Azure 600 select
 can enter evaluated populations. Each A-box QID/property group and each T-box property/revision group contributes at
 most one evaluated case.
 
+An unexplained future-only prompt value or hidden metadata match permanently excludes the complete case from every
+selection population. The case remains in Stage 0–4 and the audit disposition table so the exclusion is reproducible
+and exact construction lineage remains intact.
+
 The support bank reserves 16 independent A-box and 16 independent T-box groups. Evaluation populations exclude the
 entire bank. Initial prompts use four repair examples per locus and two diagnosis examples, while later prompt studies
 may select longer deterministic prefixes without changing the dataset. Population quotas are configuration values; a

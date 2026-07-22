@@ -233,6 +233,63 @@ class CanonicalAuditWorkflowTests(unittest.TestCase):
             with self.assertRaisesRegex(AuditWorkflowError, "changed after"):
                 run_deterministic_phase(work_dir=work, repo_root=ROOT)
 
+    def test_deterministic_temporal_hit_is_permanently_excluded(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            inputs = self._inputs(root)
+            cases = [json.loads(line) for line in inputs["cases"].read_text(encoding="utf-8").splitlines()]
+            cases[0]["repair_target"]["author"] = "HiddenEditor"
+            inputs["cases"].write_text(
+                "".join(json.dumps(row) + "\n" for row in cases), encoding="utf-8"
+            )
+            world = json.loads(inputs["world"].read_text(encoding="utf-8"))
+            world["repair_Q1_100001"]["L1_ego_node"]["properties"]["P9"] = ["HiddenEditor"]
+            inputs["world"].write_text(json.dumps(world), encoding="utf-8")
+            work = root / "audit"
+            prepare_audit(
+                cases_path=inputs["cases"],
+                world_state_path=inputs["world"],
+                stage4_schema_path=inputs["schema"],
+                protocol_path=inputs["protocol"],
+                work_dir=work,
+                repo_root=ROOT,
+            )
+
+            state = run_deterministic_phase(work_dir=work, repo_root=ROOT, cache_dir=root / "cache")
+            self.assertTrue(state["phases"]["deterministic"]["passed"])
+            temporal = json.loads(
+                (work / "deterministic" / "temporal_audit.json").read_text(encoding="utf-8")
+            )
+            self.assertFalse(temporal["passed_automated_gate"])
+            self.assertTrue(temporal["passed_case_exclusion_gate"])
+            self.assertEqual(temporal["excluded_case_ids"], ["repair_Q1_100001"])
+            statuses = [
+                json.loads(line)
+                for line in (work / "deterministic" / "deterministic_case_status.jsonl")
+                .read_text(encoding="utf-8")
+                .splitlines()
+            ]
+            leaked = next(row for row in statuses if row["case_id"] == "repair_Q1_100001")
+            self.assertTrue(leaked["deterministic_temporal_leakage"])
+
+            run_review_phase(
+                work_dir=work,
+                repo_root=ROOT,
+                batch_size=2,
+                workers=1,
+                run_command=FakeCodex(),
+            )
+            run_finalize_phase(work_dir=work, report_path=root / "audit.md", repo_root=ROOT)
+            dispositions = {
+                row["case_id"]: row["disposition"]
+                for row in (
+                    json.loads(line)
+                    for line in (work / "dispositions.jsonl").read_text(encoding="utf-8").splitlines()
+                )
+            }
+            self.assertEqual(dispositions["repair_Q1_100001"], "exclude")
+            self.assertEqual(dispositions["repair_Q3_100002"], "include")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -791,7 +791,7 @@ def run_finalize_phase(
         "validation": {
             "complete_unique_disposition_coverage": len(rows) == deterministic_summary["coverage"]["stage4_rows"],
             "deterministic_gates_passed": bool(state["phases"]["deterministic"]["passed"]),
-            "temporal_gate_passed": bool(temporal_audit["passed_automated_gate"]),
+            "temporal_gate_passed": bool(temporal_audit["passed_case_exclusion_gate"]),
             "review_complete": review_report.get("status") == "complete",
             "unresolved_systemic_findings": 0,
             "selection_eligible_disposition": "include",

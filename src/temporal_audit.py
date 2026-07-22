@@ -21,7 +21,7 @@ from kg_benchmark.dataset.release import sha256_file
 from lib.repair_state import derive_value_change_summary, normalize_value_list
 from lib.utils import iter_jsonl
 
-TEMPORAL_REPORT_VERSION = 3
+TEMPORAL_REPORT_VERSION = 4
 HEARTBEAT_SECONDS = 60.0
 SEVERITIES = (
     "high",
@@ -452,6 +452,21 @@ def _source_token_for_coordinate(token: str, coordinate_space: str) -> str:
     return token
 
 
+def _source_token_surfaces(token: str, coordinate_space: str) -> list[str]:
+    """Return decoded and JSON-rendered forms of a visible scalar."""
+    candidates = [
+        token,
+        json.dumps(token, ensure_ascii=False)[1:-1],
+        json.dumps(token, ensure_ascii=True)[1:-1],
+    ]
+    surfaces: list[str] = []
+    for candidate in candidates:
+        surface = _source_token_for_coordinate(candidate, coordinate_space)
+        if surface and surface not in surfaces:
+            surfaces.append(surface)
+    return surfaces
+
+
 def _covering_source(
     occurrence: dict[str, Any], sources: Iterable[dict[str, str]]
 ) -> dict[str, Any] | None:
@@ -464,19 +479,52 @@ def _covering_source(
     ):
         return None
     for source in sources:
-        source_token = _source_token_for_coordinate(source["token"], str(occurrence["coordinate_space"]))
-        if not source_token:
-            continue
-        for start, end in _literal_spans(text, source_token, boundaries=False):
-            if payload_range is not None and not (payload_range[0] <= start and end <= payload_range[1]):
-                continue
-            if start <= occurrence_start and occurrence_end <= end:
-                return {
-                    "field": source["field"],
-                    "token": source["token"],
-                    "span": {"start": start, "end": end},
-                }
+        for source_token in _source_token_surfaces(
+            source["token"], str(occurrence["coordinate_space"])
+        ):
+            for start, end in _literal_spans(text, source_token, boundaries=False):
+                if payload_range is not None and not (payload_range[0] <= start and end <= payload_range[1]):
+                    continue
+                if start <= occurrence_start and occurrence_end <= end:
+                    return {
+                        "field": source["field"],
+                        "token": source["token"],
+                        "span": {"start": start, "end": end},
+                    }
     return None
+
+
+def _input_payload(text: str) -> dict[str, Any] | None:
+    payload_range = _input_payload_range(text)
+    if payload_range is None:
+        return None
+    try:
+        payload = json.loads(text[payload_range[0] : payload_range[1]])
+    except json.JSONDecodeError:
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def _path_scalars(value: Any, path: str) -> Iterable[dict[str, str]]:
+    if isinstance(value, dict):
+        for key, nested in value.items():
+            nested_path = f"{path}.{key}" if path else str(key)
+            yield from _path_scalars(nested, nested_path)
+    elif isinstance(value, list):
+        for index, nested in enumerate(value):
+            yield from _path_scalars(nested, f"{path}[{index}]")
+    elif value is not None:
+        yield {"field": f"prompt_input.{path}", "token": str(value)}
+
+
+def _visible_input_sources(text: str, *, local_only: bool = False) -> list[dict[str, str]]:
+    payload = _input_payload(text)
+    if payload is None:
+        return []
+    if local_only:
+        local = payload.get("local_context")
+        return list(_path_scalars(local, "local_context")) if local is not None else []
+    return list(_path_scalars(payload, ""))
 
 
 def _classification(record: dict[str, Any]) -> dict[str, Any]:
@@ -527,16 +575,35 @@ _LOCAL_GRAPH_SOURCES = {
 _ALWAYS_VISIBLE_LOCAL_SOURCES = {"FOCUS_QID", "FOCUS_LABEL", "FOCUS_DESCRIPTION"}
 
 
-def _recorded_local_sources(
-    record: dict[str, Any], token: str, context_bundle: str
-) -> list[dict[str, str]]:
+def _claim_aligned_values(record: dict[str, Any], field: str, token: str) -> set[str]:
+    values = _aligned_values_for_field(record, field)
+    if not values:
+        return set()
+    if _is_value_field(field):
+        return {value for value in values if _equivalent(value, token)}
+    raw_items = _field(record, field)
+    items = raw_items if isinstance(raw_items, list) else [raw_items]
+    return {
+        values[index]
+        for index, item in enumerate(items)
+        if index < len(values)
+        and any(_equivalent(token, scalar.strip()) for scalar in _scalars(item) if scalar.strip())
+    }
+
+
+def _recorded_local_evidence(
+    record: dict[str, Any], field: str, token: str, context_bundle: str
+) -> set[str]:
     classification = _classification(record)
     if classification.get("class") != "TypeB":
-        return []
+        return set()
     trace = classification.get("decision_trace") or classification.get("trace")
     if not isinstance(trace, list):
-        return []
-    sources: list[dict[str, str]] = []
+        return set()
+    aligned_values = _claim_aligned_values(record, field, token)
+    if not aligned_values:
+        return set()
+    source_names: set[str] = set()
     for step in trace:
         if not isinstance(step, dict) or step.get("step") != "local_availability" or step.get("result") is not True:
             continue
@@ -553,26 +620,44 @@ def _recorded_local_sources(
             if source_name not in _LOCAL_GRAPH_SOURCES | _ALWAYS_VISIBLE_LOCAL_SOURCES:
                 continue
             match_token = str(match.get("token") or match.get("actual_target") or "")
-            if match_token and not _equivalent(match_token, token):
+            if match_token and any(_equivalent(match_token, value) for value in aligned_values):
+                source_names.add(source_name)
+    return source_names
+
+
+_PROMPT_CONTRACT_VOCABULARY = {
+    "family",
+    "historical",
+    "novalue",
+    "null",
+    "somevalue",
+    "title",
+    "type",
+    "value",
+}
+
+
+def _diagnostic_occurrence_source(
+    claim: dict[str, str], occurrence: dict[str, Any]
+) -> tuple[str, dict[str, Any] | None] | None:
+    token = _normalized_text(claim["token"])
+    original_text = str(occurrence.get("_original_text") or occurrence["_analyzed_text"])
+    if token in _PROMPT_CONTRACT_VOCABULARY:
+        return "prompt_contract_vocabulary", None
+
+    # A short lexical metadata value can coincide with one word inside a
+    # longer visible phrase (for example editor ``Trade`` in ``World Trade
+    # Center``).  The longer scalar, rather than the hidden metadata field, is
+    # the source of that occurrence.  Distinct identifiers and full-scalar
+    # matches remain blocking.
+    if claim["field"] == "repair_target.author" and token.isalpha() and len(token) <= 8:
+        for source in _visible_input_sources(original_text):
+            source_token = _normalized_text(source["token"])
+            if source_token == token:
                 continue
-            raw_source = match.get("source_text") or match.get("raw_match_text") or match.get("raw_matched_text")
-            if raw_source is None and source_name in _ALWAYS_VISIBLE_LOCAL_SOURCES | {
-                "FOCUS_NON_TARGET_PROPERTY",
-                "NEIGHBOR_ID",
-            }:
-                raw_source = match_token
-            if raw_source is None:
-                continue
-            raw_source = str(raw_source)
-            if _normalized_text(token) not in _normalized_text(raw_source):
-                continue
-            sources.append(
-                {
-                    "field": f"classification.decision_trace.local_evidence.{source_name}",
-                    "token": raw_source,
-                }
-            )
-    return sources
+            if re.search(rf"(?<!\w){re.escape(token)}(?!\w)", source_token):
+                return "short_word_within_visible_phrase", source
+    return None
 
 
 def _classify_occurrence(
@@ -596,12 +681,24 @@ def _classify_occurrence(
     if recorded_rule is not None:
         return "expected_rule_derived", "recorded_rule_input_visible_in_prompt", recorded_rule
 
-    local = _covering_source(
-        occurrence,
-        _recorded_local_sources(record, claim["token"], str(row.get("context_bundle") or "")),
-    )
-    if local is not None:
-        return "expected_local_evidence", "independent_local_evidence_visible_in_bundle", local
+    context_bundle = str(row.get("context_bundle") or "")
+    evidence_sources = _recorded_local_evidence(record, claim["field"], claim["token"], context_bundle)
+    if evidence_sources:
+        original_text = str(occurrence.get("_original_text") or occurrence["_analyzed_text"])
+        local = _covering_source(
+            occurrence,
+            _visible_input_sources(
+                original_text,
+                local_only=evidence_sources.isdisjoint(_ALWAYS_VISIBLE_LOCAL_SOURCES),
+            ),
+        )
+        if local is not None:
+            return "expected_local_evidence", "independent_local_evidence_visible_in_bundle", local
+
+    diagnostic = _diagnostic_occurrence_source(claim, occurrence)
+    if diagnostic is not None:
+        reason, source = diagnostic
+        return "diagnostic", reason, source
     return "high", "unexplained_future_only_or_hidden_value", None
 
 
@@ -713,6 +810,7 @@ def audit_rendered_prompts(
         for claim in claims:
             for surface, text in surfaces.items():
                 for occurrence in _occurrences(text, claim["token"]):
+                    occurrence["_original_text"] = text
                     severity, classification_reason, covered_by = _classify_occurrence(
                         record, row, claim, occurrence
                     )
@@ -768,6 +866,8 @@ def audit_rendered_prompts(
         )
 
     mutation_checks = mutation_sensitivity_checks()
+    high_case_ids = sorted({hit["case_id"] for hit in hits if hit["severity"] == "high"})
+    case_exclusion_gate_passed = not missing_case_ids and all(mutation_checks.values())
     report = {
         "report_type": "temporal_prompt_leakage_audit",
         "report_version": TEMPORAL_REPORT_VERSION,
@@ -784,6 +884,7 @@ def audit_rendered_prompts(
             "ai_review_is_ground_truth": False,
             "temporal_claim": "later frozen context with historical target-property reconstruction",
             "blocking_severity": "high",
+            "blocking_effect": "permanent_case_exclusion",
             "severity_categories": list(SEVERITIES),
         },
         "counts": {
@@ -809,6 +910,8 @@ def audit_rendered_prompts(
         "passed_automated_gate": not missing_case_ids
         and hit_counts["high"] == 0
         and all(mutation_checks.values()),
+        "passed_case_exclusion_gate": case_exclusion_gate_passed,
+        "excluded_case_ids": high_case_ids,
         "mutation_sensitivity_checks": mutation_checks,
         "missing_case_ids": missing_case_ids,
         "raw_hits_by_severity": {severity: hit_counts[severity] for severity in SEVERITIES},

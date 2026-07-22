@@ -144,22 +144,25 @@ freeze and acquired dataset, fixing the implementation, creating a new freeze, a
 audit is appropriate for damaged audit outputs or non-systemic case-level dispositions, not for a changed methodology
 or construction rule.
 
-## Methodology v6 restart from the completed Stage 2 checkpoint
+## Methodology v7 restart from the completed Stage 2 checkpoint
 
-The v5 temporal audit exposed a systemic scanner defect after Stage 2 had completed. Preserve that failed audit as
-historical evidence, then resume acquisition from the completed checkpoint under the v6 lock. This replay must not use
+The v5 temporal audit exposed a systemic scanner defect after Stage 2 had completed. A v6 dry-run then separated most
+token coincidences from true leakage but found a small number of genuine future-value and hidden-author occurrences in
+otherwise valid cases. Methodology v7 keeps those cases in Stage 0–4 for provenance, assigns them deterministic final
+disposition `exclude`, and prevents them from entering any selection population. Preserve the failed audit as historical
+evidence, then resume acquisition from the completed checkpoint under the v7 lock. This replay must not use
 `--refresh-candidates`: the checkpoint reuses the completed 267,401-candidate Stage 2 scan and recomputes downstream
 Stage 3 plus the acquisition configuration binding.
 
 ```bash
-: "${SOURCE_REPO:?Set SOURCE_REPO to the v6 checkout}"
+: "${SOURCE_REPO:?Set SOURCE_REPO to the v7 checkout}"
 : "${RUN_ROOT:?Set RUN_ROOT to the retained construction run}"
 : "${DUMP_PATH:?Set DUMP_PATH to the 2026 dump}"
 
 cd "$SOURCE_REPO"
-test -d "$RUN_ROOT/work/audit"
-test ! -e "$RUN_ROOT/audit-v5-failed"
-mv "$RUN_ROOT/work/audit" "$RUN_ROOT/audit-v5-failed"
+if test -d "$RUN_ROOT/work/audit" && test ! -e "$RUN_ROOT/audit-v5-failed"; then
+  mv "$RUN_ROOT/work/audit" "$RUN_ROOT/audit-v5-failed"
+fi
 
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark acquire \
   --dump-path "$DUMP_PATH" \
@@ -174,11 +177,13 @@ UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit run \
 UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit status | tee "$RUN_ROOT/audit-status.json"
 ```
 
-`audit run` includes the external Codex review phase. Run the corrected version-3 temporal scanner against the retained
+`audit run` includes the external Codex review phase. Run the corrected version-4 temporal scanner against the retained
 138,312 v5 prompt render in a temporary output directory before the replay if an isolated deterministic comparison is
-needed. Acceptance requires 138,312 prompts, 34,578 matched cases, zero `high` hits, every mutation-sensitivity check
-true, and unchanged lineage, render-coverage, and integrity outcomes. Any remaining `high` hit is a blocker to inspect
-at its recorded source/span; do not add a whitelist.
+needed. The reference dry-run identifies 75 high-hit cases, leaving 34,503 cases free of deterministic temporal
+exclusions before other audit dispositions. Acceptance requires 138,312 prompts, 34,578 matched cases, every
+mutation-sensitivity check true, a passing case-exclusion gate, exact `exclude` dispositions for every high-hit case,
+and unchanged lineage, render-coverage, and integrity outcomes. Any newly unexplained high source must be inspected;
+do not add a whitelist.
 
 Final promotion is deliberately stricter than phase-local status commands. It validates all source, case, disposition,
 ordering, replacement, and population records against the schemas copied into the release; replays Stage 2/3/4 lineage

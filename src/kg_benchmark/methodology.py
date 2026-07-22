@@ -223,6 +223,8 @@ def validate_methodology_bundle(bundle: dict[str, dict[str, Any]]) -> tuple[list
         errors.append("The temporal prompt review must contain 50 cases.")
     if audit.get("selection_eligible_disposition") != "include":
         errors.append("Only final disposition include may be selection eligible.")
+    if audit.get("deterministic_temporal_high_disposition") != "exclude":
+        errors.append("Deterministic high temporal hits must permanently exclude their cases.")
     if audit.get("unresolved_systemic_findings_allowed") is not False:
         errors.append("Unresolved systemic findings must block release.")
 

@@ -162,6 +162,7 @@
             "construct_review",
             "temporal_review",
             "selection_eligible_disposition",
+            "deterministic_temporal_high_disposition",
             "complete_unique_disposition_coverage_required",
             "unresolved_systemic_findings_allowed"
           ],
@@ -193,6 +194,7 @@
               }
             },
             "selection_eligible_disposition": {"const": "include"},
+            "deterministic_temporal_high_disposition": {"const": "exclude"},
             "complete_unique_disposition_coverage_required": {"const": true},
             "unresolved_systemic_findings_allowed": {"const": false}
           }

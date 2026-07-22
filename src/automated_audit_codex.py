@@ -635,12 +635,12 @@ def _disposition(
     }
     if integrity:
         return "exclude", ["deterministic_integrity_error"], flags
+    if deterministic_temporal_leakage:
+        return "exclude", ["deterministic_temporal_leakage"], flags
     if base == "exclude":
         return "exclude", ["deterministic_exclude"], flags
-    if deterministic_temporal_leakage or temporal_leakage or base == "exclude_pending_rerender":
+    if temporal_leakage or base == "exclude_pending_rerender":
         reasons = []
-        if deterministic_temporal_leakage:
-            reasons.append("deterministic_temporal_leakage")
         if temporal_leakage:
             reasons.append("suspected_temporal_leakage")
         if not reasons:
@@ -781,14 +781,14 @@ def finalize_audit(
     counts = Counter(row["disposition"] for row in dispositions)
     report = {
         "report_type": "automated_audit_final",
-        "report_version": 2,
+        "report_version": 3,
         "created_at_utc": _utc_now(),
         "policy": {
             "relabeling_allowed": False,
             "external_confirmed_allowed": False,
             "deterministic_integrity_error": "exclude",
             "deterministic_label_disagreement": "diagnostic",
-            "deterministic_temporal_leakage": "exclude_pending_rerender",
+            "deterministic_temporal_leakage": "exclude",
             "ai_construct_concern_or_uncertainty": "diagnostic",
             "suspected_temporal_leakage": "exclude_pending_rerender",
         },
@@ -845,8 +845,9 @@ def finalize_audit(
             "",
             "## Policy",
             "",
-            "Deterministic integrity errors are excluded. Deterministic label disagreements and AI-only construct",
-            "concerns or uncertainty are diagnostic. Suspected temporal leakage is excluded pending rerender. These",
+            "Deterministic integrity errors and deterministic temporal leakage are excluded. Deterministic label",
+            "disagreements and AI-only construct concerns or uncertainty are diagnostic. AI-suspected temporal",
+            "leakage is excluded pending rerender. These",
             "automated decisions are error-discovery dispositions, not human annotation or semantic ground truth.",
             "",
         ]

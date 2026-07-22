@@ -800,6 +800,7 @@ def run_audit(
     track_counts: Counter[str] = Counter()
     rows_total = 0
     missing_id_rows = 0
+    case_status_rows: list[dict[str, Any]] = []
     findings_path = output / "deterministic_findings.jsonl"
     statuses_path = output / "deterministic_case_status.jsonl"
     stage2_sha256: str | None = None
@@ -888,17 +889,14 @@ def run_audit(
                 track_counts[str(record.get("track") or "missing")] += 1
                 class_counts[str(_field(record, "classification.class") or "missing")] += 1
                 subtype_counts[str(_field(record, "classification.subtype") or "missing")] += 1
+                status_row = {
+                    "case_id": case_id,
+                    "status": case_status,
+                    "finding_codes": [item["code"] for item in case_findings],
+                }
+                case_status_rows.append(status_row)
                 statuses_handle.write(
-                    json.dumps(
-                        {
-                            "case_id": case_id,
-                            "status": case_status,
-                            "finding_codes": [item["code"] for item in case_findings],
-                        },
-                        ensure_ascii=True,
-                        sort_keys=True,
-                    )
-                    + "\n"
+                    json.dumps(status_row, ensure_ascii=True, sort_keys=True) + "\n"
                 )
                 for finding in case_findings:
                     finding_counts[str(finding["code"])] += 1
@@ -933,6 +931,11 @@ def run_audit(
             f"high_hits={temporal_report['counts']['high_risk_hits']}"
         )
         _write_json(output / "temporal_audit.json", temporal_report)
+        temporal_excluded_ids = set(temporal_report.get("excluded_case_ids", []))
+        for status_row in case_status_rows:
+            if status_row["case_id"] in temporal_excluded_ids:
+                status_row["deterministic_temporal_leakage"] = True
+        _write_jsonl(statuses_path, case_status_rows)
         temporal_case_ids = {str(row["case_id"]) for row in temporal_report.get("manual_review_sample", [])}
         for case_id in temporal_case_ids:
             if case_id not in selected_records:
@@ -1020,7 +1023,7 @@ def run_audit(
             "class_counts": dict(sorted(class_counts.items())),
             "subtype_counts": dict(sorted(subtype_counts.items())),
             "missing_id_rows": missing_id_rows,
-            "automated_temporal_gate_passed": temporal_report["passed_automated_gate"],
+            "automated_temporal_gate_passed": temporal_report["passed_case_exclusion_gate"],
             "lineage_validation": lineage_validation,
             "note": "Unsupported checks are coverage gaps, not agreement. Codex review is error discovery, not ground truth.",
         }
@@ -1078,12 +1081,12 @@ def run_audit(
             "validation": {
                 "passed": (
                     (lineage_validation is None or lineage_validation["passed"])
-                    and temporal_report["passed_automated_gate"]
+                    and temporal_report["passed_case_exclusion_gate"]
                     and prompt_coverage_matches
                     and not any(code in finding_counts for code in INTEGRITY_CODES)
                 ),
                 "lineage_passed": lineage_validation is None or lineage_validation["passed"],
-                "temporal_gate_passed": temporal_report["passed_automated_gate"],
+                "temporal_gate_passed": temporal_report["passed_case_exclusion_gate"],
                 "render_coverage_passed": prompt_coverage_matches,
                 "integrity_gate_passed": not any(code in finding_counts for code in INTEGRITY_CODES),
             },

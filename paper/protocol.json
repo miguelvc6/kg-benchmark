@@ -77,6 +77,7 @@
       "label_hidden": true
     },
     "selection_eligible_disposition": "include",
+    "deterministic_temporal_high_disposition": "exclude",
     "complete_unique_disposition_coverage_required": true,
     "unresolved_systemic_findings_allowed": false
   },
