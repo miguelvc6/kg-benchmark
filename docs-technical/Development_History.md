@@ -259,6 +259,21 @@ the v6 lock. Lock-only commit `73c1f15c966535bda4f3f15662b1caf3af93809d` binds f
 384 tests and 125 subtests. Annotated tag `paper-methodology-v7` identifies the deterministic temporal-exclusion state.
 The publication replay still resumes the completed Stage 2 checkpoint and does not repeat candidate discovery.
 
+The v7 selection reserve then exposed a false positive in the few-shot hidden-metadata guard. A legitimate T-box
+support entity had the visible label `classification`; serialized-substring matching treated that scalar vocabulary as
+if it were a hidden `classification` key and rejected the static-few-shot cell for all 233 T-box reserve cases. With no
+prompt-clean T-box prefix, total-preserving quota redistribution correctly failed rather than silently reducing the
+1,200-case population. Methodology v8 makes this check structural: actual nested `classification` and `repair_target`
+keys and raw support IDs remain forbidden, while identical visible scalar values are accepted.
+
+Source commit `619c1d5a7e54b33406620152902a85c31354e870` implements and documents the correction and removes the v7 lock.
+Lock-only commit `712b20fc67a30ccacc3372d325cb9aa2bcebf6f6` binds freeze-scope digest
+`093cc526a764f28aadee4034896cb771dc218abbdee11b723fb89e4bc6bb7c0e`; the lock SHA-256 is
+`6a156ae3f44855ab35b1c7a9bb20c66f3c6cce93fd7640d8299b0c9fe58329fd`. The complete acceptance suite passed with
+385 tests and 125 subtests. Annotated tag `paper-methodology-v8` identifies the structural support-render state.
+Publication execution again resumes the completed Stage 2 checkpoint without repeating candidate discovery, then
+rebuilds and audits before restarting selection.
+
 ## Repository simplification
 
 By July 2026 the working tree mixed 96 GB of baseline data, 41 GB of reports, 2.6 GB of logs, hundreds of prompt and
