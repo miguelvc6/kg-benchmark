@@ -90,10 +90,10 @@ Construction is isolated under ignored `work/`. Promotion is atomic and refuses 
 generations and evaluation traces are content-addressed under ignored `runs/`; metric changes and paper analysis do not
 call providers again. Compact hash-bound aggregate packages are written under `results/`.
 
-The methodology-v7 recovery path for the completed v5 Stage 2 run is documented in
-[Reproduction](docs-technical/Reproduction.md#methodology-v7-restart-from-the-completed-stage-2-checkpoint). It resumes
-the bound checkpoint without `--refresh-candidates`, archives the failed v5 audit, rebuilds downstream lineage under
-the v7 lock, and then runs a fresh canonical audit with deterministic temporal case exclusions.
+The methodology-v8 recovery path is documented in
+[Reproduction](docs-technical/Reproduction.md#methodology-v8-restart-after-the-support-render-guard-defect). It
+preserves the v7 audit and failed selection, resumes the completed Stage 2 checkpoint without
+`--refresh-candidates`, rebuilds downstream lineage under the v8 lock, and reruns the canonical audit and selection.
 
 Promotion revalidates every published record and reconstructs lineage, audit coverage, independent eligibility,
 support and prior-group exclusions, reserve prompt QA, replacements, and both populations. It requires exactly 1,200

@@ -1524,6 +1524,16 @@ def _replace_exact(value: Any, old: str, new: str) -> Any:
     return value
 
 
+def _contains_hidden_support_key(value: Any) -> bool:
+    if isinstance(value, dict):
+        if any(key in {"classification", "repair_target"} for key in value):
+            return True
+        return any(_contains_hidden_support_key(child) for child in value.values())
+    if isinstance(value, list):
+        return any(_contains_hidden_support_key(child) for child in value)
+    return False
+
+
 def _few_shot_output(record: dict[str, Any], task: str, visible_case_id: str) -> dict[str, Any]:
     raw_case_id = str(record.get("id") or "")
     if task == "track_diagnosis":
@@ -1625,7 +1635,7 @@ def _few_shot_examples_from_bank(
                 visible_case_id=visible_case_id,
             )
         encoded_input = json.dumps(input_payload, ensure_ascii=False)
-        if raw_case_id in encoded_input or any(key in encoded_input for key in ('"classification"', '"repair_target"')):
+        if raw_case_id in encoded_input or _contains_hidden_support_key(input_payload):
             raise ValueError(f"Few-shot input exposes hidden support metadata for {raw_case_id}.")
         examples.append(
             {

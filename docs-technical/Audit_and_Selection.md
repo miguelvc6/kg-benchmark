@@ -72,6 +72,11 @@ registered roles. Every support group is excluded from all evaluation population
 not source-code edits. Later population manifests select larger per-stratum prefixes with `kg-benchmark select expand`;
 nondecreasing quotas must prove that the parent population is a subset.
 
+Few-shot support inputs replace raw case IDs and reject actual nested `classification` or `repair_target` keys before
+rendering. That check is structural: ordinary visible labels or descriptions whose scalar text happens to equal
+`classification` or `repair_target` remain valid evidence. Raw support IDs and genuine hidden-metadata keys still fail
+closed.
+
 The frozen policy first constructs a reserve of 276 IC-L, 450 IC-G, 354 IC-E-elim, and up to 360 T-box groups. Every
 reserve prompt must pass deterministic scanning and a fixed 50-case temporal review. Failed prompts are replaced by the
 next clean case in the frozen stratum order before finalization.

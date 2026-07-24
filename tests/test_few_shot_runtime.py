@@ -5,7 +5,11 @@ import unittest
 from pathlib import Path
 
 from classifier import WorldStateStore
-from guardian.reasoning import _few_shot_examples_from_bank, _load_support_bank_for_runner
+from guardian.reasoning import (
+    _contains_hidden_support_key,
+    _few_shot_examples_from_bank,
+    _load_support_bank_for_runner,
+)
 
 
 class FewShotRuntimeTests(unittest.TestCase):
@@ -59,7 +63,14 @@ class FewShotRuntimeTests(unittest.TestCase):
                         "id": "raw-support-case",
                         "world_state": {
                             "L1_ego_node": {"qid": "Q9", "properties": {"P31": ["Q2"]}},
-                            "L2_labels": {"entities": {}},
+                            "L2_labels": {
+                                "entities": {
+                                    "Q2": {
+                                        "label": "classification",
+                                        "description": "visible domain vocabulary",
+                                    }
+                                }
+                            },
                             "L3_neighborhood": {"outgoing_edges": []},
                             "L4_constraints": {"constraints": []},
                         },
@@ -77,7 +88,7 @@ class FewShotRuntimeTests(unittest.TestCase):
                     task="a_box_repair",
                     records_by_id={"raw-support-case": support},
                     world_store=store,
-                    context_bundle="logic_only",
+                    context_bundle="local_graph",
                     example_count=1,
                 )
             finally:
@@ -85,8 +96,14 @@ class FewShotRuntimeTests(unittest.TestCase):
             encoded = json.dumps(examples)
             self.assertEqual(examples[0]["visible_case_id"], "example_000001")
             self.assertNotIn("raw-support-case", encoded)
-            self.assertNotIn('"classification"', encoded)
+            self.assertIn('"classification"', encoded)
             self.assertNotIn('"repair_target"', encoded)
+
+    def test_hidden_support_guard_checks_keys_not_visible_values(self) -> None:
+        self.assertFalse(_contains_hidden_support_key({"label": "classification"}))
+        self.assertFalse(_contains_hidden_support_key({"description": "repair_target"}))
+        self.assertTrue(_contains_hidden_support_key({"nested": {"classification": {"class": "TypeA"}}}))
+        self.assertTrue(_contains_hidden_support_key([{"repair_target": {"action": "UPDATE"}}]))
 
 
 if __name__ == "__main__":

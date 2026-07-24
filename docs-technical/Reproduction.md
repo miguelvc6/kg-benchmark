@@ -185,6 +185,50 @@ mutation-sensitivity check true, a passing case-exclusion gate, exact `exclude` 
 and unchanged lineage, render-coverage, and integrity outcomes. Any newly unexplained high source must be inspected;
 do not add a whitelist.
 
+## Methodology v8 restart after the support-render guard defect
+
+The v7 selection reserve exposed a structural-check bug in the few-shot support renderer. One legitimate T-box support
+entity had the visible English label `classification`. The renderer searched serialized JSON for the token
+`"classification"` and therefore mistook that scalar value for a hidden metadata key, rejecting the static-few-shot
+cell for every T-box reserve case. Methodology v8 checks object keys recursively instead: actual `classification` and
+`repair_target` keys remain forbidden, while identical visible scalar vocabulary is allowed.
+
+The defect does not change Stage 2 outcomes, but the frozen protocol requires downstream execution to be rebound to the
+new lock after a systemic implementation correction. Preserve the completed v7 audit and failed v7 selection, resume
+the same completed Stage 2 checkpoint without `--refresh-candidates`, then rebuild and audit before restarting
+selection:
+
+```bash
+: "${SOURCE_REPO:?Set SOURCE_REPO to the v8 checkout}"
+: "${RUN_ROOT:?Set RUN_ROOT to the retained construction run}"
+: "${DUMP_PATH:?Set DUMP_PATH to the 2026 dump}"
+
+cd "$SOURCE_REPO"
+cp "$RUN_ROOT/work/selections/group-exclusions.json" "$RUN_ROOT/event-group-exclusions.json"
+mv "$RUN_ROOT/work/selections" "$RUN_ROOT/selections-v7-failed"
+mv "$RUN_ROOT/work/audit" "$RUN_ROOT/audit-v7-complete"
+
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark acquire \
+  --dump-path "$DUMP_PATH" \
+  --resume-checkpoint "$RUN_ROOT/work/acquisition/logs/resume_checkpoint_20260716T172918.json"
+
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark build --dump-path "$DUMP_PATH"
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit run \
+  --lineage-manifest work/lineage.json \
+  --report work/audit/audit.md
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit status | tee "$RUN_ROOT/audit-status-v8.json"
+
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select reserve \
+  --exclusions "$RUN_ROOT/event-group-exclusions.json"
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select review --batch-size 5
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select finalize
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select status | tee "$RUN_ROOT/selection-status.json"
+```
+
+The five-packet review batch changes only Codex request grouping; it keeps the frozen 50 packets and reviewer model
+unchanged while remaining below the service request-size limit. Do not reuse the failed v7 reserve render, its review,
+or any partial finalization output.
+
 Final promotion is deliberately stricter than phase-local status commands. It validates all source, case, disposition,
 ordering, replacement, and population records against the schemas copied into the release; replays Stage 2/3/4 lineage
 and deterministic selection; checks complete source and cache provenance against the construction inputs; requires zero
