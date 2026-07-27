@@ -401,6 +401,32 @@ class TemporalAuditTests(unittest.TestCase):
             self.assertEqual(report["counts"]["high_risk_hits"], 0)
             self.assertEqual(report["hits"][0]["severity"], "diagnostic")
 
+    def test_missing_sentinel_in_prompt_contract_is_diagnostic(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            benchmark = root / "stage4.jsonl"
+            prompts = root / "prompts.jsonl"
+            self._write_jsonl(benchmark, [{
+                "id": "repair_delete", "track": "A_BOX",
+                "repair_target": {"old_value": ["Q1"], "new_value": ["MISSING"]},
+                "classification": {"class": "TypeA", "subtype": "DELETE_AMBIGUOUS"},
+            }])
+            self._write_jsonl(prompts, [{
+                "matrix_id": "missing", "case_id": "repair_delete", "task": "a_box_repair",
+                "context_bundle": "logic_only", "historical_track": "A_BOX",
+                "system_prompt": "Use visible evidence only.",
+                "user_prompt": "MISSING is the benchmark sentinel for an absent claim value.",
+            }])
+
+            report = audit_rendered_prompts(
+                rendered_prompts_path=prompts, classified_benchmark_path=benchmark, sample_size=1
+            )
+
+            self.assertTrue(report["passed_automated_gate"])
+            self.assertEqual(report["counts"]["high_risk_hits"], 0)
+            self.assertEqual(report["hits"][0]["severity"], "diagnostic")
+            self.assertEqual(report["hits"][0]["classification_reason"], "prompt_contract_vocabulary")
+
     def test_type_b_aligned_label_uses_recorded_local_value_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)
@@ -549,7 +575,7 @@ class TemporalAuditTests(unittest.TestCase):
             self.assertIn("repair_target.author", high_fields)
             self.assertIn("repair_target.revision_id", high_fields)
             self.assertIn("repair_target.constraint_delta.signature_after", high_fields)
-            self.assertEqual(report["report_version"], 4)
+            self.assertEqual(report["report_version"], 5)
             self.assertEqual(report["excluded_case_ids"], ["repair_metadata"])
             for severity in (
                 "high", "expected_historical", "expected_rule_derived", "expected_local_evidence", "diagnostic"

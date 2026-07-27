@@ -21,7 +21,7 @@ from kg_benchmark.dataset.release import sha256_file
 from lib.repair_state import derive_value_change_summary, normalize_value_list
 from lib.utils import iter_jsonl
 
-TEMPORAL_REPORT_VERSION = 4
+TEMPORAL_REPORT_VERSION = 5
 HEARTBEAT_SECONDS = 60.0
 SEVERITIES = (
     "high",
@@ -628,6 +628,7 @@ def _recorded_local_evidence(
 _PROMPT_CONTRACT_VOCABULARY = {
     "family",
     "historical",
+    "missing",
     "novalue",
     "null",
     "somevalue",
