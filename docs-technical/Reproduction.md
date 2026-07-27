@@ -229,6 +229,53 @@ The five-packet review batch changes only Codex request grouping; it keeps the f
 unchanged while remaining below the service request-size limit. Do not reuse the failed v7 reserve render, its review,
 or any partial finalization output.
 
+## Methodology v9 restart after the MISSING-sentinel defect
+
+The v8 reserve rendered all 1,313 cases and 10,504 prompt cells with zero render failures, confirming the structural
+few-shot guard repair. Finalization then exposed a temporal-classification defect: 142 IC-L deletion cases were
+excluded solely because their hidden target used the generic `MISSING` sentinel and an unrelated support example
+visibly used the same sentinel for an absent historical claim. Methodology v9 classifies this non-distinctive
+prompt-contract vocabulary as diagnostic. Substantive future values and metadata remain blocking.
+
+The corrected version-5 scanner was run against the complete retained v8 reserve render before freezing. It reduced
+the high-risk population from 186 cases to 44 while leaving 400 substantive high-risk occurrences blocking. The clean
+reserve has 276 IC-L, 423 IC-G, 345 IC-E-elim, and 225 T-box cases. This deterministically fills the 1,200-case main
+population with effective quotas 249/406/320/225 and the nested 600-case Azure population with quotas
+115/188/147/150.
+
+Preserve the completed v8 audit and failed v8 selection, then bind downstream construction to v9 from the same
+completed Stage 2 checkpoint:
+
+```bash
+: "${SOURCE_REPO:?Set SOURCE_REPO to the v9 checkout}"
+: "${RUN_ROOT:?Set RUN_ROOT to the retained construction run}"
+: "${DUMP_PATH:?Set DUMP_PATH to the 2026 dump}"
+
+cd "$SOURCE_REPO"
+mv "$RUN_ROOT/work/selections" "$RUN_ROOT/selections-v8-failed"
+mv "$RUN_ROOT/work/audit" "$RUN_ROOT/audit-v8-complete"
+
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark acquire \
+  --dump-path "$DUMP_PATH" \
+  --resume-checkpoint "$RUN_ROOT/work/acquisition/logs/resume_checkpoint_20260716T172918.json"
+
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark build --dump-path "$DUMP_PATH"
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit run \
+  --lineage-manifest work/lineage.json \
+  --report work/audit/audit.md
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark audit status | tee "$RUN_ROOT/audit-status-v9.json"
+
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select reserve \
+  --exclusions "$RUN_ROOT/event-group-exclusions.json"
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select review --batch-size 5
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select finalize
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run kg-benchmark select status | tee "$RUN_ROOT/selection-status.json"
+```
+
+Do not reuse the v8 prompt audit or review artifacts in the canonical v9 selection. The diagnostic v9 scan of the v8
+render is evidence for the correction and quota feasibility only; canonical finalization consumes artifacts generated
+under the v9 lock.
+
 Final promotion is deliberately stricter than phase-local status commands. It validates all source, case, disposition,
 ordering, replacement, and population records against the schemas copied into the release; replays Stage 2/3/4 lineage
 and deterministic selection; checks complete source and cache provenance against the construction inputs; requires zero

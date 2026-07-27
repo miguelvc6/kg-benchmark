@@ -34,7 +34,7 @@ Codex model with ephemeral, read-only, no-rules, no-user-config execution and re
 applies the conservative disposition precedence without relabeling and writes the canonical
 `work/audit/dispositions.jsonl`, `work/audit/summary.json`, and repository-root `audit.md`.
 
-The temporal report contract is version 4. It evaluates individual occurrence spans rather than treating every token
+The temporal report contract is version 5. It evaluates individual occurrence spans rather than treating every token
 coincidence as leakage:
 
 | Severity | Meaning | Gate effect |
@@ -43,7 +43,7 @@ coincidence as leakage:
 | `expected_historical` | Covered by a visible pre-repair value, alias, description, focus identity, retained value, or report field | Reported only |
 | `expected_rule_derived` | Covered by a deterministic transformation of visible historical input | Reported only |
 | `expected_local_evidence` | A Type B target is supported by its recorded independent evidence trace and that source is visible in this bundle | Reported only |
-| `diagnostic` | Class/track vocabulary or another non-target diagnostic match | Reported only |
+| `diagnostic` | Class/track vocabulary, the generic `MISSING` sentinel, or another non-target diagnostic match | Reported only |
 
 Coverage is span-aware: JSON-escaped historical scalars and normalized target substrings inside their historical
 literals are explained, while a second copy
@@ -53,6 +53,11 @@ counts for every severity. A clean-inclusion gate still requires zero `high` hit
 only when every high-hit case is enumerated and assigned deterministic disposition `exclude`. Stage 0–4 rows remain
 untouched for exact lineage, and only disposition `include` is selection eligible. There is no canonical `allow-hits`
 escape hatch.
+
+`MISSING` denotes the absence of a claim value throughout prompt inputs and support examples. Its occurrence alone is
+therefore non-distinctive and cannot reveal that a target case will delete a claim. Opaque future identifiers, labels,
+aliases, descriptions, revision metadata, and other substantive values remain blocking when their occurrence is not
+covered by an allowed source span.
 
 The deterministic and temporal scanners print phase starts, phase completions, and 60-second heartbeats to stderr.
 Long `audit run` executions therefore show progress without changing the JSON artifacts written to disk.

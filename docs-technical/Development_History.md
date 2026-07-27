@@ -274,6 +274,21 @@ Lock-only commit `712b20fc67a30ccacc3372d325cb9aa2bcebf6f6` binds freeze-scope d
 Publication execution again resumes the completed Stage 2 checkpoint without repeating candidate discovery, then
 rebuilds and audits before restarting selection.
 
+The v8 reserve confirmed the support-render repair with all 1,313 cases and 10,504 prompt cells rendered, but
+finalization exposed a separate non-distinctive-token defect. The temporal scanner treated the generic `MISSING`
+sentinel in unrelated visible support inputs as if it disclosed the hidden deletion target for 142 IC-L cases.
+Methodology v9 adds that sentinel to the existing prompt-contract vocabulary category, where occurrences are diagnostic
+and non-blocking. A complete scan of the retained v8 reserve under the correction left 44 genuinely high-risk cases
+and proved exact capacity for both the 1,200-case main and nested 600-case Azure populations.
+
+Source commit `f1de73908202ab050fa06e140bb614a75c270632` implements the version-5 temporal report correction and removes
+the v8 lock. Lock-only commit `9afe3a94bbda18383a8565bf0b6d1718ae38103d` binds freeze-scope digest
+`dd854165580e86d0ec382f15d17103fefe59b4d979e1c17bcfdd738f90f8e652`; the lock SHA-256 is
+`32345ba54e9c124f4dcad9a1dea09c7c4e1768f2d65b7b642f8997bb981d607f`. The complete acceptance suite passed with
+386 tests and 125 subtests. Annotated tag `paper-methodology-v9` identifies the missing-sentinel temporal state.
+Publication execution again resumes the completed Stage 2 checkpoint without repeating candidate discovery, then
+rebuilds, audits, and restarts selection.
+
 ## Repository simplification
 
 By July 2026 the working tree mixed 96 GB of baseline data, 41 GB of reports, 2.6 GB of logs, hundreds of prompt and
