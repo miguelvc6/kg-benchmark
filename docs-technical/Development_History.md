@@ -289,6 +289,29 @@ the v8 lock. Lock-only commit `9afe3a94bbda18383a8565bf0b6d1718ae38103d` binds f
 Publication execution again resumes the completed Stage 2 checkpoint without repeating candidate discovery, then
 rebuilds, audits, and restarts selection.
 
+## Post-freeze execution transport correction
+
+Publication execution completed all 24 Ollama logical cells. One GPT-OSS proposal had remained a `request_error` after
+three 120-second transport attempts, exposing that resume treated the historical error row as completed work. A
+one-time controlled recovery retried the same request with a 900-second timeout; it completed in approximately 210
+seconds, was normalized, and entered the existing generation cache under the unchanged request key. The permanent
+runner now treats `request_error` rows as incomplete while retaining them as historical evidence, counts only completed
+request units during batch resume, and does not expose a paper-execution source-drift bypass.
+
+The same review found that the synchronous Azure chat adapter accepted the frozen `max_transport_retries` value but did
+not execute it, and always used a hard-coded 120-second timeout. The corrected adapter encodes each request once,
+retries only HTTP 429/500/502/503/504, timeouts, and connection failures, and records successful transport-attempt
+counts. Azure's default timeout is 900 seconds; the matrix's explicit two-retry policy overrides ambient developer
+configuration. Timeout and backoff are recorded as transport provenance but remain outside generation identity.
+
+This was classified as an execution-transport correction rather than a dataset or methodology-semantic defect. The
+dataset, 600-case Azure population, prompts, schemas, model snapshot, inference settings, evaluation, model and protocol
+files, and generation-key fields did not change. A provider-free re-render produced the same
+`matrix_eba99686047c6c29f046` identity and a byte-identical 33,600-row request plan with SHA-256
+`1fc55c11fb0c3aabdb7c4739291983a82d8a191815ba30293d51b173b5860f84`. The only top-level matrix-manifest differences
+were relative artifact paths caused by rendering under `/tmp`. The final methodology-v9 dataset therefore remains the
+immutable acquisition input, while a replacement clean source lock binds the corrected execution code.
+
 ## Repository simplification
 
 By July 2026 the working tree mixed 96 GB of baseline data, 41 GB of reports, 2.6 GB of logs, hundreds of prompt and

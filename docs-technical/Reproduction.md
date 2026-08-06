@@ -144,6 +144,12 @@ freeze and acquired dataset, fixing the implementation, creating a new freeze, a
 audit is appropriate for damaged audit outputs or non-systemic case-level dispositions, not for a changed methodology
 or construction rule.
 
+An execution-transport correction is non-systemic with respect to the acquired dataset only when it changes no dataset,
+selection, prompt, model revision, inference setting, generation identity, parser, evaluator, or analysis input. That
+classification requires a provider-free re-render proving the same matrix ID and byte-identical request plan, plus a
+new clean source lock. The immutable dataset remains bound to its acquisition lock; the replacement source lock binds
+the corrected executor. A correction that fails any of these invariants follows the systemic-defect rule above.
+
 ## Methodology v7 restart from the completed Stage 2 checkpoint
 
 The v5 temporal audit exposed a systemic scanner defect after Stage 2 had completed. A v6 dry-run then separated most

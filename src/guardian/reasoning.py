@@ -101,6 +101,8 @@ def _usage_block(usage: dict[str, Any], elapsed_seconds: float | None) -> dict[s
         "batch_pricing_applied": usage.get("batch_pricing_applied"),
         "cost_estimation_mode": usage.get("cost_estimation_mode"),
         "cost_estimation_multiplier": usage.get("cost_estimation_multiplier"),
+        "transport_attempts": usage.get("transport_attempts"),
+        "transport_retries": usage.get("transport_retries"),
         "elapsed_seconds": round(elapsed_seconds, 6) if isinstance(elapsed_seconds, (int, float)) else None,
     }
 
@@ -118,6 +120,10 @@ def _aggregate_run_usage(manifest: list[dict[str, Any]]) -> dict[str, Any]:
     has_cached = False
     has_cost = False
     has_elapsed = False
+    transport_attempts = 0
+    transport_retries = 0
+    has_transport_attempts = False
+    has_transport_retries = False
     for record in manifest:
         usage = record.get("usage")
         if not isinstance(usage, dict):
@@ -146,6 +152,14 @@ def _aggregate_run_usage(manifest: list[dict[str, Any]]) -> dict[str, Any]:
         if isinstance(value, (int, float)):
             elapsed_seconds += float(value)
             has_elapsed = True
+        value = usage.get("transport_attempts")
+        if isinstance(value, int):
+            transport_attempts += value
+            has_transport_attempts = True
+        value = usage.get("transport_retries")
+        if isinstance(value, int):
+            transport_retries += value
+            has_transport_retries = True
     return {
         "prompt_tokens": prompt_tokens if has_prompt else None,
         "completion_tokens": completion_tokens if has_completion else None,
@@ -153,6 +167,8 @@ def _aggregate_run_usage(manifest: list[dict[str, Any]]) -> dict[str, Any]:
         "cached_tokens": cached_tokens if has_cached else None,
         "estimated_cost_usd": round(estimated_cost_usd, 10) if has_cost else None,
         "generation_elapsed_seconds": round(elapsed_seconds, 6) if has_elapsed else None,
+        "transport_attempts": transport_attempts if has_transport_attempts else None,
+        "transport_retries": transport_retries if has_transport_retries else None,
     }
 
 
@@ -218,6 +234,11 @@ def _resolved_inference_settings(provider: ModelProvider) -> dict[str, Any]:
         "reasoning_effort",
         "tools_disabled",
     )
+    return {field: getattr(provider, field, None) for field in fields}
+
+
+def _resolved_transport_settings(provider: ModelProvider) -> dict[str, Any]:
+    fields = ("timeout", "max_retries", "retry_base_seconds", "retry_max_seconds")
     return {field: getattr(provider, field, None) for field in fields}
 
 
@@ -324,6 +345,7 @@ def _validate_resume_run_config(
         "paper_protocol",
         "artifact_fingerprints",
         "inference_settings",
+        "transport_settings",
         "model_digest",
         "generation_cache",
         "batch_sync_retry_fallback",
@@ -375,7 +397,30 @@ def _manifest_row_for_task(
     case_id: str,
     task_type: str,
 ) -> dict[str, Any] | None:
-    return manifest_lookup.get((bundle, case_id, task_type))
+    row = manifest_lookup.get((bundle, case_id, task_type))
+    if row is not None and row.get("parse_status") == "request_error":
+        return None
+    return row
+
+
+def _completed_request_units(
+    manifest_lookup: dict[tuple[str | None, str, str], dict[str, Any]],
+    *,
+    bundle_list: Iterable[str],
+    selected_case_ids: Iterable[str],
+) -> int:
+    return sum(
+        _manifest_row_for_task(
+            manifest_lookup,
+            bundle=bundle,
+            case_id=case_id,
+            task_type=task_type,
+        )
+        is not None
+        for bundle in bundle_list
+        for case_id in selected_case_ids
+        for task_type in ("track_diagnosis", "proposal")
+    )
 
 
 def _load_existing_track_diagnosis_rows(
@@ -2313,6 +2358,7 @@ def run_reasoning_floor(
         or os.getenv("MODEL_DIGEST")
     )
     base_inference_settings = _resolved_inference_settings(provider)
+    transport_settings = _resolved_transport_settings(provider)
     if generation_cache_path is not None:
         if not isinstance(resolved_model_digest, str) or not resolved_model_digest.strip():
             raise ValueError(
@@ -2528,6 +2574,7 @@ def run_reasoning_floor(
     )
     expected_run_config["reasoning_effort"] = resolved_reasoning_effort
     expected_run_config["inference_settings"] = base_inference_settings
+    expected_run_config["transport_settings"] = transport_settings
     expected_run_config["model_digest"] = resolved_model_digest
     expected_run_config["generation_cache"] = {
         "enabled": generation_cache_path is not None,
@@ -2566,7 +2613,11 @@ def run_reasoning_floor(
         else {}
     )
     existing_completed_work_units = (
-        len(existing_manifest_rows)
+        _completed_request_units(
+            existing_manifest_lookup,
+            bundle_list=bundle_list,
+            selected_case_ids=selected_case_ids,
+        )
         if normalized_execution_mode == "batch"
         else _completed_case_units(
             existing_manifest_lookup,
@@ -2951,7 +3002,7 @@ def run_reasoning_floor(
                             "skip_reason": "oracle_mode_track_diagnosis_skipped",
                         }
                     )
-            else:
+            elif normalized_proposal_track_mode == "diagnosis_routed":
                 routing_info = routing_info_for_existing_case(bundle=bundle, case_id=record["id"])
 
             if normalized_proposal_track_mode == "oracle":
@@ -4199,6 +4250,7 @@ def run_reasoning_floor(
             "reasoning_effort": resolved_reasoning_effort,
             "model_digest": expected_run_config["model_digest"],
             "inference_settings": expected_run_config["inference_settings"],
+            "transport_settings": expected_run_config["transport_settings"],
             "artifact_fingerprints": expected_run_config["artifact_fingerprints"],
             "code": expected_run_config["code"],
             "output_dir": str(out_dir),
@@ -4273,6 +4325,8 @@ def run_reasoning_floor(
             "cost_estimation_multiplier": (
                 cost_estimation_multipliers[0] if len(cost_estimation_multipliers) == 1 else None
             ),
+            "transport_attempts": run_usage["transport_attempts"],
+            "transport_retries": run_usage["transport_retries"],
         }
         summary["paper_summary"] = {
             "combined_repair_success_score": None,

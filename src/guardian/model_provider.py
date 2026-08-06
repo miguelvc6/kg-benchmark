@@ -554,6 +554,8 @@ class OpenAIChatProvider:
     timeout: int = 120
     max_output_tokens: int | None = None
     max_retries: int = 0
+    retry_base_seconds: float = 2.0
+    retry_max_seconds: float = 20.0
     provider_name: str = "openai"
     provider_env_prefix: str = "OPENAI"
     api_key_env_name: str = "OPENAI_API_KEY"
@@ -566,8 +568,17 @@ class OpenAIChatProvider:
         self.model = self.model or os.getenv(self.model_env_name)
         default_base_url = "https://api.openai.com/v1" if self.provider_name == "openai" else ""
         self.base_url = (self.base_url or os.getenv(self.base_url_env_name) or default_base_url).rstrip("/")
+        self.timeout = _env_int(f"{self.provider_env_prefix}_TIMEOUT_SECONDS") or self.timeout
         self.max_output_tokens = self.max_output_tokens or _env_int(
             f"{self.provider_env_prefix}_MAX_OUTPUT_TOKENS"
+        )
+        env_max_retries = _env_retry_count(f"{self.provider_env_prefix}_MAX_RETRIES")
+        self.max_retries = env_max_retries if env_max_retries is not None else self.max_retries
+        self.retry_base_seconds = (
+            _env_float(f"{self.provider_env_prefix}_RETRY_BASE_SECONDS") or self.retry_base_seconds
+        )
+        self.retry_max_seconds = (
+            _env_float(f"{self.provider_env_prefix}_RETRY_MAX_SECONDS") or self.retry_max_seconds
         )
         reasoning_setting = f"{self.provider_env_prefix}_REASONING_EFFORT"
         self.reasoning_effort = _normalize_openai_reasoning_effort(
@@ -579,6 +590,44 @@ class OpenAIChatProvider:
             raise RuntimeError(f"{self.model_env_name} is required for the {self.provider_name} provider.")
         if not self.base_url:
             raise RuntimeError(f"{self.base_url_env_name} is required for the {self.provider_name} provider.")
+        if self.retry_base_seconds <= 0:
+            self.retry_base_seconds = 2.0
+        if self.retry_max_seconds <= 0:
+            self.retry_max_seconds = self.retry_base_seconds
+
+    def _retry_delay_seconds(self, retry_index: int) -> float:
+        exponential_delay = self.retry_base_seconds * (2 ** max(0, retry_index - 1))
+        capped_delay = min(exponential_delay, self.retry_max_seconds)
+        return min(self.retry_max_seconds, capped_delay + random.uniform(0, min(1.0, self.retry_base_seconds)))
+
+    def _post_chat(self, request_body: bytes) -> tuple[Response, int]:
+        retryable_statuses = {429, 500, 502, 503, 504}
+        retryable_exceptions = (requests.Timeout, requests.ConnectionError)
+        last_error: Exception | None = None
+        for attempt in range(self.max_retries + 1):
+            try:
+                response = requests.post(
+                    f"{self.base_url}/chat/completions",
+                    headers=self._json_headers(),
+                    data=request_body,
+                    timeout=self.timeout,
+                )
+            except retryable_exceptions as exc:
+                last_error = exc
+                if attempt >= self.max_retries:
+                    raise RuntimeError(
+                        f"{self.provider_name} chat request failed after {attempt + 1} attempt(s): {exc}"
+                    ) from exc
+            else:
+                if response.status_code not in retryable_statuses or attempt >= self.max_retries:
+                    return response, attempt + 1
+                last_error = RuntimeError(f"retryable HTTP {response.status_code}")
+            time.sleep(self._retry_delay_seconds(attempt + 1))
+        if last_error is not None:
+            raise RuntimeError(
+                f"{self.provider_name} chat request failed after {self.max_retries + 1} attempt(s): {last_error}"
+            ) from last_error
+        raise RuntimeError(f"{self.provider_name} chat request failed before a response was returned.")
 
     def _auth_headers(self) -> dict[str, str]:
         return {"Authorization": f"Bearer {self.api_key}"}
@@ -646,12 +695,7 @@ class OpenAIChatProvider:
             max_output_tokens=self.max_output_tokens,
         )
         request_body = _encode_json_body(payload, metadata=metadata, provider_name="OpenAI")
-        response = requests.post(
-            f"{self.base_url}/chat/completions",
-            headers=self._json_headers(),
-            data=request_body,
-            timeout=self.timeout,
-        )
+        response, transport_attempts = self._post_chat(request_body)
         try:
             response.raise_for_status()
         except HTTPError as exc:
@@ -664,6 +708,8 @@ class OpenAIChatProvider:
             provider_name=self.provider_name,
             provider_env_prefix=self.provider_env_prefix,
         )
+        usage_payload["transport_attempts"] = transport_attempts
+        usage_payload["transport_retries"] = transport_attempts - 1
         return raw_response, parsed_payload, usage_payload
 
     def write_batch_request(
@@ -1218,7 +1264,7 @@ def create_model_provider(
             provider.max_retries = max_retries
         return provider
     if provider_name == "azure":
-        return OpenAIChatProvider(
+        provider = OpenAIChatProvider(
             api_key=os.getenv("AZURE_OPENAI_API_KEY"),
             model=model_name or os.getenv("AZURE_OPENAI_DEPLOYMENT"),
             base_url=os.getenv("AZURE_OPENAI_ENDPOINT"),
@@ -1231,6 +1277,10 @@ def create_model_provider(
             max_output_tokens=max_output_tokens,
             max_retries=max_retries if max_retries is not None else 0,
         )
+        # An explicit paper-run setting must win over ambient developer configuration.
+        if max_retries is not None:
+            provider.max_retries = max_retries
+        return provider
     if provider_name == "university":
         return OpenAIResponsesProvider(model=model_name)
     raise RuntimeError(f"Unsupported model endpoint: {provider_name}")

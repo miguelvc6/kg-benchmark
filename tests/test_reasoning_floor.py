@@ -928,6 +928,69 @@ class ReasoningFloorTests(unittest.TestCase):
                 execution_mode="sync",
             )
 
+    def test_reasoning_floor_resume_retries_request_error_rows(self) -> None:
+        root, classified_path, world_state_path, selection_manifest_path, resolver = self._make_stub_fixture()
+        cache_path = root / "cache" / "generations.sqlite"
+        initial_summary = run_reasoning_floor(
+            classified_path=classified_path,
+            world_state_path=world_state_path,
+            output_dir=root / "outputs",
+            provider=FailingAfterNGenerateCallsProvider(resolver, fail_after=1, model="stub-model"),
+            ablation_bundles=["minimal_case"],
+            selection_manifest_path=selection_manifest_path,
+            generation_cache_path=cache_path,
+            model_digest="sha256:stable-model-v1",
+            oracle_diagnosis_mode="run",
+        )
+        run_dir = Path(initial_summary["run_info"]["output_dir"])
+        initial_rows = self._read_jsonl(run_dir / "run_manifest.jsonl")
+        self.assertEqual(
+            [row["parse_status"] for row in initial_rows if row["task_type"] == "proposal"],
+            ["request_error"],
+        )
+
+        resumed_provider = CountingStaticResponseProvider(resolver, model="stub-model")
+        resumed_summary = run_reasoning_floor(
+            classified_path=classified_path,
+            world_state_path=world_state_path,
+            output_dir=root / "ignored",
+            resume_run_dir=run_dir,
+            provider=resumed_provider,
+            ablation_bundles=["minimal_case"],
+            selection_manifest_path=selection_manifest_path,
+            generation_cache_path=cache_path,
+            model_digest="sha256:stable-model-v1",
+            oracle_diagnosis_mode="run",
+        )
+
+        resumed_rows = self._read_jsonl(run_dir / "run_manifest.jsonl")
+        self.assertEqual(resumed_provider.generate_call_count, 1)
+        self.assertEqual(
+            [row["parse_status"] for row in resumed_rows if row["task_type"] == "proposal"],
+            ["request_error", "normalized"],
+        )
+        self.assertEqual(
+            len([row for row in resumed_rows if row["task_type"] == "track_diagnosis"]),
+            1,
+        )
+        self.assertEqual(resumed_summary["request_errors"]["proposal_request_error_count"], 0)
+
+        complete_provider = CountingStaticResponseProvider(resolver, model="stub-model")
+        run_reasoning_floor(
+            classified_path=classified_path,
+            world_state_path=world_state_path,
+            output_dir=root / "ignored_again",
+            resume_run_dir=run_dir,
+            provider=complete_provider,
+            ablation_bundles=["minimal_case"],
+            selection_manifest_path=selection_manifest_path,
+            generation_cache_path=cache_path,
+            model_digest="sha256:stable-model-v1",
+            oracle_diagnosis_mode="run",
+        )
+        self.assertEqual(complete_provider.generate_call_count, 0)
+        self.assertEqual(len(self._read_jsonl(run_dir / "run_manifest.jsonl")), 3)
+
     def test_reasoning_floor_resume_diagnosis_routed_batch_only_submits_missing_proposals(self) -> None:
         root, classified_path, world_state_path, _selection_manifest_path, resolver = self._make_stub_fixture()
         initial_summary = run_reasoning_floor(

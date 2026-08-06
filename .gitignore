@@ -22,3 +22,4 @@ temp/*
 .cache/
 .pytest_cache/
 .ruff_cache/
+paper_latex/

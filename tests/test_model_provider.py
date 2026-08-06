@@ -5,6 +5,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import requests
+
 from guardian.model_provider import (
     OllamaChatProvider,
     OpenAIChatProvider,
@@ -190,6 +192,172 @@ class OpenAIChatProviderTests(unittest.TestCase):
         self.assertEqual(provider.model, "gpt-5.4-nano")
         self.assertEqual(provider.base_url, "https://example.azure.com/openai/v1")
         self.assertEqual(provider.reasoning_effort, "high")
+
+    def test_azure_loads_transport_settings_from_environment(self) -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "AZURE_OPENAI_API_KEY": "azure-key",
+                "AZURE_OPENAI_DEPLOYMENT": "gpt-5.6-sol",
+                "AZURE_OPENAI_ENDPOINT": "https://example.azure.com/openai/v1",
+                "AZURE_OPENAI_TIMEOUT_SECONDS": "900",
+                "AZURE_OPENAI_MAX_RETRIES": "4",
+                "AZURE_OPENAI_RETRY_BASE_SECONDS": "0.5",
+                "AZURE_OPENAI_RETRY_MAX_SECONDS": "3",
+            },
+            clear=True,
+        ):
+            provider = create_model_provider(model_endpoint="azure")
+
+        self.assertEqual(provider.timeout, 900)
+        self.assertEqual(provider.max_retries, 4)
+        self.assertEqual(provider.retry_base_seconds, 0.5)
+        self.assertEqual(provider.retry_max_seconds, 3.0)
+
+    def test_explicit_factory_azure_retry_policy_wins_over_environment(self) -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "AZURE_OPENAI_API_KEY": "azure-key",
+                "AZURE_OPENAI_DEPLOYMENT": "gpt-5.6-sol",
+                "AZURE_OPENAI_ENDPOINT": "https://example.azure.com/openai/v1",
+                "AZURE_OPENAI_MAX_RETRIES": "9",
+            },
+            clear=True,
+        ):
+            provider = create_model_provider(model_endpoint="azure", max_retries=2)
+
+        self.assertEqual(provider.max_retries, 2)
+
+    def test_azure_retries_retryable_status_with_identical_payload(self) -> None:
+        retry_response = MagicMock()
+        retry_response.status_code = 503
+        success_response = MagicMock()
+        success_response.status_code = 200
+        success_response.raise_for_status.return_value = None
+        success_response.json.return_value = {
+            "choices": [{"message": {"content": "{\"case_id\": \"c1\"}"}, "finish_reason": "stop"}],
+            "usage": {"prompt_tokens": 11, "completion_tokens": 7, "total_tokens": 18},
+        }
+
+        with (
+            patch(
+                "guardian.model_provider.requests.post",
+                side_effect=[retry_response, success_response],
+            ) as post,
+            patch("guardian.model_provider.time.sleep") as sleep,
+            patch("guardian.model_provider.random.uniform", return_value=0.0),
+        ):
+            provider = OpenAIChatProvider(
+                api_key="azure-key",
+                model="gpt-5.6-sol",
+                base_url="https://example.azure.com/openai/v1",
+                provider_name="azure",
+                provider_env_prefix="AZURE_OPENAI",
+                max_retries=1,
+                retry_base_seconds=0.1,
+                retry_max_seconds=0.1,
+            )
+            _raw, parsed, usage = provider.generate(
+                prompt="{}",
+                system_prompt="Return JSON only.",
+                response_format={"type": "json_object"},
+                metadata={"case_id": "c1"},
+            )
+
+        self.assertEqual(parsed, {"case_id": "c1"})
+        self.assertEqual(usage["transport_attempts"], 2)
+        self.assertEqual(usage["transport_retries"], 1)
+        self.assertEqual(post.call_count, 2)
+        self.assertIs(post.call_args_list[0].kwargs["data"], post.call_args_list[1].kwargs["data"])
+        sleep.assert_called_once()
+
+    def test_azure_retries_timeout_then_succeeds(self) -> None:
+        success_response = MagicMock()
+        success_response.status_code = 200
+        success_response.raise_for_status.return_value = None
+        success_response.json.return_value = {
+            "choices": [{"message": {"content": "{\"case_id\": \"c1\"}"}, "finish_reason": "stop"}],
+            "usage": {"prompt_tokens": 11, "completion_tokens": 7, "total_tokens": 18},
+        }
+
+        with (
+            patch(
+                "guardian.model_provider.requests.post",
+                side_effect=[requests.Timeout("timed out"), success_response],
+            ) as post,
+            patch("guardian.model_provider.time.sleep"),
+        ):
+            provider = OpenAIChatProvider(
+                api_key="azure-key",
+                model="gpt-5.6-sol",
+                base_url="https://example.azure.com/openai/v1",
+                provider_name="azure",
+                provider_env_prefix="AZURE_OPENAI",
+                max_retries=1,
+            )
+            _raw, _parsed, usage = provider.generate(
+                prompt="{}",
+                system_prompt="Return JSON only.",
+                response_format={"type": "json_object"},
+                metadata={"case_id": "c1"},
+            )
+
+        self.assertEqual(post.call_count, 2)
+        self.assertEqual(usage["transport_attempts"], 2)
+
+    def test_azure_does_not_retry_non_retryable_status(self) -> None:
+        response = MagicMock()
+        response.status_code = 401
+        response.raise_for_status.side_effect = requests.HTTPError(response=response)
+        response.json.return_value = {"error": {"message": "bad key"}}
+
+        with patch("guardian.model_provider.requests.post", return_value=response) as post:
+            provider = OpenAIChatProvider(
+                api_key="azure-key",
+                model="gpt-5.6-sol",
+                base_url="https://example.azure.com/openai/v1",
+                provider_name="azure",
+                provider_env_prefix="AZURE_OPENAI",
+                api_key_env_name="AZURE_OPENAI_API_KEY",
+                max_retries=2,
+            )
+            with self.assertRaisesRegex(RuntimeError, "authentication failed"):
+                provider.generate(
+                    prompt="{}",
+                    system_prompt="Return JSON only.",
+                    response_format={"type": "json_object"},
+                    metadata={"case_id": "c1"},
+                )
+
+        self.assertEqual(post.call_count, 1)
+
+    def test_azure_reports_retry_exhaustion(self) -> None:
+        with (
+            patch(
+                "guardian.model_provider.requests.post",
+                side_effect=requests.ConnectionError("offline"),
+            ) as post,
+            patch("guardian.model_provider.time.sleep") as sleep,
+        ):
+            provider = OpenAIChatProvider(
+                api_key="azure-key",
+                model="gpt-5.6-sol",
+                base_url="https://example.azure.com/openai/v1",
+                provider_name="azure",
+                provider_env_prefix="AZURE_OPENAI",
+                max_retries=2,
+            )
+            with self.assertRaisesRegex(RuntimeError, "after 3 attempt"):
+                provider.generate(
+                    prompt="{}",
+                    system_prompt="Return JSON only.",
+                    response_format={"type": "json_object"},
+                    metadata={"case_id": "c1"},
+                )
+
+        self.assertEqual(post.call_count, 3)
+        self.assertEqual(sleep.call_count, 2)
 
     def test_factory_can_select_university_endpoint(self) -> None:
         with patch.dict(
