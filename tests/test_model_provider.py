@@ -419,7 +419,8 @@ class OpenAIChatProviderTests(unittest.TestCase):
         self.assertEqual(raw["usage"]["total_tokens"], 18)
         request_payload = json.loads(post.call_args.kwargs["data"].decode("utf-8"))
         self.assertNotIn("temperature", request_payload)
-        self.assertEqual(request_payload["tool_choice"], "none")
+        self.assertNotIn("tools", request_payload)
+        self.assertNotIn("tool_choice", request_payload)
         self.assertEqual(request_payload["max_completion_tokens"], 8192)
 
     def test_includes_reasoning_effort_in_generate_payload_when_configured(self) -> None:
@@ -443,8 +444,10 @@ class OpenAIChatProviderTests(unittest.TestCase):
             )
 
         request_payload = json.loads(post.call_args.kwargs["data"].decode("utf-8"))
-        self.assertEqual(request_payload["reasoning"], {"effort": "low"})
-        self.assertEqual(request_payload["tool_choice"], "none")
+        self.assertEqual(request_payload["reasoning_effort"], "low")
+        self.assertNotIn("reasoning", request_payload)
+        self.assertNotIn("tools", request_payload)
+        self.assertNotIn("tool_choice", request_payload)
 
     def test_includes_reasoning_effort_in_batch_payload_when_configured(self) -> None:
         provider = OpenAIChatProvider(
@@ -467,8 +470,10 @@ class OpenAIChatProviderTests(unittest.TestCase):
 
             batch_record = json.loads(output_path.read_text(encoding="utf-8").strip())
 
-        self.assertEqual(batch_record["body"]["reasoning"], {"effort": "low"})
-        self.assertEqual(batch_record["body"]["tool_choice"], "none")
+        self.assertEqual(batch_record["body"]["reasoning_effort"], "low")
+        self.assertNotIn("reasoning", batch_record["body"])
+        self.assertNotIn("tools", batch_record["body"])
+        self.assertNotIn("tool_choice", batch_record["body"])
 
     def test_factory_allows_azure_reasoning_effort_override(self) -> None:
         with patch.dict(

@@ -334,9 +334,10 @@ def _openai_chat_payload(
     if not _uses_gpt5_family(model):
         payload["temperature"] = 0
     if reasoning_effort is not None:
-        payload["reasoning"] = {"effort": reasoning_effort}
-    if tools_disabled:
-        payload["tool_choice"] = "none"
+        payload["reasoning_effort"] = reasoning_effort
+    # Tools are disabled by omitting both `tools` and `tool_choice`. Azure's
+    # OpenAI-compatible endpoint rejects an orphaned `tool_choice: "none"`.
+    del tools_disabled
     if isinstance(max_output_tokens, int) and max_output_tokens > 0:
         payload["max_completion_tokens"] = max_output_tokens
     if response_format:
