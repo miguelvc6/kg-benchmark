@@ -193,6 +193,63 @@ class OpenAIChatProviderTests(unittest.TestCase):
         self.assertEqual(provider.base_url, "https://example.azure.com/openai/v1")
         self.assertEqual(provider.reasoning_effort, "high")
 
+    def test_explicit_azure_identity_uses_environment_deployment_on_wire(self) -> None:
+        response = MagicMock()
+        response.status_code = 200
+        response.raise_for_status.return_value = None
+        response.json.return_value = {
+            "model": "gpt-5.6-sol-2026-07-09",
+            "choices": [{"message": {"content": "{\"case_id\": \"c1\"}"}, "finish_reason": "stop"}],
+            "usage": {"prompt_tokens": 11, "completion_tokens": 7, "total_tokens": 18},
+        }
+        with (
+            patch.dict(
+                os.environ,
+                {
+                    "AZURE_OPENAI_API_KEY": "azure-key",
+                    "AZURE_OPENAI_DEPLOYMENT": "gpt-5.6-sol",
+                    "AZURE_OPENAI_ENDPOINT": "https://example.azure.com/openai/v1",
+                },
+                clear=True,
+            ),
+            patch("guardian.model_provider.requests.post", return_value=response) as post,
+        ):
+            provider = create_model_provider(
+                "gpt-5.6-sol-2026-07-09",
+                model_endpoint="azure",
+                reasoning_effort="high",
+            )
+            provider.generate(
+                prompt="{}",
+                system_prompt="Return JSON only.",
+                response_format={"type": "json_object"},
+                metadata={"case_id": "c1"},
+            )
+
+        self.assertEqual(provider.model, "gpt-5.6-sol-2026-07-09")
+        self.assertEqual(provider.request_model, "gpt-5.6-sol")
+        self.assertEqual(provider.expected_response_model, "gpt-5.6-sol-2026-07-09")
+        request_payload = json.loads(post.call_args.kwargs["data"].decode("utf-8"))
+        self.assertEqual(request_payload["model"], "gpt-5.6-sol")
+
+    def test_azure_rejects_response_from_unexpected_snapshot(self) -> None:
+        response = MagicMock()
+        response.status_code = 200
+        response.raise_for_status.return_value = None
+        response.json.return_value = {"model": "gpt-5.4-nano-2026-01-01"}
+        with patch("guardian.model_provider.requests.post", return_value=response):
+            provider = OpenAIChatProvider(
+                api_key="azure-key",
+                model="gpt-5.6-sol-2026-07-09",
+                request_model="gpt-5.6-sol",
+                expected_response_model="gpt-5.6-sol-2026-07-09",
+                base_url="https://example.azure.com/openai/v1",
+                provider_name="azure",
+                provider_env_prefix="AZURE_OPENAI",
+            )
+            with self.assertRaisesRegex(RuntimeError, "response model mismatch"):
+                provider.generate("{}", "Return JSON only.", {}, {"case_id": "c1"})
+
     def test_azure_loads_transport_settings_from_environment(self) -> None:
         with patch.dict(
             os.environ,

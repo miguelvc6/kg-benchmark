@@ -77,7 +77,7 @@
       "model_id": "azure_gpt_5_6_sol_high",
       "provider": "azure",
       "model": "gpt-5.6-sol",
-      "deployment": "gpt-5.6-sol",
+      "deployment": "gpt-5.6-sol-2026-07-09",
       "model_revision": "gpt-5.6-sol-2026-07-09",
       "revision_status": "resolved",
       "revision_resolution": "azure_data_plane_models_endpoint_exact_snapshot_id",
