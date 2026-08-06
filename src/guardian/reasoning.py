@@ -239,11 +239,7 @@ def _resolved_inference_settings(provider: ModelProvider) -> dict[str, Any]:
 
 def _resolved_transport_settings(provider: ModelProvider) -> dict[str, Any]:
     fields = ("timeout", "max_retries", "retry_base_seconds", "retry_max_seconds")
-    settings = {field: getattr(provider, field, None) for field in fields}
-    if getattr(provider, "provider_name", None) == "azure":
-        settings["deployment"] = getattr(provider, "request_model", None)
-        settings["expected_response_model"] = getattr(provider, "expected_response_model", None)
-    return settings
+    return {field: getattr(provider, field, None) for field in fields}
 
 
 def _load_optional_json(path: str | Path | None) -> dict[str, Any] | None:

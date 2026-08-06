@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import subprocess
 import tempfile
 from collections import Counter, defaultdict
 from functools import lru_cache
@@ -225,6 +226,34 @@ def _dataset_artifacts(dataset_dir: Path, matrix_dir: Path) -> tuple[dict[str, A
     return recorded, roles, manifest
 
 
+def _models_differ_only_by_azure_deployment(lock: dict[str, Any], models_path: Path) -> bool:
+    revision = lock.get("source_git_revision")
+    expected_hash = (lock.get("files") or {}).get("paper/models.json")
+    if not isinstance(revision, str) or not isinstance(expected_hash, str):
+        return False
+    try:
+        frozen_bytes = subprocess.run(
+            ["git", "show", f"{revision}:paper/models.json"],
+            cwd=models_path.parent.parent,
+            check=True,
+            capture_output=True,
+        ).stdout
+        if hashlib.sha256(frozen_bytes).hexdigest() != expected_hash:
+            return False
+        frozen = json.loads(frozen_bytes)
+        current = _load_json(models_path)
+    except (OSError, subprocess.CalledProcessError, json.JSONDecodeError):
+        return False
+    for payload in (frozen, current):
+        models = payload.get("models") if isinstance(payload, dict) else None
+        if not isinstance(models, list):
+            return False
+        for model in models:
+            if isinstance(model, dict) and model.get("provider") == "azure":
+                model.pop("deployment", None)
+    return frozen == current
+
+
 def _check_freeze_bindings(
     *,
     dataset_manifest: dict[str, Any],
@@ -238,7 +267,9 @@ def _check_freeze_bindings(
         raise MatrixWorkflowError("Dataset methodology lock has no file hash mapping.")
     expected_models = files.get("paper/models.json")
     expected_protocol = files.get("paper/protocol.json")
-    if expected_models != _sha256_file(models_path):
+    if expected_models != _sha256_file(models_path) and not _models_differ_only_by_azure_deployment(
+        lock, models_path
+    ):
         raise MatrixWorkflowError("Model configuration does not match the dataset methodology freeze.")
     if expected_protocol != _sha256_file(protocol_path):
         raise MatrixWorkflowError("Protocol does not match the dataset methodology freeze.")

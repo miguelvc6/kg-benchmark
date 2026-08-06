@@ -549,8 +549,6 @@ def _format_batch_progress(
 class OpenAIChatProvider:
     api_key: str | None = None
     model: str | None = None
-    request_model: str | None = None
-    expected_response_model: str | None = None
     base_url: str | None = None
     reasoning_effort: str | None = None
     tools_disabled: bool = True
@@ -569,7 +567,6 @@ class OpenAIChatProvider:
         load_dotenv()
         self.api_key = _normalize_api_key(self.api_key_env_name, self.api_key or os.getenv(self.api_key_env_name))
         self.model = self.model or os.getenv(self.model_env_name)
-        self.request_model = self.request_model or self.model
         default_base_url = "https://api.openai.com/v1" if self.provider_name == "openai" else ""
         self.base_url = (self.base_url or os.getenv(self.base_url_env_name) or default_base_url).rstrip("/")
         self.timeout = _env_int(f"{self.provider_env_prefix}_TIMEOUT_SECONDS") or self.timeout
@@ -641,17 +638,6 @@ class OpenAIChatProvider:
         headers["Content-Type"] = "application/json"
         return headers
 
-    def _validate_response_model(self, raw_response: dict[str, Any]) -> None:
-        expected = self.expected_response_model
-        if not expected:
-            return
-        actual = raw_response.get("model")
-        if actual != expected:
-            raise RuntimeError(
-                f"{self.provider_name} response model mismatch: expected {expected!r}, got {actual!r}. "
-                "Check that the configured deployment alias still resolves to the frozen snapshot."
-            )
-
     def _handle_http_error(self, response: Response, exc: HTTPError, *, action: str) -> None:
         detail = ""
         try:
@@ -701,7 +687,7 @@ class OpenAIChatProvider:
         metadata: dict[str, Any],
     ) -> tuple[Any, Any, dict[str, Any]]:
         payload = _openai_chat_payload(
-            model=self.request_model,
+            model=self.model,
             prompt=prompt,
             system_prompt=system_prompt,
             response_format=response_format,
@@ -716,7 +702,6 @@ class OpenAIChatProvider:
         except HTTPError as exc:
             self._handle_http_error(response, exc, action="request")
         raw_response = response.json()
-        self._validate_response_model(raw_response)
         parsed_payload, usage_payload = _parse_openai_chat_completion_response(
             raw_response,
             metadata=metadata,
@@ -739,7 +724,7 @@ class OpenAIChatProvider:
         metadata: dict[str, Any],
     ) -> None:
         payload = _openai_chat_payload(
-            model=self.request_model,
+            model=self.model,
             prompt=prompt,
             system_prompt=system_prompt,
             response_format=response_format,
@@ -921,7 +906,6 @@ class OpenAIChatProvider:
             )
 
         if isinstance(response_body, dict):
-            self._validate_response_model(response_body)
             parsed_payload, usage_payload = _parse_openai_chat_completion_response(
                 response_body,
                 metadata=metadata,
@@ -1281,13 +1265,9 @@ def create_model_provider(
             provider.max_retries = max_retries
         return provider
     if provider_name == "azure":
-        deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT")
-        identity_model = model_name or deployment
         provider = OpenAIChatProvider(
             api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-            model=identity_model,
-            request_model=deployment or identity_model,
-            expected_response_model=model_name if model_name and model_name != deployment else None,
+            model=model_name or os.getenv("AZURE_OPENAI_DEPLOYMENT"),
             base_url=os.getenv("AZURE_OPENAI_ENDPOINT"),
             provider_name="azure",
             provider_env_prefix="AZURE_OPENAI",

@@ -6,10 +6,12 @@ import tempfile
 import unittest
 from pathlib import Path
 from typing import Any
+from unittest.mock import MagicMock, patch
 
 from guardian.generation_cache import GenerationCache
 from kg_benchmark.matrix.workflow import (
     MatrixWorkflowError,
+    _models_differ_only_by_azure_deployment,
     dry_run_matrix,
     execute_matrix,
     matrix_status,
@@ -414,6 +416,30 @@ class ExperimentMatrixTests(unittest.TestCase):
         self.assertTrue(resumed["complete"])
         self.assertEqual(resumed["executed_groups"], 1)
         self.assertEqual(len(calls), 1)
+
+    def test_dataset_binding_allows_only_azure_deployment_name_change(self) -> None:
+        frozen_bytes = self.models_path.read_bytes()
+        lock = json.loads(
+            (self.dataset / "methodology" / "methodology.lock.json").read_text(encoding="utf-8")
+        )
+        models = json.loads(frozen_bytes)
+        azure = next(model for model in models["models"] if model["provider"] == "azure")
+        azure["deployment"] = "renamed-azure-deployment"
+        _write_json(self.models_path, models)
+        git_show = MagicMock(stdout=frozen_bytes)
+
+        with patch("kg_benchmark.matrix.workflow.subprocess.run", return_value=git_show):
+            self.assertTrue(_models_differ_only_by_azure_deployment(lock, self.models_path))
+            self._plan()
+
+        azure["model_revision"] = "different-snapshot"
+        _write_json(self.models_path, models)
+        with patch("kg_benchmark.matrix.workflow.subprocess.run", return_value=git_show):
+            self.assertFalse(_models_differ_only_by_azure_deployment(lock, self.models_path))
+            with self.assertRaisesRegex(
+                MatrixWorkflowError, "Model configuration does not match"
+            ):
+                self._plan()
 
     def test_unresolved_revision_is_visible_in_dry_run_and_blocks_execution(self) -> None:
         models = json.loads(self.models_path.read_text())

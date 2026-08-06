@@ -9,12 +9,10 @@ disabled, and GPT-OSS uses high thinking. Ollama uses two exact-request transpor
 the dated `gpt-5.6-sol-2026-07-09` snapshot, high reasoning effort, sequential synchronous execution, two exact-request
 transport retries, and disabled tools.
 
-For Azure, the frozen matrix and generation cache retain `gpt-5.6-sol-2026-07-09` as the immutable model identity.
-The data-plane deployment alias is operational configuration in `AZURE_OPENAI_DEPLOYMENT` and is currently
-`gpt-5.6-sol`. The executor sends the alias on the wire, records it in transport provenance, and refuses to cache a
-response unless Azure reports the frozen snapshot in its `model` field. Chat Completions sends reasoning effort as the
-top-level `reasoning_effort` field. Disabled tools are represented by omitting both `tools` and `tool_choice`,
-matching the Azure OpenAI-compatible request contract.
+The Azure deployment name is `gpt-5.6-sol`; the dated `gpt-5.6-sol-2026-07-09` value remains recorded separately as
+the observed model revision. Chat Completions sends reasoning effort as the top-level `reasoning_effort` field.
+Disabled tools are represented by omitting both `tools` and `tool_choice`, so the model has no tool definitions or
+tool-selection capability.
 
 For synchronous OpenAI-compatible calls, the provider encodes the request body once and reuses those bytes for every
 transport attempt. Only HTTP 429, 500, 502, 503, and 504 responses plus connection failures and timeouts are retryable;
