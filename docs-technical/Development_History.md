@@ -312,6 +312,13 @@ files, and generation-key fields did not change. A provider-free re-render produ
 were relative artifact paths caused by rendering under `/tmp`. The final methodology-v9 dataset therefore remains the
 immutable acquisition input, while a replacement clean source lock binds the corrected execution code.
 
+Source commit `b18149c9db12a5f1b2189b61168cc9496d068f64` implements the transport and resume correction and removes the
+v9 repository lock. Lock-only commit `8669f01358ee379aef282ec1ba85052ee36e52c2` binds freeze-scope digest
+`5cd916b6329edef6f2c685e21a8d3650a5b0b79251f6d8b8afc3bff1f96964b3`; the lock SHA-256 is
+`4df6e2bc832913952d6160cce55aa105c1a826e6cdad50190222e2028bef7bca`. The complete offline gate passed with 393
+tests and 125 subtests. Annotated tag `paper-methodology-v10` identifies the transport-resilient execution state; it
+does not replace the v9 acquisition identity embedded in the final dataset.
+
 ## Repository simplification
 
 By July 2026 the working tree mixed 96 GB of baseline data, 41 GB of reports, 2.6 GB of logs, hundreds of prompt and
