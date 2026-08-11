@@ -1,6 +1,9 @@
 # Evaluation Framework
 
-WikidataRepairEval evaluates knowledge-graph repair as an executable, auditable transaction problem. It should not collapse results into a single leaderboard score. The important output is a stratified failure map across repair locus, information condition, context bundle, model, popularity bucket, and schema-reform cluster.
+WikidataRepairEval evaluates knowledge-graph repair as an executable, auditable transaction problem. It should not
+collapse results into a single leaderboard score. The confirmatory output is a stratified failure map across repair
+locus, information condition, context bundle, prompt regime, and model. Popularity, subtype, and schema-reform-cluster
+fields remain available for explicitly labeled descriptive or extension analyses.
 
 Implementation details, schemas, and scripts live in [docs-technical](../docs-technical/README.md).
 
@@ -134,7 +137,9 @@ The main LLM experiments should use local H100-runnable instruction models. A sm
 
 ## Interpretation Rules
 
-- Report metrics stratified by repair locus, information condition, subtype, context bundle, prompt regime, model, popularity bucket, and T-box property revision cluster.
+- Report confirmatory metrics by repair locus, information condition, context bundle, prompt regime, and model, with
+  independent repair-event clusters used for inference. Treat popularity, subtype, and T-box schema-reform-cluster
+  breakdowns as descriptive or registered extensions unless they are added to the frozen confirmatory analysis plan.
 - Treat Type C as `EXTERNAL_BY_ELIMINATION`; the current no-human study does not confirm external-evidence necessity.
 - Treat historical repairs as historically accepted targets, not universal truth.
 - Compare future RAG or Guardian-style systems against the reasoning floor, not against an informal baseline.

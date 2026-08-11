@@ -18,6 +18,9 @@ The test suite includes schema and documentation checks, a tracked-files-only cl
 and the full synthetic lifecycle from build through paper analysis. The lifecycle uses deterministic fake Codex and
 model executors: it performs no network access or provider calls, but still proves rejection/replacement, generation
 cache reuse, provider-free metric replay, final dataset manifest reproduction, and byte-identical result packages.
+The clean-clone smoke test always preserves repository history. When the checkout has tracked modifications, it applies
+the binary Git diff over a local clone; untracked artifacts are excluded. This keeps frozen lock revisions available
+while allowing an untracked `results/analysis_<hash>/` package during release staging.
 
 Before dataset construction, run `kg-benchmark methodology check`. Candidate validity and final freeze readiness are
 separate: a valid candidate may still report unresolved model revisions, non-frozen statuses, a dirty worktree, or a

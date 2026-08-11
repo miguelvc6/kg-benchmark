@@ -16,14 +16,8 @@ class CleanCloneReproductionTests(unittest.TestCase):
     def test_tracked_files_only_clone_builds_and_runs_installed_cli(self) -> None:
         uv = shutil.which("uv")
         self.assertIsNotNone(uv, "The clean-clone smoke test requires the project's uv runner.")
-        tracked = subprocess.run(
-            ["git", "ls-files", "-z"],
-            cwd=ROOT,
-            check=True,
-            capture_output=True,
-        ).stdout.split(b"\0")
-        source_is_clean = not subprocess.run(
-            ["git", "status", "--porcelain=v1"],
+        tracked_patch = subprocess.run(
+            ["git", "diff", "--binary", "HEAD", "--"],
             cwd=ROOT,
             check=True,
             capture_output=True,
@@ -31,36 +25,20 @@ class CleanCloneReproductionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             clone = root / "clone"
-            if source_is_clean:
+            subprocess.run(
+                ["git", "clone", "--quiet", "--no-local", str(ROOT), str(clone)],
+                check=True,
+            )
+            if tracked_patch:
                 subprocess.run(
-                    ["git", "clone", "--quiet", "--no-local", str(ROOT), str(clone)],
+                    ["git", "apply", "--binary", "-"],
+                    cwd=clone,
                     check=True,
+                    input=tracked_patch,
                 )
-            else:
-                clone.mkdir()
-                for raw_path in tracked:
-                    if not raw_path:
-                        continue
-                    relative = Path(os.fsdecode(raw_path))
-                    source = ROOT / relative
-                    if not source.is_file():
-                        continue
-                    destination = clone / relative
-                    destination.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copyfile(source, destination)
 
             for excluded in (".env", ".venv", ".venv-wsl", "data", "data_post_freeze", "work", "runs"):
                 self.assertFalse((clone / excluded).exists(), excluded)
-            if not source_is_clean:
-                subprocess.run(["git", "init", "-q"], cwd=clone, check=True)
-                subprocess.run(["git", "config", "user.name", "Reproduction Smoke"], cwd=clone, check=True)
-                subprocess.run(["git", "config", "user.email", "smoke@example.invalid"], cwd=clone, check=True)
-                subprocess.run(["git", "add", "."], cwd=clone, check=True)
-                subprocess.run(
-                    ["git", "commit", "-q", "-m", "clean clone fixture"],
-                    cwd=clone,
-                    check=True,
-                )
 
             distribution = root / "dist"
             subprocess.run(

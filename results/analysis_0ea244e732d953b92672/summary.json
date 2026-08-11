@@ -1,0 +1,38 @@
+{
+  "analysis_id": "analysis_0ea244e732d953b92672",
+  "contrast_rows": 128,
+  "diagnosis_rows": 16,
+  "estimate_rows": 480,
+  "evaluation_id": "paper-metrics-v1",
+  "holm_families": 32,
+  "interpretation": {
+    "azure_calibration": "paired calibration reference; no cross-model significance tests",
+    "confirmatory": "headline local-model results on the frozen main population",
+    "extension": "separate nested extension; never replaces confirmatory results"
+  },
+  "manifest_type": "paper_analysis_summary",
+  "manifest_version": 1,
+  "matrix_id": "matrix_16508f2e5e12714c528c",
+  "models": [
+    "azure_gpt_5_6_sol_high",
+    "ollama_gpt_oss_120b",
+    "ollama_llama3_3_70b",
+    "ollama_qwen3_30b"
+  ],
+  "populations": [
+    "azure-600",
+    "main-1200"
+  ],
+  "primary_estimate_rows": 128,
+  "provider_calls": 0,
+  "roles": [
+    "azure_calibration",
+    "confirmatory"
+  ],
+  "scope": "confirmatory_and_calibration",
+  "tasks": [
+    "a_box_repair",
+    "t_box_repair",
+    "track_diagnosis"
+  ]
+}

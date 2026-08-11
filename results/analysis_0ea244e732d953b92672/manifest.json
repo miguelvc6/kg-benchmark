@@ -1,0 +1,173 @@
+{
+  "analysis_code": {
+    "statistics": {
+      "bytes": 9283,
+      "path": "../../src/kg_benchmark/analysis/statistics.py",
+      "sha256": "82b0e98794c7d4b71cdd5e132182f40dd69c5ad6dd07ae5be8e53885d423bcea"
+    },
+    "workflow": {
+      "bytes": 47710,
+      "path": "../../src/kg_benchmark/analysis/workflow.py",
+      "sha256": "e75c8dbcc18c5541a6e2c305974990865e70e10b041e543f7bba3e67c01fb881"
+    }
+  },
+  "analysis_configuration": {
+    "bytes": 2890,
+    "path": "../../paper/analysis.json",
+    "sha256": "74e974dffd7e810e6cc1061b71bc40860617b3bf52c271b311f9e7a57c46e187"
+  },
+  "analysis_id": "analysis_0ea244e732d953b92672",
+  "dependency_lock": {
+    "bytes": 517722,
+    "path": "../../uv.lock",
+    "sha256": "abf5098aad148474a65d22498035614d08bab4cdb3ea0455bbe49f1282efeaff"
+  },
+  "evaluation_id": "paper-metrics-v1",
+  "evaluation_manifests": [
+    {
+      "bytes": 6970,
+      "path": "../../../../../run/kg-benchmark-paper-v1/execution/matrices/matrix_16508f2e5e12714c528c/executions/group_012ef816677f6ef485d6/evaluations/paper-metrics-v1/evaluation_manifest.json",
+      "sha256": "84d0d64a8c252b13aaee5226ad7bd754e67c2d08e74fa33eb39724e1d5f7e3e3"
+    },
+    {
+      "bytes": 6958,
+      "path": "../../../../../run/kg-benchmark-paper-v1/execution/matrices/matrix_16508f2e5e12714c528c/executions/group_01a9282cb8f49b0c83cc/evaluations/paper-metrics-v1/evaluation_manifest.json",
+      "sha256": "30d791f37ccc866bf8790fe1fa60d98eb835402bf8d44cc80b39e6d79cf440aa"
+    },
+    {
+      "bytes": 6959,
+      "path": "../../../../../run/kg-benchmark-paper-v1/execution/matrices/matrix_16508f2e5e12714c528c/executions/group_07759076be81e9ce4fb7/evaluations/paper-metrics-v1/evaluation_manifest.json",
+      "sha256": "c2579d4af0801b1f22bb115fc87e9ba4065e7ff5ebc4cb9ecff402b7e9951406"
+    },
+    {
+      "bytes": 6959,
+      "path": "../../../../../run/kg-benchmark-paper-v1/execution/matrices/matrix_16508f2e5e12714c528c/executions/group_38cd794915fbeffc59bd/evaluations/paper-metrics-v1/evaluation_manifest.json",
+      "sha256": "0d794f7fa7cdec671a531f1d871dad8d33f2108d19b7214b55d549682951a164"
+    },
+    {
+      "bytes": 6959,
+      "path": "../../../../../run/kg-benchmark-paper-v1/execution/matrices/matrix_16508f2e5e12714c528c/executions/group_490b97f60e83f302be91/evaluations/paper-metrics-v1/evaluation_manifest.json",
+      "sha256": "3f26f1ace7383fcb5f85bbadca9cb86e8a6eb670449455fed322e28516d9fa1b"
+    },
+    {
+      "bytes": 6958,
+      "path": "../../../../../run/kg-benchmark-paper-v1/execution/matrices/matrix_16508f2e5e12714c528c/executions/group_7f11f8984ad8356ab61b/evaluations/paper-metrics-v1/evaluation_manifest.json",
+      "sha256": "ed1d13dc4b10f65932e30e758d620b6deb3841adcad8f4baffc186360de12044"
+    },
+    {
+      "bytes": 6971,
+      "path": "../../../../../run/kg-benchmark-paper-v1/execution/matrices/matrix_16508f2e5e12714c528c/executions/group_84e5d7da89107045664b/evaluations/paper-metrics-v1/evaluation_manifest.json",
+      "sha256": "4efc6900e58af6dd5dc2ef4fbc2c84786141062467c79eaecb494b633aa1e976"
+    },
+    {
+      "bytes": 6971,
+      "path": "../../../../../run/kg-benchmark-paper-v1/execution/matrices/matrix_16508f2e5e12714c528c/executions/group_a7127c6e1a112f29f7c2/evaluations/paper-metrics-v1/evaluation_manifest.json",
+      "sha256": "89d820735ebb33f625f1a41f3b1bbc9f52e5ef66ca7eb08aaf9b8e30a47197c9"
+    },
+    {
+      "bytes": 6971,
+      "path": "../../../../../run/kg-benchmark-paper-v1/execution/matrices/matrix_16508f2e5e12714c528c/executions/group_ab9ea7c5d0c3196298b8/evaluations/paper-metrics-v1/evaluation_manifest.json",
+      "sha256": "f04648ea1d48aba26e34e14c9170f643b9a1d825373c85b371fe3146b934d8a2"
+    },
+    {
+      "bytes": 6959,
+      "path": "../../../../../run/kg-benchmark-paper-v1/execution/matrices/matrix_16508f2e5e12714c528c/executions/group_acab9825a7630a570c3c/evaluations/paper-metrics-v1/evaluation_manifest.json",
+      "sha256": "476fc662abed4bd722a95ebe7132f40ab8b6a2e113c281d48727c3733e536ae8"
+    },
+    {
+      "bytes": 6971,
+      "path": "../../../../../run/kg-benchmark-paper-v1/execution/matrices/matrix_16508f2e5e12714c528c/executions/group_b73cef07217d1c490904/evaluations/paper-metrics-v1/evaluation_manifest.json",
+      "sha256": "b793f2e6d34370564e28ff552afd2b7cfd554f75c3f8d89f8da4645d8872ef46"
+    },
+    {
+      "bytes": 6971,
+      "path": "../../../../../run/kg-benchmark-paper-v1/execution/matrices/matrix_16508f2e5e12714c528c/executions/group_bbdd3858a4c1a8aaba9d/evaluations/paper-metrics-v1/evaluation_manifest.json",
+      "sha256": "acc3dcf3ca492aa474b663af62c8aed884f5dcba5d62284169e7cbdd4aba773f"
+    },
+    {
+      "bytes": 6972,
+      "path": "../../../../../run/kg-benchmark-paper-v1/execution/matrices/matrix_16508f2e5e12714c528c/executions/group_d56d29ebafefcf45e438/evaluations/paper-metrics-v1/evaluation_manifest.json",
+      "sha256": "b2eb062e023ef5f9e2e19195fd544afeb961a56dc9a91f3ac96b79052a85ae47"
+    },
+    {
+      "bytes": 6970,
+      "path": "../../../../../run/kg-benchmark-paper-v1/execution/matrices/matrix_16508f2e5e12714c528c/executions/group_dc7d198a1389a3c65302/evaluations/paper-metrics-v1/evaluation_manifest.json",
+      "sha256": "de8afc6c570b2ad9dfff3b2748ac2dd5d2a09a5240a34f1d56de8d4353e6182d"
+    },
+    {
+      "bytes": 6957,
+      "path": "../../../../../run/kg-benchmark-paper-v1/execution/matrices/matrix_16508f2e5e12714c528c/executions/group_de04d250d0d9a668801a/evaluations/paper-metrics-v1/evaluation_manifest.json",
+      "sha256": "2f651c2467b7b6ba144db992abf36938104526de3f5d9daee446da7935bc1ca4"
+    },
+    {
+      "bytes": 6957,
+      "path": "../../../../../run/kg-benchmark-paper-v1/execution/matrices/matrix_16508f2e5e12714c528c/executions/group_ed8e6fe632dc840a0dca/evaluations/paper-metrics-v1/evaluation_manifest.json",
+      "sha256": "6740c4cec300c9c3a7d3579bdd7d6c425434285de0921d976e493b29372a64f9"
+    }
+  ],
+  "manifest_type": "paper_analysis_results",
+  "manifest_version": 1,
+  "matrix": {
+    "bytes": 18041,
+    "path": "../../../../../run/kg-benchmark-paper-v1/execution/matrices/matrix_16508f2e5e12714c528c/matrix.json",
+    "sha256": "985fd3a9cada19b5de5bb234466d786de353cac14a76a204b81d06e6811d86d0"
+  },
+  "matrix_id": "matrix_16508f2e5e12714c528c",
+  "outputs": {
+    "contrasts": {
+      "bytes": 146934,
+      "path": "contrasts.jsonl",
+      "records": 128,
+      "sha256": "43e2b80fd0ffb22dbe35dfcb04ee778d6e59e028fc1af3cb99fe6f09750c8c67"
+    },
+    "diagnosis": {
+      "bytes": 11071,
+      "path": "diagnosis.jsonl",
+      "records": 16,
+      "sha256": "ba60f2463a1f585d15bffa08978fa3bd696b17464882237ef818136edba557ed"
+    },
+    "estimates": {
+      "bytes": 361312,
+      "path": "estimates.jsonl",
+      "records": 480,
+      "sha256": "780b346ea9b748bbe7abc972df389a605796d982f7b5d6260ae599eca1139db2"
+    },
+    "summary": {
+      "bytes": 1009,
+      "path": "summary.json",
+      "sha256": "9638cc46016a62204bf4f4f8be8862e96149341956aa7747cbead03f1a9fe420"
+    },
+    "table_azure_calibration": {
+      "bytes": 10820,
+      "path": "tables/azure-calibration.md",
+      "sha256": "f30c78410b1a234459494359ee35f87ee7fd3bf044ada54270b4e9f909434d8e"
+    },
+    "table_confirmatory": {
+      "bytes": 31019,
+      "path": "tables/confirmatory.md",
+      "sha256": "67b65349d913de20db5c1361794b52e9b3fd0bb367f640bbb03fdf1108f470af"
+    },
+    "table_diagnosis": {
+      "bytes": 2149,
+      "path": "tables/diagnosis.md",
+      "sha256": "f658c651cd36cdef554a7991393fb425096f9857756113b65e175befdbdbbc3d"
+    },
+    "table_extensions": {
+      "bytes": 106,
+      "path": "tables/extensions.md",
+      "sha256": "ca33a0b77a90dc286c436fa7bbfdad57e2d05fe0adcdd0baa0125eeb5784c76c"
+    }
+  },
+  "provider_calls": 0,
+  "scope": "confirmatory_and_calibration",
+  "validation": {
+    "complete_evaluation_coverage": true,
+    "complete_matrix": true,
+    "extensions_do_not_replace_confirmatory": true,
+    "four_contrasts_per_holm_family": true,
+    "loci_not_combined": true,
+    "models_not_pooled": true,
+    "no_provider_calls": true,
+    "roles_separated": true
+  }
+}
